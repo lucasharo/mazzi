@@ -32,7 +32,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
         const toDate = new Date();
         toDate.setDate(fromDate.getDate() + 14);
 
-        const { data, error } = await supabase.rpc('get_available_slots_public', {
+        const { data, error } = await (supabase as any).rpc('get_available_slots_public', {
           p_offering_id: offeringId,
           p_date_from: fromDate.toISOString().split('T')[0],
           p_date_to: toDate.toISOString().split('T')[0],

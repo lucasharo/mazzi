@@ -4,9 +4,9 @@
 // ============================================================================
 
 import React, { useState } from 'react';
-import { useAuth } from './AuthContext';
-import { UserRole } from '../../types';
-import { Shield, Lock, Mail, Phone, User, CheckCircle2, AlertTriangle, ArrowRight, RefreshCw } from 'lucide-react';
+import { DEMO_LOGIN_USERS, useAuth, type DemoLoginUser } from './AuthContext';
+import type { UserRole } from '../../types';
+import { Shield, Lock, Mail, Phone, User, CheckCircle2, AlertTriangle, ArrowRight, RefreshCw, UsersRound } from 'lucide-react';
 
 type AuthView = 'login' | 'signup' | 'forgot_password' | 'blocked_notice';
 
@@ -20,18 +20,39 @@ export const AuthScreens: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
   const [selectedDemoRole, setSelectedDemoRole] = useState<UserRole>('STUDENT');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const showDevLoginUsers = (import.meta as any).env?.DEV !== false;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage(null);
 
-    setTimeout(() => {
-      loginAsDemoUser(selectedDemoRole, email || undefined);
+    try {
+      await loginAsDemoUser(selectedDemoRole, email || undefined);
       setIsLoading(false);
       setMessage({ type: 'success', text: `Login autenticado com sucesso como ${selectedDemoRole}!` });
       if (onSuccess) onSuccess();
-    }, 400);
+    } catch (err: any) {
+      setIsLoading(false);
+      setMessage({ type: 'error', text: err.message || 'Falha ao autenticar.' });
+    }
+  };
+
+  const handleDevUserLogin = async (demoUser: DemoLoginUser) => {
+    setIsLoading(true);
+    setMessage(null);
+    setEmail(demoUser.email);
+    setSelectedDemoRole(demoUser.role);
+
+    try {
+      await loginAsDemoUser(demoUser.role, demoUser.email);
+      setMessage({ type: 'success', text: `Login autenticado como ${demoUser.name}.` });
+      if (onSuccess) onSuccess();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Falha ao autenticar usuario de teste.' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignup = (e: React.FormEvent) => {
@@ -137,7 +158,40 @@ export const AuthScreens: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
               </div>
             </div>
 
-            {/* Role Switcher for Fast Sandbox Verification */}
+            {showDevLoginUsers && (
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <UsersRound className="w-4 h-4 text-slate-500" />
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    Usuarios de teste
+                  </span>
+                </div>
+                <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                  {DEMO_LOGIN_USERS.map((demoUser) => (
+                    <button
+                      key={demoUser.id}
+                      type="button"
+                      onClick={() => handleDevUserLogin(demoUser)}
+                      disabled={isLoading}
+                      className="w-full text-left rounded-lg border border-slate-200 bg-white p-3 transition hover:border-amber-300 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-extrabold text-slate-900">{demoUser.name}</p>
+                          <p className="truncate text-xs font-medium text-slate-500">{demoUser.email}</p>
+                        </div>
+                        <span className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600">
+                          {demoUser.role}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs font-semibold text-slate-600">{demoUser.label}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!showDevLoginUsers && (
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
               <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                 Simular Papel de Acesso (RBAC)
@@ -152,9 +206,9 @@ export const AuthScreens: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
                 <option value="SCHOOL_ADMIN">Gestor de Autoescola (SCHOOL_ADMIN)</option>
                 <option value="SCHOOL_STAFF">Atendente de Autoescola (SCHOOL_STAFF)</option>
                 <option value="PLATFORM_ADMIN">Administrador da Plataforma (PLATFORM_ADMIN)</option>
-                <option value="SUPPORT">Agente de Suporte (SUPPORT)</option>
               </select>
             </div>
+            )}
 
             <button
               type="submit"

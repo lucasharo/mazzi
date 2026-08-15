@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
 import {
@@ -54,17 +54,6 @@ import {
   ExceptionReasonCategory,
   BookingStatus,
 } from '../../types';
-import {
-  MOCK_INSTRUCTOR_USER,
-  MOCK_SCHOOL_ADMIN_USER,
-  MOCK_VEHICLES,
-  MOCK_OFFERINGS,
-  MOCK_BOOKINGS,
-  MOCK_COMPLIANCE_DOCUMENTS,
-  MOCK_PROVIDERS,
-  MOCK_AVAILABILITY_RULES,
-  MOCK_AVAILABILITY_EXCEPTIONS,
-} from '../../data/mockData';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -80,12 +69,6 @@ import {
   getVerificationBadgeTooltip,
 } from '../../domain/compliance';
 import {
-  startInstructorOnboarding,
-  startDrivingSchoolOnboarding,
-  uploadProviderComplianceDocument,
-  submitProviderForReview,
-} from '../../domain/provider-lifecycle-service';
-import {
   createVehicleDraft,
   createServiceOffering,
   parseBrlToCents,
@@ -99,7 +82,6 @@ import {
   enforceAvailabilityOwnership,
   DAY_OF_WEEK_LABELS_PT,
 } from '../../domain/availability';
-import { AuthContext } from '../../domain/rbac';
 import { toPublicProviderProfile } from '../../domain/providers';
 import {
   performProviderCheckIn,
@@ -108,21 +90,22 @@ import {
   LessonSession,
   LessonSessionState,
 } from '../../domain/lesson-session';
-import { globalFinancialLedger } from '../../domain/payments/financial-ledger';
 import { calculateCancellationPolicy, performProviderCancellation } from '../../domain/cancellation';
 
 export const ProviderApp: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance'>('vehicles');
   const [bookingFilterTab, setBookingFilterTab] = useState<'all' | 'today' | 'upcoming' | 'history'>('all');
 
-  const [providers, setProviders] = useState<Provider[]>(MOCK_PROVIDERS);
-  const [complianceDocs, setComplianceDocs] = useState<ComplianceDocument[]>(MOCK_COMPLIANCE_DOCUMENTS);
-  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
-  const [vehicles, setVehicles] = useState<Vehicle[]>(MOCK_VEHICLES);
-  const [offerings, setOfferings] = useState<ServiceOffering[]>(MOCK_OFFERINGS);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [complianceDocs, setComplianceDocs] = useState<ComplianceDocument[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [offerings, setOfferings] = useState<ServiceOffering[]>([]);
+  const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
 
   // Sync active user role and load real data from database
   useEffect(() => {
@@ -131,33 +114,51 @@ export const ProviderApp: React.FC = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    async function loadRealData() {
-      try {
-        const [p, v, o, b, c] = await Promise.all([
-          dbService.getProviders(),
-          dbService.getVehicles(),
-          dbService.getOfferings(),
-          dbService.getBookings(),
-          dbService.getComplianceDocs(),
-        ]);
-        if (p.length > 0) setProviders(p);
-        if (v.length > 0) setVehicles(v);
-        if (o.length > 0) setOfferings(o);
-        if (b.length > 0) setBookings(b);
-        if (c.length > 0) setComplianceDocs(c);
-      } catch (err) {
-        console.error('Failed to load live database state in ProviderApp:', err);
+  const loadWorkspace = async (providerId: string) => {
+    setWorkspaceLoading(true);
+    setWorkspaceError(null);
+    try {
+      const workspace = await dbService.getProviderWorkspace(providerId);
+      if (!workspace.provider) {
+        throw new Error('Nenhum prestador vinculado a esta conta foi encontrado.');
       }
+      setProviders([workspace.provider]);
+      setVehicles(workspace.vehicles);
+      setOfferings(workspace.offerings);
+      setBookings(workspace.bookings);
+      setComplianceDocs(workspace.complianceDocuments);
+      setAvailabilityRules(workspace.availabilityRules.map((rule: any) => ({
+        id: rule.id, providerId: rule.provider_id, instructorId: rule.instructor_id || undefined,
+        vehicleId: rule.vehicle_id || undefined, dayOfWeek: (['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][rule.day_of_week] || 'MONDAY') as DayOfWeek,
+        dayOfWeekNumber: rule.day_of_week, startTime: rule.start_time?.slice(0, 5), endTime: rule.end_time?.slice(0, 5),
+        timezone: rule.timezone || 'America/Sao_Paulo', isActive: rule.is_active,
+      })));
+      setAvailabilityExceptions(workspace.availabilityExceptions.map((exception: any) => ({
+        id: exception.id, providerId: exception.provider_id, instructorId: exception.instructor_id || undefined,
+        vehicleId: exception.vehicle_id || undefined, type: exception.type, reasonCategory: exception.reason_category,
+        reason: exception.reason, startAt: exception.start_at, endAt: exception.end_at,
+      })));
+    } catch (err: any) {
+      console.error('Provider workspace load failed:', err);
+      setProviders([]); setVehicles([]); setOfferings([]); setBookings([]); setComplianceDocs([]);
+      setAvailabilityRules([]); setAvailabilityExceptions([]);
+      setWorkspaceError(err.message || 'Não foi possível carregar seus dados.');
+    } finally {
+      setWorkspaceLoading(false);
     }
-    loadRealData();
-  }, [user, currentRole]);
+  };
+
+  useEffect(() => {
+    if (!user?.providerId) return;
+    setActiveProviderId(user.providerId);
+    void loadWorkspace(user.providerId);
+  }, [user?.providerId]);
 
   // Lesson Sessions state store
   const [lessonSessions, setLessonSessions] = useState<Record<string, LessonSession>>({});
 
   // Active Provider Selection
-  const [activeProviderId, setActiveProviderId] = useState<string>('prov_1');
+  const [activeProviderId, setActiveProviderId] = useState<string>('');
 
   // Selected Booking Details Modal State
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -166,8 +167,8 @@ export const ProviderApp: React.FC = () => {
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
 
   // Availability State
-  const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>(MOCK_AVAILABILITY_RULES);
-  const [availabilityExceptions, setAvailabilityExceptions] = useState<AvailabilityException[]>(MOCK_AVAILABILITY_EXCEPTIONS);
+  const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>([]);
+  const [availabilityExceptions, setAvailabilityExceptions] = useState<AvailabilityException[]>([]);
   const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions' | 'simulator'>('rules');
 
   // Modals for Availability Rules and Exceptions
@@ -184,17 +185,17 @@ export const ProviderApp: React.FC = () => {
     type: 'BLOCK' as ExceptionType,
     reasonCategory: 'PERSONAL' as ExceptionReasonCategory,
     reason: '',
-    startDate: '2026-08-25',
+    startDate: '',
     startTime: '08:00',
-    endDate: '2026-08-25',
+    endDate: '',
     endTime: '12:00',
     vehicleId: '',
   });
   const [exceptionError, setExceptionError] = useState<string | null>(null);
 
   // Slot Generator Simulator State
-  const [simOfferingId, setSimOfferingId] = useState<string>('off_1');
-  const [simDate, setSimDate] = useState<string>('2026-09-01');
+  const [simOfferingId, setSimOfferingId] = useState<string>('');
+  const [simDate, setSimDate] = useState<string>('');
 
   // Onboarding Wizard State
   const [isOnboardingMode, setIsOnboardingMode] = useState<boolean>(false);
@@ -217,7 +218,6 @@ export const ProviderApp: React.FC = () => {
 
   // Upload Modal State
   const [uploadModalDocType, setUploadModalDocType] = useState<string | null>(null);
-  const [simulatedFileName, setSimulatedFileName] = useState<string>('');
 
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
@@ -251,39 +251,51 @@ export const ProviderApp: React.FC = () => {
   const [offeringForm, setOfferingForm] = useState({
     vehicleId: '',
     category: 'B' as VehicleCategory,
-    durationMinutes: 50,
+    durationMinutes: 60,
     priceInBrl: '95',
   });
   const [offeringError, setOfferingError] = useState<string | null>(null);
 
-  const currentProvider = providers.find((p) => p.id === activeProviderId) || providers[0];
-  const currentUser = currentRole === 'INSTRUCTOR' ? MOCK_INSTRUCTOR_USER : MOCK_SCHOOL_ADMIN_USER;
+  const currentProvider = providers.find((p) => p.id === activeProviderId);
 
-  const currentAuthContext: AuthContext = {
-    userId: currentUser.id,
-    email: currentUser.email,
-    roles: [currentRole],
-    status: 'ACTIVE',
-  };
+  if (isAuthLoading || workspaceLoading) {
+    return <div className="min-h-screen grid place-items-center bg-slate-100 text-slate-700">Carregando espaço do prestador…</div>;
+  }
 
-  const providerDocs = complianceDocs.filter((d) => d.providerId === currentProvider.id);
-  const providerVehicles = vehicles.filter((v) => v.providerId === currentProvider.id);
-  const providerOfferings = offerings.filter((o) => o.providerId === currentProvider.id);
-  const providerBookings = bookings.filter((b) => b.providerId === currentProvider.id || b.instructorId === currentProvider.id);
+  if (!user) {
+    return <div className="min-h-screen grid place-items-center bg-slate-100 text-slate-700">Entre para acessar o MAZZI Pro.</div>;
+  }
 
-  const eligibility = evaluateProviderEligibility(currentProvider, providerDocs, DEFAULT_COMPLIANCE_REQUIREMENTS);
+  if (!user.providerId) {
+    return <div className="min-h-screen grid place-items-center bg-slate-100 p-6 text-center text-slate-700">Sua conta ainda não possui um prestador vinculado. Contate o suporte para concluir o credenciamento.</div>;
+  }
+
+  if (workspaceError) {
+    return <div className="min-h-screen grid place-items-center bg-slate-100 p-6 text-center"><div><p className="mb-3 text-slate-700">{workspaceError}</p><Button onClick={() => void loadWorkspace(user.providerId)}>Tentar novamente</Button></div></div>;
+  }
+
+  if (!currentProvider) {
+    return <div className="min-h-screen grid place-items-center bg-slate-100 p-6 text-center text-slate-700">Nenhum dado de prestador está disponível para esta conta.</div>;
+  }
+
+  const providerDocs = complianceDocs.filter((d) => d.providerId === activeProviderId);
+  const providerVehicles = vehicles.filter((v) => v.providerId === activeProviderId);
+  const providerOfferings = offerings.filter((o) => o.providerId === activeProviderId);
+  const providerBookings = bookings.filter((b) => b.providerId === activeProviderId);
+
+  const eligibility = currentProvider ? evaluateProviderEligibility(currentProvider, providerDocs, DEFAULT_COMPLIANCE_REQUIREMENTS) : null;
 
   // Derived Operational Metrics
-  const todayStr = '2026-08-15';
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
   const todayBookings = providerBookings.filter((b) => b.scheduledDate === todayStr);
   const confirmedBookings = providerBookings.filter((b) => b.status === 'CONFIRMED');
   const completedBookings = providerBookings.filter((b) => b.status === 'COMPLETED');
   const nextBooking = confirmedBookings.length > 0 ? confirmedBookings[0] : null;
 
-  // Total earnings simulated from completed bookings
-  const grossSimulatedEarningsInCents = completedBookings.reduce((sum, b) => sum + b.priceInCents, 0) + 18050;
-  const platformFeesInCents = Math.round(grossSimulatedEarningsInCents * 0.1);
-  const netSimulatedEarningsInCents = grossSimulatedEarningsInCents - platformFeesInCents;
+  // Earnings from real completed bookings loaded from Supabase.
+  const grossEarningsInCents = completedBookings.reduce((sum, b) => sum + b.priceInCents, 0);
+  const platformFeesInCents = completedBookings.reduce((sum, b) => sum + b.platformFeeInCents, 0);
+  const netEarningsInCents = grossEarningsInCents - platformFeesInCents;
 
   // Helper to sync provider state when switching active provider
   const handleSelectProvider = (id: string) => {
@@ -300,6 +312,7 @@ export const ProviderApp: React.FC = () => {
         serviceRadiusKm: p.serviceRadiusKm || 6,
         bio: p.bio || '',
       });
+      void loadWorkspace(id);
     }
   };
 
@@ -319,19 +332,20 @@ export const ProviderApp: React.FC = () => {
     };
   };
 
-  const handleCheckIn = (b: Booking) => {
+  const handleCheckIn = async (b: Booking) => {
     setBookingActionError(null);
     setBookingActionSuccess(null);
     try {
-      const now = new Date('2026-08-15T09:00:00Z'); // Fixed test clock inside window
+      const now = new Date();
       const result = performProviderCheckIn({
         booking: b,
         providerId: currentProvider.id,
-        actorUserId: currentUser.id,
+        actorUserId: user.id,
         actorRole: currentRole,
         now,
       });
 
+      await dbService.updateBookingStatus(b.id, result.booking.status, { checkin_instructor_at: now.toISOString() });
       setLessonSessions((prev) => ({ ...prev, [b.id]: result.session }));
       setBookings((prev) => prev.map((item) => (item.id === b.id ? result.booking : item)));
       setSelectedBooking(result.booking);
@@ -341,21 +355,22 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
-  const handleStartLesson = (b: Booking) => {
+  const handleStartLesson = async (b: Booking) => {
     setBookingActionError(null);
     setBookingActionSuccess(null);
     try {
       const session = getOrCreateSession(b);
-      const now = new Date('2026-08-15T09:05:00Z');
+      const now = new Date();
       const result = startLesson({
         session,
         booking: b,
         providerId: currentProvider.id,
-        actorUserId: currentUser.id,
+        actorUserId: user.id,
         actorRole: currentRole,
         now,
       });
 
+      await dbService.updateBookingStatus(b.id, result.booking.status, { lesson_started_at: now.toISOString() });
       setLessonSessions((prev) => ({ ...prev, [b.id]: result.session }));
       setBookings((prev) => prev.map((item) => (item.id === b.id ? result.booking : item)));
       setSelectedBooking(result.booking);
@@ -372,24 +387,24 @@ export const ProviderApp: React.FC = () => {
     setBookingActionSuccess(null);
     try {
       const session = getOrCreateSession(b);
-      const now = new Date('2026-08-15T09:50:00Z');
+      const now = new Date();
       const idempotencyKey = `complete_btn_${b.id}_${now.getTime()}`;
 
       const result = completeLesson({
         session,
         booking: b,
         providerId: currentProvider.id,
-        actorUserId: currentUser.id,
+        actorUserId: user.id,
         actorRole: currentRole,
         idempotencyKey,
-        ledger: globalFinancialLedger,
         now,
       });
 
+      await dbService.updateBookingStatus(b.id, result.booking.status, { completed_at: now.toISOString(), lesson_finished_at: now.toISOString() });
       setLessonSessions((prev) => ({ ...prev, [b.id]: result.session }));
       setBookings((prev) => prev.map((item) => (item.id === b.id ? result.booking : item)));
       setSelectedBooking(result.booking);
-      setBookingActionSuccess('✓ Aula finalizada com sucesso! O valor simulado foi registrado no financeiro.');
+      setBookingActionSuccess('✓ Aula finalizada com sucesso! O valor foi registrado no financeiro.');
     } catch (err: any) {
       setBookingActionError(err.message || 'Erro ao finalizar aula.');
     } finally {
@@ -397,7 +412,7 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
-  const handleCancelBooking = (b: Booking) => {
+  const handleCancelBooking = async (b: Booking) => {
     if (!window.confirm('Deseja realmente cancelar este agendamento?')) return;
     setBookingActionError(null);
     setBookingActionSuccess(null);
@@ -405,11 +420,12 @@ export const ProviderApp: React.FC = () => {
       const result = performProviderCancellation({
         booking: b,
         providerId: currentProvider.id,
-        actorUserId: currentUser.id,
+        actorUserId: user.id,
         actorRole: currentRole,
         idempotencyKey: `cancel_${b.id}_${Date.now()}`,
       });
 
+      await dbService.updateBookingStatus(b.id, result.booking.status, { cancellation_data: result.cancellationResult });
       setBookings((prev) => prev.map((item) => (item.id === b.id ? result.booking : item)));
       setSelectedBooking(result.booking);
       setBookingActionSuccess(`✓ Agendamento cancelado. ${result.cancellationResult.policyDescription}`);
@@ -419,7 +435,7 @@ export const ProviderApp: React.FC = () => {
   };
 
   // Vehicle Handlers
-  const handleCreateVehicle = () => {
+  const handleCreateVehicle = async () => {
     setVehicleError(null);
     try {
       const newVehicle = createVehicleDraft({
@@ -436,7 +452,8 @@ export const ProviderApp: React.FC = () => {
         autoSubmitForReview: true,
       });
 
-      setVehicles((prev) => [...prev, newVehicle]);
+      const savedVehicle = await dbService.saveVehicle(newVehicle);
+      setVehicles((prev) => [...prev, savedVehicle]);
       setIsAddVehicleModalOpen(false);
       setVehicleForm({
         brand: '',
@@ -454,7 +471,7 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
-  const handleToggleVehicleStatus = (vehicleId: string) => {
+  const handleToggleVehicleStatus = async (vehicleId: string) => {
     try {
       const targetVehicle = vehicles.find((v) => v.id === vehicleId);
       if (!targetVehicle) return;
@@ -464,21 +481,15 @@ export const ProviderApp: React.FC = () => {
         validateVehicleActivationPermission(targetVehicle, currentRole);
       }
 
-      setVehicles((prev) =>
-        prev.map((v) => {
-          if (v.id === vehicleId) {
-            return { ...v, status: nextStatus, updatedAt: new Date().toISOString() };
-          }
-          return v;
-        })
-      );
+      const savedVehicle = await dbService.saveVehicle({ ...targetVehicle, status: nextStatus });
+      setVehicles((prev) => prev.map((vehicle) => vehicle.id === vehicleId ? savedVehicle : vehicle));
     } catch (err: any) {
       alert(err.message || 'Ação de ativação do veículo não permitida.');
     }
   };
 
   // Offering Handlers
-  const handleCreateOffering = () => {
+  const handleCreateOffering = async () => {
     setOfferingError(null);
     try {
       const vehicle = vehicles.find((v) => v.id === offeringForm.vehicleId);
@@ -497,12 +508,13 @@ export const ProviderApp: React.FC = () => {
         existingOfferings: providerOfferings,
       });
 
-      setOfferings((prev) => [...prev, newOffering]);
+      const savedOffering = await dbService.saveOffering(newOffering);
+      setOfferings((prev) => [...prev, savedOffering]);
       setIsAddOfferingModalOpen(false);
       setOfferingForm({
         vehicleId: '',
         category: 'B',
-        durationMinutes: 50,
+        durationMinutes: 60,
         priceInBrl: '95',
       });
     } catch (err: any) {
@@ -510,7 +522,7 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
-  const handleToggleOfferingStatus = (offeringId: string) => {
+  const handleToggleOfferingStatus = async (offeringId: string) => {
     try {
       const targetOffering = offerings.find((o) => o.id === offeringId);
       if (!targetOffering) return;
@@ -523,21 +535,15 @@ export const ProviderApp: React.FC = () => {
         validateOfferingActivationPermission(currentProvider, vehicle, targetOffering, currentRole);
       }
 
-      setOfferings((prev) =>
-        prev.map((o) => {
-          if (o.id === offeringId) {
-            return { ...o, status: nextStatus, updatedAt: new Date().toISOString() };
-          }
-          return o;
-        })
-      );
+      const savedOffering = await dbService.saveOffering({ ...targetOffering, status: nextStatus });
+      setOfferings((prev) => prev.map((offering) => offering.id === offeringId ? savedOffering : offering));
     } catch (err: any) {
       alert(err.message || 'Ação de ativação da oferta não permitida.');
     }
   };
 
   // Availability & Schedule Handlers
-  const handleCreateAvailabilityRule = () => {
+  const handleCreateAvailabilityRule = async () => {
     setRuleError(null);
     try {
       enforceAvailabilityOwnership({
@@ -559,7 +565,13 @@ export const ProviderApp: React.FC = () => {
 
       validateAvailabilityRule(newRule, availabilityRules);
 
-      setAvailabilityRules((prev) => [...prev, newRule]);
+      const dayNumbers: Record<DayOfWeek, number> = { SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6 };
+      const savedRule = await dbService.saveAvailabilityRule({ ...newRule, dayOfWeekNumber: dayNumbers[newRule.dayOfWeek] });
+      setAvailabilityRules((prev) => [...prev, {
+        ...newRule, id: savedRule.id, dayOfWeekNumber: savedRule.day_of_week,
+        startTime: savedRule.start_time?.slice(0, 5) || newRule.startTime,
+        endTime: savedRule.end_time?.slice(0, 5) || newRule.endTime,
+      }]);
       setIsAddRuleModalOpen(false);
       setRuleForm({
         dayOfWeek: 'MONDAY',
@@ -571,7 +583,7 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
-  const handleDeleteAvailabilityRule = (ruleId: string) => {
+  const handleDeleteAvailabilityRule = async (ruleId: string) => {
     try {
       enforceAvailabilityOwnership({
         targetProviderId: currentProvider.id,
@@ -579,13 +591,14 @@ export const ProviderApp: React.FC = () => {
         actorRole: currentRole,
         providerStatus: currentProvider.status,
       });
+      await dbService.deleteAvailabilityRule(ruleId);
       setAvailabilityRules((prev) => prev.filter((r) => r.id !== ruleId));
     } catch (err: any) {
       alert(err.message || 'Ação não autorizada.');
     }
   };
 
-  const handleCreateAvailabilityException = () => {
+  const handleCreateAvailabilityException = async () => {
     setExceptionError(null);
     try {
       enforceAvailabilityOwnership({
@@ -613,15 +626,16 @@ export const ProviderApp: React.FC = () => {
 
       validateAvailabilityException(newException);
 
-      setAvailabilityExceptions((prev) => [...prev, newException]);
+      const savedException = await dbService.saveAvailabilityException(newException);
+      setAvailabilityExceptions((prev) => [...prev, { ...newException, id: savedException.id }]);
       setIsAddExceptionModalOpen(false);
       setExceptionForm({
         type: 'BLOCK',
         reasonCategory: 'PERSONAL',
         reason: '',
-        startDate: '2026-08-25',
+        startDate: '',
         startTime: '08:00',
-        endDate: '2026-08-25',
+        endDate: '',
         endTime: '12:00',
         vehicleId: '',
       });
@@ -630,7 +644,7 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
-  const handleDeleteAvailabilityException = (exceptionId: string) => {
+  const handleDeleteAvailabilityException = async (exceptionId: string) => {
     try {
       enforceAvailabilityOwnership({
         targetProviderId: currentProvider.id,
@@ -638,6 +652,7 @@ export const ProviderApp: React.FC = () => {
         actorRole: currentRole,
         providerStatus: currentProvider.status,
       });
+      await dbService.deleteAvailabilityException(exceptionId);
       setAvailabilityExceptions((prev) => prev.filter((e) => e.id !== exceptionId));
     } catch (err: any) {
       alert(err.message || 'Ação não autorizada.');
@@ -647,97 +662,37 @@ export const ProviderApp: React.FC = () => {
   const handleStartOnboarding = (type: ProviderType) => {
     setOnboardingType(type);
     setOnboardingStep(1);
-    setOnboardingError(null);
+    setOnboardingError('Credenciamento de novos prestadores requer endpoint de onboarding e upload seguro em Storage privado. Este fluxo esta bloqueado na Sprint 11.5 para evitar dados simulados em runtime.');
     setOnboardingForm({
-      displayName: type === 'INSTRUCTOR' ? 'Prof. Roberto Alves' : 'CFC Autoescola Progresso',
-      legalName: type === 'INSTRUCTOR' ? 'Roberto Alves da Silva' : 'Auto Escola Progresso Ltda ME',
-      documentNumber: type === 'INSTRUCTOR' ? '123.456.789-09' : '12.345.678/0001-95',
-      phone: '(11) 98765-4321',
-      publicContact: '(11) 3333-4444',
+      displayName: '',
+      legalName: '',
+      documentNumber: '',
+      phone: '',
+      publicContact: '',
       categories: ['B'],
-      neighborhood: 'Vila Mariana',
+      neighborhood: '',
       city: 'São Paulo',
       state: 'SP',
       serviceRadiusKm: 6,
-      bio: type === 'INSTRUCTOR' ? 'Instrutor credenciado com 10 anos de experiência.' : 'Centro de formação completo com simuladores.',
+      bio: type === 'INSTRUCTOR' ? 'Instrutor credenciado com 10 anos de experiência.' : 'Centro de formação completo para aulas práticas.',
     });
     setIsOnboardingMode(true);
   };
 
   const handleCreateDraft = () => {
-    setOnboardingError(null);
-    try {
-      if (onboardingType === 'INSTRUCTOR') {
-        const result = startInstructorOnboarding(
-          {
-            userId: currentUser.id,
-            displayName: onboardingForm.displayName,
-            legalName: onboardingForm.legalName,
-            cpf: onboardingForm.documentNumber,
-            phone: onboardingForm.phone,
-            categories: onboardingForm.categories,
-            neighborhood: onboardingForm.neighborhood,
-            city: onboardingForm.city,
-            state: onboardingForm.state,
-            serviceRadiusKm: onboardingForm.serviceRadiusKm,
-            bio: onboardingForm.bio,
-          },
-          currentAuthContext
-        );
-        setProviders([result.provider, ...providers]);
-        setActiveProviderId(result.provider.id);
-      } else {
-        const result = startDrivingSchoolOnboarding(
-          {
-            userId: currentUser.id,
-            tradeName: onboardingForm.displayName,
-            legalName: onboardingForm.legalName,
-            cnpj: onboardingForm.documentNumber,
-            phone: onboardingForm.phone,
-            publicContact: onboardingForm.publicContact,
-            categories: onboardingForm.categories,
-            neighborhood: onboardingForm.neighborhood,
-            city: onboardingForm.city,
-            state: onboardingForm.state,
-            serviceRadiusKm: onboardingForm.serviceRadiusKm,
-            bio: onboardingForm.bio,
-          },
-          currentAuthContext
-        );
-        setProviders([result.provider, ...providers]);
-        setActiveProviderId(result.provider.id);
-      }
-      setOnboardingStep(2);
-    } catch (err: any) {
-      setOnboardingError(err.message || 'Erro na validação cadastral.');
-    }
+    setOnboardingError('Criacao de cadastro bloqueada: a Sprint 11.5 usa apenas prestadores reais existentes no Supabase. O endpoint transacional de onboarding fica para sprint futura.');
+    return;
   };
 
-  const handleSimulateUpload = (reqDocType: string, reqTitle: string) => {
-    const filename = simulatedFileName.trim() || `${reqDocType.toLowerCase()}_scan_2026.pdf`;
-    const { document } = uploadProviderComplianceDocument(
-      currentProvider,
-      reqDocType,
-      reqTitle,
-      {
-        filename,
-        mimeType: 'application/pdf',
-        sizeInBytes: 1.8 * 1024 * 1024,
-      },
-      currentAuthContext
-    );
 
-    setComplianceDocs((prev) => [document, ...prev.filter((d) => !(d.providerId === currentProvider.id && d.type === reqDocType))]);
+
+  const handleComplianceUploadBlocked = () => {
     setUploadModalDocType(null);
-    setSimulatedFileName('');
+    alert('Upload de compliance bloqueado nesta sprint: precisa usar Storage privado com URL assinada e persistencia real no Supabase.');
   };
 
   const handleSubmitForReview = () => {
-    const result = submitProviderForReview(currentProvider, currentAuthContext);
-    setProviders((prev) => prev.map((p) => (p.id === currentProvider.id ? result.provider : p)));
-    setIsOnboardingMode(false);
-    setActiveTab('management');
-    setManagementSubTab('compliance');
+    setOnboardingError('Envio para analise bloqueado: o fluxo de compliance precisa de backend/admin real antes de mudar status do prestador.');
   };
 
   const handleSaveProfile = () => {
@@ -995,10 +950,7 @@ export const ProviderApp: React.FC = () => {
                                 variant="outline"
                                 size="sm"
                                 leftIcon={<Upload className="w-3.5 h-3.5" />}
-                                onClick={() => {
-                                  setUploadModalDocType(req.documentType);
-                                  setSimulatedFileName(`${req.documentType.toLowerCase()}_scan.pdf`);
-                                }}
+                                onClick={() => setUploadModalDocType(req.documentType)}
                               >
                                 Anexar Arquivo
                               </Button>
@@ -1112,10 +1064,10 @@ export const ProviderApp: React.FC = () => {
 
                     <div className="p-4 rounded-2xl bg-slate-900 text-white p-4 rounded-2xl">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 block">
-                        Ganhos Simulados
+                        Ganhos Registrados
                       </span>
                       <p className="text-xl font-black text-white mt-1">
-                        {formatCentsToBRL(netSimulatedEarningsInCents)}
+                        {formatCentsToBRL(netEarningsInCents)}
                       </p>
                     </div>
                   </div>
@@ -1630,7 +1582,7 @@ export const ProviderApp: React.FC = () => {
                   <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center gap-3">
                     <Info className="w-5 h-5 text-amber-600 shrink-0" />
                     <div>
-                      <strong>Valores simulados — ambiente de desenvolvimento (DEVELOPMENT_FAKE_PAYMENT)</strong>
+                      <strong>Valores registrados — ambiente de desenvolvimento (DEVELOPMENT_FAKE_PAYMENT)</strong>
                       <p className="mt-0.5">
                         Os valores nesta tela são projeções simuladas baseadas nos agendamentos concluídos na plataforma.
                       </p>
@@ -1644,7 +1596,7 @@ export const ProviderApp: React.FC = () => {
                         Faturamento Bruto
                       </span>
                       <p className="text-2xl font-black text-amber-400 mt-1">
-                        {formatCentsToBRL(grossSimulatedEarningsInCents)}
+                        {formatCentsToBRL(grossEarningsInCents)}
                       </p>
                     </div>
 
@@ -1659,17 +1611,17 @@ export const ProviderApp: React.FC = () => {
 
                     <div className="p-5 rounded-3xl bg-emerald-50 border border-emerald-200 shadow-xs">
                       <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block">
-                        Líquido Simulado
+                        Líquido Registrado
                       </span>
                       <p className="text-2xl font-black text-emerald-900 mt-1">
-                        {formatCentsToBRL(netSimulatedEarningsInCents)}
+                        {formatCentsToBRL(netEarningsInCents)}
                       </p>
                     </div>
                   </div>
 
                   {/* Ledger Breakdown Table */}
                   <div className="p-5 rounded-3xl bg-white border border-slate-200 space-y-4">
-                    <h4 className="font-extrabold text-sm text-slate-900">Extrato de Repasses Simulados (Safety Period 24h)</h4>
+                    <h4 className="font-extrabold text-sm text-slate-900">Extrato de Repasses em Desenvolvimento (Safety Period 24h)</h4>
                     <div className="space-y-2">
                       {completedBookings.map((b) => (
                         <div key={b.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
@@ -2251,25 +2203,17 @@ export const ProviderApp: React.FC = () => {
           </Modal>
         )}
 
-        {/* COMPLIANCE UPLOAD SIMULATION MODAL */}
+        {/* COMPLIANCE UPLOAD BLOCKED MODAL */}
         {uploadModalDocType && (
           <Modal
             isOpen={!!uploadModalDocType}
             onClose={() => setUploadModalDocType(null)}
-            title="Anexar Documento para Compliance"
+            title="Upload de Compliance Pendente"
           >
             <div className="space-y-4 text-xs">
               <p className="text-slate-600">
-                Selecione ou confirme o nome do arquivo para simular o upload seguro no bucket privado de compliance.
+                O envio de documentos exige Storage privado, URL assinada e persistencia real no Supabase. Este fluxo esta bloqueado nesta sprint para evitar documento simulado no runtime.
               </p>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Nome do Arquivo PDF/Imagem</label>
-                <Input
-                  value={simulatedFileName}
-                  onChange={(e) => setSimulatedFileName(e.target.value)}
-                  placeholder="cnh_com_ear_2026.pdf"
-                />
-              </div>
               <div className="pt-2 flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setUploadModalDocType(null)}>
                   Cancelar
@@ -2277,9 +2221,9 @@ export const ProviderApp: React.FC = () => {
                 <Button
                   variant="primary"
                   size="sm"
-                  onClick={() => handleSimulateUpload(uploadModalDocType, uploadModalDocType)}
+                  onClick={handleComplianceUploadBlocked}
                 >
-                  Confirmar Envio
+                  Entendi
                 </Button>
               </div>
             </div>

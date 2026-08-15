@@ -4,13 +4,13 @@
 // ============================================================================
 
 import { supabase } from './supabase';
-import { Provider, Vehicle, ServiceOffering, Booking, ComplianceDocument, AuditLog, UserRole, Quote } from '../types';
+import { Provider, Vehicle, ServiceOffering, Booking, ComplianceDocument, AuditLog, User, UserRole, Quote } from '../types';
 
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
 
 // Helper to safely format snake_case from database to camelCase in typescript
-export function mapUserFromDb(row: any) {
+export function mapUserFromDb(row: any): User | null {
   if (!row) return null;
   return {
     id: row.id,
@@ -76,7 +76,7 @@ export function mapOfferingFromDb(row: any): ServiceOffering {
     transmission: row.transmission || undefined,
     durationMinutes: row.duration_minutes,
     priceInCents: row.price_in_cents,
-    status: row.is_active ? 'ACTIVE' : 'INACTIVE',
+    status: row.status || (row.is_active ? 'ACTIVE' : 'INACTIVE'),
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString(),
   } as any;
@@ -148,7 +148,103 @@ export function mapAuditLogFromDb(row: any): AuditLog {
 
 // DATABASE SERVICE OPERATIONS
 export const dbService = {
+  async getUsers(): Promise<User[]> {
+    const { data, error } = await sp
+      .from('users')
+      .select('id,name,email,phone,role,avatar_url,created_at')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(mapUserFromDb).filter(Boolean) as User[];
+  },
+
   // 1. PROVIDERS
+  /**
+   * Loads a provider workspace using the current browser session. Every query is
+   * scoped by provider_id; RLS remains the authorization authority.
+   */
+  async getProviderWorkspace(providerId: string): Promise<{
+    provider: Provider | null;
+    vehicles: Vehicle[];
+    offerings: ServiceOffering[];
+    bookings: Booking[];
+    complianceDocuments: ComplianceDocument[];
+    availabilityRules: any[];
+    availabilityExceptions: any[];
+  }> {
+    const [providerResult, vehiclesResult, offeringsResult, bookingsResult, documentsResult, rulesResult, exceptionsResult] = await Promise.all([
+      sp.from('providers').select('*').eq('id', providerId).maybeSingle(),
+      sp.from('vehicles').select('*').eq('provider_id', providerId).is('deleted_at', null),
+      sp.from('service_offerings').select('*').eq('provider_id', providerId),
+      sp.from('bookings').select('*').eq('provider_id', providerId),
+      sp.from('compliance_documents').select('*').eq('provider_id', providerId),
+      sp.from('availabilities').select('*').eq('provider_id', providerId),
+      sp.from('availability_exceptions').select('*').eq('provider_id', providerId),
+    ]);
+
+    for (const result of [providerResult, vehiclesResult, offeringsResult, bookingsResult, documentsResult, rulesResult, exceptionsResult]) {
+      if (result.error) throw result.error;
+    }
+
+    return {
+      provider: providerResult.data ? mapProviderFromDb(providerResult.data) : null,
+      vehicles: (vehiclesResult.data || []).map(mapVehicleFromDb),
+      offerings: (offeringsResult.data || []).map(mapOfferingFromDb),
+      bookings: (bookingsResult.data || []).map(mapBookingFromDb),
+      complianceDocuments: (documentsResult.data || []).map(mapComplianceFromDb),
+      availabilityRules: rulesResult.data || [],
+      availabilityExceptions: exceptionsResult.data || [],
+    };
+  },
+
+  async saveAvailabilityRule(rule: Omit<any, 'id'> & { id?: string }): Promise<any> {
+    const row = {
+      provider_id: rule.providerId,
+      instructor_id: rule.instructorId || null,
+      vehicle_id: rule.vehicleId || null,
+      day_of_week: rule.dayOfWeekNumber,
+      start_time: rule.startTime,
+      end_time: rule.endTime,
+      timezone: rule.timezone || 'America/Sao_Paulo',
+      is_active: rule.isActive,
+    };
+    const query = rule.id
+      ? sp.from('availabilities').update(row).eq('id', rule.id)
+      : sp.from('availabilities').insert(row);
+    const { data, error } = await query.select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteAvailabilityRule(id: string): Promise<void> {
+    const { error } = await sp.from('availabilities').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async saveAvailabilityException(exception: Omit<any, 'id'> & { id?: string }): Promise<any> {
+    const row = {
+      provider_id: exception.providerId,
+      instructor_id: exception.instructorId || null,
+      vehicle_id: exception.vehicleId || null,
+      type: exception.type,
+      reason_category: exception.reasonCategory,
+      reason: exception.reason,
+      start_at: exception.startAt,
+      end_at: exception.endAt,
+    };
+    const query = exception.id
+      ? sp.from('availability_exceptions').update(row).eq('id', exception.id)
+      : sp.from('availability_exceptions').insert(row);
+    const { data, error } = await query.select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteAvailabilityException(id: string): Promise<void> {
+    const { error } = await sp.from('availability_exceptions').delete().eq('id', id);
+    if (error) throw error;
+  },
+
   async getProviders(): Promise<Provider[]> {
     const { data, error } = await sp
       .from('providers')
@@ -301,7 +397,9 @@ export const dbService = {
       license_plate_masked: vehicle.licensePlateMasked || vehicle.licensePlate,
       renavam: (vehicle as any).renavam || null,
       category: vehicle.category,
+      vehicle_type: vehicle.vehicleType,
       transmission: vehicle.transmission,
+      color: vehicle.color || null,
       has_dual_pedal: (vehicle as any).hasDualPedal || false,
       has_dashcam: (vehicle as any).hasDashcam || false,
       status: vehicle.status || 'ACTIVE',
@@ -347,6 +445,7 @@ export const dbService = {
       transmission: (offering as any).transmission || 'MANUAL',
       duration_minutes: offering.durationMinutes,
       price_in_cents: offering.priceInCents,
+      status: (offering as any).status === 'ACTIVE' || (offering as any).isActive ? 'ACTIVE' : 'INACTIVE',
       is_active: (offering as any).status === 'ACTIVE' || (offering as any).isActive || false,
     };
 
@@ -515,7 +614,7 @@ export const dbService = {
       .update({ status, ...extra, updated_at: new Date().toISOString() })
       .eq('id', id);
     if (error) {
-      console.warn('Direct updateBookingStatus not authorized by RLS/Grants. Skipping or handling gracefully:', error);
+      throw error;
     }
   },
 

@@ -6,16 +6,22 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
-// Browser-safe public credentials (VITE_ prefixed)
+// Browser-safe public credentials. Vite only exposes variables prefixed with VITE_.
+const env = (import.meta as any).env || {};
+
 const supabaseUrl =
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL) ||
-  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) ||
-  'https://placeholder-project.supabase.co';
+  env.VITE_SUPABASE_URL ||
+  env.SUPABASE_URL ||
+  (typeof process !== 'undefined' && (process.env?.VITE_SUPABASE_URL || process.env?.SUPABASE_URL));
 
 const supabaseAnonKey =
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) ||
-  (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) ||
-  'placeholder-anon-key';
+  env.VITE_SUPABASE_ANON_KEY ||
+  env.SUPABASE_ANON_KEY ||
+  (typeof process !== 'undefined' && (process.env?.VITE_SUPABASE_ANON_KEY || process.env?.SUPABASE_ANON_KEY));
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase env missing: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.');
+}
 
 /**
  * 1. BROWSER CLIENT (Public Frontend)

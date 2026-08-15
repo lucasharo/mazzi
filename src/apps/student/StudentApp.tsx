@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   MapPin,
@@ -136,6 +136,28 @@ export const StudentApp: React.FC = () => {
     limit: 10,
   });
 
+  const handleUpdateSearch = (updates: Partial<SearchRequest>) => {
+    setSearchRequest((prev) => ({
+      ...prev,
+      ...updates,
+      page: updates.page ?? 1,
+    }));
+  };
+
+  useEffect(() => {
+    setSearchRequest((prev) => ({
+      ...prev,
+      latitude: -23.5505,
+      longitude: -46.6333,
+      radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
+      category: 'B',
+      providerType: 'ALL',
+      transmission: 'ALL',
+      page: 1,
+      limit: 10,
+    }));
+  }, [user?.id]);
+
   // Execute Public Search Engine
   const searchResponse = useMemo(() => {
     const res = executePublicSearch({
@@ -177,7 +199,7 @@ export const StudentApp: React.FC = () => {
   const [checkoutOffering, setCheckoutOffering] = useState<ServiceOffering | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
 
-  const handleOpenCheckoutByProviderId = async (providerId: string) => {
+  const handleOpenCheckoutByProviderId = async (providerId: string, _date?: string, slot?: any) => {
     const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
     
     let rawProv: Provider | undefined;
@@ -207,11 +229,22 @@ export const StudentApp: React.FC = () => {
           status: 'ACTIVE',
         } as ServiceOffering;
 
-        matchingVehicle = {
+        matchingVehicle = dbVehicles.find((vehicle) => vehicle.id === ctx.vehicle_id) || {
           id: ctx.vehicle_id,
           providerId: ctx.provider_id,
-          brand: ctx.vehicle_brand || 'Hyundai',
-          model: ctx.vehicle_model || 'HB20',
+          brand: ctx.vehicle_brand || 'Veículo',
+          model: ctx.vehicle_model || 'do instrutor',
+          year: Number(ctx.vehicle_year || new Date().getFullYear()),
+          licensePlate: '',
+          licensePlateMasked: '',
+          category: ctx.category,
+          vehicleType: ctx.category === 'A' ? 'MOTORCYCLE' : 'CAR',
+          transmission: ctx.vehicle_transmission || ctx.transmission || 'MANUAL',
+          status: ctx.vehicle_status || 'ACTIVE',
+          color: ctx.vehicle_color || undefined,
+          photos: ctx.vehicle_photos || [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         } as Vehicle;
       } catch (err) {
         console.error('Error fetching booking context', err);
@@ -227,8 +260,12 @@ export const StudentApp: React.FC = () => {
     setCheckoutProvider(rawProv);
     setCheckoutVehicle(matchingVehicle);
     setCheckoutOffering(matchingOffering);
-    setSelectedSlot(null);
-    setIsSlotSelectorOpen(true);
+    setSelectedSlot(slot || null);
+    if (slot) {
+      setIsCheckoutOpen(true);
+    } else {
+      setIsSlotSelectorOpen(true);
+    }
   };
 
   const handleOpenCheckoutByProvider = (provider: Provider) => {
@@ -385,24 +422,18 @@ export const StudentApp: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      handleUpdateSearch({ category: 'A' });
-                      setActiveTab('search');
-                    }}
-                    className={`p-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
-                      searchRequest.category === 'A'
-                        ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/30'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
+                    disabled
+                    title="Categoria A fica preparada para versão futura; o MVP atual agenda apenas Categoria B."
+                    className="p-4 rounded-2xl border text-left transition flex items-center justify-between cursor-not-allowed border-slate-200 bg-slate-50 opacity-70"
                   >
                     <div>
                       <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center mb-2">
                         <Bike className="w-5 h-5" />
                       </div>
                       <span className="font-extrabold text-slate-900 text-sm block">Moto</span>
-                      <span className="text-[11px] text-slate-500">Categoria A</span>
+                      <span className="text-[11px] text-slate-500">Categoria A — em breve</span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <Badge variant="neutral" size="sm">Futuro</Badge>
                   </button>
                 </div>
               </div>
@@ -411,19 +442,19 @@ export const StudentApp: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-3 px-1">
                   <div>
-                    <h3 className="font-bold text-slate-900 text-sm">Instrutores e CFCs em Destaque</h3>
-                    <p className="text-xs text-slate-500">Verificados com alta avaliação na plataforma</p>
+                    <h3 className="font-bold text-slate-900 text-sm">Instrutores e CFCs disponíveis</h3>
+                    <p className="text-xs text-slate-500">Categoria B em São Paulo, carregados do Supabase</p>
                   </div>
                   <button
                     onClick={() => setActiveTab('search')}
                     className="text-xs font-bold text-amber-600 hover:text-amber-700 cursor-pointer"
                   >
-                    Ver todos ({isRealSupabase ? dbProviders.length : MOCK_PROVIDERS.length})
+                    Ver busca ({isRealSupabase ? dbProviders.length : MOCK_PROVIDERS.length})
                   </button>
                 </div>
 
                 <div className="space-y-3">
-                  {(isRealSupabase ? dbProviders : MOCK_PROVIDERS).slice(0, 2).map((prov) => (
+                  {(isRealSupabase ? dbProviders : MOCK_PROVIDERS).slice(0, 10).map((prov) => (
                     <ProviderCard
                       key={prov.id}
                       provider={prov}

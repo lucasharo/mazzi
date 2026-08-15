@@ -179,6 +179,14 @@ export function createBookingHold(input: CreateBookingHoldInput): CreateBookingH
     );
   }
 
+  if (vehicle.status !== 'ACTIVE') {
+    throw new BookingDomainError(
+      'VEHICLE_NOT_ACTIVE',
+      'O veículo associado à proposta foi desativado.',
+      422
+    );
+  }
+
   // 3. Idempotency Verification
   if (idempotencyKey) {
     const existingIdempotentBooking = existingBookings.find(
