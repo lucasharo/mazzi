@@ -131,7 +131,11 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql13).toContain('sender_id, content');
     expect(sql13).toContain('CREATE OR REPLACE FUNCTION public.create_review_for_booking');
     expect(sql13).toContain("v_booking.status::TEXT <> 'COMPLETED'");
-    expect(sql13).toContain('UNIQUE INDEX IF NOT EXISTS idx_notifications_unique_lesson_events');
+    expect(sql13).toContain('CREATE UNIQUE INDEX idx_notifications_unique_lesson_events');
+    expect(sql13).toContain("'BOOKING_CONFIRMED'");
+    expect(sql13).toContain("'BOOKING_CANCELLED'");
+    expect(sql13).toContain("NEW.status::TEXT = 'CONFIRMED'");
+    expect(sql13).toContain("NEW.status::TEXT IN ('CANCELLED_BY_STUDENT', 'CANCELLED_BY_PROVIDER')");
 
     expect(sql13).toContain('ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY');
     expect(sql13).toContain('ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY');
@@ -147,6 +151,9 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql13).toContain('REVOKE ALL ON TABLE public.notifications FROM PUBLIC, anon, authenticated');
     expect(sql13).toContain('GRANT SELECT ON TABLE public.notifications TO authenticated');
     expect(sql13).not.toContain('GRANT INSERT ON TABLE public.notifications TO authenticated');
+    expect(sql13).toContain('REVOKE ALL ON FUNCTION public.create_booking_completion_notifications() FROM PUBLIC');
+    expect(sql13).toContain('REVOKE ALL ON FUNCTION public.create_booking_completion_notifications() FROM anon');
+    expect(sql13).toContain('REVOKE ALL ON FUNCTION public.create_booking_completion_notifications() FROM authenticated');
     expect(sql13).toContain('SECURITY DEFINER');
     expect(sql13).toContain('SET search_path = public, pg_temp');
   });

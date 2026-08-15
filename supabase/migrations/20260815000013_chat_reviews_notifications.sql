@@ -69,9 +69,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_unread_created_at
   ON public.notifications(user_id, is_read, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_entity
   ON public.notifications(entity_type, entity_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_unique_lesson_events
+DROP INDEX IF EXISTS public.idx_notifications_unique_lesson_events;
+CREATE UNIQUE INDEX idx_notifications_unique_lesson_events
   ON public.notifications(user_id, type, entity_type, entity_id)
-  WHERE type IN ('LESSON_COMPLETED', 'REVIEW_AVAILABLE');
+  WHERE type IN ('BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'LESSON_COMPLETED', 'REVIEW_AVAILABLE');
 
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
@@ -366,6 +367,50 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
+  IF NEW.status::TEXT = 'CONFIRMED'
+    AND (OLD.status IS NULL OR OLD.status::TEXT IS DISTINCT FROM NEW.status::TEXT) THEN
+    INSERT INTO public.notifications (user_id, type, title, body, entity_type, entity_id)
+    SELECT DISTINCT recipient_id,
+      'BOOKING_CONFIRMED',
+      'Aula confirmada',
+      'Uma aula foi confirmada na MAZZI.',
+      'booking',
+      NEW.id
+    FROM (
+      SELECT NEW.student_id AS recipient_id
+      UNION ALL
+      SELECT NEW.instructor_id
+      UNION ALL
+      SELECT p.user_id
+      FROM public.providers p
+      WHERE p.id = NEW.provider_id
+    ) recipients
+    WHERE recipient_id IS NOT NULL
+    ON CONFLICT DO NOTHING;
+  END IF;
+
+  IF NEW.status::TEXT IN ('CANCELLED_BY_STUDENT', 'CANCELLED_BY_PROVIDER')
+    AND (OLD.status IS NULL OR OLD.status::TEXT IS DISTINCT FROM NEW.status::TEXT) THEN
+    INSERT INTO public.notifications (user_id, type, title, body, entity_type, entity_id)
+    SELECT DISTINCT recipient_id,
+      'BOOKING_CANCELLED',
+      'Aula cancelada',
+      'Uma aula agendada foi cancelada na MAZZI.',
+      'booking',
+      NEW.id
+    FROM (
+      SELECT NEW.student_id AS recipient_id
+      UNION ALL
+      SELECT NEW.instructor_id
+      UNION ALL
+      SELECT p.user_id
+      FROM public.providers p
+      WHERE p.id = NEW.provider_id
+    ) recipients
+    WHERE recipient_id IS NOT NULL
+    ON CONFLICT DO NOTHING;
+  END IF;
+
   IF NEW.status::TEXT = 'COMPLETED'
     AND (OLD.status IS NULL OR OLD.status::TEXT IS DISTINCT FROM NEW.status::TEXT) THEN
     INSERT INTO public.notifications (user_id, type, title, body, entity_type, entity_id)
@@ -398,6 +443,10 @@ CREATE TRIGGER trg_booking_completion_notifications
 AFTER UPDATE OF status ON public.bookings
 FOR EACH ROW
 EXECUTE FUNCTION public.create_booking_completion_notifications();
+
+REVOKE ALL ON FUNCTION public.create_booking_completion_notifications() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.create_booking_completion_notifications() FROM anon;
+REVOKE ALL ON FUNCTION public.create_booking_completion_notifications() FROM authenticated;
 
 DROP POLICY IF EXISTS "Public can view reviews" ON public.reviews;
 
