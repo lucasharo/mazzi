@@ -625,6 +625,68 @@ export interface AuditLog {
 }
 
 // ==========================================
+// SPRINT 13 — BOOKING CHAT, REVIEWS & IN-APP NOTIFICATIONS
+// ==========================================
+
+export interface Conversation {
+  id: string;
+  bookingId: string;
+  studentId: string;
+  providerId: string;
+  instructorId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  readAt?: string;
+}
+
+export interface Review {
+  id: string;
+  bookingId: string;
+  studentId: string;
+  providerId: string;
+  instructorId: string;
+  ratingOverall: number;
+  ratingDidactics?: number;
+  ratingPunctuality?: number;
+  ratingSafety?: number;
+  ratingVehicle?: number;
+  ratingCordiality?: number;
+  comment?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type NotificationType =
+  | 'BOOKING_CONFIRMED'
+  | 'BOOKING_CANCELLED'
+  | 'NEW_MESSAGE'
+  | 'LESSON_COMPLETED'
+  | 'REVIEW_AVAILABLE'
+  | 'REVIEW_RECEIVED';
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  entityType?: string;
+  entityId?: string;
+  isRead: boolean;
+  createdAt: string;
+  readAt?: string;
+}
+
+// ==========================================
 // SEARCH & GEO DISCOVERY TYPES (SPRINT 07)
 // ==========================================
 

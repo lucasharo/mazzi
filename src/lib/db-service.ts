@@ -4,7 +4,21 @@
 // ============================================================================
 
 import { supabase } from './supabase';
-import { Provider, Vehicle, ServiceOffering, Booking, ComplianceDocument, AuditLog, User, UserRole, Quote } from '../types';
+import {
+  Provider,
+  Vehicle,
+  ServiceOffering,
+  Booking,
+  ComplianceDocument,
+  AuditLog,
+  User,
+  UserRole,
+  Quote,
+  Conversation,
+  Message,
+  Review,
+  Notification,
+} from '../types';
 
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
@@ -143,6 +157,64 @@ export function mapAuditLogFromDb(row: any): AuditLog {
     newValue: row.new_value ? JSON.stringify(row.new_value) : undefined,
     timestamp: row.created_at,
     ipAddress: row.ip_address || '127.0.0.1',
+  };
+}
+
+export function mapConversationFromDb(row: any): Conversation {
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    studentId: row.student_id,
+    providerId: row.provider_id,
+    instructorId: row.instructor_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at || row.created_at,
+  };
+}
+
+export function mapMessageFromDb(row: any): Message {
+  return {
+    id: row.id,
+    conversationId: row.conversation_id,
+    senderId: row.sender_id,
+    content: row.content,
+    isRead: Boolean(row.is_read),
+    createdAt: row.created_at,
+    readAt: row.read_at || undefined,
+  };
+}
+
+export function mapReviewFromDb(row: any): Review {
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    studentId: row.student_id,
+    providerId: row.provider_id,
+    instructorId: row.instructor_id,
+    ratingOverall: Number(row.rating_overall),
+    ratingDidactics: row.rating_didactics ?? undefined,
+    ratingPunctuality: row.rating_punctuality ?? undefined,
+    ratingSafety: row.rating_safety ?? undefined,
+    ratingVehicle: row.rating_vehicle ?? undefined,
+    ratingCordiality: row.rating_cordiality ?? undefined,
+    comment: row.comment || undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
+export function mapNotificationFromDb(row: any): Notification {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    title: row.title,
+    body: row.body,
+    entityType: row.entity_type || undefined,
+    entityId: row.entity_id || undefined,
+    isRead: Boolean(row.is_read),
+    createdAt: row.created_at,
+    readAt: row.read_at || undefined,
   };
 }
 
@@ -616,6 +688,82 @@ export const dbService = {
     if (error) {
       throw error;
     }
+  },
+
+  // 5. SPRINT 13 — BOOKING CHAT, REVIEWS & IN-APP NOTIFICATIONS
+  async getConversationForBooking(bookingId: string): Promise<Conversation> {
+    const { data, error } = await sp.rpc('get_or_create_conversation_for_booking', {
+      p_booking_id: bookingId,
+    });
+    if (error) throw error;
+    return mapConversationFromDb(data);
+  },
+
+  async getMessagesForConversation(conversationId: string): Promise<Message[]> {
+    const { data, error } = await sp
+      .from('messages')
+      .select('id,conversation_id,sender_id,content,is_read,read_at,created_at')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(mapMessageFromDb);
+  },
+
+  async sendMessage(conversationId: string, body: string): Promise<Message> {
+    const { data, error } = await sp.rpc('send_message', {
+      p_conversation_id: conversationId,
+      p_body: body,
+    });
+    if (error) throw error;
+    return mapMessageFromDb(data);
+  },
+
+  async createReviewForBooking(bookingId: string, rating: number, comment?: string): Promise<Review> {
+    const { data, error } = await sp.rpc('create_review_for_booking', {
+      p_booking_id: bookingId,
+      p_rating: rating,
+      p_comment: comment || null,
+    });
+    if (error) throw error;
+    return mapReviewFromDb(data);
+  },
+
+  async getProviderReviews(providerId: string): Promise<Review[]> {
+    const { data, error } = await sp
+      .from('reviews')
+      .select('*')
+      .eq('provider_id', providerId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(mapReviewFromDb);
+  },
+
+  async getReviewForBooking(bookingId: string): Promise<Review | null> {
+    const { data, error } = await sp
+      .from('reviews')
+      .select('*')
+      .eq('booking_id', bookingId)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapReviewFromDb(data) : null;
+  },
+
+  async getMyNotifications(): Promise<Notification[]> {
+    const { data, error } = await sp
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return (data || []).map(mapNotificationFromDb);
+  },
+
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    const { error } = await sp
+      .from('notifications')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('id', notificationId);
+    if (error) throw error;
   },
 
   // 5. COMPLIANCE

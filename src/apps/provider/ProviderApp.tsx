@@ -34,6 +34,7 @@ import {
   ShieldAlert,
   MapPin,
   Sliders,
+  MessageSquare,
 } from 'lucide-react';
 import {
   UserRole,
@@ -63,6 +64,8 @@ import { Tabs } from '../../components/ui/Tabs';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { formatCentsToBRL } from '../../domain/money';
+import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
+import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import {
   DEFAULT_COMPLIANCE_REQUIREMENTS,
   evaluateProviderEligibility,
@@ -162,6 +165,7 @@ export const ProviderApp: React.FC = () => {
 
   // Selected Booking Details Modal State
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedBookingForChat, setSelectedBookingForChat] = useState<Booking | null>(null);
   const [bookingActionError, setBookingActionError] = useState<string | null>(null);
   const [bookingActionSuccess, setBookingActionSuccess] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
@@ -1039,6 +1043,8 @@ export const ProviderApp: React.FC = () => {
                     <StatusBadge status={currentProvider.status} />
                   </div>
 
+                  <NotificationsPanel />
+
                   {/* Operational Metrics Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
@@ -1397,6 +1403,14 @@ export const ProviderApp: React.FC = () => {
                           </div>
 
                           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedBookingForChat(b)}
+                              leftIcon={<MessageSquare className="w-3.5 h-3.5" />}
+                            >
+                              Chat
+                            </Button>
                             <Button
                               variant="primary"
                               size="sm"
@@ -1856,6 +1870,15 @@ export const ProviderApp: React.FC = () => {
 
               {/* OPERATIONAL ACTION BUTTONS */}
               <div className="pt-2 flex flex-wrap gap-2 justify-end border-t border-slate-200">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<MessageSquare className="w-4 h-4" />}
+                  onClick={() => setSelectedBookingForChat(selectedBooking)}
+                >
+                  Abrir Chat
+                </Button>
+
                 {selectedBooking.status === 'CONFIRMED' && !getOrCreateSession(selectedBooking).instructorCheckedInAt && (
                   <Button
                     variant="primary"
@@ -1905,6 +1928,15 @@ export const ProviderApp: React.FC = () => {
             </div>
           </Modal>
         )}
+
+        <Modal
+          isOpen={!!selectedBookingForChat}
+          onClose={() => setSelectedBookingForChat(null)}
+          title="Chat da aula"
+          size="lg"
+        >
+          {selectedBookingForChat && <BookingChatPanel booking={selectedBookingForChat} />}
+        </Modal>
 
         {/* ADD RULE MODAL */}
         {isAddRuleModalOpen && (

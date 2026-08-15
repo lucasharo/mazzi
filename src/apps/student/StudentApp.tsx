@@ -51,6 +51,9 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { SlotSelectorModal } from './components/SlotSelectorModal';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
+import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
+import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
+import { ReviewModal } from '../../components/reviews/ReviewModal';
 
 export const StudentApp: React.FC = () => {
   const { user, isAuthenticated, loginAsDemoUser } = useAuth();
@@ -190,6 +193,8 @@ export const StudentApp: React.FC = () => {
 
   // Modal States
   const [selectedBookingForDetails, setSelectedBookingForDetails] = useState<Booking | null>(null);
+  const [selectedBookingForChat, setSelectedBookingForChat] = useState<Booking | null>(null);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
 
   // Checkout Flow Modal States
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -658,7 +663,7 @@ export const StudentApp: React.FC = () => {
                             )
                           );
                         }}
-                        onOpenChat={() => setActiveTab('messages')}
+                        onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
                       />
                     ))
@@ -679,7 +684,7 @@ export const StudentApp: React.FC = () => {
                         key={b.id}
                         booking={b}
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
-                        onReview={() => alert('Obrigado pela sua avaliação!')}
+                        onReview={(bookingToReview) => setSelectedBookingForReview(bookingToReview)}
                       />
                     ))
                   )}
@@ -696,23 +701,38 @@ export const StudentApp: React.FC = () => {
                 <p className="text-xs text-slate-500">Conversas diretas vinculadas aos seus agendamentos</p>
               </div>
 
+              <NotificationsPanel />
+
               <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-                <div className="p-4 hover:bg-slate-50 transition cursor-pointer flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-900 font-bold flex items-center justify-center">
-                    CA
+                {confirmedBookings.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-500">
+                    Você ainda não tem reservas com chat disponível.
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-sm text-slate-900 truncate">
-                        Carlos Alberto Silva
-                      </h4>
-                      <span className="text-[10px] text-slate-400">10:15</span>
-                    </div>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
-                      Combinado! Te encontro na saída da estação Fradique Coutinho.
-                    </p>
-                  </div>
-                </div>
+                ) : (
+                  confirmedBookings.map((booking) => (
+                    <button
+                      key={booking.id}
+                      type="button"
+                      onClick={() => setSelectedBookingForChat(booking)}
+                      className="w-full p-4 hover:bg-slate-50 transition cursor-pointer flex items-center gap-3 text-left"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-900 font-bold flex items-center justify-center">
+                        {(booking.instructorName || booking.providerName || 'MA').slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-sm text-slate-900 truncate">
+                            {booking.instructorName || booking.providerName}
+                          </h4>
+                          <span className="text-[10px] text-slate-400">{booking.scheduledDate}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          Reserva {booking.status} • {booking.startTime}–{booking.endTime}
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -811,9 +831,27 @@ export const StudentApp: React.FC = () => {
           setSelectedBookingForDetails(null);
         }}
         onOpenChat={() => {
+          if (selectedBookingForDetails) {
+            setSelectedBookingForChat(selectedBookingForDetails);
+          }
           setSelectedBookingForDetails(null);
           setActiveTab('messages');
         }}
+      />
+
+      <Modal
+        isOpen={!!selectedBookingForChat}
+        onClose={() => setSelectedBookingForChat(null)}
+        title="Chat da aula"
+        size="lg"
+      >
+        {selectedBookingForChat && <BookingChatPanel booking={selectedBookingForChat} />}
+      </Modal>
+
+      <ReviewModal
+        isOpen={!!selectedBookingForReview}
+        booking={selectedBookingForReview}
+        onClose={() => setSelectedBookingForReview(null)}
       />
 
       {/* Slot Selector Modal */}

@@ -19,6 +19,7 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
   const migration03Path = path.resolve(__dirname, '../supabase/migrations/20260814000003_auth_security_hardening.sql');
   const migration04Path = path.resolve(__dirname, '../supabase/migrations/20260814000004_providers_compliance.sql');
   const migration05Path = path.resolve(__dirname, '../supabase/migrations/20260814000005_compliance_regulatory_hardening.sql');
+  const migration13Path = path.resolve(__dirname, '../supabase/migrations/20260815000013_chat_reviews_notifications.sql');
   const seedPath = path.resolve(__dirname, '../supabase/seed.sql');
 
   it('[SCHEMA TEST] verifies that initial schema migration file exists and is populated', () => {
@@ -116,6 +117,38 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql05).toContain('provider-compliance-docs');
     expect(sql05).toContain('Providers can upload own compliance documents to storage');
     expect(sql05).toContain('Providers and reviewers can read compliance documents from storage');
+  });
+
+  it('[SCHEMA TEST] verifies SPRINT 13 secure chat, reviews, notifications and RLS', () => {
+    expect(fs.existsSync(migration13Path)).toBe(true);
+    const sql13 = fs.readFileSync(migration13Path, 'utf8');
+
+    expect(sql13).toContain('CREATE TABLE IF NOT EXISTS public.notifications');
+    expect(sql13).toContain('ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES public.providers');
+    expect(sql13).toContain('ON CONFLICT (booking_id)');
+    expect(sql13).toContain('CREATE OR REPLACE FUNCTION public.get_or_create_conversation_for_booking');
+    expect(sql13).toContain('CREATE OR REPLACE FUNCTION public.send_message');
+    expect(sql13).toContain('sender_id, content');
+    expect(sql13).toContain('CREATE OR REPLACE FUNCTION public.create_review_for_booking');
+    expect(sql13).toContain("v_booking.status::TEXT <> 'COMPLETED'");
+    expect(sql13).toContain('UNIQUE INDEX IF NOT EXISTS idx_notifications_unique_lesson_events');
+
+    expect(sql13).toContain('ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY');
+    expect(sql13).toContain('ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY');
+    expect(sql13).toContain('ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY');
+    expect(sql13).toContain('ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY');
+
+    expect(sql13).toContain('CREATE POLICY conversations_select_participants');
+    expect(sql13).toContain('CREATE POLICY messages_select_participants');
+    expect(sql13).toContain('CREATE POLICY reviews_select_authorized');
+    expect(sql13).toContain('CREATE POLICY notifications_select_own');
+    expect(sql13).toContain('CREATE POLICY notifications_update_read_own');
+
+    expect(sql13).toContain('REVOKE ALL ON TABLE public.notifications FROM PUBLIC, anon, authenticated');
+    expect(sql13).toContain('GRANT SELECT ON TABLE public.notifications TO authenticated');
+    expect(sql13).not.toContain('GRANT INSERT ON TABLE public.notifications TO authenticated');
+    expect(sql13).toContain('SECURITY DEFINER');
+    expect(sql13).toContain('SET search_path = public, pg_temp');
   });
 
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
