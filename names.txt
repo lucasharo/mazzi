@@ -1,0 +1,173 @@
+src/types/index.ts:  name: string;
+src/types/index.ts:  name: string; // Display Name / Trade Name
+src/types/index.ts:  storagePath: string; // Private bucket path: providers/{providerId}/compliance/{docId}/{filename}
+src/types/index.ts:  instructors?: { id: string; name: string; isAvailable?: boolean; categories?: VehicleCategory[] }[];
+src/domain/availability.ts:    this.name = 'AvailabilityDomainError';
+src/domain/availability.ts:  let eligibleInstructors: { id: string; name: string }[] = [];
+src/domain/availability.ts:        name: provider.name,
+src/domain/availability.ts:          name: `${provider.name} (Instrutor)`,
+src/domain/availability.ts:        eligibleInstructors = [{ id: provider.id, name: provider.name }];
+src/domain/availability.ts:              instructorName: instructor.name,
+src/domain/cancellation.ts:    this.name = 'CancellationDomainError';
+src/domain/quote.ts:    this.name = 'QuoteDomainError';
+src/domain/quote.ts:    instructorName = provider.name,
+src/domain/quote.ts:    providerName: provider.name,
+src/domain/quote.ts:  const provider = input.provider || { id: 'prov_default', name: 'Prestador Default', status: 'ACTIVE' };
+src/domain/quote.ts:    instructorName: input.instructorName || provider.name,
+src/domain/providers.ts:    this.name = 'ProviderDomainError';
+src/domain/providers.ts:    name: input.displayName.trim(),
+src/domain/providers.ts:    name: input.tradeName.trim(),
+src/domain/providers.ts:    displayName: provider.name,
+src/domain/compliance.ts:    this.name = 'ComplianceDomainError';
+src/domain/compliance.ts:    description: 'Requisitos e diretrizes federais de credenciamento e funcionamento de Centro de Formação de Condutores conforme a Resolução CONTRAN nº 1.020/2025, especificamente Arts. 118, 119 e 120.',
+src/domain/compliance.ts:    description: 'Ato de credenciamento operacional e autorização de funcionamento expedido pelo DETRAN-SP conforme delegado pelo Art. 120 da Resolução CONTRAN nº 1.020/2025.',
+src/domain/compliance.ts:    id: 'req_alvara_funcionamento_mun',
+src/domain/compliance.ts:    title: 'Alvará Municipal de Funcionamento e Localização',
+src/domain/compliance.ts: * Path pattern: providers/{providerId}/compliance/{documentId}/{sanitizedFilename}
+src/domain/compliance.ts:  rawFilename: string
+src/domain/compliance.ts:  // Sanitize filename removing dangerous chars or path traversals
+src/domain/compliance.ts:  const sanitized = rawFilename
+src/domain/compliance.ts:  // Path format validation: providers/{providerId}/compliance/{documentId}/{filename}
+src/domain/compliance.ts:      reason: 'Caminho de armazenamento inválido ou tentativa de path traversal detectada.',
+src/domain/compliance.ts:  filename: string;
+src/domain/compliance.ts:  const extension = input.filename.split('.').pop()?.toLowerCase();
+src/domain/compliance.ts:  return 'Selo "Verificado pela MAZZI": Atesta conformidade exclusiva com as regras internas de compliance e segurança da plataforma MAZZI. Não constitui homologação ou credenciamento governamental direto pelo DETRAN/SENATRAN.';
+src/domain/provider-lifecycle-service.ts:  fileMeta: { filename: string; mimeType: string; sizeInBytes: number },
+src/domain/provider-lifecycle-service.ts:  const storagePath = generateComplianceStoragePath(provider.id, docId, fileMeta.filename);
+src/domain/provider-lifecycle-service.ts:    providerName: provider.name,
+src/domain/provider-lifecycle-service.ts:    fileName: fileMeta.filename,
+src/domain/vehicles-offerings.ts:    this.name = 'VehicleDomainError';
+src/domain/vehicles-offerings.ts:    this.name = 'OfferingDomainError';
+src/domain/maps/map-tile-provider.ts:  name: string;
+src/domain/maps/map-tile-provider.ts:  name: 'OpenStreetMap Standard',
+src/domain/maps/map-tile-provider.ts:  name: 'CartoDB Positron Light',
+src/domain/maps/geocoding-provider.ts:  name: string;
+src/domain/maps/geocoding-provider.ts:  public name = 'MAZZI SP Development Geocoding Adapter';
+src/domain/search.ts:    this.name = 'SearchValidationError';
+src/domain/search.ts:    displayName: provider.name,
+src/domain/booking.ts:    this.name = 'BookingDomainError';
+src/domain/booking.ts:    providerName: provider.name,
+src/domain/booking.ts:    providerName: provider.name,
+src/domain/payments/mercadopago-adapter.ts:            first_name: request.studentName.split(' ')[0],
+src/domain/payments/mercadopago-adapter.ts:            last_name: request.studentName.split(' ').slice(1).join(' ') || 'Aluno',
+src/domain/payments/payment-service.ts:      name: payerName || student?.name || 'Aluno Mazzi',
+src/domain/payments/payment-service.ts:      name: provider?.name || 'Autoescola Parceira',
+src/domain/payments/payment-service.ts:      studentName: student.name,
+src/domain/lesson-session.ts:    this.name = 'LessonSessionDomainError';
+src/domain/platform-config.ts:    this.name = 'PlatformConfigDomainError';
+src/components/ui/Checkbox.tsx:  name: string;
+src/components/ui/Checkbox.tsx:  name,
+src/components/ui/Checkbox.tsx:          const id = `radio-${name}-${opt.value}`;
+src/components/ui/Checkbox.tsx:                name={name}
+src/components/ui/Avatar.tsx:  name: string;
+src/components/ui/Avatar.tsx:  name,
+src/components/ui/Avatar.tsx:          alt={name}
+src/components/ui/Avatar.tsx:        <span>{getInitials(name)}</span>
+src/components/ui/ProviderCard.tsx:            <Avatar name={provider.name} imageUrl={provider.avatarUrl} size="lg" />
+src/components/ui/ProviderCard.tsx:                  {provider.name}
+src/components/maps/LeafletMap.tsx:      const initials = prov.name.split(' ').map((n) => n[0]).slice(0, 2).join('');
+src/components/maps/LeafletMap.tsx:          <strong style="font-size: 13px; color: #020617; display: block; margin-top: 4px;">${prov.name}</strong>
+src/components/auth/AuthContext.tsx:export const DEMO_ACCOUNTS: Record<UserRole, { id: string; name: string; email: string; providerId?: string; schoolId?: string }> = {
+src/components/auth/AuthContext.tsx:    name: 'Ana Souza (Aluna Demo)',
+src/components/auth/AuthContext.tsx:    name: 'Carlos Instrutor (Pinheiros)',
+src/components/auth/AuthContext.tsx:    name: 'Roberto Gestor (CFC Paulista)',
+src/components/auth/AuthContext.tsx:    name: 'Mariana Atendente (CFC Paulista)',
+src/components/auth/AuthContext.tsx:    name: 'Admin Mazzi Oficial',
+src/components/auth/AuthContext.tsx:    name: 'Suporte Mazzi Atendimento',
+src/components/auth/AuthContext.tsx:        const name = user.user_metadata?.name || 'Novo Aluno';
+src/components/auth/AuthContext.tsx:            name,
+src/components/auth/AuthContext.tsx:        name: profile?.name || user.user_metadata?.name || 'Usuário',
+src/components/auth/AuthScreens.tsx:  const [name, setName] = useState('');
+src/components/auth/AuthScreens.tsx:                  value={name}
+src/components/search/MapView.tsx:    name: res.displayName,
+src/components/search/MapView.tsx:            • {activeTile.name}
+src/data/mockData.ts:  name: 'Lucas Ferreira',
+src/data/mockData.ts:  name: 'Carlos Alberto Silva',
+src/data/mockData.ts:  name: 'Autoescola Paulista Matriz',
+src/data/mockData.ts:    name: 'Carlos Alberto Silva',
+src/data/mockData.ts:    name: 'Autoescola Paulista (CFC)',
+src/data/mockData.ts:    name: 'Mariana Duarte',
+src/data/mockData.ts:    name: 'CFC Alvorada Zona Sul',
+src/data/mockData.ts:    name: 'Eduardo Martins',
+src/data/mockData.ts:    name: 'Autoescola Nova Era (CFC)',
+src/data/mockData.ts:    bio: 'CFC moderno no Tatuapé com pista própria de treinamento.',
+src/data/mockData.ts:    title: 'Alvará de Funcionamento e Localização',
+src/apps/student/StudentApp.tsx:          name: 'Prestador',
+src/apps/student/StudentApp.tsx:                    {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AN'}
+src/apps/student/StudentApp.tsx:                    <h3 className="font-black text-lg text-white">{user?.name || 'Ana Souza'}</h3>
+src/apps/student/components/CheckoutModal.tsx:              providerName: provider.name,
+src/apps/student/components/CheckoutModal.tsx:              instructorName: provider.name, // Assuming provider name is instructor name as per existing logic
+src/apps/student/components/CheckoutModal.tsx:          instructorName: provider.name,
+src/apps/student/components/CheckoutModal.tsx:        studentName: user.name,
+src/apps/student/components/CheckoutModal.tsx:                <span className="font-bold text-slate-900 text-sm">{provider.name}</span>
+src/apps/provider/ProviderApp.tsx:        displayName: p.name,
+src/apps/provider/ProviderApp.tsx:    const filename = simulatedFileName.trim() || `${reqDocType.toLowerCase()}_scan_2026.pdf`;
+src/apps/provider/ProviderApp.tsx:        filename,
+src/apps/provider/ProviderApp.tsx:            name: profileForm.displayName || p.name,
+src/apps/provider/ProviderApp.tsx:                {currentProvider.name} • {currentProvider.city}/{currentProvider.state || 'SP'}
+src/apps/provider/ProviderApp.tsx:                  {p.name} ({p.type === 'INSTRUCTOR' ? 'Instrutor' : 'CFC'}) - {p.status}
+src/apps/provider/ProviderApp.tsx:                            <p className="font-semibold">{currentProvider.name}</p>
+src/apps/admin/AdminApp.tsx:    name: 'Carlos Magno (Admin Geral)',
+src/apps/admin/AdminApp.tsx:    name: 'Beatriz Lima (Suporte N1)',
+src/apps/admin/AdminApp.tsx:    name: 'Carlos Alberto Silva (Instrutor)',
+src/apps/admin/AdminApp.tsx:    name: 'Autoescola Paulista (CFC)',
+src/apps/admin/AdminApp.tsx:    name: 'Lucas Ferreira (Aluno)',
+src/apps/admin/AdminComponents.tsx:    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+src/apps/admin/AdminComponents.tsx:                  <h5 className="font-bold text-xs mt-2 line-clamp-1">{p.name}</h5>
+src/apps/admin/AdminComponents.tsx:                    <h3 className="text-base font-black text-white">{selectedProv.name}</h3>
+src/apps/admin/AdminComponents.tsx:            {/* Visualização de Armazenamento Privado Simulado */}
+src/apps/admin/AdminComponents.tsx:            <li><strong>Autoescolas (CFC - Pessoa Jurídica):</strong> CNPJ cadastrado, Certificado de Credenciamento do DETRAN ativo, Portaria de Autorização de Funcionamento e documentação da frota cadastrada.</li>
+src/apps/admin/AdminComponents.tsx:                  <p className="text-[10px] opacity-60 truncate mt-0.5">Proprietário: {owner?.name || 'N/A'}</p>
+src/apps/admin/AdminComponents.tsx:                <p>Proprietário: <span className="font-bold text-slate-900">{selectedVehProvider?.name || 'Não localizado'}</span></p>
+src/apps/admin/AdminComponents.tsx:      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+src/apps/admin/AdminComponents.tsx:                  <h5 className="font-bold">{u.name}</h5>
+src/apps/admin/AdminComponents.tsx:              <h3 className="text-base font-black text-slate-900">{selectedUser.name}</h3>
+src/apps/design-system/DesignSystemShowcase.tsx:                <Avatar name="Carlos Silva" size="lg" />
+src/apps/design-system/DesignSystemShowcase.tsx:              onSelectProvider={(prov) => alert(`Prestador selecionado no mapa: ${prov.name}`)}
+src/lib/database.types.ts:          name: string;
+src/lib/database.types.ts:          legal_name: string;
+src/lib/database.types.ts:          trade_name: string;
+src/lib/auth-guards.ts:    this.name = 'AuthError';
+src/lib/auth-service.ts:    name: string;
+src/lib/auth-service.ts:  name: string;
+src/lib/auth-service.ts:export async function signUpStudent({ email, password, name, phone }: SignUpParams) {
+src/lib/auth-service.ts:        name,
+src/lib/db-service.ts:    name: row.name,
+src/lib/db-service.ts:    name: row.trade_name || row.legal_name || 'Prestador',
+src/lib/db-service.ts:    legalName: row.legal_name || undefined,
+src/lib/db-service.ts:    studentName: snapshot.student_name || 'Estudante',
+src/lib/db-service.ts:    providerName: snapshot.provider_name || 'Instrutor',
+src/lib/db-service.ts:    instructorName: snapshot.instructor_name || snapshot.provider_name || 'Instrutor',
+src/lib/db-service.ts:    vehicleName: snapshot.vehicle_name || 'Veículo',
+src/lib/db-service.ts:      name: row.display_name,
+src/lib/db-service.ts:      legalName: row.display_name,
+src/__tests__/mercadopago-sandbox.test.ts:    name: 'Autoescola Central Paulista',
+src/__tests__/mercadopago-sandbox.test.ts:    name: 'Lucas Ferreira',
+src/__tests__/mercadopago-sandbox.test.ts:    providerName: mockProvider.name,
+src/__tests__/mercadopago-sandbox.test.ts:      providerName: mockProvider.name,
+src/__tests__/credential-resolver.test.ts:    const providerMock = { id: 'prov_300', name: 'Instrutor Teste' } as any;
+src/__tests__/student-journey.test.ts:    name: 'Autoescola Modelo',
+src/__tests__/student-journey.test.ts:    name: 'Ana Souza',
+src/__tests__/student-journey.test.ts:    name: 'Bruno Lima',
+src/__tests__/student-journey.test.ts:        studentName: studentA.name,
+src/__tests__/student-journey.test.ts:          studentName: studentA.name,
+src/__tests__/student-journey.test.ts:        studentName: studentA.name,
+src/__tests__/student-journey.test.ts:        providerName: mockProvider.name,
+src/__tests__/student-journey.test.ts:        instructorName: mockProvider.name,
+src/__tests__/student-journey.test.ts:          providerName: mockProvider.name,
+src/__tests__/student-journey.test.ts:          instructorName: mockProvider.name,
+src/__tests__/student-journey.test.ts:          studentName: studentA.name,
+src/__tests__/student-journey.test.ts:        studentName: studentA.name,
+src/__tests__/student-journey.test.ts:        studentName: studentA.name,
+src/__tests__/student-journey.test.ts:          studentName: studentB.name,
+src/__tests__/student-journey.test.ts:        studentName: studentB.name,
+src/__tests__/student-journey.test.ts:        studentName: studentA.name,
+src/__tests__/student-journey.test.ts:        studentName: studentA.name,
+src/__tests__/student-journey.test.ts:        studentName: studentA.name,
+src/__tests__/student-journey.test.ts:          studentName: studentA.name,
+src/__tests__/student-journey.test.ts:    it('preserves initial booking snapshot even if Provider name or Vehicle model are updated later', () => {
+src/__tests__/student-journey.test.ts:        studentName: studentA.name,
+src/__tests__/student-journey.test.ts:      mockProvider.name = 'Autoescola Renomeada Totalmente';
+src/__tests__/provider-journey.test.ts:      name: 'Instructor Pendente',
+src/__tests__/provider-journey.test.ts:      name: 'Prestador Esperto',
+src/__tests__/provider-journey.test.ts:      name: 'Nome Publico Exibido',

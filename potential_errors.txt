@@ -1,0 +1,58 @@
+src/components/ui/Checkbox.tsx:54:  name: string;
+src/components/ui/Checkbox.tsx:62:  name,
+src/components/ui/Checkbox.tsx:77:          const id = `radio-${name}-${opt.value}`;
+src/components/ui/Checkbox.tsx:92:                name={name}
+src/components/ui/Avatar.tsx:4:  name: string;
+src/components/ui/Avatar.tsx:12:  name,
+src/components/ui/Avatar.tsx:40:          alt={name}
+src/components/ui/Avatar.tsx:45:        <span>{getInitials(name)}</span>
+src/components/ui/ProviderCard.tsx:30:            <Avatar name={provider.name} imageUrl={provider.avatarUrl} size="lg" />
+src/components/ui/ProviderCard.tsx:34:                  {provider.name}
+src/components/maps/LeafletMap.tsx:115:      const initials = prov.name.split(' ').map((n) => n[0]).slice(0, 2).join('');
+src/components/maps/LeafletMap.tsx:155:          <strong style="font-size: 13px; color: #020617; display: block; margin-top: 4px;">${prov.name}</strong>
+src/components/auth/AuthContext.tsx:21:export const DEMO_ACCOUNTS: Record<UserRole, { id: string; name: string; email: string; providerId?: string; schoolId?: string }> = {
+src/components/auth/AuthContext.tsx:24:    name: 'Ana Souza (Aluna Demo)',
+src/components/auth/AuthContext.tsx:29:    name: 'Carlos Instrutor (Pinheiros)',
+src/components/auth/AuthContext.tsx:35:    name: 'Roberto Gestor (CFC Paulista)',
+src/components/auth/AuthContext.tsx:41:    name: 'Mariana Atendente (CFC Paulista)',
+src/components/auth/AuthContext.tsx:47:    name: 'Admin Mazzi Oficial',
+src/components/auth/AuthContext.tsx:52:    name: 'Suporte Mazzi Atendimento',
+src/components/auth/AuthContext.tsx:137:        const name = user.user_metadata?.name || 'Novo Aluno';
+src/components/auth/AuthContext.tsx:147:            name,
+src/components/auth/AuthContext.tsx:188:        name: profile?.name || user.user_metadata?.name || 'Usuário',
+src/components/auth/AuthScreens.tsx:18:  const [name, setName] = useState('');
+src/components/auth/AuthScreens.tsx:195:                  value={name}
+src/components/search/MapView.tsx:36:    name: res.displayName,
+src/components/search/MapView.tsx:83:            • {activeTile.name}
+src/apps/student/StudentApp.tsx:204:          name: 'Prestador',
+src/apps/student/StudentApp.tsx:746:                    {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AN'}
+src/apps/student/StudentApp.tsx:749:                    <h3 className="font-black text-lg text-white">{String(user?.name || 'Ana Souza')}</h3>
+src/apps/student/components/CheckoutModal.tsx:139:              providerName: provider.name,
+src/apps/student/components/CheckoutModal.tsx:141:              instructorName: provider.name, // Assuming provider name is instructor name as per existing logic
+src/apps/student/components/CheckoutModal.tsx:179:          instructorName: provider.name,
+src/apps/student/components/CheckoutModal.tsx:257:        studentName: user.name,
+src/apps/student/components/CheckoutModal.tsx:456:                <span className="font-bold text-slate-900 text-sm">{provider.name}</span>
+src/apps/provider/ProviderApp.tsx:295:        displayName: p.name,
+src/apps/provider/ProviderApp.tsx:717:    const filename = simulatedFileName.trim() || `${reqDocType.toLowerCase()}_scan_2026.pdf`;
+src/apps/provider/ProviderApp.tsx:723:        filename,
+src/apps/provider/ProviderApp.tsx:749:            name: profileForm.displayName || p.name,
+src/apps/provider/ProviderApp.tsx:795:                {currentProvider.name} • {currentProvider.city}/{currentProvider.state || 'SP'}
+src/apps/provider/ProviderApp.tsx:808:                  {p.name} ({p.type === 'INSTRUCTOR' ? 'Instrutor' : 'CFC'}) - {p.status}
+src/apps/provider/ProviderApp.tsx:1736:                            <p className="font-semibold">{currentProvider.name}</p>
+src/apps/admin/AdminApp.tsx:65:    name: 'Carlos Magno (Admin Geral)',
+src/apps/admin/AdminApp.tsx:73:    name: 'Beatriz Lima (Suporte N1)',
+src/apps/admin/AdminApp.tsx:81:    name: 'Carlos Alberto Silva (Instrutor)',
+src/apps/admin/AdminApp.tsx:89:    name: 'Autoescola Paulista (CFC)',
+src/apps/admin/AdminApp.tsx:97:    name: 'Lucas Ferreira (Aluno)',
+src/apps/admin/AdminComponents.tsx:325:    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+src/apps/admin/AdminComponents.tsx:425:                  <h5 className="font-bold text-xs mt-2 line-clamp-1">{p.name}</h5>
+src/apps/admin/AdminComponents.tsx:449:                    <h3 className="text-base font-black text-white">{selectedProv.name}</h3>
+src/apps/admin/AdminComponents.tsx:821:            {/* Visualização de Armazenamento Privado Simulado */}
+src/apps/admin/AdminComponents.tsx:914:            <li><strong>Autoescolas (CFC - Pessoa Jurídica):</strong> CNPJ cadastrado, Certificado de Credenciamento do DETRAN ativo, Portaria de Autorização de Funcionamento e documentação da frota cadastrada.</li>
+src/apps/admin/AdminComponents.tsx:1003:                  <p className="text-[10px] opacity-60 truncate mt-0.5">Proprietário: {owner?.name || 'N/A'}</p>
+src/apps/admin/AdminComponents.tsx:1025:                <p>Proprietário: <span className="font-bold text-slate-900">{selectedVehProvider?.name || 'Não localizado'}</span></p>
+src/apps/admin/AdminComponents.tsx:1530:      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+src/apps/admin/AdminComponents.tsx:1575:                  <h5 className="font-bold">{u.name}</h5>
+src/apps/admin/AdminComponents.tsx:1592:              <h3 className="text-base font-black text-slate-900">{selectedUser.name}</h3>
+src/apps/design-system/DesignSystemShowcase.tsx:206:                <Avatar name="Carlos Silva" size="lg" />
+src/apps/design-system/DesignSystemShowcase.tsx:246:              onSelectProvider={(prov) => alert(`Prestador selecionado no mapa: ${prov.name}`)}

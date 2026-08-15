@@ -1,0 +1,6 @@
+{
+  "name": "MAZZI",
+  "description": "Marketplace de aulas práticas de direção (MAZZI) conectando alunos, instrutores autônomos e autoescolas (CFC) em São Paulo com identidade inspirada na 99.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
