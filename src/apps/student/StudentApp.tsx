@@ -108,12 +108,12 @@ function vehicleFromBookingContext(ctx: any): Vehicle {
 }
 
 export const StudentApp: React.FC = () => {
-  const { user, isAuthenticated, loginAsDemoUser, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
   const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'messages' | 'profile'>('search');
   const [bookingTab, setBookingTab] = useState<'upcoming' | 'history'>('upcoming');
-  const [searchLocation, setSearchLocation] = useState('Pinheiros, São Paulo - SP');
+  const [searchLocation, setSearchLocation] = useState('Sua localização');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
@@ -298,8 +298,8 @@ export const StudentApp: React.FC = () => {
   useEffect(() => {
     setSearchRequest((prev) => ({
       ...prev,
-      latitude: -23.5505,
-      longitude: -46.6333,
+      latitude: userLocation?.lat ?? prev.latitude,
+      longitude: userLocation?.lng ?? prev.longitude,
       radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
       category: 'B',
       providerType: 'ALL',
@@ -307,7 +307,7 @@ export const StudentApp: React.FC = () => {
       page: 1,
       limit: 10,
     }));
-  }, [user?.id]);
+  }, [user?.id, userLocation]);
 
   // Execute Public Search Engine
   const searchResponse = useMemo(() => {
@@ -483,6 +483,7 @@ export const StudentApp: React.FC = () => {
                 onUpdateSearch={handleUpdateSearch}
                 onPerformSearch={() => setSearchRefreshKey((value) => value + 1)}
                 currentLocationName={searchLocation}
+                currentLocation={userLocation}
                 onLocationResolved={(addr) => setSearchLocation(addr)}
               />
 
@@ -530,27 +531,6 @@ export const StudentApp: React.FC = () => {
                     <span>Mapa</span>
                   </button>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2 overflow-x-auto pb-1" aria-label="Filtros rápidos">
-                {[
-                  { label: 'B', active: searchRequest.category === 'B', onClick: () => handleUpdateSearch({ category: 'B' }) },
-                  { label: searchRequest.transmission === 'AUTOMATIC' ? 'Automático' : 'Câmbio', active: searchRequest.transmission === 'AUTOMATIC', onClick: () => handleUpdateSearch({ transmission: searchRequest.transmission === 'AUTOMATIC' ? 'ALL' : 'AUTOMATIC' }) },
-                  { label: `Até ${Math.round((searchRequest.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000)} km`, active: searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS, onClick: () => handleUpdateSearch({ radiusMeters: searchRequest.radiusMeters === 10000 ? DEFAULT_SEARCH_RADIUS_METERS : 10000 }) },
-                  { label: searchRequest.maxPriceInCents ? `Até ${formatCentsToBRL(searchRequest.maxPriceInCents)}` : 'Preço', active: typeof searchRequest.maxPriceInCents === 'number', onClick: () => handleUpdateSearch({ maxPriceInCents: searchRequest.maxPriceInCents ? undefined : 15000 }) },
-                ].map((chip) => (
-                  <button key={chip.label} type="button" onClick={chip.onClick} aria-pressed={chip.active} className={`shrink-0 px-3 py-1.5 rounded-full border text-xs font-bold ${chip.active ? 'bg-amber-400 border-amber-400 text-slate-950' : 'bg-white border-slate-200 text-slate-600'}`}>
-                    {chip.label}
-                  </button>
-                ))}
-                <button type="button" onClick={() => setIsFilterDrawerOpen(true)} className="shrink-0 px-3 py-1.5 rounded-full border border-slate-300 text-xs font-bold text-slate-700">
-                  Filtros{additionalFilterCount ? ` (${additionalFilterCount})` : ''}
-                </button>
-                {hasChangedFilters && (
-                  <button type="button" onClick={() => { setSearchRequest(defaultSearchRequest); setSearchRefreshKey((value) => value + 1); }} className="shrink-0 text-xs font-bold text-amber-700 underline">
-                    Limpar filtros
-                  </button>
-                )}
               </div>
 
               {searchError && (
@@ -783,7 +763,7 @@ export const StudentApp: React.FC = () => {
 
               <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
                 <div className="flex items-center justify-between"><h4 className="font-bold text-slate-900 text-sm">Meu perfil</h4><Button variant="outline" size="sm" onClick={() => setIsEditingProfile((value) => !value)}>{isEditingProfile ? 'Cancelar' : 'Editar'}</Button></div>
-                {isEditingProfile ? <div className="space-y-2"><label className="block text-xs font-bold text-slate-600">Foto quadrada</label><input type="file" accept="image/*" capture="user" onChange={handleProfileAvatar} className="w-full text-xs" /><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Nome" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><input value={profilePhone} onChange={(event) => setProfilePhone(formatPhone(event.target.value))} placeholder="Telefone (11) 99999-9999" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><p className="text-[10px] text-slate-400">E-mail, papel e identificador são informações chave e não podem ser alterados.</p><Button variant="primary" size="sm" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone, profileAvatar); setIsEditingProfile(false); } catch (error: any) { setProfileError(error?.message || 'Não foi possível salvar o perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>{profileError && <p className="text-xs text-rose-600">{profileError}</p>}</div> : <p className="text-xs text-slate-600">{user?.phone || 'Telefone não informado'}</p>}
+                {isEditingProfile ? <div className="space-y-2"><label className="block text-xs font-bold text-slate-600">Foto quadrada</label><input type="file" accept="image/*" capture="user" onChange={handleProfileAvatar} className="w-full text-xs" /><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Nome" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><input value={profilePhone} onChange={(event) => setProfilePhone(formatPhone(event.target.value))} placeholder="Telefone (11) 99999-9999" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><p className="text-[10px] text-slate-400">E-mail, papel e identificador são informações chave e não podem ser alterados.</p><Button variant="primary" size="sm" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone, profileAvatar); setIsEditingProfile(false); } catch (error: any) { setProfileError(error?.message || 'Não foi possível salvar o perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>{profileError && <p className="text-xs text-rose-600">{profileError}</p>}</div> : <p className="text-xs text-slate-600">{profilePhone || 'Telefone não informado'}</p>}
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
@@ -804,17 +784,6 @@ export const StudentApp: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <p className="text-xs font-bold text-slate-700">Alternar Usuário de Teste:</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => loginAsDemoUser('STUDENT')}
-                >
-                  Recarregar Sessão Aluno Demo
-                </Button>
-              </div>
               <Button variant="outline" size="md" className="w-full text-rose-700 border-rose-200" onClick={() => { void logout(); }}>Sair</Button>
             </div>
           )}

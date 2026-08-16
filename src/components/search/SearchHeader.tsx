@@ -14,6 +14,7 @@ export interface SearchHeaderProps {
   onUpdateSearch: (updated: Partial<SearchRequest>) => void;
   onPerformSearch: () => void;
   currentLocationName?: string;
+  currentLocation?: { lat: number; lng: number };
   onLocationResolved?: (addressName: string, lat: number, lng: number) => void;
 }
 
@@ -21,7 +22,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   searchRequest,
   onUpdateSearch,
   onPerformSearch,
-  currentLocationName = 'Pinheiros, São Paulo - SP',
+  currentLocationName = 'Sua localização',
+  currentLocation,
   onLocationResolved,
 }) => {
   const [addressInput, setAddressInput] = useState(currentLocationName);
@@ -31,9 +33,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   const handleUseMyLocation = async () => {
     setIsLocating(true);
     try {
-      // Pinheiros default fallback for dev/iframe environment
-      const lat = -23.5658;
-      const lng = -46.6872;
+      if (!currentLocation) throw new Error('CURRENT_LOCATION_UNAVAILABLE');
+      const { lat, lng } = currentLocation;
       const geocoded = await activeGeocodingProvider.reverseGeocode(lat, lng);
       
       setAddressInput(geocoded.formattedAddress);
