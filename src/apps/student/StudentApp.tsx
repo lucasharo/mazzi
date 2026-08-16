@@ -72,6 +72,41 @@ function mapPublicResultToProvider(result: PublicSearchProviderResult): Provider
   };
 }
 
+function offeringFromBookingContext(ctx: any): ServiceOffering {
+  return {
+    id: ctx.offering_id,
+    providerId: ctx.provider_id,
+    instructorId: ctx.instructor_id,
+    instructorName: ctx.instructor_name || ctx.instructorName || '',
+    vehicleId: ctx.vehicle_id,
+    category: ctx.category,
+    transmission: ctx.transmission || 'MANUAL',
+    durationMinutes: ctx.duration_minutes,
+    priceInCents: ctx.price_in_cents,
+    status: 'ACTIVE',
+  } as ServiceOffering;
+}
+
+function vehicleFromBookingContext(ctx: any): Vehicle {
+  return {
+    id: ctx.vehicle_id,
+    providerId: ctx.provider_id,
+    brand: ctx.vehicle_brand || 'Veículo',
+    model: ctx.vehicle_model || 'do instrutor',
+    year: Number(ctx.vehicle_year || new Date().getFullYear()),
+    licensePlate: '',
+    licensePlateMasked: '',
+    category: ctx.category,
+    vehicleType: ctx.category === 'A' ? 'MOTORCYCLE' : 'CAR',
+    transmission: ctx.vehicle_transmission || ctx.transmission || 'MANUAL',
+    status: ctx.vehicle_status || 'ACTIVE',
+    color: ctx.vehicle_color || undefined,
+    photos: ctx.vehicle_photos || [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  } as Vehicle;
+}
+
 export const StudentApp: React.FC = () => {
   const { user, isAuthenticated, loginAsDemoUser } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
@@ -275,6 +310,8 @@ export const StudentApp: React.FC = () => {
   const [checkoutVehicle, setCheckoutVehicle] = useState<Vehicle | null>(null);
   const [checkoutOffering, setCheckoutOffering] = useState<ServiceOffering | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
+  const [instructorChoices, setInstructorChoices] = useState<any[]>([]);
+  const [instructorPickerProvider, setInstructorPickerProvider] = useState<Provider | null>(null);
 
   const handleOpenCheckoutByProviderId = async (providerId: string, _date?: string, slot?: any) => {
     const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
@@ -301,36 +338,13 @@ export const StudentApp: React.FC = () => {
 
         const ctx = bookingContexts[0];
         matchingInstructorName = ctx.instructor_name || ctx.instructorName || '';
-        matchingOffering = {
-          id: ctx.offering_id,
-          providerId: ctx.provider_id,
-          instructorId: ctx.instructor_id,
-          instructorName: matchingInstructorName,
-          vehicleId: ctx.vehicle_id,
-          category: ctx.category,
-          transmission: ctx.transmission || 'MANUAL',
-          durationMinutes: ctx.duration_minutes,
-          priceInCents: ctx.price_in_cents,
-          status: 'ACTIVE',
-        } as ServiceOffering;
-
-        matchingVehicle = dbVehicles.find((vehicle) => vehicle.id === ctx.vehicle_id) || {
-          id: ctx.vehicle_id,
-          providerId: ctx.provider_id,
-          brand: ctx.vehicle_brand || 'Veículo',
-          model: ctx.vehicle_model || 'do instrutor',
-          year: Number(ctx.vehicle_year || new Date().getFullYear()),
-          licensePlate: '',
-          licensePlateMasked: '',
-          category: ctx.category,
-          vehicleType: ctx.category === 'A' ? 'MOTORCYCLE' : 'CAR',
-          transmission: ctx.vehicle_transmission || ctx.transmission || 'MANUAL',
-          status: ctx.vehicle_status || 'ACTIVE',
-          color: ctx.vehicle_color || undefined,
-          photos: ctx.vehicle_photos || [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        } as Vehicle;
+        matchingOffering = offeringFromBookingContext(ctx);
+        matchingVehicle = dbVehicles.find((vehicle) => vehicle.id === ctx.vehicle_id) || vehicleFromBookingContext(ctx);
+        if (rawProv?.type === 'DRIVING_SCHOOL' && bookingContexts.length > 1) {
+          setInstructorChoices(bookingContexts);
+          setInstructorPickerProvider(rawProv);
+          return;
+        }
       } catch (err) {
         console.error('Error fetching booking context', err);
         return;
@@ -570,7 +584,7 @@ export const StudentApp: React.FC = () => {
               />
 
               {/* Public Profile Modal */}
-              <ProviderPublicProfileModal
+      <ProviderPublicProfileModal
                 isOpen={!!selectedPublicProfile}
                 onClose={() => setSelectedPublicProfile(null)}
                 result={selectedPublicProfile}
@@ -816,6 +830,40 @@ export const StudentApp: React.FC = () => {
         onClose={() => setSelectedBookingForReview(null)}
       />
 
+      {instructorPickerProvider && (
+        <Modal
+          isOpen={true}
+          onClose={() => { setInstructorPickerProvider(null); setInstructorChoices([]); }}
+          title="Escolha o instrutor"
+          size="sm"
+        >
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500">Esta autoescola possui mais de um instrutor disponível.</p>
+            {instructorChoices.map((ctx) => (
+              <button
+                key={`${ctx.instructor_id}-${ctx.offering_id}`}
+                type="button"
+                className="w-full p-3 rounded-xl border border-slate-200 bg-white hover:border-amber-400 text-left"
+                onClick={() => {
+                  const offering = offeringFromBookingContext(ctx);
+                  const vehicle = dbVehicles.find((item) => item.id === ctx.vehicle_id) || vehicleFromBookingContext(ctx);
+                  setCheckoutProvider(instructorPickerProvider);
+                  setCheckoutVehicle(vehicle);
+                  setCheckoutOffering(offering);
+                  setSelectedSlot(null);
+                  setInstructorPickerProvider(null);
+                  setInstructorChoices([]);
+                  setIsSlotSelectorOpen(true);
+                }}
+              >
+                <span className="font-bold text-sm text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span>
+                <span className="block text-xs text-slate-500 mt-1">{ctx.vehicle_brand || 'Veículo'} {ctx.vehicle_model || ''}</span>
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+
       {/* Slot Selector Modal */}
       {isSlotSelectorOpen && checkoutOffering && (
         <SlotSelectorModal
@@ -849,6 +897,7 @@ export const StudentApp: React.FC = () => {
         onBookingConfirmed={(newBooking) => {
           setConfirmedBookings([newBooking, ...confirmedBookings]);
         }}
+        onGoToBookings={() => setActiveTab('bookings')}
       />
     </div>
   );

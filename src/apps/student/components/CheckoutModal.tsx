@@ -51,6 +51,7 @@ export interface CheckoutModalProps {
   startTime: string; // HH:mm
   endTime: string; // HH:mm
   scheduledStartAt?: string; // ISO String
+  onGoToBookings?: () => void;
   existingBookings?: Booking[];
   onBookingConfirmed: (booking: Booking) => void;
 }
@@ -73,6 +74,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   startTime,
   endTime,
   scheduledStartAt,
+  onGoToBookings,
   existingBookings = [],
   onBookingConfirmed,
 }) => {
@@ -87,6 +89,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedPix, setCopiedPix] = useState(false);
+  const [meetingPointType, setMeetingPointType] = useState<'PROVIDER' | 'STUDENT'>('PROVIDER');
+  const [studentAddress, setStudentAddress] = useState('');
 
   // Time remaining counters
   const [quoteTimeRemainingSec, setQuoteTimeRemainingSec] = useState<number>(600);
@@ -275,7 +279,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         }
 
         try {
-          const dbHold = await dbService.createBookingHold(quote.id, user.id);
+          const dbHold = await dbService.createBookingHoldAtMeetingPoint(quote.id, user.id, {
+            type: meetingPointType === 'STUDENT' ? 'STUDENT_ADDRESS' : 'PROVIDER_ADDRESS',
+            address: meetingPointType === 'STUDENT' ? studentAddress.trim() : undefined,
+          });
           if (dbHold && dbHold.booking_id) {
             realBookingId = dbHold.booking_id;
           }
@@ -501,6 +508,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             >
               Confirmar e Reservar Horário
             </Button>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+              <p className="text-xs font-black text-slate-900">Ponto de encontro</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setMeetingPointType('PROVIDER')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'PROVIDER' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Instrutor / autoescola</button>
+                <button type="button" onClick={() => setMeetingPointType('STUDENT')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'STUDENT' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Meu endereço</button>
+              </div>
+              {meetingPointType === 'STUDENT' && <input value={studentAddress} onChange={(event) => setStudentAddress(event.target.value)} placeholder="Digite seu endereço" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs" required />}
+            </div>
           </div>
         )}
 
@@ -550,7 +566,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               variant="primary"
               size="md"
               className="w-full"
-              onClick={onClose}
+              onClick={() => { onClose(); onGoToBookings?.(); }}
             >
               Selecionar Outro Horário
             </Button>

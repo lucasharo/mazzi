@@ -793,6 +793,17 @@ export const dbService = {
     }
   },
 
+  async createBookingHoldAtMeetingPoint(quoteId: string, studentId: string, meetingPoint: { type: 'STUDENT_ADDRESS' | 'PROVIDER_ADDRESS'; address?: string }): Promise<any> {
+    const { data, error } = await sp.rpc('create_booking_hold_at_meeting_point', {
+      p_quote_id: quoteId,
+      p_student_id: studentId,
+      p_idempotency_key: `hold_${crypto.randomUUID()}`,
+      p_meeting_point: meetingPoint,
+    });
+    if (error) throw error;
+    return data;
+  },
+
   // 5. SPRINT 13 — BOOKING CHAT, REVIEWS & IN-APP NOTIFICATIONS
   async getConversationForBooking(bookingId: string): Promise<Conversation> {
     const { data, error } = await sp.rpc('get_or_create_conversation_for_booking', {

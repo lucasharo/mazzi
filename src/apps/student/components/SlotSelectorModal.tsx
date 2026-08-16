@@ -132,6 +132,9 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
           </div>
         )}
 
+        <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+          {selectedDate ? formatDateOnly(selectedDate, { month: 'long', year: 'numeric' }) : formatDateOnly(fromDate, { month: 'long', year: 'numeric' })}
+        </p>
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 max-h-64 overflow-y-auto pr-1">
           {dates.map((date) => {
             const available = (slotsByDate[date] || []).length > 0;
@@ -139,7 +142,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
               <button key={date} type="button" disabled={!available} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? '' : ', indisponível'}`} className={`min-h-16 rounded-xl border p-2 text-center transition ${selectedDate === date ? 'border-amber-500 bg-amber-50 text-slate-950 ring-2 ring-amber-400/30' : available ? 'border-slate-200 bg-white hover:border-amber-300 text-slate-700' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'}`}>
                 <span className="text-[10px] uppercase font-bold block">{formatDateOnly(date, { weekday: 'short' }).replace('.', '')}</span>
                 <span className="text-lg font-black block">{formatDateOnly(date, { day: '2-digit' })}</span>
-                <span className="text-[9px] font-bold">{available ? `${slotsByDate[date].length} horários` : 'Indisponível'}</span>
+                <span className="text-[9px] font-bold">{available ? `${slotsByDate[date].length}` : '—'}</span>
               </button>
             );
           })}
