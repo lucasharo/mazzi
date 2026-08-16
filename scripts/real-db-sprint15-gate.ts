@@ -25,6 +25,7 @@ type GateResult = Record<string, GateStatus | string | number | boolean>;
 const result: GateResult = {};
 const prefix = `sprint15_${Date.now()}`;
 const temporaryBookingIds: string[] = [];
+const temporaryQuoteIds: string[] = [];
 
 function pass(key: string) {
   result[key] = 'PASS';
@@ -39,10 +40,17 @@ function fail(key: string, error: unknown) {
   result[key] = `BLOCKED: ${message}`;
 }
 
-async function applySprint15Migration() {
-  const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20260815000015_sprint15_security_hardening.sql');
-  const sql = fs.readFileSync(migrationPath, 'utf8');
-  await client.query(sql);
+async function applySprint15Migrations() {
+  const migrationFiles = [
+    '20260815000015_sprint15_security_hardening.sql',
+    '20260815000016_sprint15_booking_identity_concurrency_hotfix.sql',
+  ];
+
+  for (const migrationFile of migrationFiles) {
+    const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', migrationFile);
+    const sql = fs.readFileSync(migrationPath, 'utf8');
+    await client.query(sql);
+  }
 }
 
 async function asAuthenticatedUser<T>(userId: string, fn: () => Promise<T>): Promise<T> {
@@ -53,6 +61,21 @@ async function asAuthenticatedUser<T>(userId: string, fn: () => Promise<T>): Pro
     await client.query("select set_config('request.jwt.claim.role', 'authenticated', true)");
     const value = await fn();
     await client.query('rollback');
+    return value;
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  }
+}
+
+async function asAuthenticatedUserCommitted<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+  await client.query('begin');
+  try {
+    await client.query('set local role authenticated');
+    await client.query("select set_config('request.jwt.claim.sub', $1, true)", [userId]);
+    await client.query("select set_config('request.jwt.claim.role', 'authenticated', true)");
+    const value = await fn();
+    await client.query('commit');
     return value;
   } catch (error) {
     await client.query('rollback');
@@ -74,6 +97,10 @@ async function expectBlocked(key: string, fn: () => Promise<unknown>) {
       message.includes('permission denied') ||
       message.includes('violates row-level security') ||
       message.includes('AUTH_REQUIRED') ||
+      message.includes('STUDENT_ID_MISMATCH') ||
+      message.includes('CROSS_STUDENT_QUOTE_ACCESS_DENIED') ||
+      message.includes('IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST') ||
+      message.includes('SLOT_NO_LONGER_AVAILABLE') ||
       message.includes('REVIEW_REQUIRES_COMPLETED_BOOKING') ||
       message.includes('REVIEW_RATING_OUT_OF_RANGE') ||
       message.includes('ANALYTICS_PROPERTIES_CONTAIN_SENSITIVE_KEY') ||
@@ -84,6 +111,13 @@ async function expectBlocked(key: string, fn: () => Promise<unknown>) {
     }
     throw error;
   }
+}
+
+async function setAuthenticatedSession(targetClient: any, userId: string) {
+  await targetClient.query('begin');
+  await targetClient.query('set local role authenticated');
+  await targetClient.query("select set_config('request.jwt.claim.sub', $1, true)", [userId]);
+  await targetClient.query("select set_config('request.jwt.claim.role', 'authenticated', true)");
 }
 
 async function findTwoStudents(): Promise<[string, string]> {
@@ -165,8 +199,17 @@ async function findBookingPair(studentA: string, studentB: string) {
   return null;
 }
 
-async function createTemporaryBooking(studentId: string): Promise<string | null> {
-  const context = await client.query(`
+interface OfferingContext {
+  offering_id: string;
+  provider_id: string;
+  instructor_id: string;
+  vehicle_id: string;
+  price_in_cents: number;
+  duration_minutes: number;
+}
+
+async function getActiveOfferingContext(): Promise<OfferingContext | null> {
+  const { rows } = await client.query(`
     select
       so.id as offering_id,
       so.provider_id,
@@ -186,16 +229,127 @@ async function createTemporaryBooking(studentId: string): Promise<string | null>
     limit 1
   `);
 
-  if (!context.rows.length) {
+  return rows[0] ?? null;
+}
+
+function buildFutureSlot(offsetMinutes: number, durationMinutes: number) {
+  const start = new Date(Date.UTC(2036, 0, 1, 8, offsetMinutes, 0));
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+  return { start, end };
+}
+
+async function createTemporaryQuote(
+  studentId: string,
+  context: OfferingContext,
+  scheduledStartAt: Date,
+  scheduledEndAt: Date,
+): Promise<string> {
+  const price = Number(context.price_in_cents);
+  const platformFee = Math.round(price * 0.1);
+  const total = price + platformFee;
+  const { rows } = await client.query(
+    `
+      insert into public.quotes (
+        student_id,
+        provider_id,
+        instructor_id,
+        vehicle_id,
+        offering_id,
+        scheduled_start_at,
+        scheduled_end_at,
+        price_in_cents,
+        platform_fee_in_cents,
+        total_in_cents,
+        expires_at,
+        status,
+        idempotency_key
+      )
+      values (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        now() + interval '30 minutes',
+        'ACTIVE',
+        $11
+      )
+      returning id
+    `,
+    [
+      studentId,
+      context.provider_id,
+      context.instructor_id,
+      context.vehicle_id,
+      context.offering_id,
+      scheduledStartAt.toISOString(),
+      scheduledEndAt.toISOString(),
+      price,
+      platformFee,
+      total,
+      `${prefix}_quote_${temporaryQuoteIds.length + 1}`,
+    ],
+  );
+
+  const quoteId = rows[0].id;
+  temporaryQuoteIds.push(quoteId);
+  return quoteId;
+}
+
+async function createBookingHoldCommitted(userId: string, quoteId: string, studentIdParam: string, idempotencyKey: string) {
+  return asAuthenticatedUserCommitted(userId, async () => {
+    const { rows } = await client.query(
+      'select public.create_booking_hold($1, $2, $3, 10) as result',
+      [quoteId, studentIdParam, idempotencyKey],
+    );
+    const value = rows[0].result;
+    if (value?.booking_id) temporaryBookingIds.push(value.booking_id);
+    return value;
+  });
+}
+
+async function createBookingHoldWithNewClient(userId: string, quoteId: string, studentIdParam: string, idempotencyKey: string) {
+  const raceClient = new Client({
+    connectionString: databaseUrl,
+    ssl: { rejectUnauthorized: false },
+  });
+
+  await raceClient.connect();
+  try {
+    await setAuthenticatedSession(raceClient, userId);
+    const { rows } = await raceClient.query(
+      'select public.create_booking_hold($1, $2, $3, 10) as result',
+      [quoteId, studentIdParam, idempotencyKey],
+    );
+    await raceClient.query('commit');
+    const value = rows[0].result;
+    if (value?.booking_id) temporaryBookingIds.push(value.booking_id);
+    return value;
+  } catch (error) {
+    await raceClient.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    await raceClient.end();
+  }
+}
+
+async function createTemporaryBooking(studentId: string): Promise<string | null> {
+  const context = await getActiveOfferingContext();
+
+  if (!context) {
     return null;
   }
 
-  const row = context.rows[0];
   const minuteOffset = Math.floor(Date.now() / 1000) % 100000;
   const start = new Date(Date.UTC(2035, 0, 1, 8, 0 + minuteOffset, 0));
-  const end = new Date(start.getTime() + Number(row.duration_minutes) * 60 * 1000);
-  const platformFee = Math.round(Number(row.price_in_cents) * 0.1);
-  const total = Number(row.price_in_cents) + platformFee;
+  const end = new Date(start.getTime() + Number(context.duration_minutes) * 60 * 1000);
+  const platformFee = Math.round(Number(context.price_in_cents) * 0.1);
+  const total = Number(context.price_in_cents) + platformFee;
 
   const inserted = await client.query(
     `
@@ -233,14 +387,14 @@ async function createTemporaryBooking(studentId: string): Promise<string | null>
     `,
     [
       studentId,
-      row.provider_id,
-      row.instructor_id,
-      row.vehicle_id,
-      row.offering_id,
+      context.provider_id,
+      context.instructor_id,
+      context.vehicle_id,
+      context.offering_id,
       start.toISOString(),
       end.toISOString(),
       JSON.stringify({ name: 'Sprint 15 security gate' }),
-      row.price_in_cents,
+      context.price_in_cents,
       platformFee,
       total,
       JSON.stringify({ source: prefix }),
@@ -275,9 +429,67 @@ async function cleanup() {
       [temporaryBookingIds],
     );
     await client.query('delete from public.conversations where booking_id = any($1::uuid[])', [temporaryBookingIds]);
+    await client.query('delete from public.audit_logs where entity_id::text = any($1::text[])', [temporaryBookingIds]);
     await client.query('delete from public.payments where booking_id = any($1::uuid[])', [temporaryBookingIds]);
     await client.query('delete from public.bookings where id = any($1::uuid[])', [temporaryBookingIds]);
   }
+  if (temporaryQuoteIds.length > 0) {
+    await client.query(
+      `
+        delete from public.audit_logs
+        where new_value ->> 'quote_id' = any($1::text[])
+      `,
+      [temporaryQuoteIds],
+    );
+    await client.query('delete from public.quotes where id = any($1::uuid[])', [temporaryQuoteIds]);
+  }
+  await client.query(
+    `
+      delete from public.messages
+      where conversation_id in (
+        select c.id
+        from public.conversations c
+        join public.bookings b on b.id = c.booking_id
+        where b.idempotency_key like 'sprint15_%'
+      )
+    `,
+  );
+  await client.query(
+    `
+      delete from public.notifications
+      where entity_id in (
+        select c.id
+        from public.conversations c
+        join public.bookings b on b.id = c.booking_id
+        where b.idempotency_key like 'sprint15_%'
+      )
+      or entity_id in (
+        select b.id
+        from public.bookings b
+        where b.idempotency_key like 'sprint15_%'
+      )
+    `,
+  );
+  await client.query(
+    `
+      delete from public.conversations
+      where booking_id in (
+        select id from public.bookings where idempotency_key like 'sprint15_%'
+      )
+    `,
+  );
+  await client.query(
+    `
+      delete from public.payments
+      where booking_id in (
+        select id from public.bookings where idempotency_key like 'sprint15_%'
+      )
+    `,
+  );
+  await client.query("delete from public.audit_logs where entity_id::text in (select id::text from public.bookings where idempotency_key like 'sprint15_%')");
+  await client.query("delete from public.bookings where idempotency_key like 'sprint15_%'");
+  await client.query("delete from public.audit_logs where new_value ->> 'quote_id' in (select id::text from public.quotes where idempotency_key like 'sprint15_%')");
+  await client.query("delete from public.quotes where idempotency_key like 'sprint15_%'");
   await client.query('delete from public.notifications where body like $1 or title like $1', [`%${prefix}%`]);
   await client.query('delete from public.users where email like $1', [`${prefix}.%`]);
 }
@@ -286,7 +498,7 @@ async function main() {
   await client.connect();
 
   try {
-    await applySprint15Migration();
+    await applySprint15Migrations();
     pass('MIGRATION_APPLIED');
 
     const advisorChecks = await client.query(`
@@ -339,6 +551,97 @@ async function main() {
     const [studentA, studentB] = await findTwoStudents();
     result.STUDENT_A = studentA;
     result.STUDENT_B = studentB;
+
+    const offeringContext = await getActiveOfferingContext();
+    if (!offeringContext) {
+      throw new Error('NO_ACTIVE_OFFERING_CONTEXT_FOR_BOOKING_HOTFIX_TESTS');
+    }
+
+    const spoofSlot = buildFutureSlot(10_000 + Math.floor(Date.now() / 1000) % 1000, Number(offeringContext.duration_minutes));
+    const quoteStudentA = await createTemporaryQuote(studentA, offeringContext, spoofSlot.start, spoofSlot.end);
+    const quoteStudentB = await createTemporaryQuote(studentB, offeringContext, new Date(spoofSlot.start.getTime() + 2 * 60 * 60 * 1000), new Date(spoofSlot.end.getTime() + 2 * 60 * 60 * 1000));
+
+    await expectBlocked('BOOKING_STUDENT_ID_SPOOF_QUOTE_B_PARAM_B_BLOCKED', () =>
+      asAuthenticatedUser(studentA, async () =>
+        client.query('select public.create_booking_hold($1, $2, $3, 10)', [quoteStudentB, studentB, `${prefix}_spoof_quote_b`]),
+      ),
+    );
+
+    await expectBlocked('BOOKING_STUDENT_ID_SPOOF_QUOTE_A_PARAM_B_BLOCKED', () =>
+      asAuthenticatedUser(studentA, async () =>
+        client.query('select public.create_booking_hold($1, $2, $3, 10)', [quoteStudentA, studentB, `${prefix}_spoof_param_b`]),
+      ),
+    );
+
+    const bookingHold = await createBookingHoldCommitted(studentA, quoteStudentA, studentA, `${prefix}_valid_hold`);
+    if (bookingHold?.success === true && bookingHold?.booking_id) pass('BOOKING_STUDENT_ID_SPOOF_VALID_SELF_PASS');
+    else result.BOOKING_STUDENT_ID_SPOOF_VALID_SELF_PASS = 'BLOCKED';
+
+    if (
+      result.BOOKING_STUDENT_ID_SPOOF_QUOTE_B_PARAM_B_BLOCKED === 'PASS' &&
+      result.BOOKING_STUDENT_ID_SPOOF_QUOTE_A_PARAM_B_BLOCKED === 'PASS' &&
+      result.BOOKING_STUDENT_ID_SPOOF_VALID_SELF_PASS === 'PASS'
+    ) {
+      pass('BOOKING_STUDENT_ID_SPOOF_TEST');
+    } else {
+      result.BOOKING_STUDENT_ID_SPOOF_TEST = 'BLOCKED';
+    }
+
+    const idempotencySlot = buildFutureSlot(12_000 + Math.floor(Date.now() / 1000) % 1000, Number(offeringContext.duration_minutes));
+    const quoteIdemA = await createTemporaryQuote(studentA, offeringContext, idempotencySlot.start, idempotencySlot.end);
+    const quoteIdemB = await createTemporaryQuote(studentA, offeringContext, new Date(idempotencySlot.start.getTime() + 2 * 60 * 60 * 1000), new Date(idempotencySlot.end.getTime() + 2 * 60 * 60 * 1000));
+    const idemKey = `${prefix}_idempotency`;
+    const idemFirst = await createBookingHoldCommitted(studentA, quoteIdemA, studentA, idemKey);
+    const idemSecond = await createBookingHoldCommitted(studentA, quoteIdemA, studentA, idemKey);
+    await expectBlocked('BOOKING_IDEMPOTENCY_DIFFERENT_QUOTE_BLOCKED', () =>
+      asAuthenticatedUser(studentA, async () =>
+        client.query('select public.create_booking_hold($1, $2, $3, 10)', [quoteIdemB, studentA, idemKey]),
+      ),
+    );
+    if (
+      idemFirst?.booking_id &&
+      idemSecond?.booking_id === idemFirst.booking_id &&
+      idemSecond?.is_idempotent === true &&
+      result.BOOKING_IDEMPOTENCY_DIFFERENT_QUOTE_BLOCKED === 'PASS'
+    ) {
+      pass('BOOKING_IDEMPOTENCY');
+    } else {
+      result.BOOKING_IDEMPOTENCY = 'BLOCKED';
+    }
+
+    const raceSlot = buildFutureSlot(14_000 + Math.floor(Date.now() / 1000) % 1000, Number(offeringContext.duration_minutes));
+    const quoteRaceA = await createTemporaryQuote(studentA, offeringContext, raceSlot.start, raceSlot.end);
+    const quoteRaceB = await createTemporaryQuote(studentB, offeringContext, raceSlot.start, raceSlot.end);
+    const raceResults = await Promise.allSettled([
+      createBookingHoldWithNewClient(studentA, quoteRaceA, studentA, `${prefix}_race_a`),
+      createBookingHoldWithNewClient(studentB, quoteRaceB, studentB, `${prefix}_race_b`),
+    ]);
+    const winners = raceResults.filter((raceResult) => raceResult.status === 'fulfilled').length;
+    const losers = raceResults.filter((raceResult) => raceResult.status === 'rejected').length;
+    const activeAfterRace = await client.query(
+      `
+        select count(*)::int as count
+        from public.bookings
+        where provider_id = $1
+          and instructor_id = $2
+          and vehicle_id = $3
+          and scheduled_start_at = $4
+          and scheduled_end_at = $5
+          and status::text in ('PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS')
+      `,
+      [
+        offeringContext.provider_id,
+        offeringContext.instructor_id,
+        offeringContext.vehicle_id,
+        raceSlot.start.toISOString(),
+        raceSlot.end.toISOString(),
+      ],
+    );
+    result.BOOKING_CONCURRENCY_WINNERS = winners;
+    result.BOOKING_CONCURRENCY_LOSERS = losers;
+    result.ACTIVE_BOOKINGS_AFTER_RACE = Number(activeAfterRace.rows[0].count);
+    if (winners === 1 && losers === 1 && Number(activeAfterRace.rows[0].count) === 1) pass('BOOKING_CONCURRENCY');
+    else result.BOOKING_CONCURRENCY = `BLOCKED: ${JSON.stringify(raceResults)}`;
 
     const directVehicleAsStudent = await asAuthenticatedUser(studentA, async () =>
       client.query('select id, license_plate, renavam from public.vehicles limit 5'),

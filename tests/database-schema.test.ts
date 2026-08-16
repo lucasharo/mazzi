@@ -22,6 +22,7 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
   const migration13Path = path.resolve(__dirname, '../supabase/migrations/20260815000013_chat_reviews_notifications.sql');
   const migration14Path = path.resolve(__dirname, '../supabase/migrations/20260815000014_sprint14_analytics.sql');
   const migration15Path = path.resolve(__dirname, '../supabase/migrations/20260815000015_sprint15_security_hardening.sql');
+  const migration16Path = path.resolve(__dirname, '../supabase/migrations/20260815000016_sprint15_booking_identity_concurrency_hotfix.sql');
   const seedPath = path.resolve(__dirname, '../supabase/seed.sql');
 
   it('[SCHEMA TEST] verifies that initial schema migration file exists and is populated', () => {
@@ -245,6 +246,25 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql15).toContain('create index if not exists idx_bookings_offering_id');
     expect(sql15).toContain('create index if not exists idx_quotes_provider_id');
     expect(sql15).toContain('create index if not exists idx_compliance_documents_provider_id');
+  });
+
+  it('[SCHEMA TEST] verifies SPRINT 15 hotfix binds booking holds to auth.uid()', () => {
+    expect(fs.existsSync(migration16Path)).toBe(true);
+    const sql16 = fs.readFileSync(migration16Path, 'utf8');
+
+    expect(sql16).toContain('create or replace function public.create_booking_hold');
+    expect(sql16).toContain('v_student_id uuid := auth.uid()');
+    expect(sql16).toContain("raise exception 'AUTH_REQUIRED'");
+    expect(sql16).toContain("raise exception 'STUDENT_ID_MISMATCH'");
+    expect(sql16).toContain('p_student_id is distinct from v_student_id');
+    expect(sql16).toContain('v_quote.student_id is distinct from v_student_id');
+    expect(sql16).toContain('student_id = v_student_id');
+    expect(sql16).toContain('v_student_id,');
+    expect(sql16).toContain("raise exception 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST'");
+    expect(sql16).toContain("raise exception 'SLOT_NO_LONGER_AVAILABLE'");
+    expect(sql16).toContain('revoke all on function public.create_booking_hold(uuid, uuid, varchar, int) from anon');
+    expect(sql16).toContain('grant execute on function public.create_booking_hold(uuid, uuid, varchar, int) to authenticated, service_role');
+    expect(sql16).not.toContain('WHERE idempotency_key = p_idempotency_key AND student_id = p_student_id');
   });
 
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
