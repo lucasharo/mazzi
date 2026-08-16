@@ -755,7 +755,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               variant="secondary"
               size="md"
               className="w-full"
-              onClick={onClose}
+              onClick={() => {
+                onClose();
+                onGoToBookings?.();
+              }}
             >
               Ver Minhas Aulas
             </Button>

@@ -132,9 +132,12 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
           </div>
         )}
 
-        <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+          <p className="text-sm font-black capitalize text-slate-800">
           {selectedDate ? formatDateOnly(selectedDate, { month: 'long', year: 'numeric' }) : formatDateOnly(fromDate, { month: 'long', year: 'numeric' })}
-        </p>
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Selecione um dia abaixo</p>
+        </div>
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 max-h-64 overflow-y-auto pr-1">
           {dates.map((date) => {
             const available = (slotsByDate[date] || []).length > 0;
