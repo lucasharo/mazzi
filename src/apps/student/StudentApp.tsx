@@ -288,7 +288,12 @@ export const StudentApp: React.FC = () => {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(providerId)) return;
 
-      rawProv = dbProviders.find((p) => p.id === providerId);
+      // In the real flow providers are sourced from the public search RPC. The
+      // legacy dbProviders collection can still be empty while that request is
+      // being committed, so resolve from the rendered search result as well.
+      const publicResult = realSearchResponse?.results.find((result) => result.providerId === providerId);
+      rawProv = dbProviders.find((p) => p.id === providerId)
+        || (publicResult ? mapPublicResultToProvider(publicResult) : undefined);
       
       try {
         const bookingContexts = await dbService.getProviderBookingContextPublic(providerId);
