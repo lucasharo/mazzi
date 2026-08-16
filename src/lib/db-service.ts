@@ -42,6 +42,8 @@ export function mapUserFromDb(row: any): User | null {
 }
 
 export function mapProviderFromDb(row: any): Provider {
+  const categories = Array.isArray(row.categories) ? row.categories.filter(Boolean) : [];
+  const transmissions = Array.isArray(row.transmissions) ? row.transmissions.filter(Boolean) : [];
   return {
     id: row.id,
     userId: row.user_id || undefined,
@@ -51,15 +53,15 @@ export function mapProviderFromDb(row: any): Provider {
     phone: row.phone || undefined,
     type: row.type,
     status: row.status,
-    ratingAverage: Number(row.rating_average || 0),
-    ratingCount: Number(row.rating_count || 0),
-    neighborhood: row.neighborhood || 'São Paulo',
-    city: row.city || 'São Paulo',
-    state: row.state || 'SP',
+    ratingAverage: row.rating_average == null ? 0 : Number(row.rating_average),
+    ratingCount: row.rating_count == null ? 0 : Number(row.rating_count),
+    neighborhood: row.neighborhood || '',
+    city: row.city || '',
+    state: row.state || undefined,
     serviceRadiusKm: row.service_radius_km || 5,
-    categories: ['B'], // Default mapped category
-    transmissions: ['MANUAL'], // Default mapped transmission
-    startingPriceInCents: 9500, // Standard price
+    categories,
+    transmissions,
+    startingPriceInCents: row.starting_price_in_cents == null ? 0 : Number(row.starting_price_in_cents),
     isVerified: row.status === 'ACTIVE',
   };
 }
@@ -374,22 +376,20 @@ export const dbService = {
 
     return (data || []).map((row: any) => ({
       id: row.provider_id,
-      userId: row.provider_id,
       name: row.display_name,
-      legalName: row.display_name,
-      documentNumber: '00000000000100',
       type: row.provider_type as any,
       status: row.is_verified ? 'ACTIVE' : 'PENDING',
-      ratingAverage: Number(row.rating_average) || 5.0,
-      ratingCount: Number(row.rating_count) || 0,
-      avatarUrl: row.avatar_url || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
-      neighborhood: row.neighborhood || 'Centro',
-      city: row.city || 'São Paulo',
+      ratingAverage: row.rating_average == null ? 0 : Number(row.rating_average),
+      ratingCount: row.rating_count == null ? 0 : Number(row.rating_count),
+      avatarUrl: row.avatar_url || undefined,
+      neighborhood: row.neighborhood || '',
+      city: row.city || '',
       publicLatitude: row.public_latitude,
       publicLongitude: row.public_longitude,
       publicMapLocationType: row.public_map_location_type || 'APPROXIMATE',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      categories: [],
+      transmissions: [],
+      startingPriceInCents: row.starting_price_in_cents == null ? 0 : Number(row.starting_price_in_cents),
     }));
   },
 

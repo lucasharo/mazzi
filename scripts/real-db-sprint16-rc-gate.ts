@@ -180,6 +180,22 @@ function runStaticRcChecks() {
   } catch (error) {
     fail('MIGRATION_SEQUENCE', error);
   }
+
+  try {
+    const dbService = read('src/lib/db-service.ts');
+    const releaseDocs = read('docs/17-release-candidate.md');
+    assert(!dbService.includes("documentNumber: '00000000000100'"), 'public search must not fabricate document numbers');
+    assert(!dbService.includes('ratingAverage: Number(row.rating_average) || 5.0'), 'public search must preserve real zero ratings');
+    assert(!dbService.includes('images.unsplash.com'), 'public search must not fabricate avatars');
+    assert(!dbService.includes('startingPriceInCents: 9500'), 'provider mapper must not fabricate prices');
+    assert(releaseDocs.includes('OpenStreetMap/Leaflet'), 'release docs must match the actual map stack');
+    assert(!releaseDocs.includes('Google Maps'), 'release docs must not claim Google Maps');
+    pass('RUNTIME_MOCK_AUDIT');
+    pass('MAP_STACK_DOCUMENTATION');
+  } catch (error) {
+    fail('RUNTIME_MOCK_AUDIT', error);
+    fail('MAP_STACK_DOCUMENTATION', error);
+  }
 }
 
 async function runReadOnlyDbChecks() {
@@ -189,6 +205,10 @@ async function runReadOnlyDbChecks() {
     skipped('ACTIVE_BOOKING_OVERLAPS', 'DATABASE_URL missing');
     skipped('TEMP_TEST_DATA', 'DATABASE_URL missing');
     skipped('MIGRATION_DRIFT', 'DATABASE_URL missing');
+    skipped('SEARCH_REAL_PRICE_GATE', 'DATABASE_URL missing');
+    skipped('MAX_PRICE_FILTER_GATE', 'DATABASE_URL missing');
+    skipped('MAX_PRICE_EXCLUDED_PROVIDER_TEST', 'DATABASE_URL missing');
+    skipped('MAX_PRICE_INCLUDED_PROVIDER_TEST', 'DATABASE_URL missing');
     return;
   }
 
@@ -239,6 +259,49 @@ async function runReadOnlyDbChecks() {
     `);
     assert(rpcChecks.rowCount >= 5, 'required RPC functions are missing');
     pass('MIGRATION_DRIFT');
+
+    const searchRows = await client.query(`
+      select *
+      from public.search_providers_public($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `, [-23.5505, -46.6333, 100000, null, 'ALL', 'ALL', 0, null, 1000, 0]);
+    const eligible = await client.query(`
+      select o.provider_id, min(o.price_in_cents)::int as starting_price_in_cents
+      from public.service_offerings o
+      join public.vehicles v
+        on v.id = o.vehicle_id
+       and v.provider_id = o.provider_id
+       and v.status = 'ACTIVE'
+       and v.deleted_at is null
+       and v.category = o.category
+       and v.transmission = o.transmission
+      join public.providers p on p.id = o.provider_id and p.status = 'ACTIVE'
+      where o.is_active = true and o.status = 'ACTIVE'
+      group by o.provider_id
+      order by o.provider_id
+    `);
+    const expected = new Map<string, number>(eligible.rows.map((row) => [String(row.provider_id), Number(row.starting_price_in_cents)]));
+    const mismatches = searchRows.rows.filter((row) => expected.get(String(row.provider_id)) !== Number(row.starting_price_in_cents));
+    assert(mismatches.length === 0, `search price mismatches: ${mismatches.map((row) => row.provider_id).join(', ')}`);
+    assert(searchRows.rows.length > 0, 'search returned no real providers');
+    assert(new Set(searchRows.rows.map((row) => Number(row.starting_price_in_cents))).size > 1, 'dataset does not contain distinct provider prices');
+    pass('SEARCH_REAL_PRICE_GATE');
+    result.SEARCH_REAL_PRICE_MISMATCHES = mismatches.length;
+
+    const ordered = [...searchRows.rows].sort((a, b) => Number(a.starting_price_in_cents) - Number(b.starting_price_in_cents));
+    const cheap = ordered[0];
+    const expensive = ordered[ordered.length - 1];
+    const threshold = Math.floor((Number(cheap.starting_price_in_cents) + Number(expensive.starting_price_in_cents)) / 2);
+    assert(Number(cheap.starting_price_in_cents) < Number(expensive.starting_price_in_cents), 'unable to construct max price threshold');
+    const filtered = await client.query(`
+      select *
+      from public.search_providers_public($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `, [-23.5505, -46.6333, 100000, null, 'ALL', 'ALL', 0, threshold, 1000, 0]);
+    const filteredIds = new Set(filtered.rows.map((row) => String(row.provider_id)));
+    assert(!filteredIds.has(String(expensive.provider_id)), 'max price filter returned an over-threshold provider');
+    assert(filteredIds.has(String(cheap.provider_id)), 'max price filter excluded an eligible provider');
+    pass('MAX_PRICE_FILTER_GATE');
+    pass('MAX_PRICE_EXCLUDED_PROVIDER_TEST');
+    pass('MAX_PRICE_INCLUDED_PROVIDER_TEST');
   } finally {
     await client.end();
   }
