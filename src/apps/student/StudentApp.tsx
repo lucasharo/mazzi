@@ -445,7 +445,7 @@ export const StudentApp: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-extrabold text-slate-900 text-sm">
-                            {formatDateBR(next.scheduledDate)} às {next.startTime}
+                             {next.scheduledStartAt ? formatDateBR(next.scheduledStartAt) : next.scheduledDate} às {next.startTime}
                           </p>
                           <p className="text-xs text-slate-600 mt-0.5">
                             {next.instructorName} • {next.vehicleName}

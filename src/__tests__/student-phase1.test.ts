@@ -6,6 +6,7 @@ import { mapBookingFromDb } from '../lib/db-service';
 describe('Student Experience Phase 1 formatters', () => {
   it('formats date-only values without UTC day shifting', () => {
     expect(formatDateBR('2026-08-25')).toBe('25/08/2026');
+    expect(formatDateBR('24/08/2026')).toBe('24/08/2026');
   });
 
   it('formats timestamptz values in America/Sao_Paulo', () => {

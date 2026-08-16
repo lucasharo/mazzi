@@ -69,7 +69,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2">
           <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
             <Calendar className="w-4 h-4 text-amber-500" />
-            <span>Data: {formatDateBR(booking.scheduledDate)}</span>
+            <span>Data: {booking.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : booking.scheduledDate}</span>
           </div>
           <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
             <Clock className="w-4 h-4 text-slate-400" />

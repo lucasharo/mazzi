@@ -8,7 +8,14 @@ function isDateOnly(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+function isBrazilianDate(value: string): boolean {
+  return /^\d{2}\/\d{2}\/\d{4}$/.test(value);
+}
+
 export function formatDateBR(value: string | Date): string {
+  if (typeof value === 'string' && isBrazilianDate(value)) {
+    return value;
+  }
   if (typeof value === 'string' && isDateOnly(value)) {
     const [year, month, day] = value.split('-');
     return `${day}/${month}/${year}`;
