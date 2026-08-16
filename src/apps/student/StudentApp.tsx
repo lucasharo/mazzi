@@ -4,16 +4,12 @@ import {
   MapPin,
   Calendar as CalendarIcon,
   Clock,
-  Car,
-  Bike,
   Filter,
   CheckCircle2,
-  ChevronRight,
   ShieldCheck,
   Building2,
   User,
   SlidersHorizontal,
-  Navigation,
   MessageSquare,
   Sparkles,
   Map,
@@ -33,10 +29,8 @@ import {
   ServiceOffering,
 } from '../../types';
 import { MOCK_PROVIDERS, MOCK_BOOKINGS, MOCK_VEHICLES, MOCK_OFFERINGS } from '../../data/mockData';
-import { ProviderCard } from '../../components/ui/ProviderCard';
 import { BookingCard } from '../../components/ui/BookingCard';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Price } from '../../components/ui/Price';
 import { formatCentsToBRL } from '../../domain/money';
@@ -419,149 +413,6 @@ export const StudentApp: React.FC = () => {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto pb-24 text-left">
-          {/* HOME TAB */}
-          {false && (
-            <div className="p-4 space-y-4">
-              {/* Hero Search Card - 99 Style Yellow Highlight */}
-              <div className="bg-amber-400 text-slate-950 p-5 rounded-3xl shadow-sm relative overflow-hidden">
-                <div className="relative z-10">
-                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-slate-950 text-amber-400 text-[10px] font-extrabold uppercase tracking-wider mb-2">
-                    Aulas Práticas de Direção
-                  </span>
-                  <h1 className="text-2xl font-black leading-tight tracking-tight text-slate-950">
-                    Encontre. Agende. Dirija.
-                  </h1>
-                  <p className="text-xs font-bold text-slate-800 mt-1">
-                    Instrutores credenciados e autoescolas com aprovação garantida.
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-amber-500/60 flex items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => setActiveTab('search')}
-                    rightIcon={<Search className="w-4 h-4 text-amber-400" />}
-                  >
-                    Buscar por Bairro, CEP ou Cidade
-                  </Button>
-                </div>
-              </div>
-
-              {/* Next Upcoming Booking Widget */}
-              {upcomingBookings.length > 0 && (
-                <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-amber-500" />
-                      Próxima Aula Agendada
-                    </span>
-                    <Badge variant="primary" size="sm">
-                      {upcomingBookings[0].status === 'CONFIRMED' ? 'Confirmada' : 'Aguardando Pagamento'}
-                    </Badge>
-                  </div>
-                  {(() => {
-                    const next = upcomingBookings[0];
-                    return (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-extrabold text-slate-900 text-sm">
-                             {next.scheduledStartAt ? formatDateBR(next.scheduledStartAt) : next.scheduledDate} às {next.startTime}
-                          </p>
-                          <p className="text-xs text-slate-600 mt-0.5">
-                            {next.instructorName} • {next.vehicleName}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedBookingForDetails(next);
-                          }}
-                        >
-                          Detalhes
-                        </Button>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {/* Category Quick Selector */}
-              <div>
-                <div className="flex items-center justify-between mb-2.5 px-1">
-                  <h3 className="font-bold text-slate-900 text-sm">Qual categoria você procura?</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleUpdateSearch({ category: 'B' });
-                      setActiveTab('search');
-                    }}
-                    className={`p-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
-                      searchRequest.category === 'B'
-                        ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/30'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div>
-                      <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center mb-2">
-                        <Car className="w-5 h-5" />
-                      </div>
-                      <span className="font-extrabold text-slate-900 text-sm block">Carro</span>
-                      <span className="text-[11px] text-slate-500">Categoria B</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled
-                    title="Categoria A fica preparada para versão futura; o MVP atual agenda apenas Categoria B."
-                    className="p-4 rounded-2xl border text-left transition flex items-center justify-between cursor-not-allowed border-slate-200 bg-slate-50 opacity-70"
-                  >
-                    <div>
-                      <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center mb-2">
-                        <Bike className="w-5 h-5" />
-                      </div>
-                      <span className="font-extrabold text-slate-900 text-sm block">Moto</span>
-                      <span className="text-[11px] text-slate-500">Categoria A — em breve</span>
-                    </div>
-                    <Badge variant="neutral" size="sm">Futuro</Badge>
-                  </button>
-                </div>
-              </div>
-
-              {/* Featured Providers */}
-              <div>
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm">Instrutores e CFCs disponíveis</h3>
-                    <p className="text-xs text-slate-500">Categoria B em São Paulo, carregados do Supabase</p>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab('search')}
-                    className="text-xs font-bold text-amber-600 hover:text-amber-700 cursor-pointer"
-                  >
-                    Ver busca ({isRealSupabase ? dbProviders.length : MOCK_PROVIDERS.length})
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {(isRealSupabase ? dbProviders : MOCK_PROVIDERS).slice(0, 10).map((prov) => (
-                    <ProviderCard
-                      key={prov.id}
-                      provider={prov}
-                      onSelect={handleOpenCheckoutByProvider}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* SEARCH TAB */}
           {activeTab === 'search' && (
             <div className="p-4 space-y-4">

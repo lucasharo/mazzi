@@ -11,12 +11,11 @@ describe('Student booking context vehicle mapping', () => {
     expect(studentAppSource).toContain("status: ctx.vehicle_status || 'ACTIVE'");
   });
 
-  it('keeps the MVP student home focused on Category B instead of hiding results behind Category A', () => {
+  it('uses Search as the single student discovery surface', () => {
     expect(studentAppSource).toContain("category: 'B'");
-    expect(studentAppSource).toContain('Categoria A — em breve');
-    expect(studentAppSource).toContain('disabled');
-    expect(studentAppSource).not.toContain("handleUpdateSearch({ category: 'A' })");
-    expect(studentAppSource).not.toContain('.slice(0, 2).map((prov) => (');
-    expect(studentAppSource).toContain('.slice(0, 10).map((prov) => (');
+    expect(studentAppSource).toContain("useState<'search' | 'bookings' | 'messages' | 'profile'>('search')");
+    expect(studentAppSource).toContain('aria-label="Navegação principal"');
+    expect(studentAppSource).not.toContain("id: 'home'");
+    expect(studentAppSource).not.toContain('ProviderCard');
   });
 });
