@@ -16,6 +16,7 @@ export interface MapViewProps {
   onSelectProvider: (providerId: string) => void;
   height?: string;
   showCoverageRadius?: boolean;
+  userLocation?: { lat: number; lng: number };
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -24,6 +25,7 @@ export const MapView: React.FC<MapViewProps> = ({
   onSelectProvider,
   height = '380px',
   showCoverageRadius = true,
+  userLocation,
 }) => {
   const activeTile = getActiveMapTileProvider();
   const [showRadius, setShowRadius] = useState(showCoverageRadius);
@@ -105,6 +107,7 @@ export const MapView: React.FC<MapViewProps> = ({
         onSelectProvider={(p) => onSelectProvider(p.id)}
         height={height}
         showCoverageRadius={showRadius}
+        userLocation={userLocation}
       />
 
       <p className="text-[10px] text-slate-400 text-center flex items-center justify-center gap-1">

@@ -46,8 +46,8 @@ function AppContent() {
           </span>
         </div>
 
-        {/* View & Auth Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+        {/* View & Auth Switcher (hidden for authenticated student accounts) */}
+        {!isStudentAccount && <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
           {(!isAuthenticated || isStudentAccount) && <button
             type="button"
             onClick={() => {
@@ -121,16 +121,17 @@ function AppContent() {
             <Palette className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Design System</span>
           </button>}
-        </div>
+        </div>}
 
         {/* Active Session Badge */}
         {user && (
-          <div className="hidden lg:flex items-center gap-2 text-xs bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-300">
+          <div className="flex items-center gap-2 text-xs bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-300">
             <UserCircle className="w-3.5 h-3.5 text-amber-400" />
             <span className="font-semibold">{user.email}</span>
             <span className="text-[10px] font-bold uppercase bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded">
               {user.roles[0]}
             </span>
+            <button type="button" onClick={() => { void logout(); setCurrentView('auth'); }} className="ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-rose-300 hover:bg-rose-950/60" aria-label="Sair"><LogOut className="w-3.5 h-3.5" /> Sair</button>
           </div>
         )}
       </div>

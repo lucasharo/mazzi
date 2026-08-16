@@ -236,6 +236,10 @@ export function mapNotificationFromDb(row: any): Notification {
 
 // DATABASE SERVICE OPERATIONS
 export const dbService = {
+  async updateMyProfile(name: string, phone: string): Promise<void> {
+    const { error } = await sp.rpc('update_my_profile', { p_name: name.trim(), p_phone: phone.trim() });
+    if (error) throw error;
+  },
   async getUsers(): Promise<User[]> {
     const { data, error } = await sp
       .from('users')

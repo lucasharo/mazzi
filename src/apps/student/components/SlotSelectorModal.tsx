@@ -108,6 +108,11 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
   }, [fetchSlots, isOpen]);
 
   const dates = useMemo(() => Array.from({ length: windowDays }, (_, index) => addDays(fromDate, index)), [fromDate, windowDays]);
+  const datesByMonth = useMemo(() => dates.reduce<Record<string, string[]>>((groups, date) => {
+    const key = date.slice(0, 7);
+    (groups[key] ||= []).push(date);
+    return groups;
+  }, {}), [dates]);
   const selectedSlots = selectedDate ? (slotsByDate[selectedDate] || []) : [];
   const groupedPeriods = selectedSlots.reduce<Record<string, PublicSlot[]>>((acc, slot) => {
     (acc[timePeriod(slot.local_start_time)] ||= []).push(slot);
@@ -138,8 +143,11 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
           </p>
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Selecione um dia abaixo</p>
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 max-h-64 overflow-y-auto pr-1">
-          {dates.map((date) => {
+        <div className="max-h-72 overflow-y-auto pr-1 space-y-4">
+          {(Object.entries(datesByMonth) as [string, string[]][]).map(([month, monthDates]) => <section key={month}>
+            <h4 className="mb-2 text-xs font-black capitalize text-slate-700">{formatDateOnly(`${month}-01`, { month: 'long', year: 'numeric' })}</h4>
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+            {monthDates.map((date) => {
             const available = (slotsByDate[date] || []).length > 0;
             return (
               <button key={date} type="button" disabled={!available} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? '' : ', indisponível'}`} className={`min-h-16 rounded-xl border p-2 text-center transition ${selectedDate === date ? 'border-amber-500 bg-amber-50 text-slate-950 ring-2 ring-amber-400/30' : available ? 'border-slate-200 bg-white hover:border-amber-300 text-slate-700' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'}`}>
@@ -148,7 +156,9 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
                 <span className="text-[9px] font-bold">{available ? `${slotsByDate[date].length}` : '—'}</span>
               </button>
             );
-          })}
+            })}
+            </div>
+          </section>)}
         </div>
 
         {windowDays < MAX_HORIZON_DAYS && (

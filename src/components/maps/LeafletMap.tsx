@@ -15,6 +15,7 @@ export interface LeafletMapProps {
   height?: string;
   showCoverageRadius?: boolean;
   meetingPoint?: { lat: number; lng: number; title: string };
+  userLocation?: { lat: number; lng: number };
   zoom?: number;
   interactive?: boolean;
 }
@@ -27,6 +28,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   height = '360px',
   showCoverageRadius = false,
   meetingPoint,
+  userLocation,
   zoom = 13,
   interactive = true,
 }) => {
@@ -191,7 +193,12 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       }));
       map.fitBounds(bounds, { padding: [32, 32], maxZoom: 13 });
     }
-  }, [providers, selectedProvider, showCoverageRadius, meetingPoint]);
+
+    if (userLocation) {
+      const userIcon = L.divIcon({ className: 'custom-mazzi-user-marker', html: '<div style="background:#2563EB;border:3px solid #fff;border-radius:9999px;width:18px;height:18px;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+      L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(group).bindPopup('Sua localização');
+    }
+  }, [providers, selectedProvider, showCoverageRadius, meetingPoint, userLocation]);
 
   return (
     <div

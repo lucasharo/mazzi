@@ -116,6 +116,26 @@ export const StudentApp: React.FC = () => {
   const [searchLocation, setSearchLocation] = useState('Pinheiros, São Paulo - SP');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude }),
+      () => undefined,
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+    );
+  }, []);
+
+  useEffect(() => {
+    setProfileName(user?.name || '');
+    setProfilePhone(user?.phone || '');
+  }, [user?.name, user?.phone]);
 
   // Live Supabase database state
   const [dbProviders, setDbProviders] = useState<Provider[]>([]);
@@ -525,6 +545,7 @@ export const StudentApp: React.FC = () => {
                     results={searchResponse?.results || []}
                     onSelectProvider={(id) => handleOpenCheckoutByProviderId(id)}
                     height="360px"
+                    userLocation={userLocation}
                   />
                   <div className="space-y-2">
                     {(searchResponse?.results || []).slice(0, 3).map((res) => (
@@ -736,6 +757,11 @@ export const StudentApp: React.FC = () => {
                     <p className="text-xs text-slate-400 mt-0.5">{user?.email || 'aluno01@mazzi.com.br'}</p>
                   </div>
                 </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between"><h4 className="font-bold text-slate-900 text-sm">Meu perfil</h4><Button variant="outline" size="sm" onClick={() => setIsEditingProfile((value) => !value)}>{isEditingProfile ? 'Cancelar' : 'Editar'}</Button></div>
+                {isEditingProfile ? <div className="space-y-2"><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Nome" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><input value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} placeholder="Telefone" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><Button variant="primary" size="sm" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone); setIsEditingProfile(false); } catch (error: any) { setProfileError(error?.message || 'Não foi possível salvar o perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>{profileError && <p className="text-xs text-rose-600">{profileError}</p>}</div> : <p className="text-xs text-slate-600">{user?.phone || 'Telefone não informado'}</p>}
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">

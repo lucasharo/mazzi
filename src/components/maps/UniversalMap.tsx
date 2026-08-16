@@ -12,6 +12,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
     className = '',
     showCoverageRadius = false,
     meetingPoint,
+    userLocation,
   } = props;
 
   const [showRadius, setShowRadius] = useState(showCoverageRadius);
@@ -54,6 +55,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
         height={height}
         showCoverageRadius={showRadius}
         meetingPoint={meetingPoint}
+        userLocation={userLocation}
       />
     </div>
   );

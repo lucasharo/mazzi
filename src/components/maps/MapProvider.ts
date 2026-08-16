@@ -20,6 +20,7 @@ export interface MapProviderProps {
   height?: string;
   showCoverageRadius?: boolean;
   meetingPoint?: MapMeetingPoint;
+  userLocation?: MapCoordinates;
   zoom?: number;
   interactive?: boolean;
 }
