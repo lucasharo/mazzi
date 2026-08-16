@@ -687,6 +687,102 @@ export interface Notification {
 }
 
 // ==========================================
+// MARKETPLACE ANALYTICS TYPES (SPRINT 14)
+// ==========================================
+
+export type AnalyticsPeriodPreset = 7 | 30 | 90;
+
+export type ProductAnalyticsEventName =
+  | 'PROVIDER_SEARCH'
+  | 'PROVIDER_PROFILE_VIEW'
+  | 'AVAILABLE_SLOTS_VIEW'
+  | 'CHECKOUT_STARTED';
+
+export interface AnalyticsPeriod {
+  from: string;
+  to: string;
+  timezone: 'America/Sao_Paulo';
+}
+
+export interface AdminAnalyticsSummary {
+  period: AnalyticsPeriod;
+  users: {
+    active_students: number;
+    active_instructor_users: number;
+    active_school_admin_users: number;
+    active_users_total: number;
+  };
+  supply: {
+    active_providers: number;
+    active_individual_providers: number;
+    active_driving_schools: number;
+    active_vehicles: number;
+    active_offerings: number;
+  };
+  bookings: {
+    created: number;
+    confirmed: number;
+    completed: number;
+    cancelled: number;
+    no_show: number;
+    expired: number;
+  };
+  funnel: {
+    quotes_created: number;
+    bookings_created: number;
+    payments_created: number;
+    payments_paid: number;
+    quote_to_booking_rate: number | null;
+    booking_to_paid_rate: number | null;
+  };
+  financial_dev: {
+    paid_volume_cents: number;
+    platform_fee_volume_cents: number;
+    refund_volume_cents: number;
+    payout_pending_cents: number;
+    payout_paid_cents: number;
+    label: string;
+  };
+  quality: {
+    reviews_created: number;
+    rating_average: number | null;
+  };
+  engagement: {
+    provider_searches: number;
+    provider_profile_views: number;
+    available_slots_views: number;
+    checkout_started: number;
+  };
+}
+
+export interface ProviderAnalyticsSummary {
+  period: AnalyticsPeriod;
+  provider_contexts: number;
+  bookings: {
+    created: number;
+    confirmed: number;
+    completed: number;
+    cancelled: number;
+    no_show: number;
+    upcoming: number;
+  };
+  financial_dev: {
+    payments_paid: number;
+    paid_volume_cents: number;
+    platform_fee_volume_cents: number;
+    label: string;
+  };
+  quality: {
+    reviews_count: number;
+    rating_average: number | null;
+  };
+  supply: {
+    active_vehicles: number;
+    active_offerings: number;
+  };
+}
+
+// ==========================================
 // SEARCH & GEO DISCOVERY TYPES (SPRINT 07)
 // ==========================================
 

@@ -20,6 +20,7 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
   const migration04Path = path.resolve(__dirname, '../supabase/migrations/20260814000004_providers_compliance.sql');
   const migration05Path = path.resolve(__dirname, '../supabase/migrations/20260814000005_compliance_regulatory_hardening.sql');
   const migration13Path = path.resolve(__dirname, '../supabase/migrations/20260815000013_chat_reviews_notifications.sql');
+  const migration14Path = path.resolve(__dirname, '../supabase/migrations/20260815000014_sprint14_analytics.sql');
   const seedPath = path.resolve(__dirname, '../supabase/seed.sql');
 
   it('[SCHEMA TEST] verifies that initial schema migration file exists and is populated', () => {
@@ -156,6 +157,45 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql13).toContain('REVOKE ALL ON FUNCTION public.create_booking_completion_notifications() FROM authenticated');
     expect(sql13).toContain('SECURITY DEFINER');
     expect(sql13).toContain('SET search_path = public, pg_temp');
+  });
+
+  it('[SCHEMA TEST] verifies SPRINT 14 secure marketplace analytics RPCs and no direct client writes', () => {
+    expect(fs.existsSync(migration14Path)).toBe(true);
+    const sql14 = fs.readFileSync(migration14Path, 'utf8');
+
+    expect(sql14).toContain('alter table public.analytics_events enable row level security');
+    expect(sql14).toContain('create policy "analytics_events_no_direct_client_select"');
+    expect(sql14).toContain('create policy "analytics_events_no_direct_client_insert"');
+    expect(sql14).toContain('with check (false)');
+    expect(sql14).toContain('revoke all on table public.analytics_events from anon');
+    expect(sql14).toContain('revoke all on table public.analytics_events from authenticated');
+    expect(sql14).not.toContain('grant insert on table public.analytics_events to authenticated');
+
+    expect(sql14).toContain('create or replace function public.track_analytics_event');
+    expect(sql14).toContain('PROVIDER_SEARCH');
+    expect(sql14).toContain('PROVIDER_PROFILE_VIEW');
+    expect(sql14).toContain('AVAILABLE_SLOTS_VIEW');
+    expect(sql14).toContain('CHECKOUT_STARTED');
+    expect(sql14).toContain('ANALYTICS_PROPERTIES_CONTAIN_SENSITIVE_KEY');
+    expect(sql14).toContain('license_plate');
+    expect(sql14).toContain('latitude');
+    expect(sql14).toContain('longitude');
+    expect(sql14).toContain('review_comment');
+    expect(sql14).toContain('payment_token');
+
+    expect(sql14).toContain('create or replace function public.get_admin_analytics_summary');
+    expect(sql14).toContain('public.is_platform_admin()');
+    expect(sql14).toContain('create or replace function public.get_provider_analytics_summary');
+    expect(sql14).toContain('authorized_providers as');
+    expect(sql14).toContain('public.is_school_member(p.id)');
+    expect(sql14).toContain('Ambiente DEV — pagamentos simulados');
+
+    expect(sql14).toContain('revoke all on function public.track_analytics_event(text, jsonb) from anon');
+    expect(sql14).toContain('grant execute on function public.track_analytics_event(text, jsonb) to authenticated');
+    expect(sql14).toContain('revoke all on function public.get_admin_analytics_summary(timestamptz, timestamptz) from anon');
+    expect(sql14).toContain('grant execute on function public.get_admin_analytics_summary(timestamptz, timestamptz) to authenticated');
+    expect(sql14).toContain('revoke all on function public.get_provider_analytics_summary(timestamptz, timestamptz) from anon');
+    expect(sql14).toContain('grant execute on function public.get_provider_analytics_summary(timestamptz, timestamptz) to authenticated');
   });
 
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {

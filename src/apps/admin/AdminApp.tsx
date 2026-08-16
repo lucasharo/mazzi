@@ -37,6 +37,7 @@ import {
   AuditTab,
   SettingsTab,
 } from './AdminComponents';
+import { AdminAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
 
 export const AdminApp: React.FC = () => {
   const { user } = useAuth();
@@ -250,6 +251,7 @@ export const AdminApp: React.FC = () => {
           { id: 'vehicles', label: 'Veículos', count: vehicles.filter((v) => v.status === 'UNDER_REVIEW').length },
           { id: 'bookings', label: 'Reservas' },
           { id: 'financial', label: 'Financeiro' },
+          { id: 'analytics', label: 'Analytics' },
           { id: 'users', label: 'Usuários & Papéis' },
           { id: 'audit', label: 'Auditoria' },
           { id: 'settings', label: 'Configurações' },
@@ -349,6 +351,10 @@ export const AdminApp: React.FC = () => {
             actor={activeActor}
             onProcessRefund={handleProcessRefund}
           />
+        )}
+
+        {activeTab === 'analytics' && (
+          <AdminAnalyticsPanel />
         )}
 
         {activeTab === 'users' && (

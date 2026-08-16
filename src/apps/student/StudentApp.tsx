@@ -266,6 +266,16 @@ export const StudentApp: React.FC = () => {
     setCheckoutVehicle(matchingVehicle);
     setCheckoutOffering(matchingOffering);
     setSelectedSlot(slot || null);
+    void dbService.trackAnalyticsEvent('CHECKOUT_STARTED', {
+      category: matchingOffering?.category,
+      transmission: matchingOffering?.transmission,
+      provider_type: rawProv?.type,
+      has_selected_slot: Boolean(slot),
+    }).catch((analyticsError) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[MAZZI Analytics] CHECKOUT_STARTED failed:', analyticsError);
+      }
+    });
     if (slot) {
       setIsCheckoutOpen(true);
     } else {

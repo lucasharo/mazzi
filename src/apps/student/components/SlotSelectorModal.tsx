@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { supabase } from '../../../lib/supabase';
+import { dbService } from '../../../lib/db-service';
 import { Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface SlotSelectorModalProps {
@@ -48,6 +49,15 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
         }, {});
         
         setSlotsByDate(grouped);
+        const slotCount = Object.values(grouped).reduce((total: number, slots: any) => total + slots.length, 0);
+        void dbService.trackAnalyticsEvent('AVAILABLE_SLOTS_VIEW', {
+          slot_count: slotCount,
+          date_count: Object.keys(grouped).length,
+        }).catch((analyticsError) => {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[MAZZI Analytics] AVAILABLE_SLOTS_VIEW failed:', analyticsError);
+          }
+        });
       } catch (err) {
         console.error('Failed to fetch slots', err);
       } finally {

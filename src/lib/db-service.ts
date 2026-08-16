@@ -18,6 +18,10 @@ import {
   Message,
   Review,
   Notification,
+  AdminAnalyticsSummary,
+  ProviderAnalyticsSummary,
+  ProductAnalyticsEventName,
+  AnalyticsPeriodPreset,
 } from '../types';
 
 // Cast supabase to any to safely query dynamic tables
@@ -764,6 +768,40 @@ export const dbService = {
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('id', notificationId);
     if (error) throw error;
+  },
+
+  async trackAnalyticsEvent(
+    eventName: ProductAnalyticsEventName,
+    properties: Record<string, unknown> = {}
+  ): Promise<string> {
+    const { data, error } = await sp.rpc('track_analytics_event', {
+      p_event_name: eventName,
+      p_properties: properties,
+    });
+    if (error) throw error;
+    return data as string;
+  },
+
+  async getAdminAnalyticsSummary(days: AnalyticsPeriodPreset = 30): Promise<AdminAnalyticsSummary> {
+    const dateTo = new Date();
+    const dateFrom = new Date(dateTo.getTime() - days * 24 * 60 * 60 * 1000);
+    const { data, error } = await sp.rpc('get_admin_analytics_summary', {
+      p_date_from: dateFrom.toISOString(),
+      p_date_to: dateTo.toISOString(),
+    });
+    if (error) throw error;
+    return data as AdminAnalyticsSummary;
+  },
+
+  async getProviderAnalyticsSummary(days: AnalyticsPeriodPreset = 30): Promise<ProviderAnalyticsSummary> {
+    const dateTo = new Date();
+    const dateFrom = new Date(dateTo.getTime() - days * 24 * 60 * 60 * 1000);
+    const { data, error } = await sp.rpc('get_provider_analytics_summary', {
+      p_date_from: dateFrom.toISOString(),
+      p_date_to: dateTo.toISOString(),
+    });
+    if (error) throw error;
+    return data as ProviderAnalyticsSummary;
   },
 
   // 5. COMPLIANCE

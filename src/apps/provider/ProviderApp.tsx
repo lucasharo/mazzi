@@ -66,6 +66,7 @@ import { Input } from '../../components/ui/Input';
 import { formatCentsToBRL } from '../../domain/money';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
+import { ProviderAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
 import {
   DEFAULT_COMPLIANCE_REQUIREMENTS,
   evaluateProviderEligibility,
@@ -1044,6 +1045,8 @@ export const ProviderApp: React.FC = () => {
                   </div>
 
                   <NotificationsPanel />
+
+                  <ProviderAnalyticsPanel />
 
                   {/* Operational Metrics Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
