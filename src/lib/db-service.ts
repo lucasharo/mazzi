@@ -22,7 +22,10 @@ import {
   ProviderAnalyticsSummary,
   ProductAnalyticsEventName,
   AnalyticsPeriodPreset,
+  PublicSearchProviderResult,
 } from '../types';
+import { formatDateBR, formatTimeBR } from './date-format';
+import { formatMeetingPoint } from './meeting-point';
 
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
@@ -106,29 +109,36 @@ export function mapBookingFromDb(row: any): Booking {
   const snapshot = typeof row.snapshot_data === 'string' 
     ? JSON.parse(row.snapshot_data) 
     : (row.snapshot_data || {});
+  const instructorName = snapshot.instructorName || snapshot.instructor_name || row.instructor_name || '';
+  const providerName = snapshot.providerName || snapshot.provider_name || row.provider_name || '';
+  const vehicleName = snapshot.vehicleName || snapshot.vehicle_name || row.vehicle_name || '';
+  const meetingPoint = formatMeetingPoint(row.meeting_point)
+    || formatMeetingPoint(snapshot.meetingPoint || snapshot.meeting_point);
+  const normalizedSnapshot = { ...snapshot, instructorName, providerName, vehicleName, meetingPoint };
+  snapshot.vehicle_name = vehicleName;
 
   return {
     id: row.id,
     studentId: row.student_id,
-    studentName: snapshot.student_name || 'Estudante',
+    studentName: snapshot.studentName || snapshot.student_name || row.student_name || 'Estudante',
     providerId: row.provider_id,
-    providerName: snapshot.provider_name || 'Instrutor',
+    providerName,
     instructorId: row.instructor_id,
-    instructorName: snapshot.instructor_name || snapshot.provider_name || 'Instrutor',
+    instructorName,
     vehicleId: row.vehicle_id,
-    vehicleName: snapshot.vehicle_name || 'Veículo',
+    vehicleName: vehicleName || 'Veículo',
     offeringId: row.offering_id,
     status: row.status,
-    scheduledDate: row.scheduled_start_at ? row.scheduled_start_at.substring(0, 10) : '',
-    startTime: row.scheduled_start_at ? row.scheduled_start_at.substring(11, 16) : '',
-    endTime: row.scheduled_end_at ? row.scheduled_end_at.substring(11, 16) : '',
+    scheduledDate: row.scheduled_start_at ? formatDateBR(row.scheduled_start_at) : '',
+    startTime: row.scheduled_start_at ? formatTimeBR(row.scheduled_start_at) : '',
+    endTime: row.scheduled_end_at ? formatTimeBR(row.scheduled_end_at) : '',
     scheduledStartAt: row.scheduled_start_at,
     scheduledEndAt: row.scheduled_end_at,
     priceInCents: row.price_in_cents,
     platformFeeInCents: row.platform_fee_in_cents,
     totalInCents: row.total_in_cents,
-    snapshot: snapshot,
-    meetingPoint: row.meeting_point || 'Autoescola Paulista',
+    snapshot: normalizedSnapshot,
+    meetingPoint,
     createdAt: row.created_at,
   } as any;
 }
@@ -393,6 +403,80 @@ export const dbService = {
     }));
   },
 
+  async searchPublicProviderResults(params: {
+    userLat?: number;
+    userLng?: number;
+    radiusMeters?: number;
+    category?: string | null;
+    providerType?: string;
+    transmission?: string;
+    minRating?: number;
+    maxPriceCents?: number;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<PublicSearchProviderResult[]> {
+    const {
+      userLat = -23.5505,
+      userLng = -46.6333,
+      radiusMeters = 20000,
+      category = null,
+      providerType = 'ALL',
+      transmission = 'ALL',
+      minRating = 0,
+      maxPriceCents = undefined,
+      limit = 20,
+      offset = 0,
+    } = params;
+    const { data, error } = await sp.rpc('search_providers_public', {
+      p_user_lat: userLat,
+      p_user_lng: userLng,
+      p_radius_meters: radiusMeters,
+      p_category: category,
+      p_provider_type: providerType,
+      p_transmission: transmission,
+      p_min_rating: minRating,
+      p_max_price_cents: maxPriceCents,
+      p_limit: limit,
+      p_offset: offset,
+    });
+    if (error) throw error;
+
+    return (data || []).map((row: any) => {
+      const offerings = Array.isArray(row.public_offerings) ? row.public_offerings : [];
+      const publicLatitude = row.public_latitude == null ? undefined : Number(row.public_latitude);
+      const publicLongitude = row.public_longitude == null ? undefined : Number(row.public_longitude);
+      return {
+        providerId: row.provider_id,
+        displayName: row.display_name,
+        providerType: row.provider_type,
+        avatarUrl: row.avatar_url || undefined,
+        verificationBadge: row.is_verified ? 'Verificado pela plataforma' : 'Em verificação',
+        isVerified: Boolean(row.is_verified),
+        ratingAverage: row.rating_average == null ? 0 : Number(row.rating_average),
+        ratingCount: row.rating_count == null ? 0 : Number(row.rating_count),
+        ratingSource: row.rating_source === 'REAL' ? 'REAL' : 'DEMO',
+        approximateDistanceKm: Number(row.rounded_distance_meters || 0) / 1000,
+        roundedDistanceMeters: Number(row.rounded_distance_meters || 0),
+        formattedDistance: row.distance_display || '',
+        neighborhood: row.neighborhood || '',
+        city: row.city || '',
+        categories: Array.isArray(row.categories) ? row.categories : [],
+        transmissions: Array.isArray(row.transmissions) ? row.transmissions : [],
+        startingPriceInCents: Number(row.starting_price_in_cents || 0),
+        normalizedPricePerFiftyMinInCents: Number(row.normalized_price_cents || row.starting_price_in_cents || 0),
+        publicOfferings: offerings,
+        availableSlotCount: 0,
+        publicMapLocation: {
+          latitude: publicLatitude,
+          longitude: publicLongitude,
+          type: row.public_map_location_type || 'UNAVAILABLE',
+          label: [row.neighborhood, row.city].filter(Boolean).join(', '),
+        },
+        rankingScore: 0,
+      };
+    });
+  },
+
   async getProviderBookingContextPublic(providerId: string): Promise<any[]> {
     const { data, error } = await sp.rpc('get_provider_booking_context_public', {
       p_provider_id: providerId,
@@ -625,7 +709,20 @@ export const dbService = {
       .from('bookings')
       .select('*');
     if (error) throw error;
-    return (data || []).map(mapBookingFromDb);
+    const rows = data || [];
+    if (rows.length === 0) return [];
+    const { data: names, error: namesError } = await sp.rpc('get_my_booking_names', {
+      p_booking_ids: rows.map((row: any) => row.id),
+    });
+    if (namesError) throw namesError;
+    const namesByBooking = new Map<string, any>((names || []).map((item: any) => [item.booking_id, item]));
+    return rows
+      .map((row: any) => mapBookingFromDb({ ...row, ...(namesByBooking.get(row.id) || {}) }))
+      .sort((a: Booking, b: Booking) => {
+        const aTime = new Date(a.scheduledStartAt || 0).getTime();
+        const bTime = new Date(b.scheduledStartAt || 0).getTime();
+        return aTime - bTime;
+      });
   },
 
   async createBookingHold(quoteId: string, studentId: string): Promise<any> {

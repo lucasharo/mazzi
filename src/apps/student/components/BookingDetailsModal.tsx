@@ -17,6 +17,8 @@ import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Button } from '../../../components/ui/Button';
 import { formatCentsToBRL } from '../../../domain/money';
+import { formatDateBR } from '../../../lib/date-format';
+import { formatMeetingPoint } from '../../../lib/meeting-point';
 
 export interface BookingDetailsModalProps {
   isOpen: boolean;
@@ -67,7 +69,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2">
           <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
             <Calendar className="w-4 h-4 text-amber-500" />
-            <span>Data: {booking.scheduledDate}</span>
+            <span>Data: {formatDateBR(booking.scheduledDate)}</span>
           </div>
           <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
             <Clock className="w-4 h-4 text-slate-400" />
@@ -75,11 +77,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </div>
           <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
             <MapPin className="w-4 h-4 text-slate-400" />
-            <span>Ponto de Encontro: {
-              typeof (booking.meetingPoint || snapshot.meetingPoint) === 'string'
-                ? (booking.meetingPoint || snapshot.meetingPoint)
-                : (booking.meetingPoint as any)?.label || snapshot.meetingPoint || ''
-            }</span>
+            <span>Ponto de Encontro: {formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint)}</span>
           </div>
         </div>
 

@@ -38,6 +38,8 @@ import { FakePaymentGateway } from '../../../domain/payments/fake-adapter';
 import { useAuth } from '../../../components/auth/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { dbService } from '../../../lib/db-service';
+import { formatMeetingPoint } from '../../../lib/meeting-point';
+import { formatDateBR } from '../../../lib/date-format';
 
 export interface CheckoutModalProps {
   isOpen: boolean;
@@ -131,7 +133,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               providerId: rpcRes.provider_id,
               providerName: provider.name,
               instructorId: rpcRes.instructor_id,
-              instructorName: provider.name, 
+              instructorName: offering.instructorName || provider.name,
               vehicleId: rpcRes.vehicle_id,
               vehicleName: `${vehicle.brand} ${vehicle.model}`,
               offeringId: rpcRes.offering_id,
@@ -174,7 +176,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           vehicle,
           offering,
           instructorId: offering.instructorId || provider.id,
-          instructorName: provider.name,
+          instructorName: offering.instructorName || provider.name,
           scheduledDate,
           startTime,
           endTime,
@@ -460,7 +462,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{scheduledDate}</span>
+                  <span>{formatDateBR(scheduledDate)}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
@@ -721,7 +723,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1">
               <p className="font-extrabold text-slate-900">{booking.providerName}</p>
               <p className="text-slate-600">{booking.scheduledDate} às {booking.startTime}</p>
-              <p className="text-slate-500">Ponto de Encontro: {booking.meetingPoint}</p>
+              <p className="text-slate-500">Ponto de Encontro: {formatMeetingPoint(booking.meetingPoint)}</p>
             </div>
 
             <Button

@@ -28,6 +28,7 @@ import {
   Booking,
   SearchRequest,
   PublicSearchProviderResult,
+  SearchResultResponse,
   Vehicle,
   ServiceOffering,
 } from '../../types';
@@ -54,6 +55,27 @@ import { dbService } from '../../lib/db-service';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
+import { formatDateBR } from '../../lib/date-format';
+
+function mapPublicResultToProvider(result: PublicSearchProviderResult): Provider {
+  return {
+    id: result.providerId,
+    name: result.displayName,
+    type: result.providerType,
+    status: result.isVerified ? 'ACTIVE' : 'PENDING_REVIEW',
+    ratingAverage: result.ratingAverage,
+    ratingCount: result.ratingCount,
+    neighborhood: result.neighborhood,
+    city: result.city,
+    categories: result.categories,
+    transmissions: result.transmissions,
+    startingPriceInCents: result.startingPriceInCents,
+    avatarUrl: result.avatarUrl,
+    latitude: result.publicMapLocation.latitude,
+    longitude: result.publicMapLocation.longitude,
+    isVerified: result.isVerified,
+  };
+}
 
 export const StudentApp: React.FC = () => {
   const { user, isAuthenticated, loginAsDemoUser } = useAuth();
@@ -77,35 +99,23 @@ export const StudentApp: React.FC = () => {
     async function loadRealData() {
       try {
         setIsDbLoading(true);
-        const p = isRealSupabase
-          ? await dbService.searchProvidersPublic({
-              userLat: searchRequest.latitude,
-              userLng: searchRequest.longitude,
-              radiusMeters: searchRequest.radiusMeters,
-              category: searchRequest.category,
-              providerType: searchRequest.providerType,
-              transmission: searchRequest.transmission,
-              minRating: searchRequest.minRating,
-              maxPriceCents: searchRequest.maxPriceCents,
-            })
-          : await dbService.getProviders();
-
-        const [v, o, b] = await Promise.all([
+        if (isRealSupabase) {
+          setDbProviders([]);
+          setDbVehicles([]);
+          setDbOfferings([]);
+          setConfirmedBookings(await dbService.getBookings());
+          return;
+        }
+        const [p, v, o, b] = await Promise.all([
+          dbService.getProviders(),
           dbService.getVehicles(),
           dbService.getOfferings(),
           dbService.getBookings(),
         ]);
-        if (isRealSupabase) {
-          setDbProviders(p || []);
-          setDbVehicles(v || []);
-          setDbOfferings(o || []);
-          setConfirmedBookings(b || []);
-        } else {
-          setDbProviders(p.length > 0 ? p : MOCK_PROVIDERS);
-          setDbVehicles(v.length > 0 ? v : MOCK_VEHICLES);
-          setDbOfferings(o.length > 0 ? o : MOCK_OFFERINGS);
-          setConfirmedBookings(b.length > 0 ? b : MOCK_BOOKINGS);
-        }
+        setDbProviders(p.length > 0 ? p : MOCK_PROVIDERS);
+        setDbVehicles(v.length > 0 ? v : MOCK_VEHICLES);
+        setDbOfferings(o.length > 0 ? o : MOCK_OFFERINGS);
+        setConfirmedBookings(b.length > 0 ? b : MOCK_BOOKINGS);
       } catch (err) {
         console.error('Failed to load dynamic database states:', err);
         if (isRealSupabase) {
@@ -147,6 +157,51 @@ export const StudentApp: React.FC = () => {
     }));
   };
 
+  const [searchRefreshKey, setSearchRefreshKey] = useState(0);
+  const [realSearchResponse, setRealSearchResponse] = useState<SearchResultResponse | null>(null);
+
+  useEffect(() => {
+    if (!isRealSupabase) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await dbService.searchPublicProviderResults({
+          userLat: searchRequest.latitude,
+          userLng: searchRequest.longitude,
+          radiusMeters: searchRequest.radiusMeters,
+          category: searchRequest.category,
+          providerType: searchRequest.providerType,
+          transmission: searchRequest.transmission,
+          minRating: searchRequest.minRating,
+          maxPriceCents: searchRequest.maxPriceInCents,
+          limit: searchRequest.limit,
+          offset: ((searchRequest.page || 1) - 1) * (searchRequest.limit || 10),
+        });
+        if (cancelled) return;
+        setRealSearchResponse({
+          results,
+          totalCount: results.length,
+          page: searchRequest.page || 1,
+          totalPages: 1,
+          hasMore: false,
+          appliedFilters: searchRequest,
+          executionTimeMs: 0,
+        });
+        setDbProviders(results.map(mapPublicResultToProvider));
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to execute public provider search:', error);
+          setRealSearchResponse(null);
+          setDbProviders([]);
+        }
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isRealSupabase, searchRequest, searchRefreshKey]);
+
   useEffect(() => {
     setSearchRequest((prev) => ({
       ...prev,
@@ -163,6 +218,7 @@ export const StudentApp: React.FC = () => {
 
   // Execute Public Search Engine
   const searchResponse = useMemo(() => {
+    if (isRealSupabase) return realSearchResponse;
     const res = executePublicSearch({
       providers: isRealSupabase ? dbProviders : (dbProviders.length > 0 ? dbProviders : MOCK_PROVIDERS),
       vehicles: isRealSupabase ? dbVehicles : (dbVehicles.length > 0 ? dbVehicles : MOCK_VEHICLES),
@@ -186,7 +242,7 @@ export const StudentApp: React.FC = () => {
       });
     }
     return res;
-  }, [searchRequest, dbProviders, dbVehicles, dbOfferings, confirmedBookings, isRealSupabase]);
+  }, [searchRequest, dbProviders, dbVehicles, dbOfferings, confirmedBookings, isRealSupabase, realSearchResponse]);
 
   // Selected Public Profile View State
   const [selectedPublicProfile, setSelectedPublicProfile] = useState<PublicSearchProviderResult | null>(null);
@@ -210,6 +266,7 @@ export const StudentApp: React.FC = () => {
     let rawProv: Provider | undefined;
     let matchingVehicle: Vehicle | undefined;
     let matchingOffering: ServiceOffering | undefined;
+    let matchingInstructorName = '';
 
     if (isRealSupabase) {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -222,10 +279,12 @@ export const StudentApp: React.FC = () => {
         if (!bookingContexts || bookingContexts.length === 0) return;
 
         const ctx = bookingContexts[0];
+        matchingInstructorName = ctx.instructor_name || ctx.instructorName || '';
         matchingOffering = {
           id: ctx.offering_id,
           providerId: ctx.provider_id,
           instructorId: ctx.instructor_id,
+          instructorName: matchingInstructorName,
           vehicleId: ctx.vehicle_id,
           category: ctx.category,
           transmission: ctx.transmission || 'MANUAL',
@@ -291,7 +350,7 @@ export const StudentApp: React.FC = () => {
   const upcomingBookings = useMemo(() => {
     return confirmedBookings.filter(
       (b) => b.status === 'CONFIRMED' || b.status === 'PENDING_PAYMENT' || b.status === 'IN_PROGRESS'
-    );
+    ).sort((a, b) => new Date(a.scheduledStartAt).getTime() - new Date(b.scheduledStartAt).getTime());
   }, [confirmedBookings]);
 
   const historyBookings = useMemo(() => {
@@ -305,7 +364,7 @@ export const StudentApp: React.FC = () => {
         b.status === 'NO_SHOW_STUDENT' ||
         b.status === 'NO_SHOW_PROVIDER' ||
         b.status === 'REFUNDED'
-    );
+    ).sort((a, b) => new Date(b.scheduledStartAt).getTime() - new Date(a.scheduledStartAt).getTime());
   }, [confirmedBookings]);
 
   return (
@@ -386,7 +445,7 @@ export const StudentApp: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-extrabold text-slate-900 text-sm">
-                            {next.scheduledDate} às {next.startTime}
+                            {formatDateBR(next.scheduledDate)} às {next.startTime}
                           </p>
                           <p className="text-xs text-slate-600 mt-0.5">
                             {next.instructorName} • {next.vehicleName}
@@ -488,7 +547,7 @@ export const StudentApp: React.FC = () => {
               <SearchHeader
                 searchRequest={searchRequest}
                 onUpdateSearch={handleUpdateSearch}
-                onPerformSearch={() => {}}
+                onPerformSearch={() => setSearchRefreshKey((value) => value + 1)}
                 currentLocationName={searchLocation}
                 onLocationResolved={(addr) => setSearchLocation(addr)}
               />
@@ -506,7 +565,7 @@ export const StudentApp: React.FC = () => {
                   </button>
 
                   <span className="text-xs font-bold text-slate-600">
-                    {searchResponse.totalCount} profissionais
+                    {searchResponse?.totalCount || 0} profissionais
                   </span>
                 </div>
 
@@ -664,15 +723,6 @@ export const StudentApp: React.FC = () => {
                       <BookingCard
                         key={b.id}
                         booking={b}
-                        onCheckIn={(bookingToIn) => {
-                          setConfirmedBookings((prev) =>
-                            prev.map((item) =>
-                              item.id === bookingToIn.id
-                                ? { ...item, studentCheckedIn: true }
-                                : item
-                            )
-                          );
-                        }}
                         onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
                       />
@@ -832,14 +882,6 @@ export const StudentApp: React.FC = () => {
         isOpen={!!selectedBookingForDetails}
         onClose={() => setSelectedBookingForDetails(null)}
         booking={selectedBookingForDetails}
-        onCheckIn={(bookingToIn) => {
-          setConfirmedBookings((prev) =>
-            prev.map((item) =>
-              item.id === bookingToIn.id ? { ...item, studentCheckedIn: true } : item
-            )
-          );
-          setSelectedBookingForDetails(null);
-        }}
         onOpenChat={() => {
           if (selectedBookingForDetails) {
             setSelectedBookingForChat(selectedBookingForDetails);

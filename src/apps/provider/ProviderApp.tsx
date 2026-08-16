@@ -1,6 +1,8 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
+import { formatDateBR } from '../../lib/date-format';
+import { formatMeetingPoint } from '../../lib/meeting-point';
 import {
   Calendar,
   Car,
@@ -291,7 +293,7 @@ export const ProviderApp: React.FC = () => {
   const eligibility = currentProvider ? evaluateProviderEligibility(currentProvider, providerDocs, DEFAULT_COMPLIANCE_REQUIREMENTS) : null;
 
   // Derived Operational Metrics
-  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  const todayStr = formatDateBR(new Date());
   const todayBookings = providerBookings.filter((b) => b.scheduledDate === todayStr);
   const confirmedBookings = providerBookings.filter((b) => b.status === 'CONFIRMED');
   const completedBookings = providerBookings.filter((b) => b.status === 'COMPLETED');
@@ -1105,7 +1107,7 @@ export const ProviderApp: React.FC = () => {
                               Veículo: <span className="text-white font-medium">{nextBooking.snapshot.vehicleName}</span>
                             </p>
                             <p className="text-xs text-slate-400">
-                              Ponto de Encontro: <span className="text-white font-medium">{nextBooking.meetingPoint}</span>
+                              Ponto de Encontro: <span className="text-white font-medium">{formatMeetingPoint(nextBooking.meetingPoint)}</span>
                             </p>
                           </div>
 
@@ -1398,7 +1400,7 @@ export const ProviderApp: React.FC = () => {
                               📅 {b.scheduledDate} às {b.startTime} - {b.endTime} ({b.category}) • Veículo: {b.snapshot?.vehicleName || b.vehicleName}
                             </p>
                             <p className="text-xs text-slate-500">
-                              📍 Ponto de Encontro: {b.meetingPoint}
+                              📍 Ponto de Encontro: {formatMeetingPoint(b.meetingPoint)}
                             </p>
                             <p className="text-xs font-mono text-slate-700">
                               Valor Comercial: {formatCentsToBRL(b.priceInCents)} + Taxa MAZZI {formatCentsToBRL(b.platformFeeInCents)} = Total {formatCentsToBRL(b.totalInCents)}
@@ -1850,7 +1852,7 @@ export const ProviderApp: React.FC = () => {
                   📅 Data: {selectedBooking.scheduledDate} das {selectedBooking.startTime} às {selectedBooking.endTime} ({selectedBooking.snapshot?.durationMinutes || 50} min)
                 </p>
                 <p className="text-slate-700">
-                  📍 Ponto de Encontro Autorizado: <span className="font-semibold text-slate-900">{selectedBooking.meetingPoint}</span>
+                  📍 Ponto de Encontro Autorizado: <span className="font-semibold text-slate-900">{formatMeetingPoint(selectedBooking.meetingPoint)}</span>
                 </p>
               </div>
 

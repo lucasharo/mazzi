@@ -302,6 +302,29 @@ async function runReadOnlyDbChecks() {
     pass('MAX_PRICE_FILTER_GATE');
     pass('MAX_PRICE_EXCLUDED_PROVIDER_TEST');
     pass('MAX_PRICE_INCLUDED_PROVIDER_TEST');
+
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE anon');
+    const anonSearch = await client.query(`
+      select count(*)::int as count
+      from public.search_providers_public(-23.5505, -46.6333, 100000, 'B', 'ALL', 'ALL', 0, null, 50, 0)
+    `);
+    await client.query('ROLLBACK');
+    assert(Number(anonSearch.rows[0]?.count || 0) > 0, 'anon public search returned no providers');
+    result.SEARCH_ANON_RESULTS = Number(anonSearch.rows[0].count);
+
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE authenticated');
+    await client.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: 'b07013c1-ce07-47d1-b4fd-8c8f4cdaedff', role: 'authenticated' })]);
+    const studentSearch = await client.query(`
+      select count(*)::int as count
+      from public.search_providers_public(-23.5505, -46.6333, 100000, 'B', 'ALL', 'ALL', 0, null, 50, 0)
+    `);
+    await client.query('ROLLBACK');
+    assert(Number(studentSearch.rows[0]?.count || 0) > 0, 'authenticated student public search returned no providers');
+    result.SEARCH_STUDENT_RESULTS = Number(studentSearch.rows[0].count);
+    pass('SEARCH_ANON_RESULTS_GATE');
+    pass('SEARCH_STUDENT_RESULTS_GATE');
   } finally {
     await client.end();
   }

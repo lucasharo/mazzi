@@ -4,6 +4,8 @@ import { Booking } from '../../types';
 import { StatusBadge } from './StatusBadge';
 import { Button } from './Button';
 import { Price } from './Price';
+import { formatDateBR } from '../../lib/date-format';
+import { formatMeetingPoint } from '../../lib/meeting-point';
 
 export interface BookingCardProps {
   booking: Booking;
@@ -37,7 +39,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-emerald-600" />
             <span className="font-bold text-slate-900 text-sm">
-              {booking.scheduledDate}
+              {formatDateBR(booking.scheduledDate)}
             </span>
             <span className="text-slate-400">•</span>
             <Clock className="w-3.5 h-3.5 text-slate-400" />
@@ -64,9 +66,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         <div className="flex items-center gap-1.5">
           <MapPin className="w-4 h-4 text-slate-400" />
           <span className="truncate">
-            {typeof booking.meetingPoint === 'string' 
-              ? booking.meetingPoint 
-              : (booking.meetingPoint as any)?.label || String(booking.meetingPoint || '')}
+            {formatMeetingPoint(booking.meetingPoint)}
           </span>
         </div>
       </div>

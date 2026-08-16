@@ -245,6 +245,7 @@ export interface ServiceOffering {
   id: string;
   providerId: string;
   instructorId?: string;
+  instructorName?: string;
   vehicleId: string;
   category: VehicleCategory;
   transmission?: TransmissionType;
