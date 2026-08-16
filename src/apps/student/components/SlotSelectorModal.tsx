@@ -73,6 +73,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
       const toDate = addDays(fromDate, days - 1);
       const { data, error: rpcError } = await (supabase as any).rpc('get_available_slots_public', {
         p_offering_id: offeringId,
+        // Keep DATE parameters timezone-independent; do not pass browser Date objects.
         p_date_from: replace ? fromDate : addDays(fromDate, days - LOAD_MORE_DAYS),
         p_date_to: toDate,
       });
