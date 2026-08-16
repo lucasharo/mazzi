@@ -123,6 +123,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
           className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 hover:bg-slate-800 transition cursor-pointer flex items-center justify-center min-w-[42px]"
         >
           <Navigation className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
+          <span className="sr-only">Usar localização atual</span>
         </button>
       </form>
 

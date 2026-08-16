@@ -151,9 +151,9 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
             {monthDates.map((date) => {
             const available = (slotsByDate[date] || []).length > 0;
             return (
-              <button key={date} type="button" disabled={!available} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? '' : ', indisponível'}`} className={`min-h-10 rounded-lg border p-1 text-center transition ${selectedDate === date ? 'border-amber-500 bg-amber-50 text-slate-950 ring-2 ring-amber-400/30' : available ? 'border-slate-200 bg-white hover:border-amber-300 text-slate-700' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'}`}>
+              <button key={date} type="button" disabled={!available} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? '' : ', indisponível'}`} className={`h-9 min-h-0 rounded-lg border p-0.5 text-center transition ${selectedDate === date ? 'border-amber-500 bg-amber-50 text-slate-950 ring-2 ring-amber-400/30' : available ? 'border-slate-200 bg-white hover:border-amber-300 text-slate-700' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'}`}>
                 <span className="text-[9px] uppercase font-bold block">{formatDateOnly(date, { weekday: 'short' }).replace('.', '')}</span>
-                <span className="text-base font-black block">{formatDateOnly(date, { day: '2-digit' })}</span>
+                <span className="text-sm font-black block leading-tight">{formatDateOnly(date, { day: '2-digit' })}</span>
                 <span className="text-[8px] font-bold">{available ? `${slotsByDate[date].length}` : '—'}</span>
               </button>
             );

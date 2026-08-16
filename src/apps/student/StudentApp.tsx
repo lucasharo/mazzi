@@ -248,22 +248,29 @@ export const StudentApp: React.FC = () => {
           category: searchRequest.category,
           providerType: searchRequest.providerType,
           transmission: searchRequest.transmission,
-          minRating: searchRequest.minRating,
+          minRating: searchRequest.minimumRating,
           maxPriceCents: searchRequest.maxPriceInCents,
           limit: searchRequest.limit,
           offset: ((searchRequest.page || 1) - 1) * (searchRequest.limit || 10),
         });
         if (cancelled) return;
+        const sortedResults = [...results].sort((a, b) => {
+          if (searchRequest.sortBy === 'PRICE_ASC') return a.startingPriceInCents - b.startingPriceInCents || a.providerId.localeCompare(b.providerId);
+          if (searchRequest.sortBy === 'PRICE_DESC') return b.startingPriceInCents - a.startingPriceInCents || a.providerId.localeCompare(b.providerId);
+          if (searchRequest.sortBy === 'DISTANCE') return (a.roundedDistanceMeters || 0) - (b.roundedDistanceMeters || 0) || a.providerId.localeCompare(b.providerId);
+          if (searchRequest.sortBy === 'RATING') return (b.ratingAverage || 0) - (a.ratingAverage || 0) || a.providerId.localeCompare(b.providerId);
+          return 0;
+        });
         setRealSearchResponse({
-          results,
-          totalCount: results.length,
+          results: sortedResults,
+          totalCount: sortedResults.length,
           page: searchRequest.page || 1,
           totalPages: 1,
           hasMore: false,
           appliedFilters: searchRequest,
           executionTimeMs: 0,
         });
-        setDbProviders(results.map(mapPublicResultToProvider));
+        setDbProviders(sortedResults.map(mapPublicResultToProvider));
         setSearchLoading(false);
       } catch (error) {
         if (!cancelled) {
