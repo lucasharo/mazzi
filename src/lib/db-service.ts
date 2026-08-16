@@ -793,7 +793,7 @@ export const dbService = {
     }
   },
 
-  async createBookingHoldAtMeetingPoint(quoteId: string, studentId: string, meetingPoint: { type: 'STUDENT_ADDRESS' | 'PROVIDER_ADDRESS'; address?: string }): Promise<any> {
+  async createBookingHoldAtMeetingPoint(quoteId: string, studentId: string, meetingPoint: { type: 'STUDENT_ADDRESS' | 'PROVIDER_ADDRESS'; address?: string; latitude?: number; longitude?: number }): Promise<any> {
     const { data, error } = await sp.rpc('create_booking_hold_at_meeting_point', {
       p_quote_id: quoteId,
       p_student_id: studentId,
@@ -877,6 +877,14 @@ export const dbService = {
       .from('notifications')
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('id', notificationId);
+    if (error) throw error;
+  },
+
+  async updateProviderServiceRadius(providerId: string, radiusKm: number): Promise<void> {
+    const { error } = await sp.rpc('set_provider_service_radius', {
+      p_provider_id: providerId,
+      p_radius_km: radiusKm,
+    });
     if (error) throw error;
   },
 

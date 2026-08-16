@@ -702,7 +702,14 @@ export const ProviderApp: React.FC = () => {
     setOnboardingError('Envio para analise bloqueado: o fluxo de compliance precisa de backend/admin real antes de mudar status do prestador.');
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
+    const radiusKm = Math.max(1, Math.min(100, Number(profileForm.serviceRadiusKm) || 1));
+    try {
+      await dbService.updateProviderServiceRadius(currentProvider.id, radiusKm);
+    } catch (error: any) {
+      setWorkspaceError(error?.message || 'Não foi possível salvar o raio de atendimento.');
+      return;
+    }
     setProviders((prev) =>
       prev.map((p) => {
         if (p.id === currentProvider.id) {
@@ -713,7 +720,7 @@ export const ProviderApp: React.FC = () => {
             neighborhood: profileForm.neighborhood || p.neighborhood,
             city: profileForm.city || p.city,
             state: profileForm.state || p.state,
-            serviceRadiusKm: Number(profileForm.serviceRadiusKm) || p.serviceRadiusKm,
+            serviceRadiusKm: radiusKm,
             bio: profileForm.bio || p.bio,
             updatedAt: new Date().toISOString(),
           };

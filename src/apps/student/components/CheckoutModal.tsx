@@ -40,6 +40,7 @@ import { supabase } from '../../../lib/supabase';
 import { dbService } from '../../../lib/db-service';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { formatDateBR } from '../../../lib/date-format';
+import { geocodeAddress } from '../../../lib/geocoding';
 
 export interface CheckoutModalProps {
   isOpen: boolean;
@@ -252,6 +253,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setErrorMessage(null);
 
     try {
+      let meetingPoint: { type: 'STUDENT_ADDRESS' | 'PROVIDER_ADDRESS'; address?: string; latitude?: number; longitude?: number } = {
+        type: meetingPointType === 'STUDENT' ? 'STUDENT_ADDRESS' : 'PROVIDER_ADDRESS',
+      };
+      if (meetingPointType === 'STUDENT') {
+        if (!studentAddress.trim()) throw new Error('Informe o endereço do aluno para calcular a distância.');
+        const geocoded = await geocodeAddress(studentAddress.trim());
+        meetingPoint = { ...meetingPoint, address: studentAddress.trim(), latitude: geocoded.latitude, longitude: geocoded.longitude };
+      }
       const idempotencyKey = `idem_hold_${quote.id}_${Date.now()}`;
 
       // 1. Local/Domain State Hold
@@ -279,10 +288,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         }
 
         try {
-          const dbHold = await dbService.createBookingHoldAtMeetingPoint(quote.id, user.id, {
-            type: meetingPointType === 'STUDENT' ? 'STUDENT_ADDRESS' : 'PROVIDER_ADDRESS',
-            address: meetingPointType === 'STUDENT' ? studentAddress.trim() : undefined,
-          });
+          const dbHold = await dbService.createBookingHoldAtMeetingPoint(quote.id, user.id, meetingPoint);
           if (dbHold && dbHold.booking_id) {
             realBookingId = dbHold.booking_id;
           }
@@ -589,7 +595,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               variant="primary"
               size="md"
               className="w-full"
-              onClick={onClose}
+              onClick={() => {
+                onClose();
+                onGoToBookings?.();
+              }}
             >
               Voltar ao Calendário
             </Button>
