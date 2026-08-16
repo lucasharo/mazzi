@@ -533,6 +533,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             </div>
 
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+              <p className="text-xs font-black text-slate-900">Ponto de encontro</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setMeetingPointType('PROVIDER')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'PROVIDER' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Instrutor / autoescola</button>
+                <button type="button" onClick={() => setMeetingPointType('STUDENT')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'STUDENT' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Meu endereço</button>
+              </div>
+              {meetingPointType === 'STUDENT' && <input value={studentAddress} onChange={(event) => setStudentAddress(event.target.value)} placeholder="Digite seu endereço" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs" required />}
+            </div>
+
             <Button
               variant="primary"
               size="lg"
@@ -543,15 +552,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             >
               Confirmar e Reservar Horário
             </Button>
-
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <p className="text-xs font-black text-slate-900">Ponto de encontro</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setMeetingPointType('PROVIDER')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'PROVIDER' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Instrutor / autoescola</button>
-                <button type="button" onClick={() => setMeetingPointType('STUDENT')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'STUDENT' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Meu endereço</button>
-              </div>
-              {meetingPointType === 'STUDENT' && <input value={studentAddress} onChange={(event) => setStudentAddress(event.target.value)} placeholder="Digite seu endereço" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs" required />}
-            </div>
           </div>
         )}
 
