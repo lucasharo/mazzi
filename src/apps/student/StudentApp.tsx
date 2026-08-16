@@ -117,6 +117,7 @@ export const StudentApp: React.FC = () => {
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
+  const [searchedLocation, setSearchedLocation] = useState<{ lat: number; lng: number; label?: string } | undefined>();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
@@ -491,7 +492,10 @@ export const StudentApp: React.FC = () => {
                 onPerformSearch={() => setSearchRefreshKey((value) => value + 1)}
                 currentLocationName={searchLocation}
                 currentLocation={userLocation}
-                onLocationResolved={(addr) => setSearchLocation(addr)}
+                onLocationResolved={(addr, lat, lng) => {
+                  setSearchLocation(addr);
+                  setSearchedLocation({ lat, lng, label: addr });
+                }}
               />
 
               {/* Subheader Filters & Mode Switcher */}
@@ -555,6 +559,7 @@ export const StudentApp: React.FC = () => {
                     onSelectProvider={(id) => handleOpenCheckoutByProviderId(id)}
                     height="360px"
                     userLocation={userLocation}
+                    searchedLocation={searchedLocation}
                   />
                   <div className="space-y-2">
                     {(searchResponse?.results || []).slice(0, 3).map((res) => (

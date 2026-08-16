@@ -21,6 +21,7 @@ export interface MapProviderProps {
   showCoverageRadius?: boolean;
   meetingPoint?: MapMeetingPoint;
   userLocation?: MapCoordinates;
+  searchedLocation?: MapCoordinates & { label?: string };
   zoom?: number;
   interactive?: boolean;
 }
