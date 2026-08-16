@@ -10,7 +10,7 @@ import { Shield, Lock, Mail, Phone, User, CheckCircle2, AlertTriangle, ArrowRigh
 
 type AuthView = 'login' | 'signup' | 'forgot_password' | 'blocked_notice';
 
-export const AuthScreens: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
+export const AuthScreens: React.FC<{ onSuccess?: (role?: UserRole) => void }> = ({ onSuccess }) => {
   const { user, loginAsDemoUser, logout } = useAuth();
   const [view, setView] = useState<AuthView>('login');
   const [email, setEmail] = useState('');
@@ -31,7 +31,7 @@ export const AuthScreens: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
       await loginAsDemoUser(selectedDemoRole, email || undefined);
       setIsLoading(false);
       setMessage({ type: 'success', text: `Login autenticado com sucesso como ${selectedDemoRole}!` });
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(selectedDemoRole);
     } catch (err: any) {
       setIsLoading(false);
       setMessage({ type: 'error', text: err.message || 'Falha ao autenticar.' });
@@ -47,7 +47,7 @@ export const AuthScreens: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
     try {
       await loginAsDemoUser(demoUser.role, demoUser.email);
       setMessage({ type: 'success', text: `Login autenticado como ${demoUser.name}.` });
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(demoUser.role);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Falha ao autenticar usuario de teste.' });
     } finally {
@@ -65,7 +65,7 @@ export const AuthScreens: React.FC<{ onSuccess?: () => void }> = ({ onSuccess })
       loginAsDemoUser('STUDENT', email);
       setIsLoading(false);
       setMessage({ type: 'success', text: 'Conta de aluno criada com sucesso! Perfil STUDENT atribuído.' });
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess('STUDENT');
     }, 500);
   };
 

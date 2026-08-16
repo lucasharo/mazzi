@@ -33,6 +33,11 @@ export function formatDateOnly(dateOnly: string, options: Intl.DateTimeFormatOpt
   return new Intl.DateTimeFormat('pt-BR', { ...options, timeZone: 'UTC' }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
+function weekdayIndex(dateOnly: string): number {
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
 function groupSlots(slots: PublicSlot[]): Record<string, PublicSlot[]> {
   return slots.reduce<Record<string, PublicSlot[]>>((acc, slot) => {
     (acc[slot.local_date] ||= []).push(slot);
@@ -140,7 +145,9 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
         <div className="max-h-72 overflow-y-auto pr-1 space-y-4">
           {(Object.entries(datesByMonth) as [string, string[]][]).map(([month, monthDates]) => <section key={month}>
             <h4 className="mb-2 text-xs font-black capitalize text-slate-700">{formatDateOnly(`${month}-01`, { month: 'long', year: 'numeric' })}</h4>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-7 gap-1.5 text-center">
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((weekday) => <span key={`${month}-${weekday}`} className="text-[8px] font-black uppercase text-slate-400">{weekday}</span>)}
+            {Array.from({ length: weekdayIndex(monthDates[0]) }, (_, index) => <span key={`${month}-empty-${index}`} aria-hidden="true" />)}
             {monthDates.map((date) => {
             const available = (slotsByDate[date] || []).length > 0;
             return (

@@ -15,20 +15,33 @@ import { UserRole } from './types';
 
 type AppView = 'student' | 'provider' | 'admin' | 'design-system' | 'auth';
 
+function appViewForRole(role?: UserRole | string): AppView {
+  switch (String(role || '').toUpperCase()) {
+    case 'INSTRUCTOR':
+    case 'SCHOOL_ADMIN':
+      return 'provider';
+    case 'PLATFORM_ADMIN':
+    case 'SUPPORT':
+      return 'admin';
+    case 'STUDENT':
+    default:
+      return 'student';
+  }
+}
+
 function AppContent() {
   const [currentView, setCurrentView] = useState<AppView>('student');
   const { user, isAuthenticated, isLoading, logout, switchRole } = useAuth();
   const authenticatedRole = user?.roles?.[0];
-  const isStudentAccount = isAuthenticated && authenticatedRole === 'STUDENT';
-  const isProviderAccount = isAuthenticated && (authenticatedRole === 'INSTRUCTOR' || authenticatedRole === 'SCHOOL_ADMIN');
-  const isAdminAccount = isAuthenticated && (authenticatedRole === 'PLATFORM_ADMIN' || authenticatedRole === 'SUPPORT');
+  const activeAppView = appViewForRole(authenticatedRole);
+  const isStudentAccount = isAuthenticated && activeAppView === 'student';
+  const isProviderAccount = isAuthenticated && activeAppView === 'provider';
+  const isAdminAccount = isAuthenticated && activeAppView === 'admin';
 
   useEffect(() => {
     if (!isAuthenticated || !authenticatedRole) return;
-    if (isStudentAccount) setCurrentView('student');
-    else if (isProviderAccount) setCurrentView('provider');
-    else if (isAdminAccount) setCurrentView('admin');
-  }, [authenticatedRole, isAdminAccount, isAuthenticated, isProviderAccount, isStudentAccount]);
+    setCurrentView(activeAppView);
+  }, [activeAppView, authenticatedRole, isAuthenticated]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -150,7 +163,7 @@ function AppContent() {
         {currentView === 'design-system' && <DesignSystemShowcase />}
         {currentView === 'auth' && (
           <div className="py-12 px-4 flex items-center justify-center">
-            <AuthScreens onSuccess={() => setCurrentView('student')} />
+            <AuthScreens onSuccess={(role) => setCurrentView(appViewForRole(role))} />
           </div>
         )}
       </div>
