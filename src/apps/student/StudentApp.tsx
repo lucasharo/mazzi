@@ -56,6 +56,7 @@ import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
 import { formatDateBR } from '../../lib/date-format';
+import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 
 function mapPublicResultToProvider(result: PublicSearchProviderResult): Provider {
   return {
@@ -81,7 +82,7 @@ export const StudentApp: React.FC = () => {
   const { user, isAuthenticated, loginAsDemoUser } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
-  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'bookings' | 'messages' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'messages' | 'profile'>('search');
   const [bookingTab, setBookingTab] = useState<'upcoming' | 'history'>('upcoming');
   const [searchLocation, setSearchLocation] = useState('Pinheiros, São Paulo - SP');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
@@ -93,6 +94,8 @@ export const StudentApp: React.FC = () => {
   const [dbOfferings, setDbOfferings] = useState<ServiceOffering[]>([]);
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
   const [isDbLoading, setIsDbLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(isRealSupabase);
+  const [searchError, setSearchError] = useState(false);
 
   // Load state on mount and when user session updates
   useEffect(() => {
@@ -163,6 +166,8 @@ export const StudentApp: React.FC = () => {
   useEffect(() => {
     if (!isRealSupabase) return;
     let cancelled = false;
+    setSearchLoading(true);
+    setSearchError(false);
     const timer = window.setTimeout(async () => {
       try {
         const results = await dbService.searchPublicProviderResults({
@@ -188,11 +193,12 @@ export const StudentApp: React.FC = () => {
           executionTimeMs: 0,
         });
         setDbProviders(results.map(mapPublicResultToProvider));
+        setSearchLoading(false);
       } catch (error) {
         if (!cancelled) {
           console.error('Failed to execute public provider search:', error);
-          setRealSearchResponse(null);
-          setDbProviders([]);
+          setSearchError(true);
+          setSearchLoading(false);
         }
       }
     }, 300);
@@ -201,6 +207,22 @@ export const StudentApp: React.FC = () => {
       window.clearTimeout(timer);
     };
   }, [isRealSupabase, searchRequest, searchRefreshKey]);
+
+  const defaultSearchRequest: SearchRequest = {
+    latitude: searchRequest.latitude,
+    longitude: searchRequest.longitude,
+    radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
+    category: 'B',
+    providerType: 'ALL',
+    transmission: 'ALL',
+    sortBy: 'RECOMMENDED',
+    page: 1,
+    limit: 10,
+  };
+  const additionalFilterCount = countAdditionalStudentFilters(searchRequest);
+  const hasChangedFilters = Boolean(
+    additionalFilterCount || searchRequest.category !== 'B' || searchRequest.sortBy !== 'RECOMMENDED'
+  );
 
   useEffect(() => {
     setSearchRequest((prev) => ({
@@ -382,8 +404,8 @@ export const StudentApp: React.FC = () => {
                 <span className="text-base font-black tracking-tight text-white block leading-none">
                   MAZZI
                 </span>
-                <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
-                  Jornada do Aluno
+                  <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
+                  Encontre sua próxima aula
                 </span>
               </div>
             </div>
@@ -398,7 +420,7 @@ export const StudentApp: React.FC = () => {
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto pb-24 text-left">
           {/* HOME TAB */}
-          {activeTab === 'home' && (
+          {false && (
             <div className="p-4 space-y-4">
               {/* Hero Search Card - 99 Style Yellow Highlight */}
               <div className="bg-amber-400 text-slate-950 p-5 rounded-3xl shadow-sm relative overflow-hidden">
@@ -564,8 +586,8 @@ export const StudentApp: React.FC = () => {
                     <span>Filtros</span>
                   </button>
 
-                  <span className="text-xs font-bold text-slate-600">
-                    {searchResponse?.totalCount || 0} profissionais
+                  <span className="text-xs font-bold text-slate-600" aria-live="polite">
+                    {searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}
                   </span>
                 </div>
 
@@ -598,6 +620,34 @@ export const StudentApp: React.FC = () => {
                 </div>
               </div>
 
+              <div className="flex items-center gap-2 overflow-x-auto pb-1" aria-label="Filtros rápidos">
+                {[
+                  { label: 'B', active: searchRequest.category === 'B', onClick: () => handleUpdateSearch({ category: 'B' }) },
+                  { label: searchRequest.transmission === 'AUTOMATIC' ? 'Automático' : 'Câmbio', active: searchRequest.transmission === 'AUTOMATIC', onClick: () => handleUpdateSearch({ transmission: searchRequest.transmission === 'AUTOMATIC' ? 'ALL' : 'AUTOMATIC' }) },
+                  { label: `Até ${Math.round((searchRequest.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000)} km`, active: searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS, onClick: () => handleUpdateSearch({ radiusMeters: searchRequest.radiusMeters === 10000 ? DEFAULT_SEARCH_RADIUS_METERS : 10000 }) },
+                  { label: searchRequest.maxPriceInCents ? `Até ${formatCentsToBRL(searchRequest.maxPriceInCents)}` : 'Preço', active: typeof searchRequest.maxPriceInCents === 'number', onClick: () => handleUpdateSearch({ maxPriceInCents: searchRequest.maxPriceInCents ? undefined : 15000 }) },
+                ].map((chip) => (
+                  <button key={chip.label} type="button" onClick={chip.onClick} aria-pressed={chip.active} className={`shrink-0 px-3 py-1.5 rounded-full border text-xs font-bold ${chip.active ? 'bg-amber-400 border-amber-400 text-slate-950' : 'bg-white border-slate-200 text-slate-600'}`}>
+                    {chip.label}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setIsFilterDrawerOpen(true)} className="shrink-0 px-3 py-1.5 rounded-full border border-slate-300 text-xs font-bold text-slate-700">
+                  Filtros{additionalFilterCount ? ` (${additionalFilterCount})` : ''}
+                </button>
+                {hasChangedFilters && (
+                  <button type="button" onClick={() => { setSearchRequest(defaultSearchRequest); setSearchRefreshKey((value) => value + 1); }} className="shrink-0 text-xs font-bold text-amber-700 underline">
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
+
+              {searchError && (
+                <div role="alert" className="p-4 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-800 flex items-center justify-between gap-3">
+                  <span>Não foi possível buscar profissionais agora.</span>
+                  <button type="button" onClick={() => setSearchRefreshKey((value) => value + 1)} className="font-bold underline">Tentar novamente</button>
+                </div>
+              )}
+
               {/* List vs Map View */}
               {searchViewMode === 'map' ? (
                 <div className="space-y-3">
@@ -619,10 +669,15 @@ export const StudentApp: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {(!searchResponse?.results || searchResponse.results.length === 0) ? (
+                  {searchLoading ? (
+                    <div aria-busy="true" className="space-y-3" aria-label="Carregando resultados">
+                      {[1, 2, 3].map((item) => <div key={item} aria-hidden="true" className="h-36 rounded-2xl bg-slate-100 animate-pulse" />)}
+                    </div>
+                  ) : searchError ? null : (!searchResponse?.results || searchResponse.results.length === 0) ? (
                     <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
-                      <p className="text-sm font-bold text-slate-800">Nenhum profissional encontrado nesta região.</p>
+                      <p className="text-sm font-bold text-slate-800">Nenhum profissional encontrado com esses filtros.</p>
                       <p className="text-xs text-slate-500 mt-1">Tente aumentar o raio de busca ou remover alguns filtros.</p>
+                      <button type="button" onClick={() => setSearchRequest(defaultSearchRequest)} className="mt-3 text-xs font-bold text-amber-700 underline">Limpar filtros</button>
                     </div>
                   ) : (
                     searchResponse.results.map((res) => (
@@ -847,9 +902,8 @@ export const StudentApp: React.FC = () => {
         </main>
 
         {/* Bottom Tab Bar - 99 Style */}
-        <nav className="bg-white border-t border-slate-200 px-2 py-2 flex items-center justify-around fixed sm:sticky bottom-0 left-0 right-0 max-w-md sm:max-w-lg mx-auto z-40">
+        <nav aria-label="Navegação principal" className="bg-white border-t border-slate-200 px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center justify-around fixed sm:sticky bottom-0 left-0 right-0 max-w-md sm:max-w-lg mx-auto z-40">
           {[
-            { id: 'home', label: 'Início', icon: <Navigation className="w-5 h-5" /> },
             { id: 'search', label: 'Buscar', icon: <Search className="w-5 h-5" /> },
             { id: 'bookings', label: 'Aulas', icon: <CalendarIcon className="w-5 h-5" /> },
             { id: 'messages', label: 'Chat', icon: <MessageSquare className="w-5 h-5" /> },

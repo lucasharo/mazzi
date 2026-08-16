@@ -66,13 +66,15 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
         </div>
 
         {/* Rating */}
-        <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200/80">
-          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-          <span className="text-xs font-black text-slate-900">
-            {result.ratingAverage.toFixed(1)}
-          </span>
-          <span className="text-[10px] text-slate-500 font-medium">({result.ratingCount})</span>
-        </div>
+        {result.ratingCount > 0 ? (
+          <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200/80">
+            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+            <span className="text-xs font-black text-slate-900">{result.ratingAverage.toFixed(1)}</span>
+            <span className="text-[10px] text-slate-500 font-medium">({result.ratingCount})</span>
+          </div>
+        ) : (
+          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">Novo na MAZZI</span>
+        )}
       </div>
 
       {/* Main Info: Avatar & Name & Distance */}
@@ -133,6 +135,15 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
             </div>
           )}
 
+          {onViewProfile && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onViewProfile(result.providerId); }}
+              className="px-3 py-1.5 rounded-xl border border-slate-300 text-slate-700 font-extrabold text-xs transition cursor-pointer"
+            >
+              Ver perfil
+            </button>
+          )}
           <button
             type="button"
             onClick={(e) => {
