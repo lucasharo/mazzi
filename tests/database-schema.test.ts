@@ -21,6 +21,7 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
   const migration05Path = path.resolve(__dirname, '../supabase/migrations/20260814000005_compliance_regulatory_hardening.sql');
   const migration13Path = path.resolve(__dirname, '../supabase/migrations/20260815000013_chat_reviews_notifications.sql');
   const migration14Path = path.resolve(__dirname, '../supabase/migrations/20260815000014_sprint14_analytics.sql');
+  const migration15Path = path.resolve(__dirname, '../supabase/migrations/20260815000015_sprint15_security_hardening.sql');
   const seedPath = path.resolve(__dirname, '../supabase/seed.sql');
 
   it('[SCHEMA TEST] verifies that initial schema migration file exists and is populated', () => {
@@ -196,6 +197,54 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql14).toContain('grant execute on function public.get_admin_analytics_summary(timestamptz, timestamptz) to authenticated');
     expect(sql14).toContain('revoke all on function public.get_provider_analytics_summary(timestamptz, timestamptz) from anon');
     expect(sql14).toContain('grant execute on function public.get_provider_analytics_summary(timestamptz, timestamptz) to authenticated');
+  });
+
+  it('[SCHEMA TEST] verifies SPRINT 15 security hardening migration', () => {
+    expect(fs.existsSync(migration15Path)).toBe(true);
+    const sql15 = fs.readFileSync(migration15Path, 'utf8');
+
+    expect(sql15).toContain('with (security_invoker = true)');
+    expect(sql15).toContain('revoke all on public.providers_public_view from public');
+    expect(sql15).toContain('revoke all on public.providers_public_view from anon');
+    expect(sql15).toContain('revoke all on public.providers_public_view from authenticated');
+
+    expect(sql15).toContain('drop policy if exists offerings_owner_insert on public.service_offerings');
+    expect(sql15).toContain('create policy offerings_owner_insert');
+    expect(sql15).toContain('with check (');
+    expect(sql15).toContain('v.provider_id = service_offerings.provider_id');
+    expect(sql15).not.toContain('v.provider_id = v.provider_id');
+
+    expect(sql15).toContain('drop policy if exists vehicles_public_select on public.vehicles');
+    expect(sql15).toContain('create policy vehicles_owner_select');
+    expect(sql15).toContain('create policy vehicles_owner_insert');
+    expect(sql15).toContain('create policy vehicles_owner_update');
+    expect(sql15).toContain('with check (');
+    expect(sql15).toContain('revoke select on table public.vehicles from anon');
+
+    expect(sql15).toContain('create or replace function public.get_public_vehicle_catalog()');
+    expect(sql15).toContain('license_plate_masked');
+    expect(sql15).toContain("coalesce(v.license_plate_masked, '***-****')");
+    expect(sql15).toContain('security definer');
+    expect(sql15).toContain('set search_path = public, pg_temp');
+
+    expect(sql15).toContain('audit_logs');
+    expect(sql15).toContain('refunds');
+    expect(sql15).toContain('payouts');
+    expect(sql15).toContain('platform_configurations');
+    expect(sql15).toContain('cancellation_policies');
+    expect(sql15).toContain('cancellation_policy_rules');
+    expect(sql15).toContain('using (false)');
+    expect(sql15).toContain('with check (false)');
+
+    expect(sql15).toContain('revoke all on function public.handle_new_auth_user() from public');
+    expect(sql15).toContain('revoke all on function public.handle_new_auth_user() from anon');
+    expect(sql15).toContain('revoke all on function public.handle_new_auth_user() from authenticated');
+    expect(sql15).toContain('alter function public.get_provider_booking_context_public(uuid)');
+    expect(sql15).toContain('revoke all on function public.is_offering_slot_available(uuid, timestamptz) from authenticated');
+
+    expect(sql15).toContain('create index if not exists idx_bookings_offering_id');
+    expect(sql15).toContain('create index if not exists idx_quotes_provider_id');
+    expect(sql15).toContain('create index if not exists idx_compliance_documents_provider_id');
   });
 
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {

@@ -454,10 +454,7 @@ export const dbService = {
 
   // 2. VEHICLES
   async getVehicles(): Promise<Vehicle[]> {
-    const { data, error } = await sp
-      .from('vehicles')
-      .select('*')
-      .is('deleted_at', null);
+    const { data, error } = await sp.rpc('get_public_vehicle_catalog');
     if (error) throw error;
     return (data || []).map(mapVehicleFromDb);
   },
@@ -685,12 +682,17 @@ export const dbService = {
   },
 
   async updateBookingStatus(id: string, status: string, extra: Record<string, any> = {}): Promise<void> {
-    const { error } = await sp
+    const { data, error } = await sp
       .from('bookings')
       .update({ status, ...extra, updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
     if (error) {
       throw error;
+    }
+    if (!data) {
+      throw new Error('BOOKING_STATUS_UPDATE_BLOCKED_OR_NOT_FOUND');
     }
   },
 
