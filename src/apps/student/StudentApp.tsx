@@ -473,10 +473,6 @@ export const StudentApp: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-300">
-              <MapPin className="w-3.5 h-3.5 text-amber-400" />
-              <span>{searchLocation.split(',')[0] || 'São Paulo'}</span>
-            </div>
           </div>
         </header>
 

@@ -21,7 +21,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
   return (
     <div className={`space-y-2 ${className}`}>
       {/* Map Header Controls */}
-      <div className="flex items-center justify-between px-1">
+      <div className="hidden flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
             <Compass className="w-3.5 h-3.5 text-amber-500" />
