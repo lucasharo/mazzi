@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './components/auth/AuthContext';
 import { AuthScreens } from './components/auth/AuthScreens';
 import { StudentApp } from './apps/student/StudentApp';
@@ -18,6 +18,17 @@ type AppView = 'student' | 'provider' | 'admin' | 'design-system' | 'auth';
 function AppContent() {
   const [currentView, setCurrentView] = useState<AppView>('student');
   const { user, isAuthenticated, logout, switchRole } = useAuth();
+  const authenticatedRole = user?.roles?.[0];
+  const isStudentAccount = isAuthenticated && authenticatedRole === 'STUDENT';
+  const isProviderAccount = isAuthenticated && (authenticatedRole === 'INSTRUCTOR' || authenticatedRole === 'SCHOOL_ADMIN');
+  const isAdminAccount = isAuthenticated && (authenticatedRole === 'PLATFORM_ADMIN' || authenticatedRole === 'SUPPORT');
+
+  useEffect(() => {
+    if (!isAuthenticated || !authenticatedRole) return;
+    if (isStudentAccount) setCurrentView('student');
+    else if (isProviderAccount) setCurrentView('provider');
+    else if (isAdminAccount) setCurrentView('admin');
+  }, [authenticatedRole, isAdminAccount, isAuthenticated, isProviderAccount, isStudentAccount]);
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col font-sans antialiased text-slate-900">
@@ -37,7 +48,7 @@ function AppContent() {
 
         {/* View & Auth Switcher */}
         <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
-          <button
+          {(!isAuthenticated || isStudentAccount) && <button
             type="button"
             onClick={() => {
               switchRole('STUDENT');
@@ -51,9 +62,9 @@ function AppContent() {
           >
             <Smartphone className="w-3.5 h-3.5" />
             <span>Aluno</span>
-          </button>
+          </button>}
 
-          <button
+          {(!isAuthenticated || isProviderAccount) && <button
             type="button"
             onClick={() => {
               switchRole('INSTRUCTOR');
@@ -67,9 +78,9 @@ function AppContent() {
           >
             <Briefcase className="w-3.5 h-3.5" />
             <span>Pro (Instrutor)</span>
-          </button>
+          </button>}
 
-          <button
+          {(!isAuthenticated || isAdminAccount) && <button
             type="button"
             onClick={() => {
               switchRole('PLATFORM_ADMIN');
@@ -83,9 +94,9 @@ function AppContent() {
           >
             <ShieldAlert className="w-3.5 h-3.5" />
             <span>Admin</span>
-          </button>
+          </button>}
 
-          <button
+          {!isAuthenticated && <button
             type="button"
             onClick={() => setCurrentView('auth')}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -96,9 +107,9 @@ function AppContent() {
           >
             <KeyRound className="w-3.5 h-3.5" />
             <span>Login/Auth</span>
-          </button>
+          </button>}
 
-          <button
+          {!isAuthenticated && <button
             type="button"
             onClick={() => setCurrentView('design-system')}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -109,7 +120,7 @@ function AppContent() {
           >
             <Palette className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Design System</span>
-          </button>
+          </button>}
         </div>
 
         {/* Active Session Badge */}

@@ -110,7 +110,10 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
     // Provider Markers
     providers.forEach((prov) => {
-      const pos = PROVIDER_COORDINATES[prov.id] || { lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] };
+      const configured = prov.latitude != null && prov.longitude != null
+        ? { lat: prov.latitude, lng: prov.longitude }
+        : PROVIDER_COORDINATES[prov.id];
+      const pos = configured || { lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] };
       const isSelected = selectedProvider?.id === prov.id;
       const initials = prov.name.split(' ').map((n) => n[0]).slice(0, 2).join('');
 
@@ -176,6 +179,18 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         if (onSelectProvider) onSelectProvider(prov);
       });
     });
+
+    if (providers.length > 0) {
+      const bounds = L.latLngBounds(providers.map((prov) => {
+        const configured = prov.latitude != null && prov.longitude != null
+          ? [prov.latitude, prov.longitude] as [number, number]
+          : PROVIDER_COORDINATES[prov.id]
+            ? [PROVIDER_COORDINATES[prov.id].lat, PROVIDER_COORDINATES[prov.id].lng] as [number, number]
+            : DEFAULT_CENTER;
+        return configured;
+      }));
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 13 });
+    }
   }, [providers, selectedProvider, showCoverageRadius, meetingPoint]);
 
   return (
