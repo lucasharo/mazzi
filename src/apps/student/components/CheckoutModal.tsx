@@ -65,6 +65,35 @@ type CheckoutStep =
   | 'ERROR_SLOT_UNAVAILABLE'
   | 'ERROR_QUOTE_EXPIRED';
 
+function friendlyCheckoutError(error: unknown, fallback: string): string {
+  const value = error as { code?: string; message?: string } | null;
+  const technicalMessage = `${value?.code || ''} ${value?.message || ''}`.toUpperCase();
+
+  if (technicalMessage.includes('STUDENT_ADDRESS_OUTSIDE_PROVIDER_RADIUS')) {
+    return 'O endereço informado está fora do raio de atendimento deste instrutor ou autoescola. Escolha outro endereço ou use o endereço do instrutor/autoescola como ponto de encontro.';
+  }
+  if (technicalMessage.includes('STUDENT_ADDRESS_COORDINATES_REQUIRED')) {
+    return 'Não conseguimos localizar esse endereço. Confira os dados informados e tente novamente.';
+  }
+  if (technicalMessage.includes('ADDRESS_NOT_FOUND')) {
+    return 'Não encontramos esse endereço. Confira os dados informados e tente novamente.';
+  }
+  if (technicalMessage.includes('GEOCODING_UNAVAILABLE')) {
+    return 'Não foi possível localizar o endereço agora. Tente novamente em instantes.';
+  }
+  if (technicalMessage.includes('STUDENT_ADDRESS_REQUIRED')) {
+    return 'Informe o endereço do aluno para calcular a distância.';
+  }
+  if (technicalMessage.includes('MEETING_POINT_TYPE_INVALID')) {
+    return 'Selecione um ponto de encontro válido.';
+  }
+  if (technicalMessage.includes('SELECTED_SLOT_NOT_AVAILABLE') || technicalMessage.includes('SLOT_NO_LONGER_AVAILABLE')) {
+    return 'Esse horário acabou de ser reservado por outra pessoa. Escolha outro horário.';
+  }
+
+  return fallback;
+}
+
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
@@ -168,7 +197,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             if (dbErr?.message?.includes('SELECTED_SLOT_NOT_AVAILABLE')) {
               setStep('ERROR_SLOT_UNAVAILABLE');
             } else {
-              setErrorMessage(dbErr.message || 'Erro ao criar cotação segura.');
+              setErrorMessage(friendlyCheckoutError(dbErr, 'Não foi possível criar a cotação. Tente novamente.'));
             }
             return;
           }
@@ -191,7 +220,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setQuote(generatedQuote);
         setQuoteTimeRemainingSec(600);
       } catch (err: any) {
-        setErrorMessage(err.message || 'Erro ao gerar cotação para este horário.');
+        setErrorMessage(friendlyCheckoutError(err, 'Não foi possível gerar a cotação para este horário. Tente novamente.'));
       }
     };
 
@@ -338,7 +367,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       } else if (err instanceof QuoteDomainError) {
         setStep('ERROR_QUOTE_EXPIRED');
       } else {
-        setErrorMessage(err.message || 'Não foi possível reservar este horário no momento.');
+        setErrorMessage(friendlyCheckoutError(err, 'Não foi possível reservar este horário no momento. Tente novamente.'));
       }
     } finally {
       setIsProcessing(false);
@@ -397,7 +426,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setErrorMessage('Pagamento pendente. Aguardando processamento do gateway.');
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Erro ao processar pagamento simulado.');
+      setErrorMessage(friendlyCheckoutError(err, 'Não foi possível processar o pagamento simulado. Tente novamente.'));
     } finally {
       setIsProcessing(false);
     }

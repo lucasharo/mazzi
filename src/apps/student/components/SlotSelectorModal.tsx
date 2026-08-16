@@ -140,14 +140,14 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
         <div className="max-h-72 overflow-y-auto pr-1 space-y-4">
           {(Object.entries(datesByMonth) as [string, string[]][]).map(([month, monthDates]) => <section key={month}>
             <h4 className="mb-2 text-xs font-black capitalize text-slate-700">{formatDateOnly(`${month}-01`, { month: 'long', year: 'numeric' })}</h4>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
             {monthDates.map((date) => {
             const available = (slotsByDate[date] || []).length > 0;
             return (
-              <button key={date} type="button" disabled={!available} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? '' : ', indisponível'}`} className={`min-h-16 rounded-xl border p-2 text-center transition ${selectedDate === date ? 'border-amber-500 bg-amber-50 text-slate-950 ring-2 ring-amber-400/30' : available ? 'border-slate-200 bg-white hover:border-amber-300 text-slate-700' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'}`}>
-                <span className="text-[10px] uppercase font-bold block">{formatDateOnly(date, { weekday: 'short' }).replace('.', '')}</span>
-                <span className="text-lg font-black block">{formatDateOnly(date, { day: '2-digit' })}</span>
-                <span className="text-[9px] font-bold">{available ? `${slotsByDate[date].length}` : '—'}</span>
+              <button key={date} type="button" disabled={!available} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? '' : ', indisponível'}`} className={`min-h-12 rounded-lg border p-1.5 text-center transition ${selectedDate === date ? 'border-amber-500 bg-amber-50 text-slate-950 ring-2 ring-amber-400/30' : available ? 'border-slate-200 bg-white hover:border-amber-300 text-slate-700' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'}`}>
+                <span className="text-[9px] uppercase font-bold block">{formatDateOnly(date, { weekday: 'short' }).replace('.', '')}</span>
+                <span className="text-base font-black block">{formatDateOnly(date, { day: '2-digit' })}</span>
+                <span className="text-[8px] font-bold">{available ? `${slotsByDate[date].length}` : '—'}</span>
               </button>
             );
             })}

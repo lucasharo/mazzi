@@ -39,7 +39,7 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col font-sans antialiased text-slate-900">
       {/* Top Global Demo Switcher Bar */}
-      {currentView !== 'student' && <div className="bg-slate-950 border-b border-slate-800 text-white px-4 py-2.5 flex items-center justify-between sticky top-0 z-50 shadow-md">
+      {!isAuthenticated && <div className="bg-slate-950 border-b border-slate-800 text-white px-4 py-2.5 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-amber-400 text-slate-950 font-black flex items-center justify-center text-sm shadow-xs">
             M
