@@ -137,12 +137,6 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
           </div>
         )}
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
-          <p className="text-sm font-black capitalize text-slate-800">
-          {selectedDate ? formatDateOnly(selectedDate, { month: 'long', year: 'numeric' }) : formatDateOnly(fromDate, { month: 'long', year: 'numeric' })}
-          </p>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Selecione um dia abaixo</p>
-        </div>
         <div className="max-h-72 overflow-y-auto pr-1 space-y-4">
           {(Object.entries(datesByMonth) as [string, string[]][]).map(([month, monthDates]) => <section key={month}>
             <h4 className="mb-2 text-xs font-black capitalize text-slate-700">{formatDateOnly(`${month}-01`, { month: 'long', year: 'numeric' })}</h4>

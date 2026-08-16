@@ -108,7 +108,7 @@ function vehicleFromBookingContext(ctx: any): Vehicle {
 }
 
 export const StudentApp: React.FC = () => {
-  const { user, isAuthenticated, loginAsDemoUser } = useAuth();
+  const { user, isAuthenticated, loginAsDemoUser, logout } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
   const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'messages' | 'profile'>('search');
@@ -122,6 +122,27 @@ export const StudentApp: React.FC = () => {
   const [profilePhone, setProfilePhone] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const handleProfileAvatar = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const image = new Image();
+    image.onload = () => {
+      const size = Math.min(image.width, image.height);
+      const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
+      canvas.getContext('2d')?.drawImage(image, (image.width - size) / 2, (image.height - size) / 2, size, size, 0, 0, 512, 512);
+      setProfileAvatar(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    image.src = URL.createObjectURL(file);
+  };
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -134,7 +155,8 @@ export const StudentApp: React.FC = () => {
 
   useEffect(() => {
     setProfileName(user?.name || '');
-    setProfilePhone(user?.phone || '');
+    setProfilePhone(formatPhone(user?.phone || ''));
+    setProfileAvatar(user?.avatarUrl);
   }, [user?.name, user?.phone]);
 
   // Live Supabase database state
@@ -748,8 +770,8 @@ export const StudentApp: React.FC = () => {
             <div className="p-4 space-y-4">
               <div className="bg-slate-950 text-white p-5 rounded-3xl flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 font-black text-xl flex items-center justify-center">
-                    {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AN'}
+                  <div className="relative w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 font-black text-xl flex items-center justify-center overflow-hidden">
+                    {profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="w-full h-full object-cover" /> : (user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AN')}
                   </div>
                   <div>
                     <h3 className="font-black text-lg text-white">{String(user?.name || 'Ana Souza')}</h3>
@@ -761,7 +783,7 @@ export const StudentApp: React.FC = () => {
 
               <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
                 <div className="flex items-center justify-between"><h4 className="font-bold text-slate-900 text-sm">Meu perfil</h4><Button variant="outline" size="sm" onClick={() => setIsEditingProfile((value) => !value)}>{isEditingProfile ? 'Cancelar' : 'Editar'}</Button></div>
-                {isEditingProfile ? <div className="space-y-2"><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Nome" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><input value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} placeholder="Telefone" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><Button variant="primary" size="sm" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone); setIsEditingProfile(false); } catch (error: any) { setProfileError(error?.message || 'Não foi possível salvar o perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>{profileError && <p className="text-xs text-rose-600">{profileError}</p>}</div> : <p className="text-xs text-slate-600">{user?.phone || 'Telefone não informado'}</p>}
+                {isEditingProfile ? <div className="space-y-2"><label className="block text-xs font-bold text-slate-600">Foto quadrada</label><input type="file" accept="image/*" capture="user" onChange={handleProfileAvatar} className="w-full text-xs" /><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Nome" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><input value={profilePhone} onChange={(event) => setProfilePhone(formatPhone(event.target.value))} placeholder="Telefone (11) 99999-9999" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><p className="text-[10px] text-slate-400">E-mail, papel e identificador são informações chave e não podem ser alterados.</p><Button variant="primary" size="sm" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone, profileAvatar); setIsEditingProfile(false); } catch (error: any) { setProfileError(error?.message || 'Não foi possível salvar o perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>{profileError && <p className="text-xs text-rose-600">{profileError}</p>}</div> : <p className="text-xs text-slate-600">{user?.phone || 'Telefone não informado'}</p>}
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
@@ -793,6 +815,7 @@ export const StudentApp: React.FC = () => {
                   Recarregar Sessão Aluno Demo
                 </Button>
               </div>
+              <Button variant="outline" size="md" className="w-full text-rose-700 border-rose-200" onClick={() => { void logout(); }}>Sair</Button>
             </div>
           )}
         </main>

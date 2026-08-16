@@ -33,7 +33,7 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col font-sans antialiased text-slate-900">
       {/* Top Global Demo Switcher Bar */}
-      <div className="bg-slate-950 border-b border-slate-800 text-white px-4 py-2.5 flex items-center justify-between sticky top-0 z-50 shadow-md">
+      {currentView !== 'student' && <div className="bg-slate-950 border-b border-slate-800 text-white px-4 py-2.5 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-amber-400 text-slate-950 font-black flex items-center justify-center text-sm shadow-xs">
             M
@@ -134,7 +134,7 @@ function AppContent() {
             <button type="button" onClick={() => { void logout(); setCurrentView('auth'); }} className="ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-rose-300 hover:bg-rose-950/60" aria-label="Sair"><LogOut className="w-3.5 h-3.5" /> Sair</button>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Active App Shell */}
       <div className="flex-1 bg-slate-100 flex flex-col justify-center">
