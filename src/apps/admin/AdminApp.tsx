@@ -5,6 +5,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
+import { LogOut } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 import { dbService } from '../../lib/db-service';
 import {
   Provider,
@@ -40,7 +42,7 @@ import {
 import { AdminAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
 
 export const AdminApp: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -255,6 +257,7 @@ export const AdminApp: React.FC = () => {
           { id: 'users', label: 'Usuários & Papéis' },
           { id: 'audit', label: 'Auditoria' },
           { id: 'settings', label: 'Configurações' },
+          { id: 'profile', label: 'Perfil' },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -377,6 +380,29 @@ export const AdminApp: React.FC = () => {
             actor={activeActor}
             onUpdateConfig={handleUpdateConfig}
           />
+        )}
+
+        {activeTab === 'profile' && (
+          <section className="max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-6">
+              <h2 className="text-xl font-black text-slate-900">Meu perfil</h2>
+              <p className="mt-1 text-sm text-slate-500">Dados da sessão administrativa atual.</p>
+            </div>
+            <div className="space-y-2 rounded-2xl bg-slate-50 p-4 text-sm">
+              <p><span className="font-bold text-slate-700">Nome:</span> {user?.name || 'Administrador MAZZI'}</p>
+              <p><span className="font-bold text-slate-700">E-mail:</span> {user?.email || 'Não informado'}</p>
+              <p><span className="font-bold text-slate-700">Perfil:</span> {user?.roles?.[0] || 'PLATFORM_ADMIN'}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="md"
+              className="mt-6 text-rose-700 border-rose-200 hover:bg-rose-50"
+              onClick={() => { void logout(); }}
+              leftIcon={<LogOut className="w-4 h-4" />}
+            >
+              Sair
+            </Button>
+          </section>
         )}
       </main>
     </div>

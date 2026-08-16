@@ -37,6 +37,7 @@ import {
   MapPin,
   Sliders,
   MessageSquare,
+  LogOut,
 } from 'lucide-react';
 import {
   UserRole,
@@ -99,7 +100,7 @@ import {
 import { calculateCancellationPolicy, performProviderCancellation } from '../../domain/cancellation';
 
 export const ProviderApp: React.FC = () => {
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, logout, isLoading: isAuthLoading } = useAuth();
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance'>('vehicles');
@@ -1783,6 +1784,18 @@ export const ProviderApp: React.FC = () => {
                           <p className="text-slate-400">Armazenados em bucket privado seguro com URLs temporárias com expiração.</p>
                         </div>
                       </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="md"
+                        className="text-rose-700 border-rose-200 hover:bg-rose-50"
+                        onClick={() => { void logout(); }}
+                        leftIcon={<LogOut className="w-4 h-4" />}
+                      >
+                        Sair
+                      </Button>
                     </div>
                   </div>
                 </div>
