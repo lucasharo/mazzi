@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">MAZZI</title>
+  <desc id="desc">Ícone do aplicativo MAZZI</desc>
+  <rect width="512" height="512" rx="112" fill="#0f172a"/>
+  <circle cx="256" cy="256" r="188" fill="#fbbf24"/>
+  <path fill="#0f172a" d="M141 337V175h48l67 91 67-91h48v162h-46V244l-51 70h-36l-51-70v93h-46Z"/>
+  <path fill="#0f172a" d="M167 376h178v32H167z"/>
+</svg>

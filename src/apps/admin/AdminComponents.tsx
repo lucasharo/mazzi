@@ -480,8 +480,10 @@ export const ProvidersTab: React.FC<{
                     onClick={() => {
                       setShowSensitive(!showSensitive);
                       if (!showSensitive) {
-                        // Audit note
-                        console.log(`[PRIVACY_SECURITY_LOG] Platform Admin or Support viewed unmasked data for Provider ${selectedProv.id}`);
+                        // Real audit trails must be persisted by backend/RPC flows. Avoid logging sensitive identifiers in browser console.
+                        if ((import.meta as any).env?.DEV) {
+                          console.debug('[MAZZI_PRIVACY_DEBUG]', { unmaskedProviderDataViewed: true });
+                        }
                       }
                     }}
                   >

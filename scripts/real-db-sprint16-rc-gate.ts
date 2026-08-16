@@ -1,0 +1,270 @@
+import fs from 'fs';
+import path from 'path';
+import pg from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env.local' });
+dotenv.config();
+
+const { Client } = pg;
+
+type GateStatus = 'PASS' | 'BLOCKED' | 'SKIPPED';
+type GateResult = Record<string, GateStatus | string | number>;
+
+const result: GateResult = {};
+
+function pass(key: string) {
+  result[key] = 'PASS';
+}
+
+function skipped(key: string, reason: string) {
+  result[key] = `SKIPPED: ${reason}`;
+}
+
+function fail(key: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  result[key] = `BLOCKED: ${message}`;
+}
+
+function read(relativePath: string): string {
+  return fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8');
+}
+
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+function listFiles(root: string): string[] {
+  const fullRoot = path.join(process.cwd(), root);
+  if (!fs.existsSync(fullRoot)) return [];
+
+  const entries = fs.readdirSync(fullRoot, { withFileTypes: true });
+  return entries.flatMap((entry) => {
+    const fullPath = path.join(fullRoot, entry.name);
+    const relativePath = path.relative(process.cwd(), fullPath);
+
+    if (entry.isDirectory()) {
+      if (['node_modules', '.git', 'dist', 'coverage', '.tmp'].includes(entry.name)) return [];
+      return listFiles(relativePath);
+    }
+
+    return [relativePath];
+  });
+}
+
+function runStaticRcChecks() {
+  try {
+    const manifest = JSON.parse(read('public/manifest.webmanifest'));
+    assert(manifest.name?.includes('MAZZI'), 'manifest name must identify MAZZI');
+    assert(manifest.short_name === 'MAZZI', 'manifest short_name must be MAZZI');
+    assert(manifest.start_url === '/', 'manifest start_url must be /');
+    assert(manifest.display === 'standalone', 'manifest display must be standalone');
+    assert(Array.isArray(manifest.icons) && manifest.icons.length > 0, 'manifest must define icons');
+    pass('PWA_MANIFEST');
+  } catch (error) {
+    fail('PWA_MANIFEST', error);
+  }
+
+  try {
+    const sw = read('public/sw.js');
+    assert(sw.includes('CACHE_NAME'), 'service worker must define a cache');
+    assert(sw.includes("url.origin !== self.location.origin"), 'service worker must avoid cross-origin caching');
+    assert(sw.includes("url.pathname.startsWith('/auth/')"), 'service worker must bypass auth');
+    assert(sw.includes("url.pathname.startsWith('/rest/')"), 'service worker must bypass REST');
+    assert(sw.includes("url.pathname.startsWith('/rpc/')"), 'service worker must bypass RPC');
+    assert(sw.includes("url.pathname.startsWith('/api/')"), 'service worker must bypass API');
+    pass('PWA_SERVICE_WORKER');
+    pass('PWA_PRIVATE_CACHE_AUDIT');
+  } catch (error) {
+    fail('PWA_SERVICE_WORKER', error);
+    fail('PWA_PRIVATE_CACHE_AUDIT', error);
+  }
+
+  try {
+    const html = read('index.html');
+    assert(html.includes('manifest.webmanifest'), 'index.html must link the PWA manifest');
+    assert(html.includes('theme-color'), 'index.html must set theme-color');
+    assert(html.includes('MAZZI'), 'index.html must use MAZZI metadata');
+    pass('PWA_INSTALLABILITY');
+  } catch (error) {
+    fail('PWA_INSTALLABILITY', error);
+  }
+
+  try {
+    const main = read('src/main.tsx');
+    const boundary = read('src/components/ErrorBoundary.tsx');
+    assert(main.includes('<ErrorBoundary>'), 'React tree must be wrapped in ErrorBoundary');
+    assert(boundary.includes('getDerivedStateFromError'), 'ErrorBoundary must catch render errors');
+    pass('ERROR_BOUNDARY');
+  } catch (error) {
+    fail('ERROR_BOUNDARY', error);
+  }
+
+  try {
+    const fakeAdapter = read('src/domain/payments/fake-adapter.ts');
+    const gatewayFactory = read('src/domain/payments/gateway-factory.ts');
+    assert(fakeAdapter.includes('assertNotProduction'), 'FakePaymentGateway must guard production usage');
+    assert(gatewayFactory.includes('throw new Error') && gatewayFactory.includes('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION'), 'factory must hard-block fake provider in production');
+    pass('FAKE_GATEWAY_PRODUCTION_BLOCK');
+    pass('DEV_FAKE_PAYMENT_ONLY');
+  } catch (error) {
+    fail('FAKE_GATEWAY_PRODUCTION_BLOCK', error);
+    fail('DEV_FAKE_PAYMENT_ONLY', error);
+  }
+
+  try {
+    const viteConfig = read('vite.config.ts');
+    const supabaseClient = read('src/lib/supabase.ts');
+    const envExample = read('.env.example');
+    assert(viteConfig.includes('VITE_SUPABASE_URL') && !viteConfig.includes('env.SUPABASE_URL ||'), 'Vite must require VITE_SUPABASE_URL for browser runtime');
+    assert(viteConfig.includes('VITE_SUPABASE_ANON_KEY') && !viteConfig.includes('env.SUPABASE_ANON_KEY ||'), 'Vite must require VITE_SUPABASE_ANON_KEY for browser runtime');
+    assert(supabaseClient.includes('assertFrontendSafeSupabaseEnv'), 'Supabase client must reject frontend service_role exposure');
+    assert(envExample.includes('VITE_SUPABASE_URL') && envExample.includes('VITE_SUPABASE_ANON_KEY'), '.env.example must document frontend Supabase env');
+    assert(!envExample.includes('VITE_SUPABASE_SERVICE_ROLE_KEY='), '.env.example must not expose service_role as VITE');
+    pass('ENV_VALIDATION');
+    pass('SERVICE_ROLE_FRONTEND_EXPOSURE');
+  } catch (error) {
+    fail('ENV_VALIDATION', error);
+    fail('SERVICE_ROLE_FRONTEND_EXPOSURE', error);
+  }
+
+  try {
+    const sourceFiles = listFiles('.').filter((file) =>
+      /\.(ts|tsx|js|jsx|sql|md|json|html|css|webmanifest)$/.test(file) &&
+      !file.startsWith('.env') &&
+      file !== 'scripts\\real-db-sprint16-rc-gate.ts' &&
+      file !== 'scripts/real-db-sprint16-rc-gate.ts' &&
+      file !== 'package-lock.json'
+    );
+    const forbiddenPatterns = [
+      /VITE_SUPABASE_SERVICE_ROLE_KEY\s*=(?!=)/,
+      /SUPABASE_SERVICE_ROLE_KEY\s*=\s*eyJ/,
+      /service_role[^'"\n]{0,80}eyJ/i,
+      /postgres:\/\/postgres:[^@\s]+@db\./i,
+    ];
+    const offenders = sourceFiles.filter((file) => {
+      const content = read(file);
+      return forbiddenPatterns.some((pattern) => pattern.test(content));
+    });
+    assert(offenders.length === 0, `potential secret/frontend service role exposure: ${offenders.join(', ')}`);
+    pass('SECRET_SCAN');
+  } catch (error) {
+    fail('SECRET_SCAN', error);
+  }
+
+  try {
+    if (!fs.existsSync(path.join(process.cwd(), 'dist'))) {
+      skipped('DIST_SECRET_SCAN', 'dist not built yet');
+      return;
+    }
+
+    const distFiles = listFiles('dist').filter((file) => /\.(js|css|html|json|txt|svg|webmanifest)$/.test(file));
+    const offenders = distFiles.filter((file) => {
+      const content = read(file);
+      return /SUPABASE_SERVICE_ROLE_KEY\s*=\s*eyJ|service_role[^'"\n]{0,80}eyJ|postgres:\/\/postgres:/i.test(content);
+    });
+    assert(offenders.length === 0, `dist contains forbidden secret patterns: ${offenders.join(', ')}`);
+    pass('DIST_SECRET_SCAN');
+  } catch (error) {
+    fail('DIST_SECRET_SCAN', error);
+  }
+
+  try {
+    const migrations = fs
+      .readdirSync(path.join(process.cwd(), 'supabase', 'migrations'))
+      .filter((file) => /^\d+_.*\.sql$/.test(file));
+    const versions = migrations.map((file) => file.split('_')[0]);
+    assert(new Set(versions).size === versions.length, 'migration version prefixes must be unique');
+    assert([...versions].sort().join('|') === versions.join('|'), 'migration files must be ordered');
+    pass('MIGRATION_SEQUENCE');
+  } catch (error) {
+    fail('MIGRATION_SEQUENCE', error);
+  }
+}
+
+async function runReadOnlyDbChecks() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    skipped('DATABASE_INTEGRITY', 'DATABASE_URL missing');
+    skipped('ACTIVE_BOOKING_OVERLAPS', 'DATABASE_URL missing');
+    skipped('TEMP_TEST_DATA', 'DATABASE_URL missing');
+    skipped('MIGRATION_DRIFT', 'DATABASE_URL missing');
+    return;
+  }
+
+  const client = new Client({
+    connectionString: databaseUrl,
+    ssl: { rejectUnauthorized: false },
+  });
+
+  await client.connect();
+  try {
+    const tableChecks = await client.query(`
+      select table_name
+      from information_schema.tables
+      where table_schema = 'public'
+        and table_name in ('users', 'providers', 'vehicles', 'service_offerings', 'bookings', 'payments', 'conversations', 'messages', 'reviews', 'notifications')
+    `);
+    assert(tableChecks.rowCount === 10, 'expected Sprint 13+ public tables are missing');
+    pass('DATABASE_INTEGRITY');
+
+    const overlaps = await client.query(`
+      select count(*)::int as count
+      from public.bookings b1
+      join public.bookings b2
+        on b1.id < b2.id
+       and b1.vehicle_id = b2.vehicle_id
+       and tstzrange(b1.scheduled_start_at, b1.scheduled_end_at, '[)') && tstzrange(b2.scheduled_start_at, b2.scheduled_end_at, '[)')
+      where b1.status in ('PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS')
+        and b2.status in ('PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS')
+    `);
+    assert(Number(overlaps.rows[0]?.count || 0) === 0, 'active vehicle booking overlaps found');
+    pass('ACTIVE_BOOKING_OVERLAPS');
+
+    const tempData = await client.query(`
+      select (
+        (select count(*) from public.users where email ilike '%sprint16%' or email ilike '%sprint15%') +
+        (select count(*) from public.bookings where id::text ilike 'sprint16%' or id::text ilike 'sprint15%') +
+        (select count(*) from public.payments where id::text ilike 'sprint16%' or id::text ilike 'sprint15%')
+      )::int as count
+    `);
+    assert(Number(tempData.rows[0]?.count || 0) === 0, 'temporary sprint data found');
+    pass('TEMP_TEST_DATA');
+
+    const rpcChecks = await client.query(`
+      select routine_name
+      from information_schema.routines
+      where routine_schema = 'public'
+        and routine_name in ('create_booking_hold', 'create_booking_payment', 'confirm_booking_payment', 'send_message', 'create_review_for_booking')
+    `);
+    assert(rpcChecks.rowCount >= 5, 'required RPC functions are missing');
+    pass('MIGRATION_DRIFT');
+  } finally {
+    await client.end();
+  }
+}
+
+async function main() {
+  runStaticRcChecks();
+
+  try {
+    await runReadOnlyDbChecks();
+  } catch (error) {
+    fail('DATABASE_INTEGRITY', error);
+    fail('ACTIVE_BOOKING_OVERLAPS', error);
+    fail('TEMP_TEST_DATA', error);
+    fail('MIGRATION_DRIFT', error);
+  }
+
+  Object.entries(result).forEach(([key, value]) => {
+    console.log(`${key}=${value}`);
+  });
+
+  const blocked = Object.values(result).some((value) => String(value).startsWith('BLOCKED'));
+  process.exit(blocked ? 1 : 0);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

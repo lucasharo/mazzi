@@ -116,4 +116,50 @@ describe('Sprint 09: Fake Payment Gateway & Factory (MVP Strategy)', () => {
     const gateway = PaymentGatewayFactory.createGateway();
     expect(gateway.gatewayType).toBe('DEVELOPMENT_MOCK');
   });
+
+  it('hard-blocks FakePaymentGateway usage in production, even without fake trigger tokens', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+
+      const req: CreatePaymentGatewayRequest = {
+        idempotencyKey: 'idemp_regular_prod_100',
+        bookingId: 'book_prod_100',
+        studentId: 'stud_prod_100',
+        studentName: 'Aluno Produção',
+        studentEmail: 'aluno.prod@teste.com',
+        providerId: 'prov_prod_100',
+        amountInCents: 11000,
+        platformFeeInCents: 1000,
+        providerAmountInCents: 10000,
+        method: 'PIX',
+        description: 'Aula Prática Cat B',
+      };
+
+      await expect(new FakePaymentGateway().createPayment(req)).rejects.toThrow(
+        'FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION'
+      );
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  it('hard-blocks PaymentGatewayFactory fake/development provider in production', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+
+      expect(() => PaymentGatewayFactory.createGateway({ provider: 'fake' })).toThrow(
+        'FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION'
+      );
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  it('fails closed for unsupported payment gateway providers', () => {
+    expect(() => PaymentGatewayFactory.createGateway({ provider: 'stripe' as any })).toThrow(
+      'PAYMENT_GATEWAY_PROVIDER_UNSUPPORTED'
+    );
+  });
 });

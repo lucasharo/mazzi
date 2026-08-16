@@ -1,0 +1,21 @@
+{
+  "name": "MAZZI — Marketplace de Aulas de Direção",
+  "short_name": "MAZZI",
+  "description": "Marketplace para encontrar, reservar e pagar aulas práticas de direção em São Paulo.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#fbbf24",
+  "categories": ["education", "navigation", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/mazzi-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -878,7 +878,13 @@ export const dbService = {
 
   async createAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
     // Log directly to local debugger console. Actual secure audit trails are written inside Security Definer DB Transactions
-    console.log('✏️ AUDIT LOG EVENT:', log);
+    if ((import.meta as any).env?.DEV) {
+      console.debug('[MAZZI_AUDIT_DEBUG]', {
+        action: log.action,
+        entityType: log.entityType,
+        hasActor: !!log.actorId,
+      });
+    }
     try {
       const { error } = await sp
         .from('audit_logs')

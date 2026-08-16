@@ -240,8 +240,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 0. Validate Auth User using getUser() to prevent stale session attacks
       const { data: { user: authUser }, error: authErr } = await sp.auth.getUser();
       
-      console.log('AUTH_SESSION_USER_ID =', session?.user?.id);
-      console.log('AUTH_VALIDATED_USER_ID =', authUser?.id);
+      if ((import.meta as any).env?.DEV) {
+        console.debug('[MAZZI_AUTH_DEBUG]', {
+          hasSessionUser: !!session?.user?.id,
+          hasValidatedUser: !!authUser?.id,
+        });
+      }
 
       if (authErr || !authUser) {
         console.warn('STALE_SESSION_DETECTED: Auth user invalid or expired, signing out locally');
@@ -260,8 +264,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const email = user.email || '';
       const profileQueryUserId = user.id;
 
-      console.log('PROFILE_QUERY_USER_ID =', profileQueryUserId);
-
       // 1. Fetch profile from public.users table
       let { data: profile, error: profileErr } = await sp
         .from('users')
@@ -270,8 +272,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       const profileFound = !!profile;
-      console.log('PROFILE_FOUND =', profileFound ? 'YES' : 'NO');
-      console.log('PROFILE_INSERT_ATTEMPTED =', 'NO');
+      if ((import.meta as any).env?.DEV) {
+        console.debug('[MAZZI_PROFILE_DEBUG]', {
+          profileFound,
+          profileInsertAttempted: false,
+        });
+      }
 
       // Ensure DB profile exists ONLY for legitimate new student registrations.
       // Pre-provisioned users (instructors, admins, school staff, existing students) MUST already exist in public.users.
@@ -296,7 +302,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const name = user.user_metadata?.name || 'Novo Aluno';
         const phone = user.user_metadata?.phone || '';
 
-        console.log('PROFILE_INSERT_ATTEMPTED =', 'YES');
+        if ((import.meta as any).env?.DEV) {
+          console.debug('[MAZZI_PROFILE_DEBUG]', {
+            profileFound: false,
+            profileInsertAttempted: true,
+          });
+        }
 
         const { data: insertedProfile, error: insertErr } = await sp
           .from('users')

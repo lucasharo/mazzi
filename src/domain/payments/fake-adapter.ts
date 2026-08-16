@@ -17,6 +17,10 @@ import {
   SettlementStatusResult,
 } from './gateway-interface';
 import { PaymentGatewayType, Provider, MazziPaymentStatus } from '../../types';
+import { isProductionRuntime } from '../../lib/runtime-env';
+
+const FAKE_GATEWAY_PRODUCTION_ERROR =
+  'FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: O gateway de pagamento simulado está bloqueado em produção.';
 
 /**
  * FakePaymentGateway for MAZZI MVP Development Environment.
@@ -30,10 +34,14 @@ export class FakePaymentGateway implements PaymentGateway {
   private idempotencyStore = new Map<string, PaymentGatewayResult>();
   private refundsStore = new Map<string, RefundGatewayDetails>();
 
-  async createPayment(request: CreatePaymentGatewayRequest): Promise<PaymentGatewayResult> {
-    if (process.env.NODE_ENV === 'production' && (request.idempotencyKey?.includes('fake-') || request.gatewayToken?.includes('fake_'))) {
-      throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: Ações de simulação de pagamento estão estritamente bloqueadas em ambiente de produção.');
+  private assertNotProduction(): void {
+    if (isProductionRuntime()) {
+      throw new Error(FAKE_GATEWAY_PRODUCTION_ERROR);
     }
+  }
+
+  async createPayment(request: CreatePaymentGatewayRequest): Promise<PaymentGatewayResult> {
+    this.assertNotProduction();
 
     if (request.amountInCents <= 0) {
       throw new Error('Valor do pagamento deve ser estritamente positivo em centavos.');
@@ -109,6 +117,8 @@ export class FakePaymentGateway implements PaymentGateway {
   }
 
   async getPayment(externalPaymentId: string): Promise<PaymentGatewayDetails> {
+    this.assertNotProduction();
+
     const payment = this.paymentsStore.get(externalPaymentId);
     if (!payment) {
       throw new Error(`Pagamento ${externalPaymentId} não encontrado no Fake Payment Gateway.`);
@@ -117,6 +127,8 @@ export class FakePaymentGateway implements PaymentGateway {
   }
 
   async cancelPayment(externalPaymentId: string): Promise<PaymentGatewayCancelResult> {
+    this.assertNotProduction();
+
     const payment = this.paymentsStore.get(externalPaymentId);
     if (payment) {
       payment.status = 'CANCELLED';
@@ -130,6 +142,8 @@ export class FakePaymentGateway implements PaymentGateway {
   }
 
   async refundPayment(request: RefundGatewayRequest): Promise<RefundGatewayResult> {
+    this.assertNotProduction();
+
     let payment = this.paymentsStore.get(request.externalPaymentId);
     if (!payment) {
       payment = {
@@ -180,6 +194,8 @@ export class FakePaymentGateway implements PaymentGateway {
   }
 
   async getRefund(externalRefundId: string): Promise<RefundGatewayDetails> {
+    this.assertNotProduction();
+
     const refund = this.refundsStore.get(externalRefundId);
     if (!refund) {
       throw new Error(`Reembolso ${externalRefundId} não encontrado.`);
@@ -188,6 +204,8 @@ export class FakePaymentGateway implements PaymentGateway {
   }
 
   verifyWebhookSignature(_rawPayload: string | Buffer, headers: Record<string, string | string[] | undefined>): boolean {
+    this.assertNotProduction();
+
     const secret = headers['x-mazzi-test-signature'] || headers['x-signature'];
     if (typeof secret === 'string' && (secret.includes('invalid') || secret.includes('tampered'))) {
       return false;
@@ -196,6 +214,8 @@ export class FakePaymentGateway implements PaymentGateway {
   }
 
   parseWebhookPayload(rawPayload: string | Buffer, _headers: Record<string, string | string[] | undefined>): ParsedWebhookEvent {
+    this.assertNotProduction();
+
     const parsed = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : JSON.parse(rawPayload.toString('utf-8'));
     return {
       externalEventId: parsed.id || `evt_fake_${Date.now()}`,
@@ -210,6 +230,8 @@ export class FakePaymentGateway implements PaymentGateway {
   }
 
   async getConnectedAccountStatus(externalAccountId: string): Promise<ConnectedAccountStatusResult> {
+    this.assertNotProduction();
+
     return {
       externalAccountId,
       status: 'ACTIVE',
@@ -219,6 +241,8 @@ export class FakePaymentGateway implements PaymentGateway {
   }
 
   async createOrLinkProviderAccount(provider: Provider): Promise<LinkAccountResult> {
+    this.assertNotProduction();
+
     const externalAccountId = `fake_acc_${provider.id}`;
     return {
       externalAccountId,
@@ -228,6 +252,8 @@ export class FakePaymentGateway implements PaymentGateway {
   }
 
   async getSettlementStatus(externalAccountId: string): Promise<SettlementStatusResult> {
+    this.assertNotProduction();
+
     return {
       externalAccountId,
       availableBalanceInCents: 18050,
@@ -240,9 +266,7 @@ export class FakePaymentGateway implements PaymentGateway {
    * Helper method to simulate webhook transitions in development/tests
    */
   simulatePaymentStatusChange(externalPaymentId: string, newStatus: MazziPaymentStatus): PaymentGatewayDetails {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: Ações de alteração de estado simulado do Fake Gateway estão bloqueadas em produção.');
-    }
+    this.assertNotProduction();
 
     const payment = this.paymentsStore.get(externalPaymentId);
     if (!payment) {

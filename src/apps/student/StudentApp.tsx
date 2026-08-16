@@ -173,17 +173,17 @@ export const StudentApp: React.FC = () => {
       searchRequest,
     });
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('SEARCH_LAT =', searchRequest.latitude);
-      console.log('SEARCH_LNG =', searchRequest.longitude);
-      console.log('SEARCH_RADIUS_METERS =', searchRequest.radiusMeters);
-      console.log('SEARCH_CATEGORY =', searchRequest.category);
-      console.log('SEARCH_PROVIDER_TYPE =', searchRequest.providerType);
-      console.log('SEARCH_TRANSMISSION =', searchRequest.transmission);
-      console.log('SEARCH_MIN_RATING =', searchRequest.minimumRating);
-      console.log('SEARCH_MAX_PRICE =', searchRequest.maxPriceInCents);
-      console.log('SEARCH_RPC_RESULT_COUNT =', res.totalCount);
-      console.log('SEARCH_RENDERED_COUNT =', res.results.length);
+    if ((import.meta as any).env?.DEV) {
+      console.debug('[MAZZI_SEARCH_DEBUG]', {
+        radiusMeters: searchRequest.radiusMeters,
+        category: searchRequest.category,
+        providerType: searchRequest.providerType,
+        transmission: searchRequest.transmission,
+        minimumRating: searchRequest.minimumRating,
+        hasMaxPrice: typeof searchRequest.maxPriceInCents === 'number',
+        resultCount: res.totalCount,
+        renderedCount: res.results.length,
+      });
     }
     return res;
   }, [searchRequest, dbProviders, dbVehicles, dbOfferings, confirmedBookings, isRealSupabase]);

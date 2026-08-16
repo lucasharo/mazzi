@@ -5,6 +5,7 @@
 import { PaymentGateway } from './gateway-interface';
 import { FakePaymentGateway } from './fake-adapter';
 import { MercadoPagoPaymentGateway, MercadoPagoConfig } from './mercadopago-adapter';
+import { getRuntimeEnvValue, isProductionRuntime } from '../../lib/runtime-env';
 
 export type PaymentGatewayProvider = 'fake' | 'mercadopago';
 
@@ -19,21 +20,28 @@ export class PaymentGatewayFactory {
    * Default for MVP development is 'fake' (FakePaymentGateway).
    */
   static createGateway(options?: PaymentGatewayFactoryOptions): PaymentGateway {
-    const provider = options?.provider || process.env.PAYMENT_GATEWAY_PROVIDER || 'fake';
+    const configuredProvider =
+      options?.provider ||
+      getRuntimeEnvValue('PAYMENT_GATEWAY_PROVIDER') ||
+      getRuntimeEnvValue('VITE_PAYMENT_GATEWAY_PROVIDER') ||
+      'fake';
+    const provider = configuredProvider === 'development' ? 'fake' : configuredProvider;
 
-    // Safety guard against accidental fake gateway activation in production
-    if (process.env.NODE_ENV === 'production' && provider === 'fake') {
-      console.warn(
-        '[MAZZI SECURITY WARNING]: PRODUCTION_PAYMENT_GATEWAY_PENDING. Running with FakePaymentGateway in production mode! Real PSP integration is DEFERRED.'
-      );
+    if (provider !== 'fake' && provider !== 'mercadopago') {
+      throw new Error(`PAYMENT_GATEWAY_PROVIDER_UNSUPPORTED: ${provider}`);
+    }
+
+    // Safety guard against accidental fake gateway activation in production.
+    if (isProductionRuntime() && provider === 'fake') {
+      throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: configure PAYMENT_GATEWAY_PROVIDER=mercadopago before production payment flows.');
     }
 
     if (provider === 'mercadopago') {
       const config: MercadoPagoConfig = options?.mercadoPagoConfig || {
-        accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || '',
-        clientId: process.env.MERCADOPAGO_CLIENT_ID || '',
-        clientSecret: process.env.MERCADOPAGO_CLIENT_SECRET || '',
-        useLiveHttp: process.env.MERCADOPAGO_LIVE_HTTP === 'true',
+        accessToken: getRuntimeEnvValue('MERCADOPAGO_ACCESS_TOKEN') || '',
+        clientId: getRuntimeEnvValue('MERCADOPAGO_CLIENT_ID') || '',
+        clientSecret: getRuntimeEnvValue('MERCADOPAGO_CLIENT_SECRET') || '',
+        useLiveHttp: getRuntimeEnvValue('MERCADOPAGO_LIVE_HTTP') === 'true',
       };
       return new MercadoPagoPaymentGateway(config);
     }
