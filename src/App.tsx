@@ -17,7 +17,7 @@ type AppView = 'student' | 'provider' | 'admin' | 'design-system' | 'auth';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<AppView>('student');
-  const { user, isAuthenticated, logout, switchRole } = useAuth();
+  const { user, isAuthenticated, isLoading, logout, switchRole } = useAuth();
   const authenticatedRole = user?.roles?.[0];
   const isStudentAccount = isAuthenticated && authenticatedRole === 'STUDENT';
   const isProviderAccount = isAuthenticated && (authenticatedRole === 'INSTRUCTOR' || authenticatedRole === 'SCHOOL_ADMIN');
@@ -29,6 +29,12 @@ function AppContent() {
     else if (isProviderAccount) setCurrentView('provider');
     else if (isAdminAccount) setCurrentView('admin');
   }, [authenticatedRole, isAdminAccount, isAuthenticated, isProviderAccount, isStudentAccount]);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      setCurrentView('auth');
+    }
+  }, [isAuthenticated, isLoading]);
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col font-sans antialiased text-slate-900">
