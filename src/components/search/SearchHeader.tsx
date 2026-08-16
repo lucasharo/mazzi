@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Search, Navigation, Calendar as CalendarIcon, Car, Bike, Sparkles } from 'lucide-react';
 import { VehicleCategory, SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
+import { geocodeAddress } from '../../lib/geocoding';
 import { trackSearchAnalytics } from './SearchAnalytics';
 
 export interface SearchHeaderProps {
@@ -59,16 +60,23 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
     e.preventDefault();
     if (!addressInput.trim()) return;
 
-    const results = await activeGeocodingProvider.geocode(addressInput);
-    if (results.length > 0) {
-      const best = results[0];
-      setAddressInput(best.formattedAddress);
-      if (onLocationResolved) {
-        onLocationResolved(best.formattedAddress, best.latitude, best.longitude);
-      }
+    try {
+      const best = await geocodeAddress(addressInput.trim());
+      setAddressInput(best.displayName);
+      onLocationResolved?.(best.displayName, best.latitude, best.longitude);
       onUpdateSearch({ latitude: best.latitude, longitude: best.longitude });
+      onPerformSearch();
+    } catch (error) {
+      console.warn('Address geocoding failed:', error);
+      const results = await activeGeocodingProvider.geocode(addressInput.trim());
+      const best = results[0];
+      if (best) {
+        setAddressInput(best.formattedAddress);
+        onLocationResolved?.(best.formattedAddress, best.latitude, best.longitude);
+        onUpdateSearch({ latitude: best.latitude, longitude: best.longitude });
+      }
+      onPerformSearch();
     }
-    onPerformSearch();
   };
 
   const handleQuickDateChange = (mode: 'ANY' | 'TODAY' | 'TOMORROW') => {
@@ -108,12 +116,22 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
+            aria-label="Endereço para buscar instrutores"
             value={addressInput}
             onChange={(e) => setAddressInput(e.target.value)}
             placeholder="Bairro, CEP ou estação de metrô em SP..."
             className="w-full bg-slate-900 text-white placeholder:text-slate-400 text-xs font-semibold pl-10 pr-4 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
           />
         </div>
+
+        <button
+          type="submit"
+          title="Buscar endereço"
+          aria-label="Buscar endereço"
+          className="p-2.5 rounded-xl bg-amber-400 text-slate-950 hover:bg-amber-300 transition cursor-pointer flex items-center justify-center min-w-[42px]"
+        >
+          <Search className="w-4 h-4" />
+        </button>
 
         <button
           type="button"
