@@ -1,132 +1,184 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Calendar, ChevronDown, Clock, RefreshCw } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { supabase } from '../../../lib/supabase';
 import { dbService } from '../../../lib/db-service';
-import { Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatCentsToBRL } from '../../../domain/money';
+
+const INITIAL_WINDOW_DAYS = 30;
+const LOAD_MORE_DAYS = 30;
+const MAX_HORIZON_DAYS = 90;
+
+type PublicSlot = {
+  local_date: string;
+  local_start_time: string;
+  local_end_time: string;
+  slot_start_at: string;
+  slot_end_at?: string;
+};
+
+function dateOnlyFromDate(date: Date): string {
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+}
+
+export function addDays(dateOnly: string, days: number): string {
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+  return date.toISOString().slice(0, 10);
+}
+
+export function formatDateOnly(dateOnly: string, options: Intl.DateTimeFormatOptions): string {
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  return new Intl.DateTimeFormat('pt-BR', { ...options, timeZone: 'UTC' }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+function groupSlots(slots: PublicSlot[]): Record<string, PublicSlot[]> {
+  return slots.reduce<Record<string, PublicSlot[]>>((acc, slot) => {
+    (acc[slot.local_date] ||= []).push(slot);
+    return acc;
+  }, {});
+}
+
+export function timePeriod(time: string): 'Manhã' | 'Tarde' | 'Noite' {
+  const hour = Number(time.slice(0, 2));
+  return hour < 12 ? 'Manhã' : hour < 18 ? 'Tarde' : 'Noite';
+}
 
 export interface SlotSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
   offeringId: string;
-  onSelect: (slot: any) => void;
+  onSelect: (slot: PublicSlot) => void;
+  instructorName?: string;
+  vehicleLabel?: string;
+  durationMinutes?: number;
+  priceInCents?: number;
 }
 
-export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
-  isOpen,
-  onClose,
-  offeringId,
-  onSelect,
-}) => {
-  const [slotsByDate, setSlotsByDate] = useState<Record<string, any[]>>({});
+export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, onClose, offeringId, onSelect, instructorName, vehicleLabel, durationMinutes, priceInCents }) => {
+  const [slotsByDate, setSlotsByDate] = useState<Record<string, PublicSlot[]>>({});
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedSlot, setSelectedSlot] = useState<PublicSlot | null>(null);
+  const [windowDays, setWindowDays] = useState(INITIAL_WINDOW_DAYS);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fromDate = useMemo(() => dateOnlyFromDate(new Date()), []);
+
+  const fetchSlots = useCallback(async (days: number, replace: boolean) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const toDate = addDays(fromDate, days - 1);
+      const { data, error: rpcError } = await (supabase as any).rpc('get_available_slots_public', {
+        p_offering_id: offeringId,
+        p_date_from: replace ? fromDate : addDays(fromDate, days - LOAD_MORE_DAYS),
+        p_date_to: toDate,
+      });
+      if (rpcError) throw rpcError;
+      const incoming = (data || []) as PublicSlot[];
+      setSlotsByDate((previous) => replace ? groupSlots(incoming) : {
+        ...previous,
+        ...groupSlots(incoming),
+      });
+      if (replace) {
+        const grouped = groupSlots(incoming);
+        const firstAvailable = Object.keys(grouped).sort()[0];
+        setSelectedDate(firstAvailable || fromDate);
+        setSelectedSlot(null);
+        void dbService.trackAnalyticsEvent('AVAILABLE_SLOTS_VIEW', {
+          slot_count: incoming.length,
+          date_count: Object.keys(grouped).length,
+        }).catch(() => undefined);
+      }
+    } catch (cause) {
+      console.error('Failed to fetch slots', cause);
+      setError('Não foi possível carregar os horários agora.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fromDate, offeringId]);
 
   useEffect(() => {
     if (!isOpen) return;
+    setWindowDays(INITIAL_WINDOW_DAYS);
+    void fetchSlots(INITIAL_WINDOW_DAYS, true);
+  }, [fetchSlots, isOpen]);
 
-    const fetchSlots = async () => {
-      setIsLoading(true);
-      try {
-        const fromDate = new Date();
-        const toDate = new Date();
-        toDate.setDate(fromDate.getDate() + 14);
-
-        const { data, error } = await (supabase as any).rpc('get_available_slots_public', {
-          p_offering_id: offeringId,
-          p_date_from: fromDate.toISOString().split('T')[0],
-          p_date_to: toDate.toISOString().split('T')[0],
-        });
-
-        if (error) throw error;
-
-        const grouped = (data || []).reduce((acc: any, slot: any) => {
-          const date = slot.local_date;
-          if (!acc[date]) acc[date] = [];
-          acc[date].push(slot);
-          return acc;
-        }, {});
-        
-        setSlotsByDate(grouped);
-        const slotCount = Object.values(grouped).reduce((total: number, slots: any) => total + slots.length, 0);
-        void dbService.trackAnalyticsEvent('AVAILABLE_SLOTS_VIEW', {
-          slot_count: slotCount,
-          date_count: Object.keys(grouped).length,
-        }).catch((analyticsError) => {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('[MAZZI Analytics] AVAILABLE_SLOTS_VIEW failed:', analyticsError);
-          }
-        });
-      } catch (err) {
-        console.error('Failed to fetch slots', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSlots();
-  }, [isOpen, offeringId]);
-
-  const dates = Object.keys(slotsByDate).sort();
+  const dates = useMemo(() => Array.from({ length: windowDays }, (_, index) => addDays(fromDate, index)), [fromDate, windowDays]);
+  const selectedSlots = selectedDate ? (slotsByDate[selectedDate] || []) : [];
+  const groupedPeriods = selectedSlots.reduce<Record<string, PublicSlot[]>>((acc, slot) => {
+    (acc[timePeriod(slot.local_start_time)] ||= []).push(slot);
+    return acc;
+  }, {});
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Escolha o Horário" size="md">
-      <div className="space-y-6 p-4">
-        <div>
-          <h3 className="font-bold text-sm text-slate-700 mb-3">Escolha o dia</h3>
-          <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
-            {dates.map((date) => {
-              const d = new Date(date);
-              const dayName = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-              const dayNum = d.getDate();
-              
-              return (
-                <button
-                  key={date}
-                  onClick={() => { setSelectedDate(date); setSelectedSlot(null); }}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all min-w-[72px] ${
-                    selectedDate === date 
-                      ? 'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-sm' 
-                      : 'border-slate-200 bg-white hover:border-emerald-200 text-slate-700'
-                  }`}
-                >
-                  <span className="text-[10px] uppercase font-bold text-slate-400">{dayName}</span>
-                  <span className="text-lg font-black">{dayNum}</span>
-                </button>
-              );
-            })}
+    <Modal isOpen={isOpen} onClose={onClose} title="Escolha o horário" size="md">
+      <div className="space-y-5 p-4" aria-busy={isLoading}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-sm text-slate-800">Escolha o dia</h3>
+            <p className="text-xs text-slate-500 mt-1">Mostrando os próximos {windowDays} dias</p>
           </div>
+          <Calendar className="w-5 h-5 text-amber-500" />
         </div>
 
-        {selectedDate && (
-          <div>
-            <h3 className="font-bold text-sm text-slate-700 mb-3">Horários disponíveis</h3>
-            <div className="grid grid-cols-4 gap-2">
-              {slotsByDate[selectedDate].map((slot) => (
-                <button
-                  key={slot.slot_start_at}
-                  onClick={() => setSelectedSlot(slot)}
-                  className={`p-3 rounded-xl border font-bold transition-all text-sm ${
-                    selectedSlot === slot 
-                      ? 'border-emerald-600 bg-emerald-600 text-white shadow-md' 
-                      : 'border-slate-200 bg-white hover:border-emerald-200 text-slate-700'
-                  }`}
-                >
-                  {slot.local_start_time.substring(0, 5)}
-                </button>
-              ))}
-            </div>
+        {error && (
+          <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <button type="button" onClick={() => void fetchSlots(windowDays, true)} className="underline flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Tentar novamente</button>
           </div>
         )}
 
-        <Button
-          disabled={!selectedSlot}
-          className="w-full"
-          onClick={() => { onSelect(selectedSlot); onClose(); }}
-        >
-          Continuar
-        </Button>
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 max-h-64 overflow-y-auto pr-1">
+          {dates.map((date) => {
+            const available = (slotsByDate[date] || []).length > 0;
+            return (
+              <button key={date} type="button" disabled={!available} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? '' : ', indisponível'}`} className={`min-h-16 rounded-xl border p-2 text-center transition ${selectedDate === date ? 'border-amber-500 bg-amber-50 text-slate-950 ring-2 ring-amber-400/30' : available ? 'border-slate-200 bg-white hover:border-amber-300 text-slate-700' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'}`}>
+                <span className="text-[10px] uppercase font-bold block">{formatDateOnly(date, { weekday: 'short' }).replace('.', '')}</span>
+                <span className="text-lg font-black block">{formatDateOnly(date, { day: '2-digit' })}</span>
+                <span className="text-[9px] font-bold">{available ? `${slotsByDate[date].length} horários` : 'Indisponível'}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {windowDays < MAX_HORIZON_DAYS && (
+          <button type="button" disabled={isLoading} onClick={() => { const next = Math.min(MAX_HORIZON_DAYS, windowDays + LOAD_MORE_DAYS); setWindowDays(next); void fetchSlots(next, false); }} className="w-full py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:border-amber-300 flex items-center justify-center gap-1">
+            Ver próximos {LOAD_MORE_DAYS} dias <ChevronDown className="w-4 h-4" />
+          </button>
+        )}
+
+        {selectedDate && (
+          <div>
+            <h3 className="font-bold text-sm text-slate-700 mb-3">{formatDateOnly(selectedDate, { dateStyle: 'full' })}</h3>
+            {selectedSlots.length === 0 ? <p className="text-xs text-slate-500">Nenhum horário disponível neste dia.</p> : (
+              <div className="space-y-3">
+                {(['Manhã', 'Tarde', 'Noite'] as const).filter((period) => groupedPeriods[period]?.length).map((period) => (
+                  <div key={period}>
+                    <p className="text-[10px] uppercase font-black text-slate-400 mb-1">{period}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {groupedPeriods[period].map((slot) => <button key={slot.slot_start_at} type="button" onClick={() => setSelectedSlot(slot)} className={`p-2 rounded-xl border font-bold transition text-sm ${selectedSlot?.slot_start_at === slot.slot_start_at ? 'border-amber-500 bg-amber-400 text-slate-950' : 'border-slate-200 bg-white hover:border-amber-300 text-slate-700'}`}><Clock className="w-3 h-3 inline mr-1" />{slot.local_start_time.substring(0, 5)}</button>)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
+          <p className="font-bold">Resumo da seleção</p>
+          {instructorName && <p>Instrutor: {instructorName}</p>}
+          <p className="mt-1">Data: {selectedDate ? formatDateOnly(selectedDate, { dateStyle: 'short' }) : '—'}</p>
+          <p>Horário: {selectedSlot?.local_start_time?.substring(0, 5) || '—'}</p>
+          {vehicleLabel && <p>Veículo: {vehicleLabel}</p>}
+          {durationMinutes && <p>Duração: {durationMinutes} minutos</p>}
+          {typeof priceInCents === 'number' && <p>Preço: {formatCentsToBRL(priceInCents)}</p>}
+        </div>
+
+        <Button disabled={!selectedSlot || isLoading} className="w-full" onClick={() => { if (selectedSlot) { onSelect(selectedSlot); onClose(); } }}>Continuar</Button>
       </div>
     </Modal>
   );

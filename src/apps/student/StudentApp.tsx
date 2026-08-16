@@ -817,6 +817,10 @@ export const StudentApp: React.FC = () => {
           isOpen={isSlotSelectorOpen}
           onClose={() => setIsSlotSelectorOpen(false)}
           offeringId={checkoutOffering.id}
+          instructorName={checkoutOffering.instructorName || checkoutProvider?.name}
+          vehicleLabel={checkoutVehicle ? `${checkoutVehicle.brand} ${checkoutVehicle.model}` : undefined}
+          durationMinutes={checkoutOffering.durationMinutes}
+          priceInCents={checkoutOffering.priceInCents}
           onSelect={(slot) => {
             setSelectedSlot(slot);
             setIsSlotSelectorOpen(false);

@@ -3,7 +3,8 @@ import { AlertCircle, RefreshCw, Send } from 'lucide-react';
 import { Booking, Conversation, Message } from '../../types';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../ui/Button';
-import { dbService } from '../../lib/db-service';
+import { dbService, mapMessageFromDb } from '../../lib/db-service';
+import { supabase } from '../../lib/supabase';
 
 interface BookingChatPanelProps {
   booking: Booking;
@@ -17,6 +18,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeReady, setRealtimeReady] = useState(false);
 
   const currentUserId = user?.id;
 
@@ -44,6 +46,47 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
   useEffect(() => {
     void loadConversation();
   }, [booking.id]);
+
+  useEffect(() => {
+    if (!conversation?.id) return;
+    let disposed = false;
+    let channel: any;
+    let pollingInterval: number | undefined;
+    let initialPollTimer: number | undefined;
+
+    const mergeMessages = (incoming: Message[]) => {
+      setMessages((current) => {
+        const byId = new Map<string, Message>(current.map((message) => [message.id, message] as [string, Message]));
+        incoming.forEach((message) => byId.set(message.id, message));
+        return Array.from(byId.values()).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      });
+    };
+    const poll = () => {
+      if (disposed || realtimeReady) return;
+      void dbService.getMessagesForConversation(conversation.id).then(mergeMessages).catch(() => undefined);
+    };
+
+    channel = supabase
+      .channel(`booking-chat:${conversation.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversation.id}` }, (payload: any) => {
+        mergeMessages([mapMessageFromDb(payload.new)]);
+      })
+      .subscribe((status: string) => {
+        const healthy = status === 'SUBSCRIBED';
+        setRealtimeReady(healthy);
+        if (!healthy && pollingInterval === undefined) pollingInterval = window.setInterval(poll, 10000);
+        if (healthy && pollingInterval !== undefined) { window.clearInterval(pollingInterval); pollingInterval = undefined; }
+      });
+    initialPollTimer = window.setTimeout(poll, 10000);
+
+    return () => {
+      disposed = true;
+      if (initialPollTimer !== undefined) window.clearTimeout(initialPollTimer);
+      if (pollingInterval !== undefined) window.clearInterval(pollingInterval);
+      void supabase.removeChannel(channel);
+      setRealtimeReady(false);
+    };
+  }, [conversation?.id]);
 
   const handleSend = async () => {
     const body = draft.trim();
