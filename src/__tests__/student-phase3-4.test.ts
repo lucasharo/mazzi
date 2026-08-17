@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, formatDateOnly, timePeriod } from '../apps/student/components/SlotSelectorModal';
+import { addDays, formatDateOnly, timePeriod, INITIAL_WINDOW_DAYS, LOAD_MORE_DAYS, MAX_HORIZON_DAYS } from '../apps/student/components/SlotSelectorModal';
 
 describe('Student Experience phases 3 and 4', () => {
   it('keeps date-only calendar arithmetic timezone-safe', () => {
@@ -16,5 +16,14 @@ describe('Student Experience phases 3 and 4', () => {
     expect(timePeriod('11:59:00')).toBe('Manhã');
     expect(timePeriod('12:00:00')).toBe('Tarde');
     expect(timePeriod('18:00:00')).toBe('Noite');
+  });
+
+  it('preserves the progressive 30/60/90 day horizon', () => {
+    expect(INITIAL_WINDOW_DAYS).toBe(30);
+    expect(LOAD_MORE_DAYS).toBe(30);
+    expect(MAX_HORIZON_DAYS).toBe(90);
+    expect(Math.min(MAX_HORIZON_DAYS, INITIAL_WINDOW_DAYS + LOAD_MORE_DAYS)).toBe(60);
+    expect(Math.min(MAX_HORIZON_DAYS, 60 + LOAD_MORE_DAYS)).toBe(90);
+    expect(Math.min(MAX_HORIZON_DAYS, 90 + LOAD_MORE_DAYS)).toBe(90);
   });
 });

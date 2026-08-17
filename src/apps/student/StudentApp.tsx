@@ -21,6 +21,7 @@ import {
 import { BookingCard } from '../../components/ui/BookingCard';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { formatCentsToBRL } from '../../domain/money';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { SearchHeader } from '../../components/search/SearchHeader';
 import { FilterDrawer } from '../../components/search/FilterDrawer';
@@ -742,13 +743,13 @@ export const StudentApp: React.FC = () => {
           title="Escolha o instrutor"
           size="sm"
         >
-          <div className="space-y-2">
-            <p className="text-xs text-slate-500">Esta autoescola possui mais de um instrutor disponível.</p>
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-slate-500">Escolha quem vai acompanhar sua aula na autoescola.</p>
             {instructorChoices.map((ctx) => (
               <button
                 key={`${ctx.instructor_id}-${ctx.offering_id}`}
                 type="button"
-                className="w-full p-3 rounded-xl border border-slate-200 bg-white hover:border-amber-400 text-left"
+                className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
                 onClick={() => {
                   const offering = offeringFromBookingContext(ctx);
                    const vehicle = vehicleFromBookingContext(ctx);
@@ -761,8 +762,7 @@ export const StudentApp: React.FC = () => {
                   setIsSlotSelectorOpen(true);
                 }}
               >
-                <span className="font-bold text-sm text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span>
-                <span className="block text-xs text-slate-500 mt-1">{ctx.vehicle_brand || 'Veículo'} {ctx.vehicle_model || ''}</span>
+                <span className="flex items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-amber-400">{(ctx.instructor_name || ctx.instructorName || 'Instrutor disponível').split(/\s+/).map((part: string) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-black text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{ctx.vehicle_brand || 'Veículo'} {ctx.vehicle_model || ''} · {ctx.vehicle_transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. B</span><span className="mt-1 block text-xs font-bold text-slate-700">{ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}</span></span></span>
               </button>
             ))}
           </div>
@@ -779,7 +779,7 @@ export const StudentApp: React.FC = () => {
           vehicleLabel={checkoutVehicle ? `${checkoutVehicle.brand} ${checkoutVehicle.model}` : undefined}
           durationMinutes={checkoutOffering.durationMinutes}
           priceInCents={checkoutOffering.priceInCents}
-          existingBookings={confirmedBookings}
+          transmission={checkoutOffering.transmission}
           onSelect={(slot) => {
             setSelectedSlot(slot);
             setIsSlotSelectorOpen(false);
@@ -788,23 +788,28 @@ export const StudentApp: React.FC = () => {
         />
       )}
 
-      {/* Complete Checkout Journey Modal */}
-      <CheckoutModal
+      {/* Complete Checkout Journey Modal — a real selected slot is required */}
+      {isCheckoutOpen && selectedSlot && checkoutProvider && checkoutVehicle && checkoutOffering && <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         provider={checkoutProvider}
         vehicle={checkoutVehicle}
         offering={checkoutOffering}
-        scheduledDate={selectedSlot?.local_date || '2026-09-01'}
-        startTime={selectedSlot?.local_start_time?.substring(0, 5) || '10:00'}
-        endTime={selectedSlot?.local_end_time?.substring(0, 5) || '10:50'}
+        scheduledDate={selectedSlot.local_date}
+        startTime={selectedSlot.local_start_time.substring(0, 5)}
+        endTime={selectedSlot.local_end_time.substring(0, 5)}
         scheduledStartAt={selectedSlot?.slot_start_at}
         existingBookings={confirmedBookings}
+        onChooseAnotherSlot={() => {
+          setIsCheckoutOpen(false);
+          setSelectedSlot(null);
+          setIsSlotSelectorOpen(true);
+        }}
         onBookingConfirmed={(newBooking) => {
           setConfirmedBookings([newBooking, ...confirmedBookings]);
         }}
         onGoToBookings={() => setActiveTab('bookings')}
-      />
+      />}
     </div>
   );
 };

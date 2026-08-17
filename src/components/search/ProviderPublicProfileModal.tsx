@@ -1,25 +1,7 @@
-// ============================================================================
-// MAZZI PLATFORM — PROVIDER PUBLIC PROFILE MODAL
-// Detailed public view of an instructor or driving school (CFC).
-// Displays public vehicles, ratings, offered categories, and bookable slots preview.
-// ============================================================================
-
 import React from 'react';
-import {
-  ShieldCheck,
-  Star,
-  MapPin,
-  Car,
-  Clock,
-  Building2,
-  User,
-  Calendar as CalendarIcon,
-  CheckCircle2,
-  ChevronRight,
-} from 'lucide-react';
+import { ArrowLeft, Car, ChevronRight, MapPin, ShieldCheck, Star } from 'lucide-react';
 import { PublicSearchProviderResult } from '../../types';
 import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
 import { formatCentsToBRL } from '../../domain/money';
 
 export interface ProviderPublicProfileModalProps {
@@ -29,150 +11,49 @@ export interface ProviderPublicProfileModalProps {
   onSelectSlotToBook?: (providerId: string) => void;
 }
 
-export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProps> = ({
-  isOpen,
-  onClose,
-  result,
-  onSelectSlotToBook,
-}) => {
-  if (!isOpen || !result) return null;
+function initials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'M';
+}
 
+function transmissionLabel(value?: string): string | undefined {
+  if (value === 'AUTOMATIC') return 'Automático';
+  if (value === 'MANUAL') return 'Manual';
+  return undefined;
+}
+
+export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProps> = ({ isOpen, onClose, result, onSelectSlotToBook }) => {
+  if (!isOpen || !result) return null;
   const isCFC = result.providerType === 'DRIVING_SCHOOL';
+  const offerings = (result.publicOfferings || []).filter((offering) => offering.category === 'B');
+  const location = [result.neighborhood, result.city].filter(Boolean).join(' • ') || 'Localização aproximada';
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={result.displayName}
-      size="md"
-    >
-      <div className="space-y-4 text-left">
-        {/* Header Profile Card */}
-        <div className="bg-slate-950 text-white p-4 rounded-2xl flex items-start gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 font-black text-xl flex items-center justify-center shrink-0 border border-slate-800">
-            {result.displayName
-              .split(' ')
-              .map((n) => n[0])
-              .slice(0, 2)
-              .join('')}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-slate-900 text-amber-400 border border-slate-800">
-                {isCFC ? 'Autoescola / CFC' : 'Instrutor Autônomo'}
-              </span>
-              {result.isVerified && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                  Verificado pela Plataforma
-                </span>
-              )}
-            </div>
-
-            <h3 className="font-extrabold text-base text-white mt-1 truncate">{result.displayName}</h3>
-
-            <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-              <div className="flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                <span className="font-bold text-white">{result.ratingAverage.toFixed(1)}</span>
-                <span>({result.ratingCount} avaliações)</span>
-              </div>
-              <span>•</span>
-              <div className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                <span>{result.neighborhood}, SP</span>
-              </div>
-            </div>
-          </div>
+    <Modal isOpen={isOpen} onClose={onClose} title="Perfil público" size="md">
+      <div className="space-y-5 pb-1 text-left">
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={onClose} aria-label="Voltar para a busca" className="inline-flex items-center gap-1 rounded-xl px-2 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"><ArrowLeft className="h-4 w-4" aria-hidden="true" />Voltar</button>
+          {result.isVerified && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />Verificado</span>}
         </div>
 
-        {/* Categories & Transmission Options */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-              Categorias Atendidas
-            </span>
-            <div className="flex items-center gap-1">
-              {(result.categories || []).map((cat) => (
-                <span key={cat} className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-xs font-black">
-                  Cat. {cat}
-                </span>
-              ))}
+        <section className="flex items-start gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-3xl bg-slate-950 text-2xl font-black text-amber-400 ring-4 ring-white shadow-sm">{result.avatarUrl ? <img src={result.avatarUrl} alt={`Foto de ${result.displayName}`} className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center">{initials(result.displayName)}</span>}</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-black text-amber-700">{isCFC ? 'Autoescola / CFC' : 'Instrutor autônomo'}</p>
+            <h2 className="mt-1 truncate text-xl font-black tracking-tight text-slate-950">{result.displayName}</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
+              {result.ratingCount > 0 ? <span className="inline-flex items-center gap-1 text-slate-800"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />{result.ratingAverage.toFixed(1)} <span className="text-slate-400">({result.ratingCount} avaliações)</span></span> : <span className="font-black text-slate-500">Novo na MAZZI</span>}
+              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />{location}</span>
+              {result.formattedDistance && <span>{result.formattedDistance}</span>}
             </div>
           </div>
+        </section>
 
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-              Câmbio Disponível
-            </span>
-            <div className="flex items-center gap-1">
-              {(result.transmissions || []).map((t) => (
-                <span key={t} className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-800 text-xs font-bold">
-                  {t === 'AUTOMATIC' ? 'Automático' : t === 'MANUAL' ? 'Manual' : 'N/A'}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+        <section>
+          <div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-black text-slate-900">Aulas disponíveis</h3><span className="text-[10px] font-bold text-slate-400">Categoria B</span></div>
+          {offerings.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-center text-xs text-slate-500">Consulte os horários disponíveis para ver as ofertas ativas.</div> : <div className="space-y-3">{offerings.map((offering) => <article key={offering.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Car className="h-5 w-5" aria-hidden="true" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-black text-slate-900">{offering.vehicleTitle || 'Veículo disponível'}</p><p className="mt-1 text-xs font-semibold text-slate-500">{[transmissionLabel(offering.transmission), offering.category ? `Categoria ${offering.category}` : undefined].filter(Boolean).join(' · ') || 'Aula prática'}</p></div><p className="shrink-0 text-sm font-black text-slate-950">{formatCentsToBRL(offering.priceInCents)}</p></div><div className="mt-3 flex items-center gap-2 text-[11px] font-bold text-slate-500"><span>{offering.durationMinutes ? `${offering.durationMinutes} minutos` : 'Duração a confirmar'}</span><span>·</span><span>{result.nextAvailableSlot || 'Consulte os horários disponíveis'}</span></div></article>)}</div>}
+        </section>
 
-        {/* Public Offerings List */}
-        <div>
-          <h4 className="font-extrabold text-sm text-slate-900 mb-2">Aulas e Veículos Disponíveis</h4>
-          <div className="space-y-2">
-            {(result.publicOfferings || []).map((offering) => (
-              <div
-                key={offering.id}
-                className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center">
-                    <Car className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="font-extrabold text-xs text-slate-900 block">
-                      {offering.vehicleTitle}
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      Aula Prática • {offering.durationMinutes} minutos • Cat. {offering.category}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="font-black text-sm text-slate-950 block">
-                    {formatCentsToBRL(offering.priceInCents)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Next Available Slot & Action */}
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-extrabold uppercase text-amber-800 block">
-              Próxima Disponibilidade
-            </span>
-            <span className="text-xs font-bold text-slate-900 flex items-center gap-1 mt-0.5">
-              <Clock className="w-3.5 h-3.5 text-amber-600" />
-              {result.nextAvailableSlot || 'Consulte horários na agenda'}
-            </span>
-          </div>
-
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              onClose();
-              if (onSelectSlotToBook) onSelectSlotToBook(result.providerId);
-            }}
-            rightIcon={<ChevronRight className="w-4 h-4" />}
-          >
-            Ver Agenda
-          </Button>
-        </div>
+        <button type="button" onClick={() => { onClose(); onSelectSlotToBook?.(result.providerId); }} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-4 py-3.5 text-sm font-black text-slate-950 shadow-sm transition hover:bg-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-950">Ver horários<ChevronRight className="h-4 w-4" aria-hidden="true" /></button>
       </div>
     </Modal>
   );

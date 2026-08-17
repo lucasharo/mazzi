@@ -53,6 +53,7 @@ export interface CheckoutModalProps {
   endTime: string; // HH:mm
   scheduledStartAt?: string; // ISO String
   onGoToBookings?: () => void;
+  onChooseAnotherSlot?: () => void;
   existingBookings?: Booking[];
   onBookingConfirmed: (booking: Booking) => void;
 }
@@ -105,6 +106,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   endTime,
   scheduledStartAt,
   onGoToBookings,
+  onChooseAnotherSlot,
   existingBookings = [],
   onBookingConfirmed,
 }) => {
@@ -142,6 +144,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setPayment(null);
     setStep('QUOTE_PREVIEW');
 
+    if (!scheduledStartAt || !scheduledDate || !startTime || !endTime) {
+      setErrorMessage('Escolha um horário disponível antes de continuar.');
+      return;
+    }
+
     const initializeQuote = async () => {
       if (!user?.id) {
         setStep('AUTH_REQUIRED');
@@ -149,7 +156,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
 
       try {
-        const finalScheduledStartAt = scheduledStartAt || `${scheduledDate}T${startTime}:00.000Z`;
+        const finalScheduledStartAt = scheduledStartAt;
         const idempotencyKey = `idem_quote_${offering.id}_${finalScheduledStartAt}`;
 
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(offering.id);
@@ -579,7 +586,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               variant="primary"
               size="md"
               className="w-full"
-              onClick={() => { onClose(); onGoToBookings?.(); }}
+              onClick={() => { onClose(); onChooseAnotherSlot?.(); }}
             >
               Selecionar Outro Horário
             </Button>
@@ -604,7 +611,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               className="w-full"
               onClick={() => {
                 onClose();
-                onGoToBookings?.();
+                onChooseAnotherSlot?.();
               }}
             >
               Voltar ao Calendário

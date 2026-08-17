@@ -40,3 +40,15 @@ AVATAR_STORAGE_PRODUCTION_READY = NO
 ```
 
 O pagamento continua `FakePaymentGateway` de desenvolvimento, o geocoder é o adapter de desenvolvimento e avatares continuam em Data URL/base64 nesta fase. Nenhuma migration ou dependência nova foi adicionada.
+
+## FASE 2 — Perfil e agendamento
+
+- o perfil público usa somente `PublicSearchProviderResult` e `publicOfferings`;
+- avatar real é exibido quando existe, com iniciais como fallback;
+- instrutor e Autoescola/CFC recebem labels distintos; ofertas da superfície do aluno ficam em Categoria B;
+- calendário mantém janelas progressivas de 30, 60 e 90 dias;
+- `get_available_slots_public` continua sendo a única autoridade de disponibilidade;
+- datas indisponíveis permanecem visíveis e desabilitadas; horários são agrupados em manhã, tarde e noite;
+- quote/checkout só é inicializado com `selectedSlot.slot_start_at` real;
+- conflitos de concorrência retornam o usuário à agenda para escolher outro horário;
+- nenhuma migration foi criada.
