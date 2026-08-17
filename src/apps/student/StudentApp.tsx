@@ -108,7 +108,7 @@ export const StudentApp: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'messages' | 'profile'>('search');
   const [bookingTab, setBookingTab] = useState<'upcoming' | 'history'>('upcoming');
-  const [searchLocation, setSearchLocation] = useState('Sua localização');
+  const [searchLocation, setSearchLocation] = useState('');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);

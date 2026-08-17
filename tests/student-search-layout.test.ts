@@ -27,4 +27,11 @@ describe('Student search layout hierarchy', () => {
     expect(drawer).toContain('Raio Máximo de Busca');
     expect(drawer).toContain('Faixa de Preço Máxima por Aula');
   });
+
+  it('uses the current-location placeholder on first load and after GPS selection', () => {
+    expect(student).toContain("useState('')");
+    expect(header).toContain('placeholder="Sua localização atual"');
+    expect(header).toContain("setAddressInput('');");
+    expect(header).toContain('skipNextLocationNameSync');
+  });
 });

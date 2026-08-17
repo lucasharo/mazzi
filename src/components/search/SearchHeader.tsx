@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Navigation, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
@@ -20,7 +20,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   searchRequest,
   onUpdateSearch,
   onPerformSearch,
-  currentLocationName = 'Sua localização',
+  currentLocationName = '',
   currentLocation,
   onLocationResolved,
   onOpenFilters,
@@ -28,18 +28,26 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 }) => {
   const [addressInput, setAddressInput] = useState(currentLocationName);
   const [isLocating, setIsLocating] = useState(false);
+  const skipNextLocationNameSync = useRef(false);
 
   useEffect(() => {
-    setAddressInput(currentLocationName || 'Sua localização');
+    if (skipNextLocationNameSync.current) {
+      skipNextLocationNameSync.current = false;
+      return;
+    }
+    setAddressInput(currentLocationName);
   }, [currentLocationName]);
 
   const handleUseMyLocation = async () => {
+    // A localização atual é representada pelo placeholder, não por um
+    // endereço reverso que pode ser impreciso ou excessivamente longo.
+    setAddressInput('');
     setIsLocating(true);
     try {
       if (!currentLocation) throw new Error('CURRENT_LOCATION_UNAVAILABLE');
       const { lat, lng } = currentLocation;
       const geocoded = await activeGeocodingProvider.reverseGeocode(lat, lng);
-      setAddressInput(geocoded.formattedAddress);
+      skipNextLocationNameSync.current = true;
       onLocationResolved?.(geocoded.formattedAddress, lat, lng);
       onUpdateSearch({ latitude: lat, longitude: lng });
       onPerformSearch();
@@ -86,7 +94,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
       <form onSubmit={handleAddressSubmit} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100">
         <Search className="ml-2 h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
-        <input type="text" aria-label="Endereço para buscar instrutores" value={addressInput} onChange={(event) => setAddressInput(event.target.value)} placeholder="Bairro, CEP ou endereço" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400" />
+        <input type="text" aria-label="Endereço para buscar instrutores" value={addressInput} onChange={(event) => setAddressInput(event.target.value)} placeholder="Sua localização atual" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400" />
         <button type="submit" aria-label="Buscar endereço" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-amber-400 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"><Search className="h-4 w-4" aria-hidden="true" /></button>
         <button type="button" onClick={handleUseMyLocation} disabled={isLocating} aria-label="Usar minha localização atual" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-amber-50 hover:text-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 disabled:opacity-50"><Navigation className={`h-4 w-4 ${isLocating ? 'animate-spin' : ''}`} aria-hidden="true" /></button>
       </form>
