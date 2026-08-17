@@ -21,8 +21,8 @@ As referências Taxi App UI Kit (Wannathis) e Free Taxi Kit (Egor Mi) foram usad
 - localização manual e `navigator.geolocation` continuam ativos;
 - o marcador do endereço pesquisado continua sendo responsabilidade do mapa;
 - o MVP do aluno expõe somente Categoria B;
-- chips rápidos usam transmissão, `radiusMeters`, `maxPriceInCents` e datas existentes;
-- datas são calculadas em formato local `YYYY-MM-DD`, sem conversão UTC via `toISOString()`;
+- chips rápidos usam transmissão, `radiusMeters` e `maxPriceInCents`;
+- filtros de data não são destacados nesta fase porque a RPC pública atual não filtra por data;
 - resultados, cards, loading, erro e empty state são derivados da RPC pública;
 - providers, veículos e ofertas não são carregados por SELECT privado no initial load do aluno;
 - booking context público continua sendo usado para abrir agenda e checkout.

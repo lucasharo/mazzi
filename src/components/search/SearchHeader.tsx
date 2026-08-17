@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarDays, Car, MapPin, Navigation, Search, Sparkles } from 'lucide-react';
+import { Car, MapPin, Navigation, Search, Sparkles } from 'lucide-react';
 import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
 import { geocodeAddress } from '../../lib/geocoding';
@@ -14,13 +14,6 @@ export interface SearchHeaderProps {
   onLocationResolved?: (addressName: string, lat: number, lng: number) => void;
 }
 
-function dateOnlyFromLocalDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 export const SearchHeader: React.FC<SearchHeaderProps> = ({
   searchRequest,
   onUpdateSearch,
@@ -31,7 +24,6 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 }) => {
   const [addressInput, setAddressInput] = useState(currentLocationName);
   const [isLocating, setIsLocating] = useState(false);
-  const [quickDate, setQuickDate] = useState<'ANY' | 'TODAY' | 'TOMORROW'>(searchRequest.date ? 'TODAY' : 'ANY');
 
   useEffect(() => {
     setAddressInput(currentLocationName || 'Sua localização');
@@ -77,17 +69,6 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
     }
   };
 
-  const handleQuickDateChange = (mode: 'ANY' | 'TODAY' | 'TOMORROW') => {
-    setQuickDate(mode);
-    const today = new Date();
-    if (mode === 'TODAY') onUpdateSearch({ date: dateOnlyFromLocalDate(today) });
-    else if (mode === 'TOMORROW') {
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      onUpdateSearch({ date: dateOnlyFromLocalDate(tomorrow) });
-    } else onUpdateSearch({ date: undefined });
-  };
-
   return (
     <section className="space-y-4" aria-label="Buscar aulas">
       <div>
@@ -114,10 +95,6 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
       <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Filtros rápidos">
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900"><Car className="h-3.5 w-3.5" aria-hidden="true" />Carro</span>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />Data</span>
-        {(['ANY', 'TODAY', 'TOMORROW'] as const).map((mode) => (
-          <button key={mode} type="button" onClick={() => handleQuickDateChange(mode)} aria-pressed={quickDate === mode} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${quickDate === mode ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300'}`}>{mode === 'ANY' ? 'Qualquer data' : mode === 'TODAY' ? 'Hoje' : 'Amanhã'}</button>
-        ))}
       </div>
     </section>
   );
