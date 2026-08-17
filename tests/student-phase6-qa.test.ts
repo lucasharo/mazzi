@@ -18,7 +18,8 @@ describe('Student release candidate phase 6 QA contracts', () => {
     expect(checkout).not.toContain('loginAsDemoUser');
     expect(checkout).toContain('Sua sessão expirou');
     expect(checkout).toContain('Entrar novamente');
-    expect(authContext).toContain('loginAsDemoUser');
+    expect(authContext).toContain('signInWithEmail');
+    expect(authContext).not.toContain('loginAsDemoUser');
   });
 
   it('never renders an undefined duration in checkout', () => {
