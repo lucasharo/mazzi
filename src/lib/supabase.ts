@@ -13,17 +13,19 @@ assertFrontendSafeSupabaseEnv();
 
 const supabaseUrl = env.VITE_SUPABASE_URL;
 
-const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
+// Publishable keys are the supported frontend credential. The legacy anon
+// fallback keeps existing local environments working during migration.
+const supabasePublishableKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase env missing: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.');
+if (!supabaseUrl || !supabasePublishableKey) {
+  throw new Error('Supabase env missing: set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local.');
 }
 
 /**
  * 1. BROWSER CLIENT (Public Frontend)
  * Uses anon public key with RLS enforcement. Never has elevated privileges.
  */
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -38,7 +40,7 @@ export const supabaseBrowserClient = supabase;
  * Creates a client scoped to an incoming user's JWT access token for backend requests
  */
 export function createSupabaseServerClient(userAccessToken?: string): SupabaseClient<Database> {
-  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  return createClient<Database>(supabaseUrl, supabasePublishableKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -60,10 +62,10 @@ export function getSupabaseAdminClient(): SupabaseClient<Database> {
     throw new Error('SECURITY VIOLATION: getSupabaseAdminClient called in browser environment!');
   }
 
-  const serviceRoleKey = typeof process !== 'undefined' ? process.env?.SUPABASE_SERVICE_ROLE_KEY : undefined;
+  const serviceRoleKey = typeof process !== 'undefined' ? (process.env?.SUPABASE_SECRET_KEY || process.env?.SUPABASE_SERVICE_ROLE_KEY) : undefined;
 
   if (!serviceRoleKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is missing on server!');
+    throw new Error('SUPABASE_SECRET_KEY environment variable is missing on server!');
   }
 
   return createClient<Database>(supabaseUrl, serviceRoleKey, {

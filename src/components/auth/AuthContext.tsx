@@ -7,6 +7,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserRole } from '../../types';
 import { AppPermission, resolveUserPermissions } from '../../domain/rbac';
 import { AuthSessionState } from '../../lib/auth-service';
+import { signInWithEmail } from '../../lib/auth-service';
 import { supabase } from '../../lib/supabase';
 
 export type DemoLoginUser = {
@@ -20,6 +21,7 @@ export type DemoLoginUser = {
 };
 
 interface AuthContextType extends AuthSessionState {
+  signIn: (email: string, password: string) => Promise<void>;
   loginAsDemoUser: (role: UserRole, email?: string) => Promise<void>;
   logout: () => Promise<void>;
   hasPerm: (permission: AppPermission) => boolean;
@@ -437,6 +439,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signIn = async (email: string, password: string) => {
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const { user } = await signInWithEmail({ email, password });
+      if (!user) throw new Error('A autenticação não retornou um usuário válido.');
+      await handleSession({ user });
+    } catch (err: any) {
+      setAuthState(prev => ({ ...prev, isLoading: false, error: err?.message || 'Falha ao autenticar.' }));
+      throw err;
+    }
+  };
+
   const switchRole = async (newRole: UserRole) => {
     await loginAsDemoUser(newRole);
   };
@@ -466,7 +480,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContextReact.Provider
       value={{
         ...authState,
-        loginAsDemoUser,
+      loginAsDemoUser,
+      signIn,
         logout,
         hasPerm,
         switchRole,

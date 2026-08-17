@@ -40,8 +40,9 @@ export function assertFrontendSafeSupabaseEnv(): void {
   const hasBrowserServiceRole =
     typeof env.VITE_SUPABASE_SERVICE_ROLE_KEY === 'string' &&
     env.VITE_SUPABASE_SERVICE_ROLE_KEY.trim().length > 0;
+  const hasBrowserSecretKey = typeof env.VITE_SUPABASE_SECRET_KEY === 'string' && env.VITE_SUPABASE_SECRET_KEY.trim().length > 0;
 
-  if (hasBrowserServiceRole) {
-    throw new Error('SECURITY_VIOLATION: VITE_SUPABASE_SERVICE_ROLE_KEY must never be exposed to the frontend.');
+  if (hasBrowserServiceRole || hasBrowserSecretKey) {
+    throw new Error('SECURITY_VIOLATION: privileged Supabase keys must never be exposed to the frontend.');
   }
 }
