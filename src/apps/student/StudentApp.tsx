@@ -419,59 +419,26 @@ export const StudentApp: React.FC = () => {
                 }}
               />
 
-              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Filtros rápidos adicionais">
-                <button type="button" onClick={() => handleUpdateSearch({ date: searchRequest.date === getBusinessDateOnly() ? undefined : getBusinessDateOnly() })} aria-pressed={searchRequest.date === getBusinessDateOnly()} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.date === getBusinessDateOnly() ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Hoje</button>
-                <button type="button" onClick={() => handleUpdateSearch({ date: searchRequest.date === getBusinessDateOnly(1) ? undefined : getBusinessDateOnly(1) })} aria-pressed={searchRequest.date === getBusinessDateOnly(1)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.date === getBusinessDateOnly(1) ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Amanhã</button>
-                <button type="button" onClick={() => handleUpdateSearch({ transmission: searchRequest.transmission === 'ALL' ? 'AUTOMATIC' : searchRequest.transmission === 'AUTOMATIC' ? 'MANUAL' : 'ALL' })} aria-pressed={searchRequest.transmission !== 'ALL'} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.transmission !== 'ALL' ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Câmbio: {searchRequest.transmission === 'ALL' ? 'Todos' : searchRequest.transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'}</button>
-                <button type="button" onClick={() => handleUpdateSearch({ radiusMeters: searchRequest.radiusMeters === 5000 ? 10000 : searchRequest.radiusMeters === 10000 ? 20000 : 5000 })} aria-pressed={searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Distância: {((searchRequest.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000).toFixed(0)} km</button>
-                <button type="button" onClick={() => handleUpdateSearch({ maxPriceInCents: searchRequest.maxPriceInCents ? undefined : 15000 })} aria-pressed={Boolean(searchRequest.maxPriceInCents)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.maxPriceInCents ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>{searchRequest.maxPriceInCents ? 'Até R$ 150' : 'Qualquer preço'}</button>
-              </div>
-
-              {/* Subheader Filters & Mode Switcher */}
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsFilterDrawerOpen(true)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-black text-slate-800 shadow-sm transition hover:border-amber-300"
-                  >
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Filtros{additionalFilterCount > 0 ? ` · ${additionalFilterCount}` : ''}</span>
-                  </button>
-
-                  <span className="text-xs font-bold text-slate-600" aria-live="polite">
-                    {searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}
-                  </span>
+              <section aria-labelledby="student-date-filter-title" className="mt-6 space-y-3">
+                <h2 id="student-date-filter-title" className="text-sm font-black text-slate-950">Quando você quer sua aula?</h2>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => handleUpdateSearch({ date: searchRequest.date === getBusinessDateOnly() ? undefined : getBusinessDateOnly() })} aria-pressed={searchRequest.date === getBusinessDateOnly()} className={`rounded-full border px-4 py-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${searchRequest.date === getBusinessDateOnly() ? 'border-slate-950 bg-slate-950 text-amber-300' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'}`}>Hoje</button>
+                  <button type="button" onClick={() => handleUpdateSearch({ date: searchRequest.date === getBusinessDateOnly(1) ? undefined : getBusinessDateOnly(1) })} aria-pressed={searchRequest.date === getBusinessDateOnly(1)} className={`rounded-full border px-4 py-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${searchRequest.date === getBusinessDateOnly(1) ? 'border-slate-950 bg-slate-950 text-amber-300' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'}`}>Amanhã</button>
                 </div>
+              </section>
 
-                {/* View Mode Switcher */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setSearchViewMode('list')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                      searchViewMode === 'list'
-                        ? 'bg-slate-950 text-amber-400 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <List className="w-3.5 h-3.5" />
-                    <span>Lista</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSearchViewMode('map')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                      searchViewMode === 'map'
-                        ? 'bg-amber-400 text-slate-950 shadow-xs font-extrabold'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Map className="w-3.5 h-3.5" />
-                    <span>Mapa</span>
-                  </button>
+              <section aria-labelledby="student-quick-filters-title" className="mt-6 space-y-3">
+                <div className="flex items-center justify-between gap-3"><h2 id="student-quick-filters-title" className="text-sm font-black text-slate-950">Filtros</h2><button type="button" onClick={() => setIsFilterDrawerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:border-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"><SlidersHorizontal className="h-3.5 w-3.5 text-amber-600" />Filtros{additionalFilterCount > 0 ? ` · ${additionalFilterCount}` : ''}</button></div>
+                <div className="flex flex-wrap gap-2" aria-label="Filtros rápidos">
+                  <button type="button" onClick={() => handleUpdateSearch({ transmission: searchRequest.transmission === 'ALL' ? 'AUTOMATIC' : searchRequest.transmission === 'AUTOMATIC' ? 'MANUAL' : 'ALL' })} aria-pressed={searchRequest.transmission !== 'ALL'} className={`rounded-full border px-3.5 py-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${searchRequest.transmission !== 'ALL' ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'}`}>Câmbio: {searchRequest.transmission === 'ALL' ? 'Todos' : searchRequest.transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'}</button>
+                  <button type="button" onClick={() => handleUpdateSearch({ radiusMeters: searchRequest.radiusMeters === 5000 ? 10000 : searchRequest.radiusMeters === 10000 ? 20000 : 5000 })} aria-pressed={searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS} className={`rounded-full border px-3.5 py-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'}`}>Distância: {((searchRequest.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000).toFixed(0)} km</button>
+                  <button type="button" onClick={() => handleUpdateSearch({ maxPriceInCents: searchRequest.maxPriceInCents ? undefined : 15000 })} aria-pressed={Boolean(searchRequest.maxPriceInCents)} className={`rounded-full border px-3.5 py-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${searchRequest.maxPriceInCents ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'}`}>{searchRequest.maxPriceInCents ? 'Até R$ 150' : 'Qualquer preço'}</button>
                 </div>
-              </div>
+              </section>
+
+              <section aria-labelledby="student-results-title" className="mt-8 border-t border-slate-200 pt-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 id="student-results-title" className="text-sm font-black text-slate-950">Resultados</h2><p className="mt-1 text-xs font-semibold text-slate-600" aria-live="polite">{searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div aria-label="Modo de visualização" className="inline-flex w-fit items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1"><button type="button" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition ${searchViewMode === 'list' ? 'bg-slate-950 text-amber-300 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}><List className="h-3.5 w-3.5" />Lista</button><button type="button" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition ${searchViewMode === 'map' ? 'bg-slate-950 text-amber-300 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}><Map className="h-3.5 w-3.5" />Mapa</button></div></div>
+              </section>
 
               {searchError && (
                   <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Car, MapPin, Navigation, Search, Sparkles } from 'lucide-react';
+import { MapPin, Navigation, Search, Sparkles } from 'lucide-react';
 import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
 import { geocodeAddress } from '../../lib/geocoding';
@@ -87,14 +87,10 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
         <button type="button" onClick={handleUseMyLocation} disabled={isLocating} aria-label="Usar minha localização atual" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-amber-50 hover:text-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 disabled:opacity-50"><Navigation className={`h-4 w-4 ${isLocating ? 'animate-spin' : ''}`} aria-hidden="true" /></button>
       </form>
 
-      <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-600">
+      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-semibold text-slate-600 shadow-sm">
         <MapPin className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-        <span className="truncate">{addressInput || 'Sua localização'}</span>
+        <span className="truncate">{(addressInput || 'Sua localização').split(',').slice(-2).join(',').trim()}</span>
         <span className="ml-auto shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">Cat. B</span>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Filtros rápidos">
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900"><Car className="h-3.5 w-3.5" aria-hidden="true" />Carro</span>
       </div>
     </section>
   );

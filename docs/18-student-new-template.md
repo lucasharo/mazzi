@@ -110,3 +110,7 @@ O pagamento continua `FakePaymentGateway` de desenvolvimento, o geocoder é o ad
 | Accessibility | PASS — labels, foco, ARIA e estados independentes de cor |
 
 Correções desta QA: remoção do login demo automático no checkout Student, proteção contra duração indefinida e atualização imediata do nome no perfil. O Student UI está pronto como Release Candidate, mas não é production-ready: `PAYMENT_PRODUCTION_READY = NO`, `GEOCODING_PRODUCTION_READY = NO`, `AVATAR_STORAGE_PRODUCTION_READY = NO` e `PER_USER_READ_MODEL_REQUIRED = YES`.
+
+## Ajuste visual — organização da tela Buscar
+
+A tela Buscar agora separa visualmente cabeçalho, localização, data, filtros e resultados. Categoria B aparece como badge da localização; o chip redundante de carro foi removido. Hoje/Amanhã continuam alternando `SearchRequest.date` e a busca pública envia `p_date` sem alteração de regras, enquanto Câmbio, distância, preço, FilterDrawer e Lista/Mapa permanecem funcionais.
