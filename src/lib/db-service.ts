@@ -412,6 +412,7 @@ export const dbService = {
     userLng?: number;
     radiusMeters?: number;
     category?: string | null;
+    date?: string;
     providerType?: string;
     transmission?: string;
     minRating?: number;
