@@ -68,3 +68,16 @@ O pagamento continua `FakePaymentGateway` de desenvolvimento, o geocoder é o ad
 ## Backlog de busca
 
 `SEARCH_DATE_FILTER_BACKLOG = P1`: o frontend ainda não envia o parâmetro de data da RPC pública; o ajuste fica reservado para uma fase posterior de polish da busca.
+
+## FASE 4 — Chat
+
+- a lista de Conversas é derivada das bookings já carregadas e não cria conversas em loop;
+- próximas aulas aparecem antes das anteriores, com instrutor, CFC/prestador quando diferente, status, data/hora Brasil e veículo quando disponível;
+- `BookingChatPanel` continua usando `get_or_create_conversation_for_booking`, `getMessagesForConversation`, `sendMessage` e Postgres Changes em `public.messages`;
+- mensagens passam por `mergeMessagesById` no carregamento, Realtime, polling e resposta de envio para evitar duplicações;
+- polling de 10 segundos só roda quando o canal não está saudável; a reconexão refaz uma leitura e encerra o polling;
+- troca de visibilidade refaz uma leitura, e o canal/timers são removidos no cleanup;
+- o painel usa skeleton, erros amigáveis com retry, bolhas distintas, data/hora em `America/Sao_Paulo` e separadores de data;
+- envio mantém limite de 2000 caracteres, não usa mensagem otimista e preserva o rascunho em caso de falha;
+- chat permanece text-only: sem presença, typing, anexos, read receipts ou badge de unread;
+- `PER_USER_READ_MODEL_REQUIRED = YES`, `PER_USER_UNREAD_BACKLOG = P1`, `NO_UNREAD_BADGE = YES`.

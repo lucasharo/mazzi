@@ -36,7 +36,8 @@ import { dbService } from '../../lib/db-service';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
-import { formatDateBR } from '../../lib/date-format';
+import { formatDateBR, formatTimeBR } from '../../lib/date-format';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
@@ -378,6 +379,16 @@ export const StudentApp: React.FC = () => {
     ).sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a));
   }, [confirmedBookings]);
 
+  const chatBookings = useMemo(() => {
+    const upcomingStatus = new Set(['CONFIRMED', 'PENDING_PAYMENT', 'IN_PROGRESS']);
+    return [...confirmedBookings].sort((a, b) => {
+      const aUpcoming = upcomingStatus.has(a.status) ? 0 : 1;
+      const bUpcoming = upcomingStatus.has(b.status) ? 0 : 1;
+      if (aUpcoming !== bUpcoming) return aUpcoming - bUpcoming;
+      return aUpcoming === 0 ? bookingTimestamp(a) - bookingTimestamp(b) : bookingTimestamp(b) - bookingTimestamp(a);
+    });
+  }, [confirmedBookings]);
+
   return (
     <div className="min-h-[100dvh] w-full overflow-x-hidden bg-slate-50 text-slate-900">
         <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur sm:px-6">
@@ -641,8 +652,8 @@ export const StudentApp: React.FC = () => {
           {/* CHAT TAB — conversation access stays scoped to real bookings */}
           {activeTab === 'messages' && (
             <div className="space-y-5">
-              <div><p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Conversas</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Chat das suas aulas</h2><p className="mt-1 text-sm text-slate-500">Combine os detalhes de uma aula já agendada.</p></div>
-              {bookingsLoading ? <div aria-busy="true" className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-500">Carregando conversas...</div> : bookingsError ? <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="text-sm font-black text-rose-800">Não foi possível carregar suas conversas.</p><button type="button" onClick={() => setBookingsRefreshKey((value) => value + 1)} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Tentar novamente</button></div> : confirmedBookings.length === 0 ? <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm"><MessageSquare className="mx-auto h-8 w-8 text-slate-300" aria-hidden="true" /><p className="mt-3 text-sm font-black text-slate-800">Nenhuma conversa disponível</p><p className="mt-1 text-xs text-slate-500">Quando você tiver uma aula agendada, o chat aparecerá aqui.</p></div> : <div className="grid gap-3 md:grid-cols-2">{confirmedBookings.map((booking) => <div key={booking.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{booking.providerName || booking.instructorName || 'Aula MAZZI'}</p><p className="mt-1 text-xs text-slate-500">{booking.scheduledDate} · {booking.startTime}–{booking.endTime}</p></div><button type="button" onClick={() => setSelectedBookingForChat(booking)} className="shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-amber-400 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">Abrir conversa</button></div>)}</div>}
+              <div><p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Conversas</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Conversas</h2><p className="mt-1 text-sm text-slate-500">Combine detalhes das suas aulas com instrutores e autoescolas.</p></div>
+              {bookingsLoading ? <div aria-busy="true" aria-label="Carregando conversas" className="grid gap-3 md:grid-cols-2">{[1, 2, 3].map((item) => <div key={item} aria-hidden="true" className="h-32 animate-pulse rounded-3xl border border-slate-200 bg-white p-4"><div className="h-4 w-2/3 rounded bg-slate-100" /><div className="mt-4 h-3 w-1/2 rounded bg-slate-100" /><div className="mt-5 h-8 w-28 rounded-xl bg-slate-100" /></div>)}</div> : bookingsError ? <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="text-sm font-black text-rose-800">Não foi possível carregar suas conversas.</p><button type="button" onClick={() => setBookingsRefreshKey((value) => value + 1)} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Tentar novamente</button></div> : confirmedBookings.length === 0 ? <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm"><MessageSquare className="mx-auto h-8 w-8 text-slate-300" aria-hidden="true" /><p className="mt-3 text-sm font-black text-slate-800">Nenhuma conversa disponível.</p><p className="mt-1 text-xs text-slate-500">Quando você agendar uma aula, poderá conversar com o profissional por aqui.</p><Button variant="primary" size="sm" className="mt-4" onClick={() => setActiveTab('search')}>Buscar aulas</Button></div> : <div className="grid gap-3 md:grid-cols-2">{chatBookings.map((booking) => { const start = booking.scheduledStartAt || `${booking.scheduledDate}T${booking.startTime}:00`; const instructor = booking.instructorName || booking.snapshot?.instructorName || 'Aula MAZZI'; const provider = booking.providerName && booking.providerName !== instructor ? booking.providerName : ''; const vehicle = booking.vehicleName || booking.snapshot?.vehicleName; return <article key={booking.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><div aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-amber-400">{instructor.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-black text-slate-950">{instructor}</p>{provider && <p className="truncate text-xs font-semibold text-slate-500">{provider}</p>}</div></div><StatusBadge status={booking.status} audience="student" /></div><div className="mt-4 grid gap-2 text-xs font-semibold text-slate-600 sm:grid-cols-2"><span>{formatDateBR(start)} · {formatTimeBR(start)}</span>{vehicle && <span className="truncate">{vehicle}</span>}</div><button type="button" aria-label={`Abrir conversa com ${instructor}`} onClick={() => setSelectedBookingForChat(booking)} className="mt-4 w-full rounded-xl bg-slate-950 px-3 py-2.5 text-xs font-black text-amber-400 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">Abrir conversa</button></article>; })}</div>}
             </div>
           )}
 
