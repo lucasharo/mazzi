@@ -1,11 +1,6 @@
-// ============================================================================
-// MAZZI PLATFORM — SEARCH HEADER COMPONENT
-// Handles location entry, "Use My Location", category selection, and quick date filter.
-// ============================================================================
-
-import React, { useState } from 'react';
-import { Search, Navigation, Calendar as CalendarIcon, Car, Bike, Sparkles } from 'lucide-react';
-import { VehicleCategory, SearchRequest } from '../../types';
+import React, { useEffect, useState } from 'react';
+import { CalendarDays, Car, MapPin, Navigation, Search, Sparkles } from 'lucide-react';
+import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
 import { geocodeAddress } from '../../lib/geocoding';
 import { trackSearchAnalytics } from './SearchAnalytics';
@@ -19,6 +14,13 @@ export interface SearchHeaderProps {
   onLocationResolved?: (addressName: string, lat: number, lng: number) => void;
 }
 
+function dateOnlyFromLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export const SearchHeader: React.FC<SearchHeaderProps> = ({
   searchRequest,
   onUpdateSearch,
@@ -29,7 +31,11 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 }) => {
   const [addressInput, setAddressInput] = useState(currentLocationName);
   const [isLocating, setIsLocating] = useState(false);
-  const [quickDate, setQuickDate] = useState<'ANY' | 'TODAY' | 'TOMORROW'>('ANY');
+  const [quickDate, setQuickDate] = useState<'ANY' | 'TODAY' | 'TOMORROW'>(searchRequest.date ? 'TODAY' : 'ANY');
+
+  useEffect(() => {
+    setAddressInput(currentLocationName || 'Sua localização');
+  }, [currentLocationName]);
 
   const handleUseMyLocation = async () => {
     setIsLocating(true);
@@ -37,44 +43,36 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
       if (!currentLocation) throw new Error('CURRENT_LOCATION_UNAVAILABLE');
       const { lat, lng } = currentLocation;
       const geocoded = await activeGeocodingProvider.reverseGeocode(lat, lng);
-      
       setAddressInput(geocoded.formattedAddress);
-      if (onLocationResolved) {
-        onLocationResolved(geocoded.formattedAddress, lat, lng);
-      }
+      onLocationResolved?.(geocoded.formattedAddress, lat, lng);
       onUpdateSearch({ latitude: lat, longitude: lng });
-
-      trackSearchAnalytics({
-        eventType: 'SEARCH_PERFORMED',
-        regionLabel: geocoded.formattedAddress,
-        category: searchRequest.category,
-      });
-    } catch (e) {
-      console.warn('Location detection fallback triggered:', e);
+      onPerformSearch();
+      trackSearchAnalytics({ eventType: 'SEARCH_PERFORMED', regionLabel: geocoded.formattedAddress, category: searchRequest.category });
+    } catch (error) {
+      console.warn('Location detection fallback triggered:', error);
     } finally {
       setIsLocating(false);
     }
   };
 
-  const handleAddressSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!addressInput.trim()) return;
-
+  const handleAddressSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const query = addressInput.trim();
+    if (!query) return;
     try {
-      const best = await geocodeAddress(addressInput.trim());
+      const best = await geocodeAddress(query);
       setAddressInput(best.displayName);
       onLocationResolved?.(best.displayName, best.latitude, best.longitude);
       onUpdateSearch({ latitude: best.latitude, longitude: best.longitude });
-      onPerformSearch();
     } catch (error) {
       console.warn('Address geocoding failed:', error);
-      const results = await activeGeocodingProvider.geocode(addressInput.trim());
-      const best = results[0];
-      if (best) {
-        setAddressInput(best.formattedAddress);
-        onLocationResolved?.(best.formattedAddress, best.latitude, best.longitude);
-        onUpdateSearch({ latitude: best.latitude, longitude: best.longitude });
+      const [fallback] = await activeGeocodingProvider.geocode(query);
+      if (fallback) {
+        setAddressInput(fallback.formattedAddress);
+        onLocationResolved?.(fallback.formattedAddress, fallback.latitude, fallback.longitude);
+        onUpdateSearch({ latitude: fallback.latitude, longitude: fallback.longitude });
       }
+    } finally {
       onPerformSearch();
     }
   };
@@ -82,131 +80,45 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   const handleQuickDateChange = (mode: 'ANY' | 'TODAY' | 'TOMORROW') => {
     setQuickDate(mode);
     const today = new Date();
-    if (mode === 'TODAY') {
-      const iso = today.toISOString().split('T')[0];
-      onUpdateSearch({ date: iso });
-    } else if (mode === 'TOMORROW') {
+    if (mode === 'TODAY') onUpdateSearch({ date: dateOnlyFromLocalDate(today) });
+    else if (mode === 'TOMORROW') {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const iso = tomorrow.toISOString().split('T')[0];
-      onUpdateSearch({ date: iso });
-    } else {
-      onUpdateSearch({ date: undefined });
-    }
+      onUpdateSearch({ date: dateOnlyFromLocalDate(tomorrow) });
+    } else onUpdateSearch({ date: undefined });
   };
 
   return (
-    <div className="bg-slate-950 text-white p-4 rounded-3xl space-y-3 shadow-md border border-slate-900">
-      {/* Top Title Bar */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <span className="text-xs font-black uppercase tracking-wider text-amber-400">
-            Aulas Práticas de Direção em SP
-          </span>
+    <section className="space-y-4" aria-label="Buscar aulas">
+      <div>
+        <div className="flex items-center gap-2 text-amber-600">
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
+          <span className="text-xs font-black uppercase tracking-[0.18em]">Aulas práticas</span>
         </div>
-        <span className="text-[10px] text-slate-400 font-bold bg-slate-900 px-2 py-0.5 rounded-full">
-          Raio: {((searchRequest.radiusMeters || 5000) / 1000).toFixed(0)}km
-        </span>
+        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Encontre sua próxima aula</h1>
+        <p className="mt-1 text-sm text-slate-500">Profissionais verificados perto de você.</p>
       </div>
 
-      {/* Address Search & Use Location Input Group */}
-      <form onSubmit={handleAddressSubmit} className="relative flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            aria-label="Endereço para buscar instrutores"
-            value={addressInput}
-            onChange={(e) => setAddressInput(e.target.value)}
-            placeholder="Bairro, CEP ou estação de metrô em SP..."
-            className="w-full bg-slate-900 text-white placeholder:text-slate-400 text-xs font-semibold pl-10 pr-4 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
-          />
-        </div>
-
-        <button
-          type="submit"
-          title="Buscar endereço"
-          aria-label="Buscar endereço"
-          className="p-2.5 rounded-xl bg-amber-400 text-slate-950 hover:bg-amber-300 transition cursor-pointer flex items-center justify-center min-w-[42px]"
-        >
-          <Search className="w-4 h-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={handleUseMyLocation}
-          disabled={isLocating}
-          title="Usar minha localização atual"
-          className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 hover:bg-slate-800 transition cursor-pointer flex items-center justify-center min-w-[42px]"
-        >
-          <Navigation className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
-          <span className="sr-only">Usar localização atual</span>
-        </button>
+      <form onSubmit={handleAddressSubmit} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100">
+        <Search className="ml-2 h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+        <input type="text" aria-label="Endereço para buscar instrutores" value={addressInput} onChange={(event) => setAddressInput(event.target.value)} placeholder="Bairro, CEP ou endereço" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400" />
+        <button type="submit" aria-label="Buscar endereço" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-amber-400 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"><Search className="h-4 w-4" aria-hidden="true" /></button>
+        <button type="button" onClick={handleUseMyLocation} disabled={isLocating} aria-label="Usar minha localização atual" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-amber-50 hover:text-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 disabled:opacity-50"><Navigation className={`h-4 w-4 ${isLocating ? 'animate-spin' : ''}`} aria-hidden="true" /></button>
       </form>
 
-      {/* Category Pills & Quick Date Controls */}
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-900">
-        {/* Category Toggle */}
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onUpdateSearch({ category: 'B' })}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold transition cursor-pointer ${
-              searchRequest.category === 'B' || !searchRequest.category
-                ? 'bg-amber-400 text-slate-950 shadow-xs'
-                : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-            }`}
-          >
-            <Car className="w-3.5 h-3.5" />
-            <span>Carro (Cat. B)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onUpdateSearch({ category: 'A' })}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold transition cursor-pointer ${
-              searchRequest.category === 'A'
-                ? 'bg-amber-400 text-slate-950 shadow-xs'
-                : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-            }`}
-          >
-            <Bike className="w-3.5 h-3.5" />
-            <span>Moto (Cat. A)</span>
-          </button>
-        </div>
-
-        {/* Quick Date Selector */}
-        <div className="flex items-center gap-1 text-[11px]">
-          <button
-            type="button"
-            onClick={() => handleQuickDateChange('ANY')}
-            className={`px-2 py-1 rounded-lg font-bold transition cursor-pointer ${
-              quickDate === 'ANY' ? 'text-amber-400 bg-slate-900' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Qualquer Data
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickDateChange('TODAY')}
-            className={`px-2 py-1 rounded-lg font-bold transition cursor-pointer ${
-              quickDate === 'TODAY' ? 'text-amber-400 bg-slate-900' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Hoje
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickDateChange('TOMORROW')}
-            className={`px-2 py-1 rounded-lg font-bold transition cursor-pointer ${
-              quickDate === 'TOMORROW' ? 'text-amber-400 bg-slate-900' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Amanhã
-          </button>
-        </div>
+      <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-600">
+        <MapPin className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+        <span className="truncate">{addressInput || 'Sua localização'}</span>
+        <span className="ml-auto shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">Cat. B</span>
       </div>
-    </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Filtros rápidos">
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900"><Car className="h-3.5 w-3.5" aria-hidden="true" />Carro</span>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />Data</span>
+        {(['ANY', 'TODAY', 'TOMORROW'] as const).map((mode) => (
+          <button key={mode} type="button" onClick={() => handleQuickDateChange(mode)} aria-pressed={quickDate === mode} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${quickDate === mode ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300'}`}>{mode === 'ANY' ? 'Qualquer data' : mode === 'TODAY' ? 'Hoje' : 'Amanhã'}</button>
+        ))}
+      </div>
+    </section>
   );
 };

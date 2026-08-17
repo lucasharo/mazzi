@@ -1,27 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
-  MapPin,
   Calendar as CalendarIcon,
-  Clock,
-  Filter,
-  CheckCircle2,
-  ShieldCheck,
-  Building2,
   User,
   SlidersHorizontal,
   Bell,
   MessageSquare,
-  Sparkles,
   Map,
   List,
-  AlertTriangle,
 } from 'lucide-react';
 import {
   Provider,
-  VehicleCategory,
-  TransmissionType,
-  ProviderType,
   Booking,
   SearchRequest,
   PublicSearchProviderResult,
@@ -32,9 +21,6 @@ import {
 import { BookingCard } from '../../components/ui/BookingCard';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { Price } from '../../components/ui/Price';
-import { formatCentsToBRL } from '../../domain/money';
-import { UniversalMap } from '../../components/maps/UniversalMap';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { SearchHeader } from '../../components/search/SearchHeader';
 import { FilterDrawer } from '../../components/search/FilterDrawer';
@@ -110,14 +96,15 @@ function vehicleFromBookingContext(ctx: any): Vehicle {
 }
 
 export const StudentApp: React.FC = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, logout } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
-  const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'notifications' | 'profile'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'messages' | 'profile'>('search');
   const [bookingTab, setBookingTab] = useState<'upcoming' | 'history'>('upcoming');
   const [searchLocation, setSearchLocation] = useState('Sua localização');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
   const [searchedLocation, setSearchedLocation] = useState<{ lat: number; lng: number; label?: string } | undefined>();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -153,11 +140,7 @@ export const StudentApp: React.FC = () => {
   }, [user?.name, user?.phone, user?.avatarUrl]);
 
   // Live Supabase database state
-  const [dbProviders, setDbProviders] = useState<Provider[]>([]);
-  const [dbVehicles, setDbVehicles] = useState<Vehicle[]>([]);
-  const [dbOfferings, setDbOfferings] = useState<ServiceOffering[]>([]);
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
-  const [isDbLoading, setIsDbLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(isRealSupabase);
   const [searchError, setSearchError] = useState(false);
 
@@ -165,26 +148,12 @@ export const StudentApp: React.FC = () => {
   useEffect(() => {
     async function loadRealData() {
       try {
-        setIsDbLoading(true);
-        const [p, v, o, b] = await Promise.all([
-          dbService.getProviders(),
-          dbService.getVehicles(),
-          dbService.getOfferings(),
-          dbService.getBookings(),
-        ]);
-        setDbProviders(p);
-        setDbVehicles(v);
-        setDbOfferings(o);
-        setConfirmedBookings(b);
+        const bookings = await dbService.getBookings();
+        setConfirmedBookings(bookings);
       } catch (err) {
         console.error('Failed to load dynamic database states:', err);
-        setDbProviders([]);
-        setDbVehicles([]);
-        setDbOfferings([]);
         setConfirmedBookings([]);
         setSearchError(true);
-      } finally {
-        setIsDbLoading(false);
       }
     }
     loadRealData();
@@ -251,7 +220,6 @@ export const StudentApp: React.FC = () => {
           appliedFilters: searchRequest,
           executionTimeMs: 0,
         });
-        setDbProviders(sortedResults.map(mapPublicResultToProvider));
         setSearchLoading(false);
       } catch (error) {
         if (!cancelled) {
@@ -279,9 +247,6 @@ export const StudentApp: React.FC = () => {
     limit: 10,
   };
   const additionalFilterCount = countAdditionalStudentFilters(searchRequest);
-  const hasChangedFilters = Boolean(
-    additionalFilterCount || searchRequest.category !== 'B' || searchRequest.sortBy !== 'RECOMMENDED'
-  );
 
   useEffect(() => {
     setSearchRequest((prev) => ({
@@ -324,27 +289,22 @@ export const StudentApp: React.FC = () => {
     let rawProv: Provider | undefined;
     let matchingVehicle: Vehicle | undefined;
     let matchingOffering: ServiceOffering | undefined;
-    let matchingInstructorName = '';
 
     if (isRealSupabase) {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(providerId)) return;
 
-      // In the real flow providers are sourced from the public search RPC. The
-      // legacy dbProviders collection can still be empty while that request is
-      // being committed, so resolve from the rendered search result as well.
+      // Providers in the student flow are sourced from the public search RPC.
       const publicResult = realSearchResponse?.results.find((result) => result.providerId === providerId);
-      rawProv = dbProviders.find((p) => p.id === providerId)
-        || (publicResult ? mapPublicResultToProvider(publicResult) : undefined);
+      rawProv = publicResult ? mapPublicResultToProvider(publicResult) : undefined;
       
       try {
         const bookingContexts = await dbService.getProviderBookingContextPublic(providerId);
         if (!bookingContexts || bookingContexts.length === 0) return;
 
         const ctx = bookingContexts[0];
-        matchingInstructorName = ctx.instructor_name || ctx.instructorName || '';
         matchingOffering = offeringFromBookingContext(ctx);
-        matchingVehicle = dbVehicles.find((vehicle) => vehicle.id === ctx.vehicle_id) || vehicleFromBookingContext(ctx);
+        matchingVehicle = vehicleFromBookingContext(ctx);
         if (rawProv?.type === 'DRIVING_SCHOOL' && bookingContexts.length > 1) {
           setInstructorChoices(bookingContexts);
           setInstructorPickerProvider(rawProv);
@@ -405,32 +365,22 @@ export const StudentApp: React.FC = () => {
   }, [confirmedBookings]);
 
   return (
-    <div className="w-full min-h-screen bg-white text-slate-900 flex flex-col overflow-hidden">
-        {/* Top Header - 99 Inspired Signature */}
-        <header className="bg-slate-950 text-white px-5 pt-4 pb-4 border-b border-slate-900 sticky top-0 z-30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 font-black flex items-center justify-center text-base tracking-tighter shadow-xs">
-                M
-              </div>
-              <div>
-                <span className="text-base font-black tracking-tight text-white block leading-none">
-                  MAZZI
-                </span>
-                  <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
-                  Encontre sua próxima aula
-                </span>
-              </div>
+    <div className="min-h-[100dvh] w-full overflow-x-hidden bg-slate-50 text-slate-900">
+        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur sm:px-6">
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-400 text-base font-black tracking-tight text-slate-950 shadow-sm">M</div>
+              <div><span className="block text-base font-black tracking-tight text-slate-950">MAZZI</span><span className="hidden text-[10px] font-bold text-slate-500 sm:block">Sua próxima aula começa aqui</span></div>
             </div>
-
+            <button type="button" aria-label="Abrir notificações" onClick={() => setIsNotificationsOpen(true)} className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-amber-300 hover:text-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"><Bell className="h-5 w-5" aria-hidden="true" /></button>
           </div>
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto pb-24 text-left">
+        <main className="mx-auto min-h-[calc(100dvh-5rem)] w-full max-w-6xl overflow-y-auto px-4 pb-32 pt-5 text-left sm:px-6 lg:pb-28">
           {/* SEARCH TAB */}
           {activeTab === 'search' && (
-            <div className="p-4 space-y-4">
+            <div className="space-y-5">
               {/* Search Header */}
               <SearchHeader
                 searchRequest={searchRequest}
@@ -444,16 +394,22 @@ export const StudentApp: React.FC = () => {
                 }}
               />
 
+              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Filtros rápidos adicionais">
+                <button type="button" onClick={() => handleUpdateSearch({ transmission: searchRequest.transmission === 'ALL' ? 'AUTOMATIC' : searchRequest.transmission === 'AUTOMATIC' ? 'MANUAL' : 'ALL' })} aria-pressed={searchRequest.transmission !== 'ALL'} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.transmission !== 'ALL' ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Câmbio: {searchRequest.transmission === 'ALL' ? 'Todos' : searchRequest.transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'}</button>
+                <button type="button" onClick={() => handleUpdateSearch({ radiusMeters: searchRequest.radiusMeters === 5000 ? 10000 : searchRequest.radiusMeters === 10000 ? 20000 : 5000 })} aria-pressed={searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Distância: {((searchRequest.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000).toFixed(0)} km</button>
+                <button type="button" onClick={() => handleUpdateSearch({ maxPriceInCents: searchRequest.maxPriceInCents ? undefined : 15000 })} aria-pressed={Boolean(searchRequest.maxPriceInCents)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.maxPriceInCents ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>{searchRequest.maxPriceInCents ? 'Até R$ 150' : 'Qualquer preço'}</button>
+              </div>
+
               {/* Subheader Filters & Mode Switcher */}
-              <div className="flex items-center justify-between px-1">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setIsFilterDrawerOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-bold hover:bg-slate-50 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-black text-slate-800 shadow-sm transition hover:border-amber-300"
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Filtros</span>
+                    <span>Filtros{additionalFilterCount > 0 ? ` · ${additionalFilterCount}` : ''}</span>
                   </button>
 
                   <span className="text-xs font-bold text-slate-600" aria-live="polite">
@@ -491,7 +447,7 @@ export const StudentApp: React.FC = () => {
               </div>
 
               {searchError && (
-                <div role="alert" className="p-4 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-800 flex items-center justify-between gap-3">
+                  <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
                   <span>Não foi possível buscar profissionais agora.</span>
                   <button type="button" onClick={() => setSearchRefreshKey((value) => value + 1)} className="font-bold underline">Tentar novamente</button>
                 </div>
@@ -522,10 +478,10 @@ export const StudentApp: React.FC = () => {
                 <div className="space-y-3">
                   {searchLoading ? (
                     <div aria-busy="true" className="space-y-3" aria-label="Carregando resultados">
-                      {[1, 2, 3].map((item) => <div key={item} aria-hidden="true" className="h-36 rounded-2xl bg-slate-100 animate-pulse" />)}
+                      {[1, 2, 3, 4].map((item) => <div key={item} aria-hidden="true" className="h-44 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><div className="h-12 w-12 animate-pulse rounded-2xl bg-slate-100" /><div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-slate-100" /><div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-slate-100" /></div>)}
                     </div>
                   ) : searchError ? null : (!searchResponse?.results || searchResponse.results.length === 0) ? (
-                    <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
+                    <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
                       <p className="text-sm font-bold text-slate-800">Nenhum profissional encontrado com esses filtros.</p>
                       <p className="text-xs text-slate-500 mt-1">Tente aumentar o raio de busca ou remover alguns filtros.</p>
                       <button type="button" onClick={() => setSearchRequest(defaultSearchRequest)} className="mt-3 text-xs font-bold text-amber-700 underline">Limpar filtros</button>
@@ -551,8 +507,8 @@ export const StudentApp: React.FC = () => {
                 onApplyFilters={(updated) => handleUpdateSearch(updated)}
                 onResetFilters={() =>
                   setSearchRequest({
-                    latitude: -23.5505,
-                    longitude: -46.6333,
+                    latitude: searchRequest.latitude,
+                    longitude: searchRequest.longitude,
                     radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
                     category: 'B',
                     providerType: 'ALL',
@@ -659,15 +615,11 @@ export const StudentApp: React.FC = () => {
             </div>
           )}
 
-          {/* NOTIFICATIONS TAB */}
-          {activeTab === 'notifications' && (
-            <div className="p-4 space-y-4">
-              <div>
-                <h2 className="text-xl font-black text-slate-900">Notificações</h2>
-                <p className="text-xs text-slate-500">Alertas de agendamentos, pagamentos e comunicados oficiais</p>
-              </div>
-
-              <NotificationsPanel />
+          {/* CHAT TAB — conversation access stays scoped to real bookings */}
+          {activeTab === 'messages' && (
+            <div className="space-y-5">
+              <div><p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Conversas</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Chat das suas aulas</h2><p className="mt-1 text-sm text-slate-500">Combine os detalhes de uma aula já agendada.</p></div>
+              {confirmedBookings.length === 0 ? <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm"><MessageSquare className="mx-auto h-8 w-8 text-slate-300" aria-hidden="true" /><p className="mt-3 text-sm font-black text-slate-800">Nenhuma conversa disponível</p><p className="mt-1 text-xs text-slate-500">Quando você tiver uma aula agendada, o chat aparecerá aqui.</p></div> : <div className="grid gap-3 md:grid-cols-2">{confirmedBookings.map((booking) => <div key={booking.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{booking.providerName || booking.instructorName || 'Aula MAZZI'}</p><p className="mt-1 text-xs text-slate-500">{booking.scheduledDate} · {booking.startTime}–{booking.endTime}</p></div><button type="button" onClick={() => setSelectedBookingForChat(booking)} className="shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-amber-400 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">Abrir conversa</button></div>)}</div>}
             </div>
           )}
 
@@ -716,12 +668,12 @@ export const StudentApp: React.FC = () => {
         </main>
 
         {/* Bottom Tab Bar - Mobile Optimized 99 Style */}
-        <nav aria-label="Navegação principal" className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-md z-40 rounded-[28px] border border-slate-200/90 bg-white/90 px-2 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+        <nav aria-label="Navegação principal" className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 rounded-[28px] border border-slate-200/90 bg-white/95 px-2 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl">
           <div className="flex items-center justify-around gap-1">
           {[
             { id: 'search', label: 'Buscar', icon: <Search className="w-5 h-5" /> },
             { id: 'bookings', label: 'Aulas', icon: <CalendarIcon className="w-5 h-5" /> },
-            { id: 'notifications', label: 'Notificações', icon: <Bell className="w-5 h-5" /> },
+            { id: 'messages', label: 'Chat', icon: <MessageSquare className="w-5 h-5" /> },
             { id: 'profile', label: 'Perfil', icon: <User className="w-5 h-5" /> },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -741,6 +693,10 @@ export const StudentApp: React.FC = () => {
           })}
           </div>
         </nav>
+
+      <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações" size="md">
+        <NotificationsPanel />
+      </Modal>
 
       {/* Booking Details Modal */}
       <BookingDetailsModal
@@ -786,7 +742,7 @@ export const StudentApp: React.FC = () => {
                 className="w-full p-3 rounded-xl border border-slate-200 bg-white hover:border-amber-400 text-left"
                 onClick={() => {
                   const offering = offeringFromBookingContext(ctx);
-                  const vehicle = dbVehicles.find((item) => item.id === ctx.vehicle_id) || vehicleFromBookingContext(ctx);
+                   const vehicle = vehicleFromBookingContext(ctx);
                   setCheckoutProvider(instructorPickerProvider);
                   setCheckoutVehicle(vehicle);
                   setCheckoutOffering(offering);
