@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // MAZZI PLATFORM — SPRINT 12: GOVERNANCE & OPERATIONS ADMIN CONTROL PANEL
 // File: src/apps/admin/AdminApp.tsx
 // ============================================================================
@@ -40,9 +40,32 @@ import {
   SettingsTab,
 } from './AdminComponents';
 import { AdminAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
+import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
+import { getMyProfileAvatar } from '../../lib/profile-avatar';
 
 export const AdminApp: React.FC = () => {
   const { user, logout } = useAuth();
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProfileAvatar(user?.avatarUrl);
+    if (user?.id) {
+      void getMyProfileAvatar().then((avatarUrl) => setProfileAvatar(avatarUrl)).catch(() => undefined);
+    }
+  }, [user?.avatarUrl]);
+
+  const handleSaveProfilePhoto = async () => {
+    if (!user) return;
+    setProfileError(null);
+    try {
+      await dbService.updateMyProfile(user.name, user.phone || '', profileAvatar);
+      setIsEditingProfile(false);
+    } catch (error: any) {
+      setProfileError(error?.message || 'Não foi possível salvar a foto do perfil.');
+    }
+  };
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -74,13 +97,34 @@ export const AdminApp: React.FC = () => {
       setLoadError(null);
       try {
         const [p, v, b, c, a, configs, u] = await Promise.all([
-          dbService.getProviders(),
-          dbService.getVehicles(),
-          dbService.getBookings(),
-          dbService.getComplianceDocs(),
-          dbService.getAuditLogs(),
-          dbService.getPlatformConfigs(),
-          dbService.getUsers(),
+          dbService.getProviders().catch((err) => {
+            console.warn('AdminApp: could not load providers', err);
+            return [];
+          }),
+          dbService.getVehicles().catch((err) => {
+            console.warn('AdminApp: could not load vehicles', err);
+            return [];
+          }),
+          dbService.getBookings().catch((err) => {
+            console.warn('AdminApp: could not load bookings', err);
+            return [];
+          }),
+          dbService.getComplianceDocs().catch((err) => {
+            console.warn('AdminApp: could not load compliance docs', err);
+            return [];
+          }),
+          dbService.getAuditLogs().catch((err) => {
+            console.warn('AdminApp: could not load audit logs', err);
+            return [];
+          }),
+          dbService.getPlatformConfigs().catch((err) => {
+            console.warn('AdminApp: could not load platform configs', err);
+            return [];
+          }),
+          dbService.getUsers().catch((err) => {
+            console.warn('AdminApp: could not load users', err);
+            return [];
+          }),
         ]);
         setProviders(p);
         setVehicles(v);
@@ -388,10 +432,23 @@ export const AdminApp: React.FC = () => {
               <h2 className="text-xl font-black text-slate-900">Meu perfil</h2>
               <p className="mt-1 text-sm text-slate-500">Dados da sessão administrativa atual.</p>
             </div>
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-sm font-black text-slate-900">Foto do perfil</h3>
+              {!isEditingProfile ? (
+                <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(true)}>Editar foto</Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => { setProfileAvatar(user?.avatarUrl); setIsEditingProfile(false); }}>Cancelar</Button>
+                  <Button variant="primary" size="sm" onClick={() => void handleSaveProfilePhoto()}>Salvar foto</Button>
+                </div>
+              )}
+            </div>
+            <ProfilePhotoPicker value={profileAvatar} name={user?.name} onChange={setProfileAvatar} disabled={!isEditingProfile} />
+            {profileError && <p className="mt-2 text-xs text-rose-600">{profileError}</p>}
             <div className="space-y-2 rounded-2xl bg-slate-50 p-4 text-sm">
-              <p><span className="font-bold text-slate-700">Nome:</span> {user?.name || 'Administrador MAZZI'}</p>
-              <p><span className="font-bold text-slate-700">E-mail:</span> {user?.email || 'Não informado'}</p>
-              <p><span className="font-bold text-slate-700">Perfil:</span> {user?.roles?.[0] || 'PLATFORM_ADMIN'}</p>
+              <p><span className="font-bold text-slate-700">Nome:</span> {user?.name || 'Nome não informado'}</p>
+              <p><span className="font-bold text-slate-700">E-mail:</span> {user?.email || 'E-mail não informado'}</p>
+              <p><span className="font-bold text-slate-700">Perfil:</span> {user?.roles?.[0] || 'Perfil não informado'}</p>
             </div>
             <Button
               variant="outline"
@@ -408,3 +465,4 @@ export const AdminApp: React.FC = () => {
     </div>
   );
 };
+
