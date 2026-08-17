@@ -40,4 +40,13 @@ describe('independent MAZZI app entrypoints', () => {
     expect(read('src/entrypoints/instructor/InstructorRoot.tsx')).toContain('ProviderApp');
     expect(read('src/entrypoints/admin/AdminRoot.tsx')).toContain('AdminApp');
   });
+
+  it('routes each Vite mode at / and keeps build output isolated', () => {
+    const vite = read('vite.config.ts');
+    const packageJson = read('package.json');
+    expect(vite).toContain('strictPort: Boolean(appTarget)');
+    expect(vite).toContain('dist/${appTarget}');
+    expect(vite).toContain('transformIndexHtml');
+    expect(packageJson).toContain('build:all');
+  });
 });
