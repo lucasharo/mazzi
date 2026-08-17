@@ -114,3 +114,7 @@ Correções desta QA: remoção do login demo automático no checkout Student, p
 ## Ajuste visual — organização da tela Buscar
 
 A tela Buscar agora separa visualmente cabeçalho, localização, data, filtros e resultados. Categoria B aparece como badge da localização; o chip redundante de carro foi removido. Hoje/Amanhã continuam alternando `SearchRequest.date` e a busca pública envia `p_date` sem alteração de regras, enquanto Câmbio, distância, preço, FilterDrawer e Lista/Mapa permanecem funcionais.
+
+## Simplificação da tela Buscar
+
+Na versão final, a área principal exibe somente o campo de endereço e o botão Filtros. Data, câmbio, distância, preço, tipo de prestador e avaliação ficam concentrados no FilterDrawer; o contador de filtros permanece baseado na lógica real e localização/Categoria B continuam internas ao fluxo, sem cards ou chips redundantes na tela.

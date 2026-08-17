@@ -11,6 +11,7 @@ import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { Button } from '../ui/Button';
 import { formatCentsToBRL } from '../../domain/money';
 import { trackSearchAnalytics } from './SearchAnalytics';
+import { getBusinessDateOnly } from '../../lib/date-format';
 
 export interface FilterDrawerProps {
   isOpen: boolean;
@@ -58,6 +59,15 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
 
         {/* Scrollable Filters Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6 text-left">
+          <div>
+            <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-2.5">Quando você quer sua aula?</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[{ value: undefined, label: 'Qualquer data' }, { value: getBusinessDateOnly(), label: 'Hoje' }, { value: getBusinessDateOnly(1), label: 'Amanhã' }].map((dateOption) => (
+                <button key={dateOption.label} type="button" onClick={() => handleApply({ date: dateOption.value })} aria-pressed={searchRequest.date === dateOption.value || (!searchRequest.date && !dateOption.value)} className={`rounded-xl border p-2.5 text-center text-xs font-bold transition ${searchRequest.date === dateOption.value || (!searchRequest.date && !dateOption.value) ? 'border-amber-400 bg-amber-50 text-slate-950 ring-1 ring-amber-400/40' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>{dateOption.label}</button>
+              ))}
+            </div>
+          </div>
+
           {/* Sort By */}
           <div>
             <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5 mb-2.5">

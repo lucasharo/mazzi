@@ -17,7 +17,8 @@ describe('Student new template phase 1', () => {
   });
 
   it('keeps the Student MVP focused on category B', () => {
-    expect(searchHeader).toContain('Cat. B');
+    expect(studentApp).toContain("category: 'B'");
+    expect(searchHeader).not.toContain('Cat. B');
     expect(searchHeader).not.toContain('Moto (Cat. A)');
     expect(searchHeader).not.toContain("category: 'A'");
   });

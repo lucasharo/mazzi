@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Navigation, Search, Sparkles } from 'lucide-react';
+import { MapPin, Navigation, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
 import { geocodeAddress } from '../../lib/geocoding';
@@ -12,6 +12,8 @@ export interface SearchHeaderProps {
   currentLocationName?: string;
   currentLocation?: { lat: number; lng: number };
   onLocationResolved?: (addressName: string, lat: number, lng: number) => void;
+  onOpenFilters?: () => void;
+  activeFilterCount?: number;
 }
 
 export const SearchHeader: React.FC<SearchHeaderProps> = ({
@@ -21,6 +23,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   currentLocationName = 'Sua localização',
   currentLocation,
   onLocationResolved,
+  onOpenFilters,
+  activeFilterCount = 0,
 }) => {
   const [addressInput, setAddressInput] = useState(currentLocationName);
   const [isLocating, setIsLocating] = useState(false);
@@ -87,11 +91,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
         <button type="button" onClick={handleUseMyLocation} disabled={isLocating} aria-label="Usar minha localização atual" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-amber-50 hover:text-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 disabled:opacity-50"><Navigation className={`h-4 w-4 ${isLocating ? 'animate-spin' : ''}`} aria-hidden="true" /></button>
       </form>
 
-      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-semibold text-slate-600 shadow-sm">
-        <MapPin className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-        <span className="truncate">{(addressInput || 'Sua localização').split(',').slice(-2).join(',').trim()}</span>
-        <span className="ml-auto shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">Cat. B</span>
-      </div>
+      {onOpenFilters && <div className="flex justify-end pt-1"><button type="button" onClick={onOpenFilters} className="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-800 shadow-sm transition hover:border-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"><SlidersHorizontal className="h-4 w-4 text-amber-600" />Filtros{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}</button></div>}
     </section>
   );
 };

@@ -5,6 +5,7 @@ import { getBusinessDateOnly } from '../src/lib/date-format';
 
 const root = process.cwd();
 const student = readFileSync(join(root, 'src/apps/student/StudentApp.tsx'), 'utf8');
+const drawer = readFileSync(join(root, 'src/components/search/FilterDrawer.tsx'), 'utf8');
 const db = readFileSync(join(root, 'src/lib/db-service.ts'), 'utf8');
 const profile = readFileSync(join(root, 'src/apps/student/StudentApp.tsx'), 'utf8');
 const notifications = readFileSync(join(root, 'src/components/notifications/NotificationsPanel.tsx'), 'utf8');
@@ -21,8 +22,8 @@ describe('Student new template phase 5 finalization contracts', () => {
 
   it('sends date to the public search RPC and exposes only B date filters', () => {
     expect(db).toContain('p_date: date ?? null');
-    expect(student).toContain('getBusinessDateOnly()');
-    expect(student).toContain('getBusinessDateOnly(1)');
+    expect(drawer).toContain('getBusinessDateOnly()');
+    expect(drawer).toContain('getBusinessDateOnly(1)');
     expect(student).toContain('date: undefined');
     expect(student).not.toContain("category: 'A'");
   });
