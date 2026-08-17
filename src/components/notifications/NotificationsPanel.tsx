@@ -4,6 +4,7 @@ import { Notification } from '../../types';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { dbService } from '../../lib/db-service';
+import { formatDateTimeBR } from '../../lib/date-format';
 
 export const NotificationsPanel: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -23,7 +24,8 @@ export const NotificationsPanel: React.FC = () => {
       const rows = await dbService.getMyNotifications();
       setNotifications(rows);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível carregar notificações.');
+      if (process.env.NODE_ENV !== 'production') console.error('Failed to load notifications:', err);
+      setError('Não foi possível carregar suas notificações.');
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -47,15 +49,16 @@ export const NotificationsPanel: React.FC = () => {
         )
       );
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível marcar a notificação como lida.');
+      if (process.env.NODE_ENV !== 'production') console.error('Failed to mark notification as read:', err);
+      setError('Não foi possível marcar a notificação como lida.');
     } finally {
       setMarkingId(null);
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-      <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 p-4">
         <div className="flex items-center gap-2">
           <div className="relative">
             <Bell className="w-5 h-5 text-slate-800" />
@@ -67,7 +70,7 @@ export const NotificationsPanel: React.FC = () => {
           </div>
           <div>
             <h3 className="font-black text-sm text-slate-900">Notificações</h3>
-            <p className="text-[11px] text-slate-500">Alertas persistentes dentro da MAZZI</p>
+            <p className="text-[11px] text-slate-500">Atualizações importantes sobre suas aulas</p>
           </div>
         </div>
         <Button
@@ -81,17 +84,18 @@ export const NotificationsPanel: React.FC = () => {
       </div>
 
       {error && (
-        <div className="m-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex gap-2">
+        <div role="alert" className="m-4 flex gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {loading ? (
-        <div className="p-6 text-center text-xs font-bold text-slate-500">Carregando notificações...</div>
+        <div aria-busy="true" aria-label="Carregando notificações" className="space-y-3 p-4">{[1, 2, 3].map((item) => <div key={item} aria-hidden="true" className="h-16 animate-pulse rounded-2xl bg-slate-100" />)}</div>
       ) : notifications.length === 0 ? (
-        <div className="p-6 text-center text-xs text-slate-500">
-          Nenhuma notificação por enquanto.
+        <div className="p-8 text-center">
+          <p className="text-sm font-black text-slate-800">Tudo tranquilo por aqui.</p>
+          <p className="mt-1 text-xs text-slate-500">Você ainda não possui novas notificações.</p>
         </div>
       ) : (
         <div className="divide-y divide-slate-100">
@@ -109,7 +113,7 @@ export const NotificationsPanel: React.FC = () => {
                 </div>
                 <p className="text-xs text-slate-600 mt-1">{notification.body}</p>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {new Date(notification.createdAt).toLocaleString('pt-BR')}
+                  {formatDateTimeBR(notification.createdAt)}
                 </p>
               </div>
 

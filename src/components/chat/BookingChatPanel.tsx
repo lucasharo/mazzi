@@ -24,6 +24,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
   const [realtimeReady, setRealtimeReady] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const initialPositionedRef = useRef(false);
 
   const currentUserId = user?.id;
 
@@ -102,8 +103,18 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
   }, [conversation?.id]);
 
   useEffect(() => {
+    initialPositionedRef.current = false;
+  }, [conversation?.id]);
+
+  useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
+    if (!messages.length) return;
+    if (!initialPositionedRef.current) {
+      initialPositionedRef.current = true;
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      return;
+    }
     const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
     if (nearBottom) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);

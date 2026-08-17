@@ -39,7 +39,7 @@ import { useAuth } from '../../../components/auth/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { dbService } from '../../../lib/db-service';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
-import { formatDateBR } from '../../../lib/date-format';
+import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { geocodeAddress } from '../../../lib/geocoding';
 
 export interface CheckoutModalProps {
@@ -455,7 +455,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         {/* Global Error Banner */}
         {errorMessage && (
-          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2">
+          <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2">
             <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p>{errorMessage}</p>
@@ -480,7 +480,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {/* Provider & Schedule Summary */}
             <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2 text-xs text-slate-700">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-sm">{provider.name}</span>
+                  <div><span className="font-bold text-slate-900 text-sm block">{offering.instructorName || provider.name}</span>{offering.instructorName && offering.instructorName !== provider.name && <span className="text-[11px] text-slate-500">{provider.name}</span>}</div>
                 <Badge variant="primary" size="sm">
                   Cat. {offering.category}
                 </Badge>
@@ -493,11 +493,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{startTime} - {endTime} ({offering.durationMinutes} min)</span>
+                  <span>{scheduledStartAt ? formatTimeBR(scheduledStartAt) : `${startTime} - ${endTime}`} {offering.durationMinutes ? `(${offering.durationMinutes} min)` : ''}</span>
                 </div>
                 <div className="flex items-center gap-1.5 col-span-2">
                   <Car className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{vehicle.brand} {vehicle.model} ({vehicle.transmission})</span>
+                  <span>{vehicle.brand} {vehicle.model} {vehicle.transmission === 'AUTOMATIC' ? '(Automático)' : vehicle.transmission === 'MANUAL' ? '(Manual)' : ''}</span>
                 </div>
               </div>
             </div>
@@ -521,10 +521,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <p className="text-xs font-black text-slate-900">Ponto de encontro</p>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setMeetingPointType('PROVIDER')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'PROVIDER' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Instrutor / autoescola</button>
-                <button type="button" onClick={() => setMeetingPointType('STUDENT')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'STUDENT' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Meu endereço</button>
+                <button type="button" aria-pressed={meetingPointType === 'PROVIDER'} onClick={() => setMeetingPointType('PROVIDER')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'PROVIDER' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Instrutor / autoescola</button>
+                <button type="button" aria-pressed={meetingPointType === 'STUDENT'} onClick={() => setMeetingPointType('STUDENT')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'STUDENT' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Meu endereço</button>
               </div>
-              {meetingPointType === 'STUDENT' && <input value={studentAddress} onChange={(event) => setStudentAddress(event.target.value)} placeholder="Digite seu endereço" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs" required />}
+              {meetingPointType === 'STUDENT' && <div><label htmlFor="checkout-student-address" className="mb-1.5 block text-xs font-bold text-slate-700">Endereço do aluno</label><input id="checkout-student-address" value={studentAddress} onChange={(event) => setStudentAddress(event.target.value)} placeholder="Digite seu endereço" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs" required /></div>}
             </div>
 
             <Button
@@ -746,13 +746,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div>
               <h3 className="font-black text-lg text-slate-900">Aula Agendada com Sucesso!</h3>
               <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto">
-                Sua reserva está confirmada. Você pode acompanhar o ponto de encontro e realizar check-in na sua aba de Aulas.
+                Sua reserva está confirmada. Você pode acompanhar todos os detalhes na aba de Aulas.
               </p>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1">
-              <p className="font-extrabold text-slate-900">{booking.providerName}</p>
-              <p className="text-slate-600">{booking.scheduledDate} às {booking.startTime}</p>
+              <p className="font-extrabold text-slate-900">{booking.instructorName || booking.providerName}</p>
+              <p className="text-slate-600">{booking.scheduledStartAt ? `${formatDateBR(booking.scheduledStartAt)} às ${formatTimeBR(booking.scheduledStartAt)}` : `${formatDateBR(booking.scheduledDate)} às ${booking.startTime}`}</p>
               <p className="text-slate-500">Ponto de Encontro: {formatMeetingPoint(booking.meetingPoint)}</p>
             </div>
 

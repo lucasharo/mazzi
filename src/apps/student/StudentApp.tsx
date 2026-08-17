@@ -36,7 +36,7 @@ import { dbService } from '../../lib/db-service';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
-import { formatDateBR, formatTimeBR } from '../../lib/date-format';
+import { formatDateBR, formatTimeBR, getBusinessDateOnly } from '../../lib/date-format';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
@@ -420,6 +420,8 @@ export const StudentApp: React.FC = () => {
               />
 
               <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Filtros rápidos adicionais">
+                <button type="button" onClick={() => handleUpdateSearch({ date: searchRequest.date === getBusinessDateOnly() ? undefined : getBusinessDateOnly() })} aria-pressed={searchRequest.date === getBusinessDateOnly()} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.date === getBusinessDateOnly() ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Hoje</button>
+                <button type="button" onClick={() => handleUpdateSearch({ date: searchRequest.date === getBusinessDateOnly(1) ? undefined : getBusinessDateOnly(1) })} aria-pressed={searchRequest.date === getBusinessDateOnly(1)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.date === getBusinessDateOnly(1) ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Amanhã</button>
                 <button type="button" onClick={() => handleUpdateSearch({ transmission: searchRequest.transmission === 'ALL' ? 'AUTOMATIC' : searchRequest.transmission === 'AUTOMATIC' ? 'MANUAL' : 'ALL' })} aria-pressed={searchRequest.transmission !== 'ALL'} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.transmission !== 'ALL' ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Câmbio: {searchRequest.transmission === 'ALL' ? 'Todos' : searchRequest.transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'}</button>
                 <button type="button" onClick={() => handleUpdateSearch({ radiusMeters: searchRequest.radiusMeters === 5000 ? 10000 : searchRequest.radiusMeters === 10000 ? 20000 : 5000 })} aria-pressed={searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.radiusMeters !== DEFAULT_SEARCH_RADIUS_METERS ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>Distância: {((searchRequest.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000).toFixed(0)} km</button>
                 <button type="button" onClick={() => handleUpdateSearch({ maxPriceInCents: searchRequest.maxPriceInCents ? undefined : 15000 })} aria-pressed={Boolean(searchRequest.maxPriceInCents)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition ${searchRequest.maxPriceInCents ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-600'}`}>{searchRequest.maxPriceInCents ? 'Até R$ 150' : 'Qualquer preço'}</button>
@@ -538,6 +540,7 @@ export const StudentApp: React.FC = () => {
                     category: 'B',
                     providerType: 'ALL',
                     transmission: 'ALL',
+                    date: undefined,
                     sortBy: 'RECOMMENDED',
                     page: 1,
                     limit: 10,
@@ -659,23 +662,30 @@ export const StudentApp: React.FC = () => {
 
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
-            <div className="p-4 space-y-4">
-              <div className="bg-slate-950 text-white p-5 rounded-3xl flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="relative w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 font-black text-xl flex items-center justify-center overflow-hidden">
-                    {profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="w-full h-full object-cover" /> : (user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AN')}
+            <div className="space-y-5">
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-amber-100 text-xl font-black text-amber-900">
+                      {profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (user?.name ? user.name.split(' ').map((name) => name[0]).join('').slice(0, 2).toUpperCase() : 'AN')}
+                    </div>
+                    <div className="min-w-0"><h3 className="truncate text-lg font-black text-slate-950">{user?.name || 'Nome não informado'}</h3><p className="text-xs font-semibold text-amber-700">Aluno MAZZI</p><p className="mt-0.5 truncate text-xs text-slate-500">{user?.email || 'E-mail não informado'}</p></div>
                   </div>
-                  <div>
-                    <h3 className="font-black text-lg text-white">{String(user?.name || 'Nome não informado')}</h3>
-                    <p className="text-xs text-amber-400 font-semibold">Aluno</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{user?.email || 'E-mail não informado'}</p>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setIsEditingProfile((value) => !value)}>{isEditingProfile ? 'Cancelar' : 'Editar perfil'}</Button>
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-                <div className="flex items-center justify-between"><h4 className="font-bold text-slate-900 text-sm">Meu perfil</h4><Button variant="outline" size="sm" onClick={() => setIsEditingProfile((value) => !value)}>{isEditingProfile ? 'Cancelar' : 'Editar'}</Button></div>
-                {isEditingProfile ? <div className="space-y-2"><label className="block text-xs font-bold text-slate-600">Foto do perfil</label><ProfilePhotoPicker value={profileAvatar} name={profileName || user?.name} onChange={setProfileAvatar} disabled={profileSaving} /><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Nome" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><input value={profilePhone} onChange={(event) => setProfilePhone(formatPhone(event.target.value))} placeholder="Telefone (11) 99999-9999" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><p className="text-[10px] text-slate-400">E-mail, papel e identificador são informações chave e não podem ser alterados.</p><Button variant="primary" size="sm" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone, profileAvatar); setIsEditingProfile(false); } catch (error: any) { setProfileError(error?.message || 'Não foi possível salvar o perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>{profileError && <p className="text-xs text-rose-600">{profileError}</p>}</div> : <p className="text-xs text-slate-600">{profilePhone || 'Telefone não informado'}</p>}
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h4 className="text-sm font-black text-slate-950">Dados do perfil</h4>
+                {isEditingProfile ? <div className="mt-4 space-y-4">
+                  <div><label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-photo">Foto</label><div id="student-profile-photo"><ProfilePhotoPicker value={profileAvatar} name={profileName || user?.name} onChange={setProfileAvatar} disabled={profileSaving} /></div></div>
+                  <div><label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-name">Nome</label><input id="student-profile-name" value={profileName} onChange={(event) => setProfileName(event.target.value)} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" /></div>
+                  <div><label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-phone">Telefone</label><input id="student-profile-phone" value={profilePhone} onChange={(event) => setProfilePhone(formatPhone(event.target.value))} placeholder="(11) 99999-9999" className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" /></div>
+                  <div><label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-email">E-mail</label><input id="student-profile-email" value={user?.email || ''} readOnly aria-readonly="true" className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm text-slate-500" /></div>
+                  <p className="text-[11px] text-slate-500">E-mail, papel e identificador são informações protegidas e não podem ser alterados.</p>
+                  <Button variant="primary" size="md" className="w-full" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone, profileAvatar); setIsEditingProfile(false); } catch (error: any) { if (process.env.NODE_ENV !== 'production') console.error('Failed to save student profile:', error); setProfileError('Não foi possível salvar seu perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>
+                  {profileError && <p role="alert" className="text-xs font-semibold text-rose-700">{profileError}</p>}
+                </div> : <dl className="mt-4 space-y-3 text-sm"><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Telefone</dt><dd className="font-semibold text-slate-900">{profilePhone || 'Não informado'}</dd></div><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">E-mail</dt><dd className="truncate font-semibold text-slate-900">{user?.email || 'Não informado'}</dd></div></dl>}
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
@@ -696,12 +706,12 @@ export const StudentApp: React.FC = () => {
                 </div>
               </div>
 
-              <Button variant="outline" size="md" className="w-full text-rose-700 border-rose-200" onClick={() => { void logout(); }}>Sair</Button>
+              <div className="border-t border-slate-200 pt-4"><Button variant="ghost" size="md" className="w-full text-rose-700 hover:bg-rose-50" onClick={() => { void logout(); }}>Sair</Button></div>
             </div>
           )}
         </main>
 
-        {/* Bottom Tab Bar - Mobile Optimized 99 Style */}
+        {/* Bottom navigation */}
         <nav aria-label="Navegação principal" className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 rounded-[28px] border border-slate-200/90 bg-white/95 px-2 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl">
           <div className="flex items-center justify-around gap-1">
           {[

@@ -4,6 +4,7 @@ import { Booking, Review } from '../../types';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { dbService } from '../../lib/db-service';
+import { formatDateBR, formatTimeBR } from '../../lib/date-format';
 
 interface ReviewModalProps {
   booking: Booking | null;
@@ -39,7 +40,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         const review = await dbService.getReviewForBooking(booking.id);
         setExistingReview(review);
       } catch (err: any) {
-        setError(err?.message || 'Não foi possível verificar avaliação existente.');
+        if (process.env.NODE_ENV !== 'production') console.error('Failed to load review:', err);
+        setError('Não foi possível carregar a avaliação desta aula.');
       } finally {
         setLoading(false);
       }
@@ -58,7 +60,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       setExistingReview(review);
       onSubmitted?.(review);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível enviar sua avaliação.');
+      if (process.env.NODE_ENV !== 'production') console.error('Failed to submit review:', err);
+      setError('Não foi possível enviar sua avaliação.');
     } finally {
       setSubmitting(false);
     }
@@ -67,12 +70,12 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Avaliar aula concluída" size="md">
       {!booking ? null : (
-        <div className="space-y-4 text-sm">
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-            <p className="font-black text-slate-900">{booking.providerName}</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {booking.scheduledDate} • {booking.startTime}–{booking.endTime}
-            </p>
+        <div className="space-y-5 text-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-600">Sua aula</p>
+            <p className="mt-1 font-black text-slate-950">{booking.instructorName || booking.providerName}</p>
+            {booking.providerName !== booking.instructorName && <p className="text-xs font-semibold text-slate-500">{booking.providerName}</p>}
+            <p className="mt-2 text-xs font-semibold text-slate-500">{booking.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : formatDateBR(booking.scheduledDate)} · {booking.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : `${booking.startTime}–${booking.endTime}`}</p>
           </div>
 
           {booking.status !== 'COMPLETED' && (
@@ -82,14 +85,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           )}
 
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex gap-2">
+            <div role="alert" className="flex gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {loading ? (
-            <div className="p-6 text-center text-xs font-bold text-slate-500">Carregando avaliação...</div>
+            <div aria-busy="true" className="space-y-3 p-4"><div className="h-4 w-1/2 animate-pulse rounded bg-slate-100" /><div className="h-12 animate-pulse rounded-2xl bg-slate-100" /></div>
           ) : existingReview ? (
             <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
               <p className="font-black text-emerald-900">Avaliação já enviada</p>
@@ -107,6 +110,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                     <button
                       key={value}
                       type="button"
+                      aria-label={`${value} ${value === 1 ? 'estrela' : 'estrelas'}`}
+                      aria-pressed={value === rating}
                       onClick={() => setRating(value)}
                       className={`p-2 rounded-xl transition ${
                         value <= rating ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-300'

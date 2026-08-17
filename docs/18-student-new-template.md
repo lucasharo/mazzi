@@ -81,3 +81,15 @@ O pagamento continua `FakePaymentGateway` de desenvolvimento, o geocoder é o ad
 - envio mantém limite de 2000 caracteres, não usa mensagem otimista e preserva o rascunho em caso de falha;
 - chat permanece text-only: sem presença, typing, anexos, read receipts ou badge de unread;
 - `PER_USER_READ_MODEL_REQUIRED = YES`, `PER_USER_UNREAD_BACKLOG = P1`, `NO_UNREAD_BADGE = YES`.
+
+## FASE 5 — Finalização do template
+
+- Perfil do aluno foi alinhado ao shell MAZZI com avatar real/iniciais, edição de nome, telefone e foto, e e-mail somente leitura;
+- câmera, galeria, remoção de foto e persistência Data URL/base64 foram preservadas (`AVATAR_STORAGE_PRODUCTION_READY = NO`, backlog P1);
+- Notificações usam fonte real, contador interno de não lidas, skeleton, retry, estado vazio e datas em `dd/MM/yyyy HH:mm` no timezone do negócio;
+- Checkout mantém slot real, quote, hold, meeting point, valores do snapshot, timers e FakePaymentGateway, com mensagens e sucesso redesenhados;
+- Review mantém rating, comentário opcional e `createReviewForBooking`, com loading/erro amigáveis e controles acessíveis;
+- busca agora envia `p_date` para a RPC pública, com filtros rápidos Hoje/Amanhã e date-only seguro em `America/Sao_Paulo`;
+- Chat posiciona conversas longas na última mensagem ao abrir, preservando a regra de não interromper quem lê o histórico;
+- Search date backlog foi resolvido nesta fase; continuam pendentes pagamento real, geocoder de produção, Storage de avatar e modelo per-user de leitura de mensagens;
+- nenhuma migration, mudança de RLS, publicação Realtime ou dependência foi criada.
