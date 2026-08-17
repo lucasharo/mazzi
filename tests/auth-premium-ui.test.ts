@@ -15,7 +15,7 @@ describe('Premium auth UX', () => {
     expect(demos).toContain("'aluno'"); expect(demos).toContain("'instrutor'"); expect(demos).toContain("'autoescola'");
   });
   it('restores real student signup and confirmation without fake success', () => {
-    expect(login).toContain('Criar minha conta'); expect(login).toContain("goTo('email_confirmation')");
+    expect(login).toContain('Criar conta'); expect(login).toContain("goTo('email_confirmation')");
     expect(login).toContain('signUpStudent({'); expect(login).toContain('confirmPassword');
     expect(login).not.toContain('setTimeout'); expect(service).toContain("role: 'STUDENT'"); expect(login).not.toMatch(/<select/i);
   });

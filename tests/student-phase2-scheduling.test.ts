@@ -42,10 +42,10 @@ describe('Student new template phase 2 scheduling contracts', () => {
   it('keeps the compact calendar hierarchy without duplicating booking metadata', () => {
     expect(slots).toContain('title="Escolha uma data e horário"');
     expect(slots).toContain('<div className="space-y-5"');
-    expect(slots).not.toContain('>Agendamento<');
+    expect(slots).toContain('>Escolha sua aula<');
     expect(slots).not.toContain('`${slotsByDate[date].length} horários`');
     expect(slots).toContain('grid grid-cols-7');
-    expect(slots).toContain('h-9 min-h-0');
+    expect(slots).toContain('h-10 min-h-0');
     expect(slots).toContain('horários disponíveis');
     expect(slots).toContain('Resumo da seleção');
     expect(slots).toContain('transmission');

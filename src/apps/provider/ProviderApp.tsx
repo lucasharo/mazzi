@@ -1039,12 +1039,12 @@ export const ProviderApp: React.FC = () => {
                       <p className="text-2xl font-black text-slate-900 mt-1">{completedBookings.length}</p>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-slate-900 text-white p-4 rounded-2xl">
+                    <div className="rounded-2xl bg-slate-900 p-4 text-white">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 block">
-                        Ganhos Registrados
+                        Avaliação
                       </span>
                       <p className="text-xl font-black text-white mt-1">
-                        {formatCentsToBRL(netEarningsInCents)}
+                        ★ {currentProvider.ratingAverage?.toFixed(1) || '—'}
                       </p>
                     </div>
                   </div>

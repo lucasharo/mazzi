@@ -134,7 +134,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Escolha uma data e horário" size="md">
       <div className="space-y-5" aria-busy={isLoading}>
-        <div><p className="mazzi-eyebrow mb-2">Agendamento</p><h3 className="text-2xl font-extrabold tracking-tight">Escolha sua aula</h3></div>
+        <div><h3 className="text-2xl font-extrabold tracking-tight">Escolha sua aula</h3></div>
 
         {error && (
           <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between gap-3">
