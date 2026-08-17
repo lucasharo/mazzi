@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
 import { formatDateBR } from '../../lib/date-format';
@@ -98,6 +98,8 @@ import {
   LessonSessionState,
 } from '../../domain/lesson-session';
 import { calculateCancellationPolicy, performProviderCancellation } from '../../domain/cancellation';
+import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
+import { getMyProfileAvatar } from '../../lib/profile-avatar';
 
 export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
@@ -238,6 +240,14 @@ export const ProviderApp: React.FC = () => {
     serviceRadiusKm: 6,
     bio: '',
   });
+  const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
+
+  useEffect(() => {
+    setProfileAvatar(user?.avatarUrl);
+    if (user?.id) {
+      void getMyProfileAvatar().then((avatarUrl) => setProfileAvatar(avatarUrl)).catch(() => undefined);
+    }
+  }, [user?.avatarUrl]);
 
   // Vehicle Management Modal State
   const [isAddVehicleModalOpen, setIsAddVehicleModalOpen] = useState<boolean>(false);
@@ -706,6 +716,7 @@ export const ProviderApp: React.FC = () => {
   const handleSaveProfile = async () => {
     const radiusKm = Math.max(1, Math.min(100, Number(profileForm.serviceRadiusKm) || 1));
     try {
+      await dbService.updateMyProfile(user.name, user.phone || '', profileAvatar);
       await dbService.updateProviderServiceRadius(currentProvider.id, radiusKm);
     } catch (error: any) {
       setWorkspaceError(error?.message || 'Não foi possível salvar o raio de atendimento.');
@@ -742,8 +753,7 @@ export const ProviderApp: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-slate-100 flex justify-center py-0 sm:py-6 text-slate-900">
-      <div className="w-full max-w-4xl bg-white sm:rounded-3xl shadow-xl flex flex-col min-h-screen sm:min-h-[850px] overflow-hidden border border-slate-200">
+    <div className="w-full min-h-screen bg-white text-slate-900 flex flex-col overflow-hidden">
         
         {/* Header - MAZZI Pro Provider Portal */}
         <header className="bg-slate-950 text-white px-6 py-4 border-b border-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1693,6 +1703,17 @@ export const ProviderApp: React.FC = () => {
                     )}
                   </div>
 
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                    <h4 className="mb-3 text-sm font-black text-slate-900">Foto do perfil</h4>
+                    <ProfilePhotoPicker
+                      value={profileAvatar}
+                      name={user.name}
+                      onChange={setProfileAvatar}
+                      disabled={!isEditingProfile}
+                    />
+                    <p className="mt-2 text-xs text-slate-500">Use a câmera do celular ou selecione uma imagem da galeria.</p>
+                  </div>
+
                   {/* Public vs Private Data Projections */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Public Projections */}
@@ -2168,11 +2189,11 @@ export const ProviderApp: React.FC = () => {
                   <select
                     value={vehicleForm.category}
                     onChange={(e) => setVehicleForm({ ...vehicleForm, category: e.target.value as VehicleCategory })}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-300"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold"
                   >
-                    <option value="B">Categoria B (Carro)</option>
-                    <option value="A">Categoria A (Moto)</option>
+                    <option value="B">Categoria B (Carro - MVP)</option>
                   </select>
+                  <p className="text-[10px] text-slate-400 mt-1">Categoria A (Moto) será habilitada pós-MVP.</p>
                 </div>
 
                 <div>
@@ -2286,7 +2307,7 @@ export const ProviderApp: React.FC = () => {
             </div>
           </Modal>
         )}
-      </div>
     </div>
   );
 };
+
