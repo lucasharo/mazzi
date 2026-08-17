@@ -669,7 +669,7 @@ export const StudentApp: React.FC = () => {
                     <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-amber-100 text-xl font-black text-amber-900">
                       {profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (user?.name ? user.name.split(' ').map((name) => name[0]).join('').slice(0, 2).toUpperCase() : 'AN')}
                     </div>
-                    <div className="min-w-0"><h3 className="truncate text-lg font-black text-slate-950">{user?.name || 'Nome não informado'}</h3><p className="text-xs font-semibold text-amber-700">Aluno MAZZI</p><p className="mt-0.5 truncate text-xs text-slate-500">{user?.email || 'E-mail não informado'}</p></div>
+                    <div className="min-w-0"><h3 className="truncate text-lg font-black text-slate-950">{profileName || user?.name || 'Nome não informado'}</h3><p className="text-xs font-semibold text-amber-700">Aluno MAZZI</p><p className="mt-0.5 truncate text-xs text-slate-500">{user?.email || 'E-mail não informado'}</p></div>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setIsEditingProfile((value) => !value)}>{isEditingProfile ? 'Cancelar' : 'Editar perfil'}</Button>
                 </div>

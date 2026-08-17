@@ -93,3 +93,20 @@ O pagamento continua `FakePaymentGateway` de desenvolvimento, o geocoder é o ad
 - Chat posiciona conversas longas na última mensagem ao abrir, preservando a regra de não interromper quem lê o histórico;
 - Search date backlog foi resolvido nesta fase; continuam pendentes pagamento real, geocoder de produção, Storage de avatar e modelo per-user de leitura de mensagens;
 - nenhuma migration, mudança de RLS, publicação Realtime ou dependência foi criada.
+
+## FASE 6 — Final QA / Release Candidate
+
+| Área | Resultado |
+| --- | --- |
+| Search | PASS — filtros Hoje/Amanhã enviam `p_date` seguro |
+| Scheduling | PASS — slot real e horizonte 30/60/90 preservados |
+| Checkout | PASS — quote, hold, meeting point e pagamento DEV preservados |
+| Bookings | PASS — próximas, histórico, detalhes e estados de erro/loading |
+| Chat | PASS — dedupe, Realtime/polling, cleanup e auto-scroll inicial |
+| Profile | PASS — nome salvo atualiza imediatamente; avatar/câmera/galeria preservados |
+| Notifications | PASS — fonte real, retry, unread por usuário e data Brasil |
+| Reviews | PASS — rating, comentário e erro amigável |
+| Responsive | PASS por revisão de CSS para 375/390/430/768/1024/1440 |
+| Accessibility | PASS — labels, foco, ARIA e estados independentes de cor |
+
+Correções desta QA: remoção do login demo automático no checkout Student, proteção contra duração indefinida e atualização imediata do nome no perfil. O Student UI está pronto como Release Candidate, mas não é production-ready: `PAYMENT_PRODUCTION_READY = NO`, `GEOCODING_PRODUCTION_READY = NO`, `AVATAR_STORAGE_PRODUCTION_READY = NO` e `PER_USER_READ_MODEL_REQUIRED = YES`.

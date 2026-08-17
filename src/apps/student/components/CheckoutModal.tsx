@@ -110,7 +110,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   existingBookings = [],
   onBookingConfirmed,
 }) => {
-  const { user, isAuthenticated, loginAsDemoUser } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const [step, setStep] = useState<CheckoutStep>('QUOTE_PREVIEW');
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -431,6 +431,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
+  const durationLabel = typeof offering.durationMinutes === 'number' && Number.isFinite(offering.durationMinutes) && offering.durationMinutes > 0
+    ? ` (${offering.durationMinutes} min)`
+    : '';
+
   return (
     <Modal
       isOpen={isOpen}
@@ -505,7 +509,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {/* Commercial Price Breakdown */}
             <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-700">
-                <span>Aula Prática ({offering.durationMinutes} min)</span>
+                  <span>Aula prática{durationLabel}</span>
                 <span className="font-semibold">{formatCentsToBRL(quote.priceInCents)}</span>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-700">
@@ -553,18 +557,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <p className="text-xs font-bold text-slate-700">Entrar como aluno:</p>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+              <p className="text-sm font-black text-slate-900">Sua sessão expirou</p>
+              <p className="text-xs text-slate-600">Entre novamente para continuar com segurança.</p>
               <Button
                 variant="primary"
                 size="md"
                 className="w-full"
-                onClick={() => {
-                  loginAsDemoUser('STUDENT');
-                  setStep('QUOTE_PREVIEW');
-                }}
+                onClick={onClose}
               >
-                Continuar com login de aluno
+                Entrar novamente
               </Button>
             </div>
           </div>
