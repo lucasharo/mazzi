@@ -658,13 +658,15 @@ export const StudentApp: React.FC = () => {
               <button
                 key={tab.id}
                 type="button"
+                aria-label={tab.label}
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex min-h-12 flex-col items-center justify-center rounded-2xl text-[var(--mazzi-muted)] transition ${isActive ? 'text-[var(--mazzi-text)]' : ''}`}
+                className={`mx-1 flex min-h-12 items-center justify-center rounded-2xl transition ${isActive ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-[0_6px_16px_rgba(246,201,69,.28)]' : 'flex-col text-[var(--mazzi-muted)]'}`}
               >
-                <div className={`grid h-8 w-8 place-items-center rounded-xl ${isActive ? 'bg-[var(--mazzi-yellow)]' : ''}`}>
+                <div className="grid h-8 w-8 place-items-center rounded-xl">
                   {tab.icon}
                 </div>
-                <span className="text-[10px] mt-0.5">{tab.label}</span>
+                {!isActive && <span className="mt-0.5 text-[10px]">{tab.label}</span>}
               </button>
             );
           })}
