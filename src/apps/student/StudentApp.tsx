@@ -401,7 +401,7 @@ export const StudentApp: React.FC = () => {
         </header>
 
         {/* Content Area */}
-        <main className="mx-auto min-h-[calc(100dvh-5rem)] w-full max-w-6xl overflow-y-auto px-4 pb-32 pt-5 text-left sm:px-6 lg:pb-28">
+        <main className="mx-auto min-h-[calc(100dvh-5rem)] w-full max-w-6xl px-4 pb-32 pt-5 text-left sm:px-6 lg:pb-28">
           {/* SEARCH TAB */}
           {activeTab === 'search' && (
             <div className="space-y-5">

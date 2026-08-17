@@ -27,4 +27,17 @@ describe('independent MAZZI app entrypoints', () => {
     expect(read('.env.example')).toContain('VITE_SUPABASE_PUBLISHABLE_KEY');
     expect(read('.env.example')).not.toContain('VITE_SUPABASE_SERVICE_ROLE_KEY=');
   });
+
+  it('does not expose the retired global shell and keeps app roots full viewport', () => {
+    const legacyApp = read('src/App.tsx');
+    const css = read('src/index.css');
+    expect(legacyApp).not.toContain('Sprint 03');
+    expect(legacyApp).not.toContain('DesignSystemShowcase');
+    expect(legacyApp).not.toContain('switchRole');
+    expect(css).toContain('#root');
+    expect(css).toContain('min-height: 100dvh');
+    expect(read('src/entrypoints/student/StudentRoot.tsx')).toContain('StudentApp');
+    expect(read('src/entrypoints/instructor/InstructorRoot.tsx')).toContain('ProviderApp');
+    expect(read('src/entrypoints/admin/AdminRoot.tsx')).toContain('AdminApp');
+  });
 });

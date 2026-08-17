@@ -1,6 +1,22 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
 /* Leaflet custom popup styling with 99 theme */
 .leaflet-popup-content-wrapper {
   border-radius: 1rem;
@@ -17,4 +33,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+@supports (padding: env(safe-area-inset-top)) {
+  #root {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }

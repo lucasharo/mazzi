@@ -238,7 +238,7 @@ export const AdminApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 w-full">
+    <div className="min-h-[100dvh] bg-slate-50 flex flex-col text-slate-900 w-full">
       {/* Top Main Navigation Header */}
       <header className="bg-slate-950 text-white px-6 py-4.5 border-b border-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">

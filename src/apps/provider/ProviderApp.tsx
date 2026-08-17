@@ -753,7 +753,7 @@ export const ProviderApp: React.FC = () => {
   });
 
   return (
-    <div className="w-full min-h-screen bg-white text-slate-900 flex flex-col overflow-hidden">
+    <div className="w-full min-h-[100dvh] bg-white text-slate-900 flex flex-col">
         
         {/* Header - MAZZI Pro Provider Portal */}
         <header className="bg-slate-950 text-white px-6 py-4 border-b border-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -821,7 +821,7 @@ export const ProviderApp: React.FC = () => {
         )}
 
         {/* Main Content View */}
-        <main className="p-6 flex-1 overflow-y-auto space-y-6 text-left">
+        <main className="p-6 flex-1 space-y-6 text-left">
           
           {/* ONBOARDING WIZARD */}
           {isOnboardingMode ? (
