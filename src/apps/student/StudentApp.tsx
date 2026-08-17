@@ -96,6 +96,12 @@ function vehicleFromBookingContext(ctx: any): Vehicle {
   } as Vehicle;
 }
 
+function bookingTimestamp(booking: Booking): number {
+  const value = booking.scheduledStartAt || `${booking.scheduledDate || ''}T${booking.startTime || '00:00'}`;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
 export const StudentApp: React.FC = () => {
   const { user, logout } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
@@ -355,7 +361,7 @@ export const StudentApp: React.FC = () => {
   const upcomingBookings = useMemo(() => {
     return confirmedBookings.filter(
       (b) => b.status === 'CONFIRMED' || b.status === 'PENDING_PAYMENT' || b.status === 'IN_PROGRESS'
-    ).sort((a, b) => new Date(a.scheduledStartAt).getTime() - new Date(b.scheduledStartAt).getTime());
+    ).sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b));
   }, [confirmedBookings]);
 
   const historyBookings = useMemo(() => {
@@ -369,7 +375,7 @@ export const StudentApp: React.FC = () => {
         b.status === 'NO_SHOW_STUDENT' ||
         b.status === 'NO_SHOW_PROVIDER' ||
         b.status === 'REFUNDED'
-    ).sort((a, b) => new Date(b.scheduledStartAt).getTime() - new Date(a.scheduledStartAt).getTime());
+    ).sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a));
   }, [confirmedBookings]);
 
   return (
@@ -540,15 +546,18 @@ export const StudentApp: React.FC = () => {
 
           {/* BOOKINGS TAB (MINHAS AULAS) */}
           {activeTab === 'bookings' && (
-            <div className="p-4 space-y-4">
+            <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-black text-slate-900">Minhas Aulas</h2>
-                <p className="text-xs text-slate-500">Histórico de horários, local de encontro e check-in</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Sua jornada</p>
+                <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Minhas aulas</h2>
+                <p className="mt-1 text-sm text-slate-500">Acompanhe seus próximos horários e o histórico.</p>
               </div>
 
               {/* Filter Tabs: Próximas vs Histórico */}
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+              <div role="tablist" aria-label="Aulas" className="grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1">
                 <button
+                  role="tab"
+                  aria-selected={bookingTab === 'upcoming'}
                   type="button"
                   onClick={() => setBookingTab('upcoming')}
                   className={`flex-1 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
@@ -557,9 +566,11 @@ export const StudentApp: React.FC = () => {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Próximas ({upcomingBookings.length})
+                  Próximas {!bookingsLoading && `(${upcomingBookings.length})`}
                 </button>
                 <button
+                  role="tab"
+                  aria-selected={bookingTab === 'history'}
                   type="button"
                   onClick={() => setBookingTab('history')}
                   className={`flex-1 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
@@ -568,26 +579,26 @@ export const StudentApp: React.FC = () => {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Histórico ({historyBookings.length})
+                  Histórico {!bookingsLoading && `(${historyBookings.length})`}
                 </button>
               </div>
 
               {/* Upcoming Bookings Section */}
               {bookingsError && <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="text-sm font-black text-rose-800">Não foi possível carregar suas aulas.</p><button type="button" onClick={() => setBookingsRefreshKey((value) => value + 1)} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Tentar novamente</button></div>}
-              {bookingsLoading && <div aria-busy="true" className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-500">Carregando suas aulas...</div>}
+              {bookingsLoading && <div aria-busy="true" aria-label="Carregando suas aulas" className="space-y-3">{[1, 2, 3].map((item) => <div key={item} aria-hidden="true" className="h-44 animate-pulse rounded-3xl border border-slate-200 bg-white p-5"><div className="h-4 w-1/2 rounded bg-slate-100" /><div className="mt-4 h-3 w-2/3 rounded bg-slate-100" /><div className="mt-6 h-3 w-full rounded bg-slate-100" /><div className="mt-3 h-3 w-4/5 rounded bg-slate-100" /></div>)}</div>}
               {!bookingsError && !bookingsLoading && bookingTab === 'upcoming' && (
                 <div className="space-y-3">
                   {upcomingBookings.length === 0 ? (
                     <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
-                      <p className="text-sm font-bold text-slate-800">Você não possui aulas agendadas.</p>
-                      <p className="text-xs text-slate-500 mt-1">Busque um instrutor ou autoescola e agende seu horário.</p>
+                      <p className="text-sm font-bold text-slate-800">Nenhuma aula agendada.</p>
+                      <p className="text-xs text-slate-500 mt-1">Encontre um instrutor ou autoescola para marcar sua próxima aula.</p>
                       <Button
                         variant="primary"
                         size="sm"
                         className="mt-3"
                         onClick={() => setActiveTab('search')}
                       >
-                        Buscar Aulas
+                        Buscar aulas
                       </Button>
                     </div>
                   ) : (
@@ -595,6 +606,7 @@ export const StudentApp: React.FC = () => {
                       <BookingCard
                         key={b.id}
                         booking={b}
+                        variant="student"
                         onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
                       />
@@ -608,13 +620,14 @@ export const StudentApp: React.FC = () => {
                 <div className="space-y-3">
                   {historyBookings.length === 0 ? (
                     <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
-                      <p className="text-sm font-bold text-slate-800">Nenhum histórico de aula anterior.</p>
+                      <p className="text-sm font-bold text-slate-800">Seu histórico ainda está vazio.</p>
                     </div>
                   ) : (
                     historyBookings.map((b) => (
                       <BookingCard
                         key={b.id}
                         booking={b}
+                        variant="student"
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
                         onReview={(bookingToReview) => setSelectedBookingForReview(bookingToReview)}
                       />

@@ -19,9 +19,10 @@ export interface StatusBadgeProps {
   status: AnyStatus;
   className?: string;
   id?: string;
+  audience?: 'default' | 'student';
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '', id }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '', id, audience = 'default' }) => {
   const getStatusConfig = (s: string): { label: string; bg: string; text: string; dot: string } => {
     switch (s) {
       // Booking Statuses
@@ -34,12 +35,15 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = ''
       case 'PENDING_PAYMENT':
         return { label: 'Aguardando Pagamento', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', dot: 'bg-amber-500' };
       case 'CANCELLED_BY_STUDENT':
-        return { label: 'Cancelada pelo Aluno', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
+        return { label: audience === 'student' ? 'Cancelada por você' : 'Cancelada pelo Aluno', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
       case 'CANCELLED_BY_PROVIDER':
-        return { label: 'Cancelada pelo Fornecedor', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
+        return { label: audience === 'student' ? 'Cancelada pelo prestador' : 'Cancelada pelo Fornecedor', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
       case 'NO_SHOW_STUDENT':
+        return { label: 'Ausência do aluno', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-800', dot: 'bg-purple-500' };
       case 'NO_SHOW_PROVIDER':
-        return { label: 'Não compareceu', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-800', dot: 'bg-purple-500' };
+        return { label: 'Ausência do prestador', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-800', dot: 'bg-purple-500' };
+      case 'PAYMENT_FAILED':
+        return { label: 'Falha no pagamento', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
       case 'DISPUTED':
         return { label: 'Em Disputa', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', dot: 'bg-orange-500' };
       case 'REFUNDED':
@@ -62,7 +66,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = ''
       case 'REJECTED':
         return { label: 'Bloqueado / Rejeitado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
       case 'EXPIRED':
-        return { label: 'Expirado', bg: 'bg-slate-100 border-slate-300', text: 'text-slate-600', dot: 'bg-slate-400' };
+        return { label: 'Expirada', bg: 'bg-slate-100 border-slate-300', text: 'text-slate-600', dot: 'bg-slate-400' };
 
       // Payouts
       case 'AVAILABLE':

@@ -52,3 +52,19 @@ O pagamento continua `FakePaymentGateway` de desenvolvimento, o geocoder é o ad
 - quote/checkout só é inicializado com `selectedSlot.slot_start_at` real;
 - conflitos de concorrência retornam o usuário à agenda para escolher outro horário;
 - nenhuma migration foi criada.
+
+## FASE 3 — Minhas aulas
+
+- a aba Minhas aulas mantém `dbService.getBookings()` como única fonte de bookings do aluno;
+- Próximas inclui `CONFIRMED`, `PENDING_PAYMENT` e `IN_PROGRESS`, ordenadas pela data/hora real;
+- Histórico inclui os status encerrados e é ordenado da aula mais recente para a mais antiga;
+- cards de aluno exibem data, hora, instrutor, prestador quando diferente, veículo, câmbio, ponto de encontro, preço e status em linguagem humana;
+- detalhes usam o snapshot histórico da reserva para profissional, veículo e valores, sem exibir o UUID técnico;
+- duração só é mostrada quando existe no snapshot; não há fallback fixo de 50 minutos;
+- loading usa skeletons, erros têm retry por `bookingsRefreshKey`, e estados vazios oferecem Buscar aulas quando aplicável;
+- Chat e Avaliar aula continuam usando os fluxos existentes; check-in permanece oculto no Student até existir backend autorizado;
+- nenhuma migration, dependência, alteração de pagamento ou alteração de realtime foi criada.
+
+## Backlog de busca
+
+`SEARCH_DATE_FILTER_BACKLOG = P1`: o frontend ainda não envia o parâmetro de data da RPC pública; o ajuste fica reservado para uma fase posterior de polish da busca.

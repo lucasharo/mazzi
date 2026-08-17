@@ -1,10 +1,10 @@
 import React from 'react';
-import { Calendar, Clock, MapPin, MessageSquare, CheckCircle2, Star, Car } from 'lucide-react';
+import { Calendar, Clock, MapPin, MessageSquare, CheckCircle2, Star, Car, Gauge } from 'lucide-react';
 import { Booking } from '../../types';
 import { StatusBadge } from './StatusBadge';
 import { Button } from './Button';
 import { Price } from './Price';
-import { formatDateBR } from '../../lib/date-format';
+import { formatDateBR, formatTimeBR } from '../../lib/date-format';
 import { formatMeetingPoint } from '../../lib/meeting-point';
 
 export interface BookingCardProps {
@@ -14,8 +14,11 @@ export interface BookingCardProps {
   onReview?: (booking: Booking) => void;
   onViewDetails?: (booking: Booking) => void;
   isInstructorPerspective?: boolean;
+  variant?: 'default' | 'student';
   id?: string;
 }
+
+const transmissionLabel = (value?: string) => value === 'AUTOMATIC' ? 'Automático' : value === 'MANUAL' ? 'Manual' : '';
 
 export const BookingCard: React.FC<BookingCardProps> = ({
   booking,
@@ -24,49 +27,60 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   onReview,
   onViewDetails,
   isInstructorPerspective = false,
+  variant = 'default',
   id,
 }) => {
-  const isUpcoming = booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS';
+  const isStudent = variant === 'student';
+  const isUpcoming = booking.status === 'CONFIRMED' || booking.status === 'PENDING_PAYMENT' || booking.status === 'IN_PROGRESS';
   const isCompleted = booking.status === 'COMPLETED';
+  const point = formatMeetingPoint(booking.meetingPoint || booking.snapshot?.meetingPoint);
+  const vehicle = booking.vehicleName || booking.snapshot?.vehicleName;
+  const transmission = transmissionLabel(booking.snapshot?.transmission);
+  const instructor = booking.instructorName || booking.snapshot?.instructorName;
+  const provider = booking.providerName || booking.snapshot?.providerName;
+  const showProvider = Boolean(provider && provider !== instructor);
+  const date = booking.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : formatDateBR(booking.scheduledDate);
+  const time = booking.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : [booking.startTime, booking.endTime].filter(Boolean).join(' – ');
 
   return (
     <div
       id={id || `booking-card-${booking.id}`}
-      className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs transition-all hover:border-slate-300"
+      className={`rounded-3xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-slate-300 sm:p-5 ${isStudent ? 'space-y-4' : ''}`}
     >
       <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-emerald-600" />
             <span className="font-bold text-slate-900 text-sm">
-              {booking.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : booking.scheduledDate}
+              {date}
             </span>
             <span className="text-slate-400">•</span>
             <Clock className="w-3.5 h-3.5 text-slate-400" />
             <span className="font-semibold text-slate-700 text-xs">
-              {booking.startTime} - {booking.endTime}
+              {time}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
             {isInstructorPerspective ? (
-              <span>Aluno: <strong className="text-slate-800">{String(booking.studentName || '')}</strong></span>
+              booking.studentName ? <span>Aluno: <strong className="text-slate-800">{booking.studentName}</strong></span> : null
             ) : (
-              <span>Instrutor: <strong className="text-slate-800">{String(booking.instructorName || '')}</strong> ({String(booking.providerName || '')})</span>
+              instructor ? <span><strong className="text-slate-800">{instructor}</strong></span> : null
             )}
           </p>
+          {!isInstructorPerspective && showProvider && <p className="text-xs text-slate-500">{provider}</p>}
         </div>
-        <StatusBadge status={booking.status} />
+        <StatusBadge status={booking.status} audience={isStudent ? 'student' : 'default'} />
       </div>
 
       <div className="py-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
         <div className="flex items-center gap-1.5">
           <Car className="w-4 h-4 text-slate-400" />
-          <span className="truncate">{String(booking.vehicleName || '')}</span>
+          {vehicle && <><span className="truncate">{vehicle}</span>{transmission && <><span className="text-slate-300">•</span><Gauge className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" /><span>{transmission}</span></>}</>}
         </div>
         <div className="flex items-center gap-1.5">
           <MapPin className="w-4 h-4 text-slate-400" />
           <span className="truncate">
-            {formatMeetingPoint(booking.meetingPoint)}
+            {point}
           </span>
         </div>
       </div>
@@ -86,7 +100,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
             </Button>
           )}
 
-          {isUpcoming && onCheckIn && (
+          {!isStudent && isUpcoming && onCheckIn && (
             <Button
               variant="primary"
               size="sm"

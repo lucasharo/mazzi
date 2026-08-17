@@ -6,8 +6,6 @@ import {
   Car,
   UserCheck,
   Building2,
-  CheckCircle2,
-  ShieldCheck,
   CreditCard,
   MessageSquare,
   AlertTriangle,
@@ -17,7 +15,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Button } from '../../../components/ui/Button';
 import { formatCentsToBRL } from '../../../domain/money';
-import { formatDateBR } from '../../../lib/date-format';
+import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 
 export interface BookingDetailsModalProps {
@@ -43,6 +41,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const isUpcoming = booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS';
   const isPendingPayment = booking.status === 'PENDING_PAYMENT';
   const isExpired = booking.status === 'EXPIRED';
+  const meetingPoint = formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint);
+  const start = booking.scheduledStartAt || (booking.scheduledDate && booking.startTime ? `${booking.scheduledDate}T${booking.startTime}:00` : '');
+  const end = booking.scheduledEndAt || (booking.scheduledDate && booking.endTime ? `${booking.scheduledDate}T${booking.endTime}:00` : '');
+  const transmission = snapshot.transmission === 'AUTOMATIC' ? 'Automático' : snapshot.transmission === 'MANUAL' ? 'Manual' : '';
+  const duration = typeof snapshot.durationMinutes === 'number' && snapshot.durationMinutes > 0 ? snapshot.durationMinutes : null;
+  const provider = snapshot.providerName || booking.providerName;
+  const instructor = snapshot.instructorName || booking.instructorName;
+  const vehicle = snapshot.vehicleName || booking.vehicleName;
 
   return (
     <Modal
@@ -52,32 +58,24 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       size="md"
     >
       <div className="space-y-4 text-left">
-        {/* Top Header & Status */}
-        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-              Código da Reserva
-            </span>
-            <span className="font-mono text-xs font-bold text-slate-800">
-              {booking.id}
-            </span>
-          </div>
-          <StatusBadge status={booking.status} />
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Detalhes da aula</p><p className="mt-1 text-sm font-black text-slate-900">Sua reserva MAZZI</p></div>
+          <StatusBadge status={booking.status} audience="student" />
         </div>
 
         {/* Schedule & Time */}
         <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2">
           <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
             <Calendar className="w-4 h-4 text-amber-500" />
-            <span>Data: {booking.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : booking.scheduledDate}</span>
+            <span>Data: {start ? formatDateBR(start) : formatDateBR(booking.scheduledDate)}</span>
           </div>
           <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
             <Clock className="w-4 h-4 text-slate-400" />
-            <span>Horário: {booking.startTime} às {booking.endTime} ({snapshot.durationMinutes || 50} min)</span>
+            <span>Horário: {start ? formatTimeBR(start) : booking.startTime}{end ? ` às ${formatTimeBR(end)}` : ''}{duration ? ` · ${duration} min` : ''}</span>
           </div>
           <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
             <MapPin className="w-4 h-4 text-slate-400" />
-            <span>Ponto de Encontro: {formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint)}</span>
+            {meetingPoint && <span>Ponto de Encontro: {meetingPoint}</span>}
           </div>
         </div>
 
@@ -92,7 +90,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <span className="text-slate-400 text-[11px] block">Prestador</span>
               <div className="flex items-center gap-1.5 font-bold text-slate-800">
                 <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                <span className="truncate">{String(snapshot.providerName || '')}</span>
+                <span className="truncate">{provider}</span>
               </div>
             </div>
 
@@ -100,7 +98,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <span className="text-slate-400 text-[11px] block">Instrutor</span>
               <div className="flex items-center gap-1.5 font-bold text-slate-800">
                 <UserCheck className="w-3.5 h-3.5 text-slate-500" />
-                <span className="truncate">{String(snapshot.instructorName || '')}</span>
+                <span className="truncate">{instructor}</span>
               </div>
             </div>
 
@@ -108,14 +106,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <span className="text-slate-400 text-[11px] block">Veículo</span>
               <div className="flex items-center gap-1.5 font-bold text-slate-800">
                 <Car className="w-3.5 h-3.5 text-slate-500" />
-                <span className="truncate">{String(snapshot.vehicleName || '')}</span>
+                <span className="truncate">{vehicle}</span>
               </div>
             </div>
 
             <div className="space-y-1">
               <span className="text-slate-400 text-[11px] block">Categoria / Câmbio</span>
               <span className="font-extrabold text-slate-800">
-                Cat. {snapshot.category} • {snapshot.transmission || 'MANUAL'}
+                Cat. {snapshot.category}{transmission ? ` • ${transmission}` : ''}
               </span>
             </div>
           </div>
@@ -177,17 +175,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </Button>
           )}
 
-          {isUpcoming && onCheckIn && (
-            <Button
-              variant={booking.studentCheckedIn ? 'secondary' : 'primary'}
-              size="md"
-              className="flex-1"
-              onClick={() => onCheckIn(booking)}
-              leftIcon={<CheckCircle2 className="w-4 h-4" />}
-            >
-              {booking.studentCheckedIn ? 'Check-in Realizado' : 'Fazer Check-in'}
-            </Button>
-          )}
 
           {onOpenChat && (
             <Button
