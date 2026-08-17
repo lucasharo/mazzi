@@ -4,7 +4,7 @@
 // and sorting options.
 // ============================================================================
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SlidersHorizontal, X, Star, Check, ArrowUpDown } from 'lucide-react';
 import { SearchRequest, ProviderType, TransmissionType } from '../../types';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
@@ -28,19 +28,30 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   onApplyFilters,
   onResetFilters,
 }) => {
+  const [draft, setDraft] = useState<SearchRequest>(searchRequest);
+
+  useEffect(() => {
+    if (isOpen) setDraft(searchRequest);
+  }, [isOpen, searchRequest]);
+
   if (!isOpen) return null;
 
-  const handleApply = (updated: Partial<SearchRequest>) => {
-    onApplyFilters(updated);
+  const updateDraft = (updated: Partial<SearchRequest>) => setDraft((current) => ({ ...current, ...updated }));
+  const handleApply = () => {
+    onApplyFilters(draft);
     trackSearchAnalytics({
       eventType: 'FILTER_APPLIED',
-      category: searchRequest.category,
-      providerType: updated.providerType || searchRequest.providerType,
+      category: draft.category,
+      providerType: draft.providerType,
     });
+    onClose();
+  };
+  const handleReset = () => {
+    setDraft((current) => ({ ...current, date: undefined, sortBy: 'RECOMMENDED', providerType: 'ALL', transmission: 'ALL', radiusMeters: DEFAULT_SEARCH_RADIUS_METERS, minimumRating: undefined, maxPriceInCents: undefined }));
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex justify-end">
+    <div className="fixed inset-0 z-[60] bg-slate-950/60 backdrop-blur-xs flex justify-end">
       <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col text-slate-900 animate-in slide-in-from-right duration-200">
         {/* Header */}
         <div className="px-5 py-4 bg-slate-950 text-white flex items-center justify-between border-b border-slate-900">
@@ -63,7 +74,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-2.5">Quando você quer sua aula?</label>
             <div className="grid grid-cols-3 gap-2">
               {[{ value: undefined, label: 'Qualquer data' }, { value: getBusinessDateOnly(), label: 'Hoje' }, { value: getBusinessDateOnly(1), label: 'Amanhã' }].map((dateOption) => (
-                <button key={dateOption.label} type="button" onClick={() => handleApply({ date: dateOption.value })} aria-pressed={searchRequest.date === dateOption.value || (!searchRequest.date && !dateOption.value)} className={`rounded-xl border p-2.5 text-center text-xs font-bold transition ${searchRequest.date === dateOption.value || (!searchRequest.date && !dateOption.value) ? 'border-amber-400 bg-amber-50 text-slate-950 ring-1 ring-amber-400/40' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>{dateOption.label}</button>
+                <button key={dateOption.label} type="button" onClick={() => updateDraft({ date: dateOption.value })} aria-pressed={draft.date === dateOption.value || (!draft.date && !dateOption.value)} className={`rounded-xl border p-2.5 text-center text-xs font-bold transition ${draft.date === dateOption.value || (!draft.date && !dateOption.value) ? 'border-amber-400 bg-amber-50 text-slate-950 ring-1 ring-amber-400/40' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>{dateOption.label}</button>
               ))}
             </div>
           </div>
@@ -85,15 +96,15 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => handleApply({ sortBy: opt.id as any })}
+                  onClick={() => updateDraft({ sortBy: opt.id as any })}
                   className={`p-2.5 rounded-xl border text-xs font-bold text-left flex items-center justify-between transition cursor-pointer ${
-                    searchRequest.sortBy === opt.id
+                    draft.sortBy === opt.id
                       ? 'border-amber-400 bg-amber-50/80 text-slate-950'
                       : 'border-slate-200 hover:border-slate-300 text-slate-700'
                   }`}
                 >
                   <span>{opt.label}</span>
-                  {searchRequest.sortBy === opt.id && (
+                  {draft.sortBy === opt.id && (
                     <Check className="w-4 h-4 text-amber-600" />
                   )}
                 </button>
@@ -115,9 +126,9 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                 <button
                   key={pType.id}
                   type="button"
-                  onClick={() => handleApply({ providerType: pType.id as any })}
+                  onClick={() => updateDraft({ providerType: pType.id as any })}
                   className={`p-2.5 rounded-xl border text-center text-xs font-bold transition cursor-pointer ${
-                    searchRequest.providerType === pType.id || (!searchRequest.providerType && pType.id === 'ALL')
+                    draft.providerType === pType.id || (!draft.providerType && pType.id === 'ALL')
                       ? 'border-amber-400 bg-amber-50 text-slate-950 ring-1 ring-amber-400/40'
                       : 'border-slate-200 text-slate-600 hover:border-slate-300'
                   }`}
@@ -129,7 +140,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
           </div>
 
           {/* Transmission Filter (Only applicable for Cat B or ALL) */}
-          {searchRequest.category !== 'A' && (
+          {draft.category !== 'A' && (
             <div>
               <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-2.5">
                 Tipo de Câmbio
@@ -143,9 +154,9 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                   <button
                     key={trans.id}
                     type="button"
-                    onClick={() => handleApply({ transmission: trans.id as any })}
+                    onClick={() => updateDraft({ transmission: trans.id as any })}
                     className={`p-2.5 rounded-xl border text-center text-xs font-bold transition cursor-pointer ${
-                      searchRequest.transmission === trans.id || (!searchRequest.transmission && trans.id === 'ALL')
+                      draft.transmission === trans.id || (!draft.transmission && trans.id === 'ALL')
                         ? 'border-amber-400 bg-amber-50 text-slate-950 ring-1 ring-amber-400/40'
                         : 'border-slate-200 text-slate-600 hover:border-slate-300'
                     }`}
@@ -164,7 +175,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                 Raio Máximo de Busca
               </label>
               <span className="text-xs font-black text-amber-600">
-                {((searchRequest.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000).toFixed(0)} km
+                {((draft.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000).toFixed(0)} km
               </span>
             </div>
             <div className="grid grid-cols-5 gap-1.5">
@@ -172,9 +183,9 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                 <button
                   key={rMeters}
                   type="button"
-                  onClick={() => handleApply({ radiusMeters: rMeters })}
+                  onClick={() => updateDraft({ radiusMeters: rMeters })}
                   className={`py-2 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
-                    (searchRequest.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) === rMeters
+                    (draft.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) === rMeters
                       ? 'bg-slate-950 border-slate-950 text-amber-400'
                       : 'border-slate-200 text-slate-600 hover:border-slate-300'
                   }`}
@@ -200,9 +211,9 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                 <button
                   key={rate.label}
                   type="button"
-                  onClick={() => handleApply({ minimumRating: rate.val })}
+                  onClick={() => updateDraft({ minimumRating: rate.val })}
                   className={`p-2 rounded-xl border text-center text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
-                    searchRequest.minimumRating === rate.val
+                    draft.minimumRating === rate.val
                       ? 'border-amber-400 bg-amber-50 text-slate-950'
                       : 'border-slate-200 text-slate-600 hover:border-slate-300'
                   }`}
@@ -228,9 +239,9 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                 <button
                   key={p.label}
                   type="button"
-                  onClick={() => handleApply({ maxPriceInCents: p.maxInCents })}
+                  onClick={() => updateDraft({ maxPriceInCents: p.maxInCents })}
                   className={`p-2 rounded-xl border text-center text-xs font-bold transition cursor-pointer ${
-                    searchRequest.maxPriceInCents === p.maxInCents
+                    draft.maxPriceInCents === p.maxInCents
                       ? 'border-amber-400 bg-amber-50 text-slate-950'
                       : 'border-slate-200 text-slate-600 hover:border-slate-300'
                   }`}
@@ -243,12 +254,12 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center gap-2">
+        <div className="shrink-0 border-t border-slate-200 bg-slate-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex items-center gap-2">
           <Button
             variant="outline"
             size="md"
             className="w-1/3"
-            onClick={onResetFilters}
+            onClick={handleReset}
           >
             Limpar
           </Button>
@@ -256,7 +267,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             variant="primary"
             size="md"
             className="w-2/3"
-            onClick={onClose}
+            onClick={handleApply}
           >
             Aplicar Filtros
           </Button>
