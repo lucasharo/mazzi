@@ -753,75 +753,25 @@ export const ProviderApp: React.FC = () => {
   });
 
   return (
-    <div className="w-full min-h-[100dvh] bg-white text-slate-900 flex flex-col">
+    <div className="mazzi-app">
         
         {/* Header - MAZZI Pro Provider Portal */}
-        <header className="bg-slate-950 text-white px-6 py-4 border-b border-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <header className="mx-auto flex w-full max-w-[680px] items-center justify-between px-5 pt-[max(20px,env(safe-area-inset-top))]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-amber-400 text-slate-950 font-black flex items-center justify-center text-lg tracking-tighter shadow-xs">
-              M
-            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-black tracking-tight text-white">MAZZI Pro</span>
-                <span className="bg-amber-400 text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">
-                  {currentProvider.type === 'INSTRUCTOR' ? 'Instrutor Autônomo' : 'Autoescola (CFC)'}
-                </span>
-                <span className="text-xs text-slate-400">
-                  [{currentProvider.status}]
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 font-medium">
-                {currentProvider.name} • {currentProvider.city}/{currentProvider.state || 'SP'}
-              </p>
+              <p className="text-sm font-semibold text-[var(--mazzi-muted)]">Bom dia,</p><p className="text-lg font-extrabold">{currentProvider.name}</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <select
-              value={activeProviderId}
-              onChange={(e) => handleSelectProvider(e.target.value)}
-              className="bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-800 cursor-pointer"
-            >
-              {providers.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.type === 'INSTRUCTOR' ? 'Instrutor' : 'CFC'}) - {p.status}
-                </option>
-              ))}
-            </select>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-amber-400 border-amber-400/50 hover:bg-amber-400/10 text-xs"
-              onClick={() => handleStartOnboarding('INSTRUCTOR')}
-            >
-              + Novo Cadastro
-            </Button>
-          </div>
+          <button type="button" onClick={() => setActiveTab('profile')} className="mazzi-avatar grid h-12 w-12 place-items-center overflow-hidden text-sm font-extrabold">{profileAvatar ? <img src={profileAvatar} alt="Perfil" className="h-full w-full object-cover"/> : currentProvider.name.split(/\s+/).map((part) => part[0]).slice(0,2).join('')}</button>
         </header>
 
         {/* Navigation Tabs (Mobile-first responsive pills) */}
         {!isOnboardingMode && (
-          <div className="px-6 pt-4 border-b border-slate-200 bg-white overflow-x-auto">
-            <Tabs
-              variant="pills"
-              activeTab={activeTab}
-              onChange={(tab) => setActiveTab(tab)}
-              tabs={[
-                { id: 'dashboard', label: 'Início (Dashboard)' },
-                { id: 'schedule', label: 'Agenda & Horários' },
-                { id: 'bookings', label: 'Reservas & Aulas', count: providerBookings.length },
-                { id: 'management', label: 'Gestão (Veículos / Ofertas / Compliance)' },
-                { id: 'finances', label: 'Financeiro' },
-                { id: 'profile', label: 'Perfil' },
-              ]}
-            />
-          </div>
+          <nav aria-label="Navegação MAZZI Pro" className="mazzi-bottom-nav grid-cols-5">{[{id:'dashboard',label:'Início',icon:'⌂'},{id:'schedule',label:'Agenda',icon:'◫'},{id:'bookings',label:'Aulas',icon:'●'},{id:'management',label:'Gestão',icon:'◇'},{id:'profile',label:'Perfil',icon:'○'}].map((item)=><button type="button" key={item.id} onClick={()=>setActiveTab(item.id)} className={`flex min-h-12 flex-col items-center justify-center rounded-2xl text-[10px] font-bold ${activeTab===item.id?'text-[var(--mazzi-text)]':'text-[var(--mazzi-muted)]'}`}><span className={`mb-1 grid h-7 w-7 place-items-center rounded-xl text-base ${activeTab===item.id?'bg-[var(--mazzi-yellow)]':''}`}>{item.icon}</span>{item.label}</button>)}</nav>
         )}
 
         {/* Main Content View */}
-        <main className="p-6 flex-1 space-y-6 text-left">
+        <main className="mazzi-mobile space-y-6 text-left">
           
           {/* ONBOARDING WIZARD */}
           {isOnboardingMode ? (
@@ -1007,6 +957,8 @@ export const ProviderApp: React.FC = () => {
               {/* DASHBOARD TAB (INÍCIO) */}
               {activeTab === 'dashboard' && (
                 <div className="space-y-6">
+                  <div><p className="mazzi-eyebrow mb-2">Hoje</p><h1 className="mazzi-title">Sua rotina</h1></div>
+                  <section className="mazzi-hero"><div className="p-5"><p className="text-[36px] font-extrabold leading-none">{todayBookings.length}</p><p className="mt-2 text-xs font-bold opacity-70">aulas hoje</p></div><div className="p-5"><p className="text-[28px] font-extrabold leading-none">{nextBooking?.startTime || '—'}</p><p className="mt-2 text-xs font-bold text-white/60">próxima aula</p></div></section>
                   {/* Status Banner */}
                   <div
                     className={`p-4 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
@@ -1063,10 +1015,6 @@ export const ProviderApp: React.FC = () => {
                     </div>
                     <StatusBadge status={currentProvider.status} />
                   </div>
-
-                  <NotificationsPanel />
-
-                  <ProviderAnalyticsPanel />
 
                   {/* Operational Metrics Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -1173,13 +1121,10 @@ export const ProviderApp: React.FC = () => {
 
               {/* SCHEDULE & AVAILABILITY TAB */}
               {activeTab === 'schedule' && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="space-y-7">
+                  <div className="space-y-4">
                     <div>
-                      <h3 className="text-lg font-black text-slate-900">Agenda & Grade de Disponibilidade</h3>
-                      <p className="text-xs text-slate-500">
-                        Gerencie regras semanais recorrentes, bloqueios por manutenção/férias e simule slots.
-                      </p>
+                      <p className="mazzi-eyebrow mb-2">Organização</p><h3 className="mazzi-title">Agenda</h3><p className="mt-2 text-sm text-[var(--mazzi-muted)]">Defina quando você está disponível.</p>
                     </div>
 
                     <Tabs
@@ -1217,7 +1162,7 @@ export const ProviderApp: React.FC = () => {
                           .map((rule) => (
                             <div
                               key={rule.id}
-                              className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between"
+                              className="mazzi-card flex items-center justify-between p-4"
                             >
                               <div>
                                 <span className="font-bold text-sm text-slate-900 block">
@@ -1527,18 +1472,16 @@ export const ProviderApp: React.FC = () => {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {providerOfferings.map((o) => (
-                          <div key={o.id} className="p-4 rounded-2xl border border-slate-200 bg-white space-y-2">
+                          <div key={o.id} className="mazzi-card space-y-3 p-5">
                             <div className="flex items-center justify-between">
                               <span className="font-black text-sm text-slate-900">
-                                Aula Categoria {o.category} ({o.durationMinutes} min)
+                                Categoria {o.category}
                               </span>
                               <Badge variant={o.status === 'ACTIVE' ? 'success' : 'neutral'}>
                                 {o.status}
                               </Badge>
                             </div>
-                            <p className="text-base font-black text-slate-900">
-                              {formatCentsToBRL(o.priceInCents)}
-                            </p>
+                            <p className="text-xs font-bold text-[var(--mazzi-muted)]">{o.durationMinutes} minutos</p><p className="text-2xl font-black">{formatCentsToBRL(o.priceInCents)}</p>
                             <div className="pt-2 flex justify-end">
                               <Button
                                 variant="outline"
@@ -1679,13 +1622,14 @@ export const ProviderApp: React.FC = () => {
 
               {/* PROFILE TAB */}
               {activeTab === 'profile' && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="space-y-7">
+                  <div className="text-center">
+                    <div className="mazzi-avatar mx-auto grid h-24 w-24 place-items-center overflow-hidden text-2xl font-extrabold">{profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover"/> : currentProvider.name.split(/\s+/).map((part)=>part[0]).slice(0,2).join('')}</div><h3 className="mt-4 text-2xl font-extrabold tracking-tight">{currentProvider.name}</h3><p className="mt-1 text-sm text-[var(--mazzi-muted)]">★ {currentProvider.ratingAverage?.toFixed(1) || 'Novo'} · {currentProvider.neighborhood}</p>
+                  </div>
+                  <div className="mazzi-hero"><div className="p-5"><p className="text-2xl font-extrabold">{completedBookings.length}</p><p className="mt-1 text-xs font-bold opacity-70">aulas</p></div><div className="p-5"><p className="text-2xl font-extrabold">{currentProvider.ratingAverage?.toFixed(1) || '—'}</p><p className="mt-1 text-xs font-bold text-white/60">avaliação</p></div></div>
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-black text-slate-900">Perfil do Prestador</h3>
-                      <p className="text-xs text-slate-500">
-                        Gerencie suas informações públicas e entenda a projeção de privacidade dos dados.
-                      </p>
+                      <h3 className="mazzi-section-title">Dados profissionais</h3>
                     </div>
                     {!isEditingProfile ? (
                       <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(true)}>

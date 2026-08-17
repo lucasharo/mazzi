@@ -21,17 +21,17 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
     <div
       id={id || `vehicle-card-${vehicle.id}`}
       onClick={() => onSelect && onSelect(vehicle)}
-      className={`rounded-2xl border p-4 transition-all ${
+      className={`mazzi-card p-5 transition-all ${
         onSelect ? 'cursor-pointer hover:border-slate-300' : ''
       } ${
         isSelected
-          ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20'
-          : 'border-slate-200/80 bg-white'
+          ? 'ring-2 ring-[var(--mazzi-yellow)]'
+          : ''
       }`}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)]">
             {vehicle.category === 'A' ? (
               <Bike className="w-5 h-5" />
             ) : (
@@ -58,9 +58,6 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
             : vehicle.transmission === 'AUTOMATIC'
             ? 'Automático'
             : 'N/A'}
-        </Badge>
-        <Badge variant="info" size="sm">
-          {vehicle.vehicleType === 'MOTORCYCLE' ? 'Moto' : 'Carro'}
         </Badge>
         <span className="text-xs text-slate-400 font-mono ml-auto">
           Placa {vehicle.licensePlateMasked || '***-****'}
