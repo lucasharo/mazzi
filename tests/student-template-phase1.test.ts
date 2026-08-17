@@ -9,7 +9,7 @@ const providerCard = readFileSync(join(root, 'src/components/search/ProviderResu
 
 describe('Student new template phase 1', () => {
   it('uses a full-width mobile-first shell with notification bell and chat tab', () => {
-    expect(studentApp).toContain('min-h-[100dvh] w-full');
+    expect(studentApp).toContain('mazzi-app');
     expect(studentApp).toContain('aria-label="Abrir notificações"');
     expect(studentApp).toContain("id: 'messages'");
     expect(studentApp).not.toContain("id: 'notifications'");

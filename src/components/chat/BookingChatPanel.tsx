@@ -139,7 +139,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mazzi-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Conversa da aula</p><h4 className="mt-1 truncate text-base font-black text-slate-950">{title}</h4>{provider && <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{provider}</p>}</div>
           <StatusBadge status={booking.status} audience="student" />
@@ -168,7 +168,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
         </div>
       )}
 
-      <div ref={scrollContainerRef} aria-live="polite" aria-busy={loading} className="h-[min(55vh,28rem)] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-3 space-y-2">
+      <div ref={scrollContainerRef} aria-live="polite" aria-busy={loading} className="mazzi-card h-[min(55vh,28rem)] space-y-2 overflow-y-auto p-3">
         {loading ? (
           <div aria-hidden="true" className="space-y-3 p-2">{[1, 2, 3].map((item) => <div key={item} className={`h-12 animate-pulse rounded-2xl bg-slate-100 ${item % 2 ? 'w-3/4' : 'ml-auto w-2/3'}`} />)}</div>
         ) : messages.length === 0 ? (
@@ -184,7 +184,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
               <React.Fragment key={message.id}>
                 {showDateSeparator && <div className="py-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">{formatDateBR(message.createdAt)}</div>}
                 <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[82%] rounded-2xl px-3 py-2 text-xs ${isMine ? 'bg-slate-950 text-white rounded-br-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'}`}>
+                  <div className={`max-w-[82%] rounded-2xl px-3 py-2 text-xs ${isMine ? 'rounded-br-sm bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]' : 'rounded-bl-sm bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-text)]'}`}>
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
                     <p className={`text-[10px] mt-1 ${isMine ? 'text-slate-400' : 'text-slate-500'}`}>{formatTimeBR(message.createdAt)}</p>
                   </div>
@@ -203,7 +203,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
           onChange={(event) => setDraft(event.target.value)}
           rows={2}
           maxLength={2000}
-          className="flex-1 rounded-2xl border border-slate-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-400 resize-none"
+          className="mazzi-input flex-1 resize-none text-sm"
           placeholder="Escreva uma mensagem sobre esta aula..."
           disabled={!conversation || loading || sending}
           onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void handleSend(); } }}

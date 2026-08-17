@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, Navigation, Search, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { ChevronRight, Navigation, Search, SlidersHorizontal } from 'lucide-react';
 import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
 import { geocodeAddress } from '../../lib/geocoding';
@@ -83,23 +83,10 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
   return (
     <section className="space-y-4" aria-label="Buscar aulas">
-      <div>
-        <div className="flex items-center gap-2 text-amber-600">
-          <Sparkles className="h-4 w-4" aria-hidden="true" />
-          <span className="text-xs font-black uppercase tracking-[0.18em]">Aulas práticas</span>
-        </div>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Encontre sua próxima aula</h1>
-        <p className="mt-1 text-sm text-slate-500">Profissionais verificados perto de você.</p>
-      </div>
-
-      <form onSubmit={handleAddressSubmit} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100">
-        <Search className="ml-2 h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
-        <input type="text" aria-label="Endereço para buscar instrutores" value={addressInput} onChange={(event) => setAddressInput(event.target.value)} placeholder="Sua localização atual" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400" />
-        <button type="submit" aria-label="Buscar endereço" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-amber-400 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"><Search className="h-4 w-4" aria-hidden="true" /></button>
-        <button type="button" onClick={handleUseMyLocation} disabled={isLocating} aria-label="Usar minha localização atual" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-amber-50 hover:text-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 disabled:opacity-50"><Navigation className={`h-4 w-4 ${isLocating ? 'animate-spin' : ''}`} aria-hidden="true" /></button>
+      <form onSubmit={handleAddressSubmit} className="mazzi-card p-4 focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)]">
+        <div className="flex items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]"><Navigation className={`h-5 w-5 ${isLocating ? 'animate-spin' : ''}`}/></span><label className="min-w-0 flex-1"><span className="block text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--mazzi-muted)]">Localização</span><input type="text" aria-label="Endereço para buscar instrutores" value={addressInput} onChange={(event) => setAddressInput(event.target.value)} placeholder="Sua localização atual" className="mt-1 w-full truncate bg-transparent text-sm font-extrabold outline-none placeholder:text-[var(--mazzi-text)]"/></label><button type="submit" aria-label="Buscar endereço" className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--mazzi-dark)] text-white"><ChevronRight className="h-5 w-5"/></button></div>
+        <div className="mt-3 flex gap-2"><button type="button" onClick={handleUseMyLocation} disabled={isLocating} className="min-h-10 flex-1 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold">Usar localização atual</button>{onOpenFilters && <button type="button" onClick={onOpenFilters} className="flex min-h-10 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4"/>Filtros{activeFilterCount > 0 ? ` ${activeFilterCount}` : ''}</button>}</div>
       </form>
-
-      {onOpenFilters && <div className="flex justify-end pt-1"><button type="button" onClick={onOpenFilters} className="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-800 shadow-sm transition hover:border-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"><SlidersHorizontal className="h-4 w-4 text-amber-600" />Filtros{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}</button></div>}
     </section>
   );
 };

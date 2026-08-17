@@ -45,9 +45,9 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   return (
     <div
       id={id || `booking-card-${booking.id}`}
-      className={`rounded-3xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-slate-300 sm:p-5 ${isStudent ? 'space-y-4' : ''}`}
+      className={`mazzi-card p-5 transition ${isStudent ? 'space-y-4' : ''}`}
     >
-      <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-emerald-600" />
@@ -72,7 +72,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         <StatusBadge status={booking.status} audience={isStudent ? 'student' : 'default'} />
       </div>
 
-      <div className="py-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
+      <div className="mazzi-soft-card grid gap-2 px-4 py-3 text-xs text-[var(--mazzi-muted)]">
         <div className="flex items-center gap-1.5">
           <Car className="w-4 h-4 text-slate-400" />
           {vehicle && <><span className="truncate">{vehicle}</span>{transmission && <><span className="text-slate-300">•</span><Gauge className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" /><span>{transmission}</span></>}</>}
@@ -85,7 +85,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         </div>
       </div>
 
-      <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 pt-1">
         <Price cents={booking.snapshot.totalInCents} size="sm" showPeriodLabel={false} />
         
         <div className="flex items-center gap-2">

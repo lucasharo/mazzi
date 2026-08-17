@@ -441,10 +441,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       onClose={onClose}
       title={
         step === 'SUCCESS'
-          ? 'Reserva Confirmada!'
+          ? 'Aula confirmada'
           : step === 'PAYMENT_SELECTION'
-          ? 'Checkout — Pagamento Simulado'
-          : 'Resumo da Cotação'
+          ? 'Confirmar pagamento'
+          : 'Confirmar sua aula'
       }
       size="md"
     >
@@ -471,7 +471,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'QUOTE_PREVIEW' && quote && (
           <div className="space-y-4">
             {/* Countdown Badge */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-900 text-white">
+            <div className="flex items-center justify-between rounded-2xl bg-[var(--mazzi-dark)] p-3 text-white">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
                 <span className="text-xs font-bold">Cotação Válida Por:</span>
@@ -482,7 +482,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Provider & Schedule Summary */}
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2 text-xs text-slate-700">
+            <div className="mazzi-card space-y-3 p-5 text-xs text-slate-700">
               <div className="flex items-center justify-between">
                   <div><span className="font-bold text-slate-900 text-sm block">{offering.instructorName || provider.name}</span>{offering.instructorName && offering.instructorName !== provider.name && <span className="text-[11px] text-slate-500">{provider.name}</span>}</div>
                 <Badge variant="primary" size="sm">
@@ -507,7 +507,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Commercial Price Breakdown */}
-            <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2">
+            <div className="rounded-[22px] bg-[var(--mazzi-yellow-soft)] p-5 space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-700">
                   <span>Aula prática{durationLabel}</span>
                 <span className="font-semibold">{formatCentsToBRL(quote.priceInCents)}</span>
@@ -522,7 +522,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+            <div className="mazzi-soft-card space-y-3 p-4">
               <p className="text-xs font-black text-slate-900">Ponto de encontro</p>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" aria-pressed={meetingPointType === 'PROVIDER'} onClick={() => setMeetingPointType('PROVIDER')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'PROVIDER' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Instrutor / autoescola</button>
@@ -539,7 +539,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               onClick={handleProceedToBookingHold}
               rightIcon={<ShieldCheck className="w-4 h-4" />}
             >
-              Confirmar e Reservar Horário
+              Confirmar aula
             </Button>
           </div>
         )}

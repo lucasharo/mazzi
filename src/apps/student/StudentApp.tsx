@@ -389,22 +389,12 @@ export const StudentApp: React.FC = () => {
   }, [confirmedBookings]);
 
   return (
-    <div className="min-h-[100dvh] w-full overflow-x-hidden bg-slate-50 text-slate-900">
-        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur sm:px-6">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-400 text-base font-black tracking-tight text-slate-950 shadow-sm">M</div>
-              <div><span className="block text-base font-black tracking-tight text-slate-950">MAZZI</span><span className="hidden text-[10px] font-bold text-slate-500 sm:block">Sua próxima aula começa aqui</span></div>
-            </div>
-            <button type="button" aria-label="Abrir notificações" onClick={() => setIsNotificationsOpen(true)} className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-amber-300 hover:text-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"><Bell className="h-5 w-5" aria-hidden="true" /></button>
-          </div>
-        </header>
-
-        {/* Content Area */}
-        <main className="mx-auto min-h-[calc(100dvh-5rem)] w-full max-w-6xl px-4 pb-32 pt-5 text-left sm:px-6 lg:pb-28">
+    <div className="mazzi-app">
+        <main className="mazzi-mobile text-left">
           {/* SEARCH TAB */}
           {activeTab === 'search' && (
-            <div className="space-y-5">
+            <div className="space-y-7">
+              <header className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold text-[var(--mazzi-muted)]">Olá, {user?.name?.split(' ')[0] || 'aluno'}</p><h1 className="mt-1 text-[32px] font-extrabold leading-[1.02] tracking-[-.045em]">Encontre sua<br/>próxima aula</h1></div><button type="button" aria-label="Abrir notificações" onClick={() => setIsNotificationsOpen(true)} className="mazzi-avatar grid h-12 w-12 place-items-center"><Bell className="h-5 w-5"/></button></header>
               {/* Search Header */}
               <SearchHeader
                 searchRequest={searchRequest}
@@ -420,8 +410,8 @@ export const StudentApp: React.FC = () => {
                 activeFilterCount={additionalFilterCount}
               />
 
-              <section aria-labelledby="student-results-title" className="mt-8 border-t border-slate-200 pt-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 id="student-results-title" className="text-sm font-black text-slate-950">Resultados</h2><p className="mt-1 text-xs font-semibold text-slate-600" aria-live="polite">{searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div aria-label="Modo de visualização" className="inline-flex w-fit items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1"><button type="button" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition ${searchViewMode === 'list' ? 'bg-slate-950 text-amber-300 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}><List className="h-3.5 w-3.5" />Lista</button><button type="button" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition ${searchViewMode === 'map' ? 'bg-slate-950 text-amber-300 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}><Map className="h-3.5 w-3.5" />Mapa</button></div></div>
+              <section aria-labelledby="student-results-title" className="mt-8">
+                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><button type="button" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></button><button type="button" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><Map className="h-4 w-4"/></button></div></div>
               </section>
 
               {searchError && (
@@ -615,16 +605,11 @@ export const StudentApp: React.FC = () => {
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="space-y-5">
-              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex min-w-0 items-center gap-4">
-                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-amber-100 text-xl font-black text-amber-900">
+              <div className="text-center">
+                    <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] bg-[var(--mazzi-yellow)] text-2xl font-black shadow-[var(--mazzi-shadow)]">
                       {profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (user?.name ? user.name.split(' ').map((name) => name[0]).join('').slice(0, 2).toUpperCase() : 'AN')}
                     </div>
-                    <div className="min-w-0"><h3 className="truncate text-lg font-black text-slate-950">{profileName || user?.name || 'Nome não informado'}</h3><p className="text-xs font-semibold text-amber-700">Aluno MAZZI</p><p className="mt-0.5 truncate text-xs text-slate-500">{user?.email || 'E-mail não informado'}</p></div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditingProfile((value) => !value)}>{isEditingProfile ? 'Cancelar' : 'Editar perfil'}</Button>
-                </div>
+                    <h3 className="mt-4 truncate text-2xl font-extrabold">{profileName || user?.name || 'Nome não informado'}</h3><p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p><button type="button" onClick={() => setIsEditingProfile((value) => !value)} className="mt-4 text-xs font-extrabold">{isEditingProfile ? 'Cancelar' : 'Editar perfil'}</button>
               </div>
 
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -640,22 +625,19 @@ export const StudentApp: React.FC = () => {
                 </div> : <dl className="mt-4 space-y-3 text-sm"><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Telefone</dt><dd className="font-semibold text-slate-900">{profilePhone || 'Não informado'}</dd></div><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">E-mail</dt><dd className="truncate font-semibold text-slate-900">{user?.email || 'Não informado'}</dd></div></dl>}
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-                <h4 className="font-bold text-slate-900 text-sm">Resumo do Aprendizado</h4>
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="p-3 bg-slate-50 rounded-xl">
+              <div className="mazzi-hero text-left">
+                  <div className="p-5">
                     <span className="text-xl font-black text-slate-900 block">
                       {historyBookings.filter((b) => b.status === 'COMPLETED').length}
                     </span>
                     <span className="text-[11px] text-slate-500 font-semibold">Aulas Concluídas</span>
                   </div>
-                  <div className="p-3 bg-amber-50 rounded-xl">
-                    <span className="text-xl font-black text-amber-700 block">
+                  <div className="p-5">
+                    <span className="block text-xl font-black text-white">
                       {upcomingBookings.length}
                     </span>
-                    <span className="text-[11px] text-amber-900 font-semibold">Aulas Agendadas</span>
+                    <span className="text-[11px] font-semibold text-white/60">Aulas Agendadas</span>
                   </div>
-                </div>
               </div>
 
               <div className="border-t border-slate-200 pt-4"><Button variant="ghost" size="md" className="w-full text-rose-700 hover:bg-rose-50" onClick={() => { void logout(); }}>Sair</Button></div>
@@ -664,8 +646,7 @@ export const StudentApp: React.FC = () => {
         </main>
 
         {/* Bottom navigation */}
-        <nav aria-label="Navegação principal" className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 rounded-[28px] border border-slate-200/90 bg-white/95 px-2 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl">
-          <div className="flex items-center justify-around gap-1">
+        <nav aria-label="Navegação principal" className="mazzi-bottom-nav grid-cols-4">
           {[
             { id: 'search', label: 'Buscar', icon: <Search className="w-5 h-5" /> },
             { id: 'bookings', label: 'Aulas', icon: <CalendarIcon className="w-5 h-5" /> },
@@ -678,16 +659,15 @@ export const StudentApp: React.FC = () => {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as any)}
-                className="flex flex-col items-center justify-center py-1.5 px-3 rounded-[22px] text-slate-500 hover:text-slate-900 font-medium transition cursor-pointer min-w-[64px] min-h-[48px]"
+                className={`flex min-h-12 flex-col items-center justify-center rounded-2xl text-[var(--mazzi-muted)] transition ${isActive ? 'text-[var(--mazzi-text)]' : ''}`}
               >
-                <div className={`p-1.5 rounded-xl ${isActive ? 'text-amber-500' : ''}`}>
+                <div className={`grid h-8 w-8 place-items-center rounded-xl ${isActive ? 'bg-[var(--mazzi-yellow)]' : ''}`}>
                   {tab.icon}
                 </div>
                 <span className="text-[10px] mt-0.5">{tab.label}</span>
               </button>
             );
           })}
-          </div>
         </nav>
 
       <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações" size="md">

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, ChevronDown, Clock, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, RefreshCw } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { supabase } from '../../../lib/supabase';
@@ -67,6 +67,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<PublicSlot | null>(null);
   const [windowDays, setWindowDays] = useState(INITIAL_WINDOW_DAYS);
+  const [visibleMonth, setVisibleMonth] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,6 +114,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
     setSlotsByDate({});
     setSelectedDate(null);
     setSelectedSlot(null);
+    setVisibleMonth(fromDate.slice(0, 7));
     void fetchSlots(INITIAL_WINDOW_DAYS, true);
   }, [fetchSlots, isOpen]);
 
@@ -132,13 +134,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Escolha uma data e horário" size="md">
       <div className="space-y-5" aria-busy={isLoading}>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-bold text-sm text-slate-800">Escolha o dia</h3>
-            <p className="text-xs text-slate-500 mt-1">Mostrando os próximos {windowDays} dias</p>
-          </div>
-          <Calendar className="h-5 w-5 text-amber-500" aria-hidden="true" />
-        </div>
+        <div><p className="mazzi-eyebrow mb-2">Agendamento</p><h3 className="text-2xl font-extrabold tracking-tight">Escolha sua aula</h3></div>
 
         {error && (
           <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between gap-3">
@@ -151,16 +147,16 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
 
         {!isLoading && !error && !hasAnySlots && <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center"><p className="text-sm font-black text-slate-800">Nenhum horário disponível neste período.</p><p className="mt-1 text-xs text-slate-500">Você pode consultar os próximos dias abaixo.</p></div>}
 
-        <div className="max-h-72 space-y-4 overflow-y-auto pr-1">
-          {(Object.entries(datesByMonth) as [string, string[]][]).map(([month, monthDates]) => <section key={month}>
-            <h4 className="mb-2 text-xs font-black capitalize text-slate-700">{formatDateOnly(`${month}-01`, { month: 'long', year: 'numeric' })}</h4>
+        <div>
+          {(Object.entries(datesByMonth) as [string, string[]][]).filter(([month]) => month === visibleMonth).map(([month, monthDates], _index, entries) => <section key={month}>
+            <div className="mb-4 flex items-center justify-between"><button type="button" aria-label="Mês anterior" disabled={Object.keys(datesByMonth).indexOf(month) <= 0} onClick={() => { const months=Object.keys(datesByMonth); setVisibleMonth(months[months.indexOf(month)-1]); }} className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] disabled:opacity-30"><ChevronLeft className="h-4 w-4"/></button><h4 className="text-sm font-extrabold capitalize">{formatDateOnly(`${month}-01`, { month: 'long', year: 'numeric' })}</h4><button type="button" aria-label="Mês seguinte" disabled={Object.keys(datesByMonth).indexOf(month) >= Object.keys(datesByMonth).length-1} onClick={() => { const months=Object.keys(datesByMonth); setVisibleMonth(months[months.indexOf(month)+1]); }} className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] disabled:opacity-30"><ChevronRight className="h-4 w-4"/></button></div>
             <div className="grid grid-cols-7 gap-1.5 text-center">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((weekday) => <span key={`${month}-${weekday}`} className="text-[8px] font-black uppercase text-slate-400">{weekday}</span>)}
             {Array.from({ length: weekdayIndex(monthDates[0]) }, (_, index) => <span key={`${month}-empty-${index}`} aria-hidden="true" />)}
             {monthDates.map((date) => {
             const available = (slotsByDate[date] || []).length > 0;
             return (
-              <button key={date} type="button" disabled={!available} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? `, ${slotsByDate[date].length} horários disponíveis` : ', indisponível'}`} className={`h-9 min-h-0 rounded-lg border p-0.5 text-center transition ${selectedDate === date ? 'border-amber-500 bg-amber-50 text-slate-950 ring-2 ring-amber-400/30' : available ? 'border-slate-200 bg-white hover:border-amber-300 text-slate-700' : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'}`}>
+              <button key={date} type="button" disabled={!available} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? `, ${slotsByDate[date].length} horários disponíveis` : ', indisponível'}`} className={`h-10 min-h-0 rounded-xl p-0.5 text-center transition ${selectedDate === date ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-sm' : available ? 'bg-white text-[var(--mazzi-text)]' : 'text-stone-300 cursor-not-allowed'}`}>
                 <span className="text-sm font-black leading-tight">{formatDateOnly(date, { day: '2-digit' })}</span>
               </button>
             );
@@ -169,11 +165,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({ isOpen, on
           </section>)}
         </div>
 
-        {windowDays < MAX_HORIZON_DAYS && (
-          <button type="button" disabled={isLoading} onClick={() => { const next = Math.min(MAX_HORIZON_DAYS, windowDays + LOAD_MORE_DAYS); setWindowDays(next); void fetchSlots(next, false); }} className="flex w-full items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-white py-3 text-xs font-black text-slate-700 transition hover:border-amber-300">
-            Ver próximos {LOAD_MORE_DAYS} dias <ChevronDown className="w-4 h-4" />
-          </button>
-        )}
+        {windowDays < MAX_HORIZON_DAYS && <button type="button" disabled={isLoading} onClick={() => { const next = Math.min(MAX_HORIZON_DAYS, windowDays + LOAD_MORE_DAYS); setWindowDays(next); void fetchSlots(next, false); }} className="w-full py-2 text-xs font-bold text-[var(--mazzi-muted)]">Carregar meses seguintes</button>}
 
         {selectedDate && (
           <div>
