@@ -31,7 +31,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { formatCentsToBRL } from '../../../domain/money';
-import { createQuote, isQuoteExpired, QuoteDomainError } from '../../../domain/quote';
+import { isQuoteExpired, QuoteDomainError } from '../../../domain/quote';
 import { createBookingHold, BookingDomainError } from '../../../domain/booking';
 import { PaymentService } from '../../../domain/payments/payment-service';
 import { FakePaymentGateway } from '../../../domain/payments/fake-adapter';
@@ -143,17 +143,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setStep('QUOTE_PREVIEW');
 
     const initializeQuote = async () => {
-      const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
-      const studentId = user?.id || (isRealSupabase ? 'fee01c74-a968-4035-b11a-c60d6946925f' : 'usr_guest_student');
+      if (!user?.id) {
+        setStep('AUTH_REQUIRED');
+        return;
+      }
 
       try {
         const finalScheduledStartAt = scheduledStartAt || `${scheduledDate}T${startTime}:00.000Z`;
         const idempotencyKey = `idem_quote_${offering.id}_${finalScheduledStartAt}`;
 
-        const isRealSupabase = (import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder');
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(offering.id);
 
-        if (isRealSupabase && isUuid) {
+        if (isUuid) {
           try {
             const rpcRes = await dbService.createQuoteFromOffering(
               offering.id,
@@ -203,22 +204,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           }
         }
 
-        // Fallback or mock mode
-        const generatedQuote = createQuote({
-          studentId,
-          provider,
-          vehicle,
-          offering,
-          instructorId: offering.instructorId || provider.id,
-          instructorName: offering.instructorName || provider.name,
-          scheduledDate,
-          startTime,
-          endTime,
-          scheduledStartAt: finalScheduledStartAt,
-          scheduledEndAt: `${scheduledDate}T${endTime}:00.000Z`,
-        });
-        setQuote(generatedQuote);
-        setQuoteTimeRemainingSec(600);
+        throw new Error('QUOTE_CREATE_FAILED: Oferta inválida para cotação no Supabase.');
       } catch (err: any) {
         setErrorMessage(friendlyCheckoutError(err, 'Não foi possível gerar a cotação para este horário. Tente novamente.'));
       }
@@ -292,7 +278,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
       const idempotencyKey = `idem_hold_${quote.id}_${Date.now()}`;
 
-      // 1. Local/Domain State Hold
+      // Validate the transaction locally before calling the backend.
       const holdResult = createBookingHold({
         quote,
         studentId: user.id,
@@ -305,42 +291,36 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       });
 
       let realBookingId = holdResult.booking.id;
-      let realPaymentId = `pay_${holdResult.booking.id}`;
+      let realPaymentId: string | undefined;
 
-      // 2. Real Database Hold (If Supabase is real)
-      const isRealSupabase = (import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder');
-      if (isRealSupabase) {
-        // Defensively validate UUID format to avoid 22P02 invalid input syntax error in PostgreSQL
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quote.id);
-        if (!isUuid) {
-          throw new Error('REAL_DATABASE_QUOTE_ID_INVALID');
+      // The booking hold and payment intent are always created transactionally in Supabase.
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quote.id);
+      if (!isUuid) {
+        throw new Error('REAL_DATABASE_QUOTE_ID_INVALID');
+      }
+
+      try {
+        const dbHold = await dbService.createBookingHoldAtMeetingPoint(quote.id, user.id, meetingPoint);
+        if (dbHold && dbHold.booking_id) {
+          realBookingId = dbHold.booking_id;
         }
 
-        try {
-          const dbHold = await dbService.createBookingHoldAtMeetingPoint(quote.id, user.id, meetingPoint);
-          if (dbHold && dbHold.booking_id) {
-            realBookingId = dbHold.booking_id;
-          }
-
-          // Call create_booking_payment RPC
-          const payRes = await dbService.createBookingPayment(
-            realBookingId,
-            paymentMethod,
-            `idem_pay_${realBookingId}`
-          );
-          if (payRes && (payRes.payment_id || payRes.id)) {
-            realPaymentId = payRes.payment_id || payRes.id;
-          } else if (dbHold && dbHold.payment_id) {
-            realPaymentId = dbHold.payment_id;
-          }
-        } catch (dbErr: any) {
-          console.error('PAYMENT_CREATE_FAILED / Hold failed on real Database:', dbErr);
-          // If it fails on slot overlap, propagate it so user sees slot unavailable
-          if (dbErr?.message?.includes('SLOT_NO_LONGER_AVAILABLE') || dbErr?.message?.includes('23P01')) {
-            throw new BookingDomainError('Este horário já foi reservado por outro aluno.', 'SLOT_NO_LONGER_AVAILABLE');
-          }
-          throw dbErr;
+        const payRes = await dbService.createBookingPayment(
+          realBookingId,
+          paymentMethod,
+          `idem_pay_${realBookingId}`
+        );
+        if (payRes && (payRes.payment_id || payRes.id)) {
+          realPaymentId = payRes.payment_id || payRes.id;
+        } else if (dbHold && dbHold.payment_id) {
+          realPaymentId = dbHold.payment_id;
         }
+      } catch (dbErr: any) {
+        console.error('PAYMENT_CREATE_FAILED / Hold failed on Supabase:', dbErr);
+        if (dbErr?.message?.includes('SLOT_NO_LONGER_AVAILABLE') || dbErr?.message?.includes('23P01')) {
+          throw new BookingDomainError('Este horário já foi reservado por outro aluno.', 'SLOT_NO_LONGER_AVAILABLE');
+        }
+        throw dbErr;
       }
 
       // Sync local booking ID with real DB ID if needed
@@ -359,7 +339,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         provider,
       });
 
-      setPayment({ ...createPayRes.payment, id: realPaymentId });
+      setPayment({ ...createPayRes.payment, id: realPaymentId || createPayRes.payment.id });
       setStep('PAYMENT_SELECTION');
     } catch (err: any) {
       if (err instanceof BookingDomainError && err.code === 'SLOT_NO_LONGER_AVAILABLE') {
@@ -374,8 +354,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
-  // Step 2: Process Fake Payment Execution (Approved, Declined, or Pending)
-  const handleExecuteFakePayment = async (scenario: 'APPROVED' | 'DECLINED' | 'PENDING') => {
+  // Step 2: Process Fake Payment Execution (Approved or Declined)
+  const handleExecuteFakePayment = async (scenario: 'APPROVED' | 'DECLINED') => {
     if (!booking || !payment || !user) return;
 
     setIsProcessing(true);
@@ -422,8 +402,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setBooking(failRes.booking);
         setPayment(failRes.payment);
         setErrorMessage('Pagamento não aprovado. Tente outro cartão ou selecione PIX.');
-      } else if (scenario === 'PENDING') {
-        setErrorMessage('Pagamento pendente. Aguardando processamento do gateway.');
       }
     } catch (err: any) {
       setErrorMessage(friendlyCheckoutError(err, 'Não foi possível processar o pagamento simulado. Tente novamente.'));
@@ -569,7 +547,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <p className="text-xs font-bold text-slate-700">Entrar como Aluno Demo:</p>
+              <p className="text-xs font-bold text-slate-700">Entrar como aluno:</p>
               <Button
                 variant="primary"
                 size="md"
@@ -579,7 +557,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   setStep('QUOTE_PREVIEW');
                 }}
               >
-                Entrar como Ana Souza (Aluna)
+                Continuar com login de aluno
               </Button>
             </div>
           </div>
@@ -745,15 +723,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     Simular Pagamento Recusado
                   </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-slate-600"
-                    isLoading={isProcessing}
-                    onClick={() => handleExecuteFakePayment('PENDING')}
-                  >
-                    Simular Estado Pendente
-                  </Button>
                 </div>
               </div>
             )}
@@ -797,3 +766,4 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     </Modal>
   );
 };
+

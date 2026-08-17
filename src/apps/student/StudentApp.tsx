@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   MapPin,
@@ -10,6 +10,7 @@ import {
   Building2,
   User,
   SlidersHorizontal,
+  Bell,
   MessageSquare,
   Sparkles,
   Map,
@@ -28,14 +29,13 @@ import {
   Vehicle,
   ServiceOffering,
 } from '../../types';
-import { MOCK_PROVIDERS, MOCK_BOOKINGS, MOCK_VEHICLES, MOCK_OFFERINGS } from '../../data/mockData';
 import { BookingCard } from '../../components/ui/BookingCard';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Price } from '../../components/ui/Price';
 import { formatCentsToBRL } from '../../domain/money';
 import { UniversalMap } from '../../components/maps/UniversalMap';
-import { DEFAULT_SEARCH_RADIUS_METERS, executePublicSearch } from '../../domain/search';
+import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { SearchHeader } from '../../components/search/SearchHeader';
 import { FilterDrawer } from '../../components/search/FilterDrawer';
 import { ProviderResultCard } from '../../components/search/ProviderResultCard';
@@ -51,6 +51,8 @@ import { NotificationsPanel } from '../../components/notifications/Notifications
 import { ReviewModal } from '../../components/reviews/ReviewModal';
 import { formatDateBR } from '../../lib/date-format';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
+import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
+import { getMyProfileAvatar } from '../../lib/profile-avatar';
 
 function mapPublicResultToProvider(result: PublicSearchProviderResult): Provider {
   return {
@@ -111,7 +113,7 @@ export const StudentApp: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
-  const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'messages' | 'profile'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'notifications' | 'profile'>('search');
   const [bookingTab, setBookingTab] = useState<'upcoming' | 'history'>('upcoming');
   const [searchLocation, setSearchLocation] = useState('Sua localização');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
@@ -132,19 +134,6 @@ export const StudentApp: React.FC = () => {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   };
 
-  const handleProfileAvatar = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const image = new Image();
-    image.onload = () => {
-      const size = Math.min(image.width, image.height);
-      const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
-      canvas.getContext('2d')?.drawImage(image, (image.width - size) / 2, (image.height - size) / 2, size, size, 0, 0, 512, 512);
-      setProfileAvatar(canvas.toDataURL('image/jpeg', 0.85));
-    };
-    image.src = URL.createObjectURL(file);
-  };
-
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -158,7 +147,10 @@ export const StudentApp: React.FC = () => {
     setProfileName(user?.name || '');
     setProfilePhone(formatPhone(user?.phone || ''));
     setProfileAvatar(user?.avatarUrl);
-  }, [user?.name, user?.phone]);
+    if (user?.id) {
+      void getMyProfileAvatar().then((avatarUrl) => setProfileAvatar(avatarUrl)).catch(() => undefined);
+    }
+  }, [user?.name, user?.phone, user?.avatarUrl]);
 
   // Live Supabase database state
   const [dbProviders, setDbProviders] = useState<Provider[]>([]);
@@ -174,36 +166,23 @@ export const StudentApp: React.FC = () => {
     async function loadRealData() {
       try {
         setIsDbLoading(true);
-        if (isRealSupabase) {
-          setDbProviders([]);
-          setDbVehicles([]);
-          setDbOfferings([]);
-          setConfirmedBookings(await dbService.getBookings());
-          return;
-        }
         const [p, v, o, b] = await Promise.all([
           dbService.getProviders(),
           dbService.getVehicles(),
           dbService.getOfferings(),
           dbService.getBookings(),
         ]);
-        setDbProviders(p.length > 0 ? p : MOCK_PROVIDERS);
-        setDbVehicles(v.length > 0 ? v : MOCK_VEHICLES);
-        setDbOfferings(o.length > 0 ? o : MOCK_OFFERINGS);
-        setConfirmedBookings(b.length > 0 ? b : MOCK_BOOKINGS);
+        setDbProviders(p);
+        setDbVehicles(v);
+        setDbOfferings(o);
+        setConfirmedBookings(b);
       } catch (err) {
         console.error('Failed to load dynamic database states:', err);
-        if (isRealSupabase) {
-          setDbProviders([]);
-          setDbVehicles([]);
-          setDbOfferings([]);
-          setConfirmedBookings([]);
-        } else {
-          setDbProviders(MOCK_PROVIDERS);
-          setDbVehicles(MOCK_VEHICLES);
-          setDbOfferings(MOCK_OFFERINGS);
-          setConfirmedBookings(MOCK_BOOKINGS);
-        }
+        setDbProviders([]);
+        setDbVehicles([]);
+        setDbOfferings([]);
+        setConfirmedBookings([]);
+        setSearchError(true);
       } finally {
         setIsDbLoading(false);
       }
@@ -253,6 +232,7 @@ export const StudentApp: React.FC = () => {
           maxPriceCents: searchRequest.maxPriceInCents,
           limit: searchRequest.limit,
           offset: ((searchRequest.page || 1) - 1) * (searchRequest.limit || 10),
+          date: searchRequest.date,
         });
         if (cancelled) return;
         const sortedResults = [...results].sort((a, b) => {
@@ -318,32 +298,7 @@ export const StudentApp: React.FC = () => {
   }, [user?.id, userLocation]);
 
   // Execute Public Search Engine
-  const searchResponse = useMemo(() => {
-    if (isRealSupabase) return realSearchResponse;
-    const res = executePublicSearch({
-      providers: isRealSupabase ? dbProviders : (dbProviders.length > 0 ? dbProviders : MOCK_PROVIDERS),
-      vehicles: isRealSupabase ? dbVehicles : (dbVehicles.length > 0 ? dbVehicles : MOCK_VEHICLES),
-      offerings: isRealSupabase ? dbOfferings : (dbOfferings.length > 0 ? dbOfferings : MOCK_OFFERINGS),
-      availabilityRules: [],
-      exceptions: [],
-      existingBookings: confirmedBookings,
-      searchRequest,
-    });
-
-    if ((import.meta as any).env?.DEV) {
-      console.debug('[MAZZI_SEARCH_DEBUG]', {
-        radiusMeters: searchRequest.radiusMeters,
-        category: searchRequest.category,
-        providerType: searchRequest.providerType,
-        transmission: searchRequest.transmission,
-        minimumRating: searchRequest.minimumRating,
-        hasMaxPrice: typeof searchRequest.maxPriceInCents === 'number',
-        resultCount: res.totalCount,
-        renderedCount: res.results.length,
-      });
-    }
-    return res;
-  }, [searchRequest, dbProviders, dbVehicles, dbOfferings, confirmedBookings, isRealSupabase, realSearchResponse]);
+  const searchResponse = useMemo(() => realSearchResponse, [realSearchResponse]);
 
   // Selected Public Profile View State
   const [selectedPublicProfile, setSelectedPublicProfile] = useState<PublicSearchProviderResult | null>(null);
@@ -400,10 +355,7 @@ export const StudentApp: React.FC = () => {
         return;
       }
     } else {
-      rawProv = MOCK_PROVIDERS.find((p) => p.id === providerId);
-      if (!rawProv) return;
-      matchingVehicle = MOCK_VEHICLES.find((v) => v.providerId === providerId) || MOCK_VEHICLES[0];
-      matchingOffering = MOCK_OFFERINGS.find((o) => o.providerId === providerId) || MOCK_OFFERINGS[0];
+      return;
     }
 
     setCheckoutProvider(rawProv);
@@ -453,9 +405,7 @@ export const StudentApp: React.FC = () => {
   }, [confirmedBookings]);
 
   return (
-    <div className="min-h-screen bg-slate-100 flex justify-center py-0 sm:py-6 text-slate-900">
-      {/* Mobile-Frame Container */}
-      <div className="w-full max-w-md sm:max-w-lg bg-white sm:rounded-3xl shadow-xl flex flex-col min-h-screen sm:min-h-[840px] overflow-hidden border border-slate-200">
+    <div className="w-full min-h-screen bg-white text-slate-900 flex flex-col overflow-hidden">
         {/* Top Header - 99 Inspired Signature */}
         <header className="bg-slate-950 text-white px-5 pt-4 pb-4 border-b border-slate-900 sticky top-0 z-30">
           <div className="flex items-center justify-between">
@@ -709,47 +659,15 @@ export const StudentApp: React.FC = () => {
             </div>
           )}
 
-          {/* MESSAGES TAB */}
-          {activeTab === 'messages' && (
+          {/* NOTIFICATIONS TAB */}
+          {activeTab === 'notifications' && (
             <div className="p-4 space-y-4">
               <div>
-                <h2 className="text-xl font-black text-slate-900">Mensagens</h2>
-                <p className="text-xs text-slate-500">Conversas diretas vinculadas aos seus agendamentos</p>
+                <h2 className="text-xl font-black text-slate-900">Notificações</h2>
+                <p className="text-xs text-slate-500">Alertas de agendamentos, pagamentos e comunicados oficiais</p>
               </div>
 
               <NotificationsPanel />
-
-              <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-                {confirmedBookings.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-slate-500">
-                    Você ainda não tem reservas com chat disponível.
-                  </div>
-                ) : (
-                  confirmedBookings.map((booking) => (
-                    <button
-                      key={booking.id}
-                      type="button"
-                      onClick={() => setSelectedBookingForChat(booking)}
-                      className="w-full p-4 hover:bg-slate-50 transition cursor-pointer flex items-center gap-3 text-left"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-900 font-bold flex items-center justify-center">
-                        {(booking.instructorName || booking.providerName || 'MA').slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-bold text-sm text-slate-900 truncate">
-                            {booking.instructorName || booking.providerName}
-                          </h4>
-                          <span className="text-[10px] text-slate-400">{booking.scheduledDate}</span>
-                        </div>
-                        <p className="text-xs text-slate-500 truncate mt-0.5">
-                          Reserva {booking.status} • {booking.startTime}–{booking.endTime}
-                        </p>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
             </div>
           )}
 
@@ -762,16 +680,16 @@ export const StudentApp: React.FC = () => {
                     {profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="w-full h-full object-cover" /> : (user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AN')}
                   </div>
                   <div>
-                    <h3 className="font-black text-lg text-white">{String(user?.name || 'Ana Souza')}</h3>
-                    <p className="text-xs text-amber-400 font-semibold">Aluno Categoria B</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{user?.email || 'aluno01@mazzi.com.br'}</p>
+                    <h3 className="font-black text-lg text-white">{String(user?.name || 'Nome não informado')}</h3>
+                    <p className="text-xs text-amber-400 font-semibold">Aluno</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{user?.email || 'E-mail não informado'}</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
                 <div className="flex items-center justify-between"><h4 className="font-bold text-slate-900 text-sm">Meu perfil</h4><Button variant="outline" size="sm" onClick={() => setIsEditingProfile((value) => !value)}>{isEditingProfile ? 'Cancelar' : 'Editar'}</Button></div>
-                {isEditingProfile ? <div className="space-y-2"><label className="block text-xs font-bold text-slate-600">Foto quadrada</label><input type="file" accept="image/*" capture="user" onChange={handleProfileAvatar} className="w-full text-xs" /><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Nome" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><input value={profilePhone} onChange={(event) => setProfilePhone(formatPhone(event.target.value))} placeholder="Telefone (11) 99999-9999" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><p className="text-[10px] text-slate-400">E-mail, papel e identificador são informações chave e não podem ser alterados.</p><Button variant="primary" size="sm" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone, profileAvatar); setIsEditingProfile(false); } catch (error: any) { setProfileError(error?.message || 'Não foi possível salvar o perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>{profileError && <p className="text-xs text-rose-600">{profileError}</p>}</div> : <p className="text-xs text-slate-600">{profilePhone || 'Telefone não informado'}</p>}
+                {isEditingProfile ? <div className="space-y-2"><label className="block text-xs font-bold text-slate-600">Foto do perfil</label><ProfilePhotoPicker value={profileAvatar} name={profileName || user?.name} onChange={setProfileAvatar} disabled={profileSaving} /><input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Nome" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><input value={profilePhone} onChange={(event) => setProfilePhone(formatPhone(event.target.value))} placeholder="Telefone (11) 99999-9999" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /><p className="text-[10px] text-slate-400">E-mail, papel e identificador são informações chave e não podem ser alterados.</p><Button variant="primary" size="sm" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone, profileAvatar); setIsEditingProfile(false); } catch (error: any) { setProfileError(error?.message || 'Não foi possível salvar o perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>{profileError && <p className="text-xs text-rose-600">{profileError}</p>}</div> : <p className="text-xs text-slate-600">{profilePhone || 'Telefone não informado'}</p>}
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
@@ -797,12 +715,13 @@ export const StudentApp: React.FC = () => {
           )}
         </main>
 
-        {/* Bottom Tab Bar - 99 Style */}
-        <nav aria-label="Navegação principal" className="bg-white border-t border-slate-200 px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center justify-around fixed sm:sticky bottom-0 left-0 right-0 max-w-md sm:max-w-lg mx-auto z-40">
+        {/* Bottom Tab Bar - Mobile Optimized 99 Style */}
+        <nav aria-label="Navegação principal" className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-md z-40 rounded-[28px] border border-slate-200/90 bg-white/90 px-2 py-2 shadow-[0_12px_36px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+          <div className="flex items-center justify-around gap-1">
           {[
             { id: 'search', label: 'Buscar', icon: <Search className="w-5 h-5" /> },
             { id: 'bookings', label: 'Aulas', icon: <CalendarIcon className="w-5 h-5" /> },
-            { id: 'messages', label: 'Chat', icon: <MessageSquare className="w-5 h-5" /> },
+            { id: 'notifications', label: 'Notificações', icon: <Bell className="w-5 h-5" /> },
             { id: 'profile', label: 'Perfil', icon: <User className="w-5 h-5" /> },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -811,21 +730,17 @@ export const StudentApp: React.FC = () => {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition cursor-pointer ${
-                  isActive
-                    ? 'text-amber-600 font-black'
-                    : 'text-slate-500 hover:text-slate-900 font-medium'
-                }`}
+                className="flex flex-col items-center justify-center py-1.5 px-3 rounded-[22px] text-slate-500 hover:text-slate-900 font-medium transition cursor-pointer min-w-[64px] min-h-[48px]"
               >
-                <div className={`p-1 rounded-xl ${isActive ? 'bg-amber-100/80 text-slate-950' : ''}`}>
+                <div className={`p-1.5 rounded-xl ${isActive ? 'text-amber-500' : ''}`}>
                   {tab.icon}
                 </div>
                 <span className="text-[10px] mt-0.5">{tab.label}</span>
               </button>
             );
           })}
+          </div>
         </nav>
-      </div>
 
       {/* Booking Details Modal */}
       <BookingDetailsModal
@@ -837,7 +752,6 @@ export const StudentApp: React.FC = () => {
             setSelectedBookingForChat(selectedBookingForDetails);
           }
           setSelectedBookingForDetails(null);
-          setActiveTab('messages');
         }}
       />
 
@@ -900,6 +814,7 @@ export const StudentApp: React.FC = () => {
           vehicleLabel={checkoutVehicle ? `${checkoutVehicle.brand} ${checkoutVehicle.model}` : undefined}
           durationMinutes={checkoutOffering.durationMinutes}
           priceInCents={checkoutOffering.priceInCents}
+          existingBookings={confirmedBookings}
           onSelect={(slot) => {
             setSelectedSlot(slot);
             setIsSlotSelectorOpen(false);
@@ -928,3 +843,4 @@ export const StudentApp: React.FC = () => {
     </div>
   );
 };
+
