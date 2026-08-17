@@ -113,6 +113,9 @@ export const StudentApp: React.FC = () => {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
+  const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -144,20 +147,24 @@ export const StudentApp: React.FC = () => {
   const [searchLoading, setSearchLoading] = useState(isRealSupabase);
   const [searchError, setSearchError] = useState(false);
 
-  // Load state on mount and when user session updates
+  // Bookings are an independent data boundary from the public search pipeline.
   useEffect(() => {
-    async function loadRealData() {
+    async function loadBookings() {
+      setBookingsLoading(true);
+      setBookingsError(null);
       try {
         const bookings = await dbService.getBookings();
         setConfirmedBookings(bookings);
       } catch (err) {
-        console.error('Failed to load dynamic database states:', err);
+        console.error('Failed to load student bookings:', err);
         setConfirmedBookings([]);
-        setSearchError(true);
+        setBookingsError('Não foi possível carregar suas aulas.');
+      } finally {
+        setBookingsLoading(false);
       }
     }
-    loadRealData();
-  }, [user]);
+    void loadBookings();
+  }, [user, bookingsRefreshKey]);
 
   // Search Engine Pipeline Request State
   const [searchRequest, setSearchRequest] = useState<SearchRequest>({
@@ -565,7 +572,9 @@ export const StudentApp: React.FC = () => {
               </div>
 
               {/* Upcoming Bookings Section */}
-              {bookingTab === 'upcoming' && (
+              {bookingsError && <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="text-sm font-black text-rose-800">Não foi possível carregar suas aulas.</p><button type="button" onClick={() => setBookingsRefreshKey((value) => value + 1)} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Tentar novamente</button></div>}
+              {bookingsLoading && <div aria-busy="true" className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-500">Carregando suas aulas...</div>}
+              {!bookingsError && !bookingsLoading && bookingTab === 'upcoming' && (
                 <div className="space-y-3">
                   {upcomingBookings.length === 0 ? (
                     <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
@@ -594,7 +603,7 @@ export const StudentApp: React.FC = () => {
               )}
 
               {/* History Bookings Section */}
-              {bookingTab === 'history' && (
+              {!bookingsError && !bookingsLoading && bookingTab === 'history' && (
                 <div className="space-y-3">
                   {historyBookings.length === 0 ? (
                     <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
@@ -619,7 +628,7 @@ export const StudentApp: React.FC = () => {
           {activeTab === 'messages' && (
             <div className="space-y-5">
               <div><p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Conversas</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Chat das suas aulas</h2><p className="mt-1 text-sm text-slate-500">Combine os detalhes de uma aula já agendada.</p></div>
-              {confirmedBookings.length === 0 ? <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm"><MessageSquare className="mx-auto h-8 w-8 text-slate-300" aria-hidden="true" /><p className="mt-3 text-sm font-black text-slate-800">Nenhuma conversa disponível</p><p className="mt-1 text-xs text-slate-500">Quando você tiver uma aula agendada, o chat aparecerá aqui.</p></div> : <div className="grid gap-3 md:grid-cols-2">{confirmedBookings.map((booking) => <div key={booking.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{booking.providerName || booking.instructorName || 'Aula MAZZI'}</p><p className="mt-1 text-xs text-slate-500">{booking.scheduledDate} · {booking.startTime}–{booking.endTime}</p></div><button type="button" onClick={() => setSelectedBookingForChat(booking)} className="shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-amber-400 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">Abrir conversa</button></div>)}</div>}
+              {bookingsLoading ? <div aria-busy="true" className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-500">Carregando conversas...</div> : bookingsError ? <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="text-sm font-black text-rose-800">Não foi possível carregar suas conversas.</p><button type="button" onClick={() => setBookingsRefreshKey((value) => value + 1)} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Tentar novamente</button></div> : confirmedBookings.length === 0 ? <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm"><MessageSquare className="mx-auto h-8 w-8 text-slate-300" aria-hidden="true" /><p className="mt-3 text-sm font-black text-slate-800">Nenhuma conversa disponível</p><p className="mt-1 text-xs text-slate-500">Quando você tiver uma aula agendada, o chat aparecerá aqui.</p></div> : <div className="grid gap-3 md:grid-cols-2">{confirmedBookings.map((booking) => <div key={booking.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{booking.providerName || booking.instructorName || 'Aula MAZZI'}</p><p className="mt-1 text-xs text-slate-500">{booking.scheduledDate} · {booking.startTime}–{booking.endTime}</p></div><button type="button" onClick={() => setSelectedBookingForChat(booking)} className="shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-amber-400 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">Abrir conversa</button></div>)}</div>}
             </div>
           )}
 
