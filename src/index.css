@@ -52,6 +52,8 @@ body {
 .mazzi-primary { border-radius: 16px; background: var(--mazzi-dark); color: white; min-height: 50px; font-weight: 800; }
 .mazzi-primary:hover { background: #34353a; }
 .mazzi-yellow-button { border-radius: 14px; background: linear-gradient(135deg, var(--mazzi-yellow-soft), var(--mazzi-yellow)); color: var(--mazzi-dark); font-weight: 800; box-shadow: 0 8px 20px rgba(246,201,69,.24); }
+.mazzi-admin main section, .mazzi-admin main article { border-color: transparent; }
+.mazzi-admin main table { overflow: hidden; border-radius: 18px; background: white; }
 
 @media (min-width: 720px) {
   .mazzi-mobile { max-width: 680px; margin-inline: auto; padding-inline: 28px; }

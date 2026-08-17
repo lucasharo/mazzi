@@ -238,9 +238,9 @@ export const AdminApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex flex-col text-slate-900 w-full">
+    <div className="mazzi-admin min-h-[100dvh] w-full bg-[var(--mazzi-bg)] text-[var(--mazzi-text)] md:grid md:grid-cols-[248px_1fr] md:grid-rows-[92px_1fr]">
       {/* Top Main Navigation Header */}
-      <header className="bg-slate-950 text-white px-6 py-4.5 border-b border-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <header className="flex items-center bg-[var(--mazzi-dark)] px-6 text-white md:col-start-1 md:row-start-1">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black flex items-center justify-center text-xl shadow-md border border-amber-300/20">
             M
@@ -248,48 +248,16 @@ export const AdminApp: React.FC = () => {
           <div className="text-left">
             <div className="flex items-center gap-2">
               <span className="text-base font-black tracking-tight text-white">MAZZI</span>
-              <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                GOVERNANCE & OPS
-              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[.15em] text-[var(--mazzi-yellow)]">Admin</span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">
-              Sprint 12 • Portal Administrativo Geral e Consolidação de Segurança
-            </p>
+            <p className="text-[11px] text-slate-400 font-medium">Operação do marketplace</p>
           </div>
         </div>
 
-        {/* PROFILE TOGGLE: INTERACTIVE DEMO TESTING (PLATFORM_ADMIN VS SUPPORT) */}
-        <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 p-2 rounded-2xl shrink-0">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2 hidden md:inline">
-            Perfil Operador:
-          </span>
-          <div className="flex bg-slate-950 p-1 rounded-xl text-[11px] font-bold">
-            <button
-              onClick={() => setCurrentRole('PLATFORM_ADMIN')}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                currentRole === 'PLATFORM_ADMIN'
-                  ? 'bg-amber-400 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              ADMIN
-            </button>
-            <button
-              onClick={() => setCurrentRole('SUPPORT')}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                currentRole === 'SUPPORT'
-                  ? 'bg-amber-400 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              SUPORTE
-            </button>
-          </div>
-        </div>
       </header>
 
       {/* Tabs Menu Subheader */}
-      <div className="px-6 py-2 border-b border-slate-200 bg-white overflow-x-auto flex gap-1 scrollbar-none shrink-0">
+      <aside className="flex gap-1 overflow-x-auto bg-[var(--mazzi-dark)] px-4 pb-4 md:col-start-1 md:row-start-2 md:flex-col md:overflow-visible">
         {[
           { id: 'dashboard', label: 'Visão Geral' },
           { id: 'providers', label: 'Prestadores', count: providers.filter((p) => p.status === 'PENDING_REVIEW').length },
@@ -310,8 +278,8 @@ export const AdminApp: React.FC = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
                 isActive
-                  ? 'bg-slate-950 text-white'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
             >
               {tab.label}
@@ -323,10 +291,11 @@ export const AdminApp: React.FC = () => {
             </button>
           );
         })}
-      </div>
+      </aside>
 
       {/* App Workspace */}
-      <main className="p-6 flex-1 max-w-7xl w-full mx-auto">
+      <main className="w-full p-6 md:col-start-2 md:row-span-2 md:row-start-1 md:p-10">
+        <div className="mb-8"><p className="mazzi-eyebrow mb-2">MAZZI Admin</p><h1 className="text-3xl font-extrabold tracking-[-.04em]">{activeTab === 'dashboard' ? 'Visão geral' : 'Operação'}</h1></div>
         {isLoadingRealData && (
           <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-600">
             Carregando dados reais do Supabase...
