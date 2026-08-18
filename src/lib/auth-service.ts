@@ -1,5 +1,5 @@
 // ============================================================================
-// MAZZI PLATFORM — SPRINT 03: AUTH SERVICE (FRONTEND & BACKEND ORCHESTRATOR)
+// MAZZI PLATFORM — AUTH SERVICE (SUPABASE AUTH ORCHESTRATOR)
 // File: src/lib/auth-service.ts
 // ============================================================================
 
@@ -13,6 +13,8 @@ export interface AuthSessionState {
     email: string;
     name: string;
     phone?: string;
+    cpf?: string;
+    birthDate?: string;
     roles: UserRole[];
     status: 'ACTIVE' | 'PENDING_VERIFICATION' | 'SUSPENDED' | 'BLOCKED';
     avatarUrl?: string;
@@ -30,6 +32,8 @@ export interface SignUpParams {
   password: string;
   name: string;
   phone: string;
+  cpf: string;
+  birthDate: string; // YYYY-MM-DD
 }
 
 export interface SignInParams {
@@ -59,8 +63,7 @@ export function buildAuthContext(session: AuthSessionState): AuthContext | null 
  * Sign up a new Student (Public standard flow)
  * Default role is strictly STUDENT. Admin/Support roles cannot be selected.
  */
-export async function signUpStudent({ email, password, name, phone }: SignUpParams) {
-  // In development without live Supabase cloud, provide deterministic mockup behavior
+export async function signUpStudent({ email, password, name, phone, cpf, birthDate }: SignUpParams) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -68,9 +71,44 @@ export async function signUpStudent({ email, password, name, phone }: SignUpPara
       data: {
         name,
         phone,
+        cpf,
+        birth_date: birthDate,
         role: 'STUDENT', // Hardcoded default public signup
       },
     },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Verify 6-digit OTP for email confirmation (Signup)
+ */
+export async function verifyEmailOtp({ email, token }: { email: string; token: string }) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'signup',
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Re-send signup verification OTP
+ */
+export async function resendSignupOtp(email: string) {
+  const { data, error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
   });
 
   if (error) {
@@ -97,11 +135,52 @@ export async function signInWithEmail({ email, password }: SignInParams) {
 }
 
 /**
- * Trigger password reset request (Forgot Password)
+ * Check if user email is registered in the database
+ */
+export async function checkUserEmailExists(email: string): Promise<boolean> {
+  if (!email || !email.trim()) return false;
+  try {
+    const { data, error } = await (supabase.rpc as any)('check_user_email_exists', {
+      email_to_check: email.trim().toLowerCase(),
+    });
+
+    if (error) {
+      console.warn('check_user_email_exists RPC error:', error);
+      const { count } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('email', email.trim().toLowerCase());
+      return Boolean(count && count > 0);
+    }
+
+    return Boolean(data);
+  } catch (err) {
+    console.warn('Error checking user email existence:', err);
+    return false;
+  }
+}
+
+/**
+ * Trigger password reset request (Sends 6-digit OTP to user email)
  */
 export async function requestPasswordReset(email: string) {
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Verify 6-digit OTP for password recovery
+ */
+export async function verifyRecoveryOtp({ email, token }: { email: string; token: string }) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'recovery',
   });
 
   if (error) {
@@ -112,7 +191,7 @@ export async function requestPasswordReset(email: string) {
 }
 
 /**
- * Update password (Reset Password)
+ * Update password (Reset Password with active session)
  */
 export async function updatePassword(newPassword: string) {
   const { data, error } = await supabase.auth.updateUser({

@@ -73,6 +73,8 @@ export interface User {
   name: string;
   email: string;
   phone: string;
+  cpf?: string;
+  birthDate?: string;
   role: UserRole;
   avatarUrl?: string;
   createdAt: string;

@@ -1,5 +1,5 @@
-import React, { useId } from 'react';
-import { AlertCircle } from 'lucide-react';
+import React, { useId, useState } from 'react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -7,6 +7,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   error?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  rightAction?: React.ReactNode;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -15,6 +16,7 @@ export const Input: React.FC<InputProps> = ({
   error,
   leftIcon,
   rightIcon,
+  rightAction,
   className = '',
   id,
   disabled,
@@ -50,14 +52,18 @@ export const Input: React.FC<InputProps> = ({
           aria-describedby={describedBy}
           className={`w-full min-h-11 rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
             leftIcon ? 'pl-10' : ''
-          } ${rightIcon || error ? 'pr-10' : ''} ${
+          } ${rightAction ? 'pr-11' : rightIcon || error ? 'pr-10' : ''} ${
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-200'
-              : 'border-slate-300 focus:border-[var(--mazzi-dark)] focus:ring-[var(--mazzi-focus-glow)]'
+              : 'border-[var(--mazzi-border)] focus:border-[var(--mazzi-dark)] focus:ring-[var(--mazzi-focus-glow)]'
           } ${className}`}
           {...props}
         />
-        {error ? (
+        {rightAction ? (
+          <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
+            {rightAction}
+          </div>
+        ) : error ? (
           <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-rose-500">
             <AlertCircle className="w-4 h-4" />
           </div>
@@ -77,5 +83,42 @@ export const Input: React.FC<InputProps> = ({
         helperText && <p id={messageId} className="text-xs text-slate-500">{helperText}</p>
       )}
     </div>
+  );
+};
+
+export interface PasswordInputProps extends Omit<InputProps, 'type' | 'rightAction' | 'rightIcon'> {
+  showToggle?: boolean;
+}
+
+export const PasswordInput: React.FC<PasswordInputProps> = ({
+  showToggle = true,
+  disabled,
+  ...props
+}) => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <Input
+      type={showPassword ? 'text' : 'password'}
+      disabled={disabled}
+      rightAction={
+        showToggle ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer disabled:opacity-50"
+          >
+            {showPassword ? (
+              <EyeOff className="w-4 h-4" aria-hidden="true" />
+            ) : (
+              <Eye className="w-4 h-4" aria-hidden="true" />
+            )}
+          </button>
+        ) : undefined
+      }
+      {...props}
+    />
   );
 };

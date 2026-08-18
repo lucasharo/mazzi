@@ -107,6 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Only bootstrap for brand new STUDENTS
         const name = user.user_metadata?.name || 'Novo Aluno';
         const phone = user.user_metadata?.phone || '';
+        const cpf = user.user_metadata?.cpf || null;
+        const birthDate = user.user_metadata?.birth_date || null;
 
         if ((import.meta as any).env?.DEV) {
           console.debug('[MAZZI_PROFILE_DEBUG]', {
@@ -115,22 +117,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         }
 
+        const insertPayload: any = {
+          id: user.id,
+          email,
+          name,
+          phone,
+          role: 'STUDENT',
+          status: 'ACTIVE',
+        };
+        if (cpf) insertPayload.cpf = cpf;
+        if (birthDate) insertPayload.birth_date = birthDate;
+
         const { data: insertedProfile, error: insertErr } = await sp
           .from('users')
-          .insert({
-            id: user.id,
-            email,
-            name,
-            phone,
-            role: 'STUDENT',
-            status: 'ACTIVE',
-          })
+          .insert(insertPayload)
           .select()
           .single();
 
         if (insertErr) {
-          console.error('Error auto-creating user profile:', insertErr);
-          throw insertErr;
+          if (insertErr.code === '23505' || insertErr.message?.includes('duplicate key')) {
+            const { data: existingProfile } = await sp
+              .from('users')
+              .select('*')
+              .eq('id', profileQueryUserId)
+              .maybeSingle();
+            if (existingProfile) {
+              profile = existingProfile;
+            } else {
+              throw insertErr;
+            }
+          } else {
+            console.error('Error auto-creating user profile:', insertErr);
+            throw insertErr;
+          }
         } else {
           profile = insertedProfile;
         }
@@ -163,6 +182,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         name: profile?.name || user.user_metadata?.name || 'Usuário',
         phone: profile?.phone || user.user_metadata?.phone || '',
+        cpf: profile?.cpf || user.user_metadata?.cpf,
+        birthDate: profile?.birth_date || user.user_metadata?.birth_date,
         roles: [userRole],
         status: (profile?.status || 'ACTIVE') as any,
         providerId,

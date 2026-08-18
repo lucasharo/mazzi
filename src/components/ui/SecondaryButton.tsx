@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 export interface SecondaryButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
+  loading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
 }
@@ -16,6 +17,7 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
   children,
   size = 'md',
   isLoading = false,
+  loading = false,
   leftIcon,
   rightIcon,
   className = '',
@@ -23,6 +25,8 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
   id,
   ...props
 }) => {
+  const activeLoading = isLoading || loading;
+
   const sizeStyles = {
     sm: 'px-3.5 py-1.5 text-xs gap-1.5 min-h-[40px]',
     md: 'px-5 py-3 text-sm gap-2 min-h-[48px]',
@@ -35,19 +39,21 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
   return (
     <button
       id={id || `sbtn-${Math.random().toString(36).substring(2, 8)}`}
-      disabled={disabled || isLoading}
-      aria-busy={isLoading}
+      disabled={disabled || activeLoading}
+      aria-busy={activeLoading}
       className={`${baseStyles} ${sizeStyles[size]} ${className}`}
       {...props}
     >
-      {isLoading ? (
-        <Loader2 className="w-4 h-4 animate-spin text-current" />
+      {activeLoading ? (
+        <span className="inline-flex items-center justify-center">
+          <Loader2 className="w-5 h-5 animate-spin text-current" aria-hidden="true" />
+        </span>
       ) : (
-        leftIcon && <span className="flex-shrink-0">{leftIcon}</span>
-      )}
-      <span>{children}</span>
-      {!isLoading && rightIcon && (
-        <span className="flex-shrink-0">{rightIcon}</span>
+        <>
+          {leftIcon && <span className="flex-shrink-0">{leftIcon}</span>}
+          <span>{children}</span>
+          {rightIcon && <span className="flex-shrink-0">{rightIcon}</span>}
+        </>
       )}
     </button>
   );
