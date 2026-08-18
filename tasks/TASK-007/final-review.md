@@ -1,41 +1,42 @@
-# TASK-007 — PARECER FINAL DE ARQUITETURA E REVISÃO TÉCNICA (TECH LEAD)
+# TASK-007 — PARECER FINAL E HOMOLOGAÇÃO EM AMBIENTE REAL (TECH LEAD)
 
 - **TASK**: TASK-007
-- **STATUS**: COMPLETED / APPROVED
+- **STATUS**: DONE
 - **AUTOR**: MAZZI Tech Lead
 - **DATA**: 2026-08-18
+- **COMMIT SHA**: `507623c341829e230f1e189a97f7dc5a81e43c2d`
 
 ---
 
-# 1. Parecer de Aprovação Arquitetural
+# 1. Matriz de Homologação em Ambiente Real
 
-A task **TASK-007** cumpriu rigorosamente os requisitos solicitados de Product, UX/UI, Arquitetura e Engenharia:
-
-1. **Integridade de Regras de Negócio (DEC-013)**: Nenhuma alteração nas taxas de reembolso foi realizada. Todas as porcentagens e prazos estão garantidos no banco e no código.
-2. **Resolução Definitiva de Race Condition e Idempotência de Cotações**:
-   - A migration `20260818000039_fix_hold_expiry_and_quote_attempt.sql` garante que cotações históricas expiradas ou consumidas não causem travamento na criação de novas cotações para a mesma oferta e horário.
-   - O `CheckoutModal` agora desacopla tentativas comerciais (`attemptId`), permitindo remarcar a mesma aula cancelada sem falhas.
-3. **Liberação Automática de Slots e Housekeeping**:
-   - `is_offering_slot_available` realiza a expiração atômica de `PENDING_PAYMENT` com `hold_expires_at <= NOW()`, liberando horários presos.
-4. **OTP de 8 Dígitos**:
-   - `AUTH_OTP_LENGTH = 8` implementado como fonte única da verdade em `auth-constants.ts`, alinhando `OtpInput.tsx` e `AppLogin.tsx`.
-5. **Polimento UI/UX (UI-UX-PRO-MAX)**:
-   - Container dos footers dos modais tornando-se transparentes (`bg-transparent border-t border-[var(--mazzi-border)]/60`).
-   - Modal formal de cancelamento do prestador com seleção obrigatória de `reasonCode` e campo de texto condicional.
-   - Botão `← Voltar` no Chat com navegação contextual restaurando os Detalhes da Aula quando aplicável.
-6. **Quality Gates**:
-   - 100% dos testes aprovados (`npm test`, 446/446).
-   - 100% de integridade no TypeScript (`npm run lint`, 0 erros).
-   - 100% de sucesso nas builds (`npm run build:all`).
+| Validação | Status | Resultado |
+|---|---|---|
+| Local Tests (Suíte Completa) | **PASS** | 52/52 arquivos de teste (446/446 testes aprovados) |
+| Linter (`tsc --noEmit`) | **PASS** | 0 erros de compilação/tipagem |
+| Builds (`npm run build:all`) | **PASS** | Student, Instructor e Admin compilados com 0 erros |
+| Commit Git | **PASS** | Commit `507623c` |
+| Push `premium_ui_v2` & `main` | **PASS** | Branches remotos sincronizados no GitHub |
+| Arquivos Remotos (Migration 39 & `auth-constants.ts`) | **PASS** | Publicados no repositório GitHub (`lucasharo/mazzi`) |
+| Ledger da Migration 39 (`bhvpkgonhlujmxvwnxix`) | **PASS** | `20260818000039` gravado em `supabase_migrations.schema_migrations` |
+| RPC `create_quote_from_offering` LIVE | **PASS** | Atualizada no PostgreSQL com rejeição de chaves stale e suporte a attempt key |
+| Função `is_offering_slot_available` LIVE | **PASS** | Atualizada no PostgreSQL com limpeza atômica de holds vencidos |
+| Idempotência na Mesma Tentativa LIVE | **PASS** | `is_idempotent = true`, retorna mesmo `quote_id` |
+| Nova Tentativa no Mesmo Slot LIVE | **PASS** | `is_idempotent = false`, gera novo `quote_id` `ACTIVE` |
+| Cancelamento Aluno → Remarcação do Mesmo Horário LIVE | **PASS** | Liberação imediata do slot e criação de nova cotação |
+| Cancelamento Prestador → Remarcação do Mesmo Horário LIVE | **PASS** | Liberação imediata do slot, 100% refund (DEC-013) e motivo obrigatório |
+| Hold Vencido (`hold_expires_at <= NOW()`) LIVE | **PASS** | Atualizado automaticamente para `EXPIRED` e slot liberado |
+| Hold Ativo (`hold_expires_at > NOW()`) LIVE | **PASS** | Bloqueia slot normalmente até o vencimento |
+| Concorrência no Banco | **PASS** | Exclusion constraints `exclude_instructor_overlapping_bookings` e `exclude_vehicle_overlapping_bookings` preservados |
+| OTP 8 Dígitos Remoto | **PASS** | `AUTH_OTP_LENGTH = 8` publicado e validado |
+| UI de Cancelamento & Modais | **PASS** | Footer transparente (`bg-transparent border-t`), CTAs flutuantes (`rounded-2xl shadow-md`) |
+| Chat com Navegação Contextual | **PASS** | Botão `← Voltar` preserva origem `details` / `list` e modo Read-Only ativado em canceladas |
+| GitHub Actions Workflows | **PASS** | Workflows 32174614901, 32174614849, 32174612670 encerrados com status `completed` / conclusion `success` |
 
 ---
 
-# 2. Status do Ciclo `/mazzi-feature`
+# 2. Conclusão Final
 
-- [x] Product (`requirement.md`) — PRODUCT_READY
-- [x] Tech Lead (`technical-plan.md`) — TECH_READY
-- [x] Dev (`implementation-report.md`) — DEV_COMPLETED
-- [x] QA (`qa-report.md`) — QA_PASSED
-- [x] Tech Lead (`final-review.md`) — COMPLETED / APPROVED
+Todos os critérios de DONE da **TASK-007** foram preenchidos e validados tanto localmente quanto no ambiente live (GitHub + Supabase + GitHub Actions).
 
-**TASK-007 FINALIZADA COM SUCESSO.**
+**TASK-007 = DONE**

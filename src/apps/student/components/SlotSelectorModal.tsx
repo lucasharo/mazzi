@@ -372,20 +372,21 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           </div>
         </div>
 
-        {/* Solid Modal Footer with Safe Area (Properly structured CTA, never floating) */}
-        <div className="shrink-0 pt-3.5 border-t border-[var(--mazzi-border)] bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))] sticky bottom-0 z-10 -mx-6 -mb-6 px-6">
+        {/* Floating action footer with transparent background and safe area */}
+        <div className="shrink-0 pt-3.5 bg-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))] sticky bottom-0 z-10 -mx-6 -mb-6 px-6">
           <PrimaryButton
             size="md"
             disabled={!selectedSlot || isLoading}
-            className="w-full min-h-[48px] font-bold shadow-xs"
+            className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
             onClick={() => {
               if (selectedSlot) {
                 onSelect(selectedSlot);
                 onClose();
               }
             }}
+            aria-label="Confirmar horário selecionado"
           >
-            Continuar para o agendamento
+            Confirmar Horário
           </PrimaryButton>
         </div>
       </div>

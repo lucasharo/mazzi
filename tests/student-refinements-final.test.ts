@@ -286,7 +286,7 @@ describe('Student Final Refinements: Detalhes Button, Typography & 60-Day Horizo
     it('Scenario I & J: Month navigation and solid CTA footer preserved', () => {
       expect(slotSource).toContain('aria-label="Mês anterior"');
       expect(slotSource).toContain('aria-label="Mês seguinte"');
-      expect(slotSource).toContain('Continuar para o agendamento');
+      expect(slotSource).toContain('Confirmar Horário');
       expect(slotSource).toContain('sticky bottom-0 z-10 -mx-6 -mb-6 px-6');
     });
   });

@@ -10,7 +10,6 @@ import {
   MessageSquare,
   AlertTriangle,
   XCircle,
-  CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
 import { Booking } from '../../../types';
@@ -226,28 +225,26 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-3 pt-3 border-t border-slate-100/60 bg-transparent">
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              className="w-1/2 min-h-11 font-bold rounded-2xl border-[var(--mazzi-border)] hover:bg-slate-100 text-slate-700 transition-all active:scale-[0.98] cursor-pointer"
-              disabled={isCancelling}
-              onClick={() => setIsConfirmingCancel(false)}
-            >
-              Voltar
-            </Button>
+          {/* Action buttons - Vertical hierarchy with clear primary destructive CTA */}
+          <div className="flex flex-col gap-2.5 pt-3 bg-transparent">
             <Button
               type="button"
               variant="danger"
               size="md"
-              className="w-1/2 min-h-11 font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
+              className="w-full min-h-[48px] font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
               isLoading={isCancelling}
               onClick={handleConfirmCancel}
             >
               Confirmar cancelamento
             </Button>
+            <button
+              type="button"
+              disabled={isCancelling}
+              onClick={() => setIsConfirmingCancel(false)}
+              className="w-full py-2.5 px-4 font-semibold text-slate-600 hover:text-slate-900 bg-transparent rounded-2xl transition-colors text-xs text-center cursor-pointer disabled:opacity-50"
+            >
+              Manter minha aula
+            </button>
           </div>
         </div>
       ) : (
@@ -347,26 +344,26 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           </div>
 
-          {/* Cancelled Banner if applicable */}
+          {/* Special notice for cancelled bookings */}
           {isCancelled && (
-            <div role="status" className="p-3.5 rounded-xl bg-slate-100 border border-slate-200 space-y-1 text-xs text-slate-700">
-              <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                <XCircle className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
+            <div role="status" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 space-y-1 text-xs text-rose-900">
+              <div className="flex items-center gap-1.5 font-extrabold">
+                <XCircle className="w-4 h-4 text-rose-600 shrink-0" aria-hidden="true" />
                 <span>
                   {booking.status === 'CANCELLED_BY_STUDENT' ? 'Cancelada pelo aluno' : 'Cancelada pelo profissional'}
                 </span>
               </div>
               {booking.cancellationReason && (
-                <p className="text-[11px] text-slate-600 pl-5">
+                <p className="text-[11px] text-rose-700 font-medium pl-5">
                   Motivo: {booking.cancellationReason}
                 </p>
               )}
             </div>
           )}
 
-          {/* Hold Expiration Alert if pending */}
-          {isPendingPayment && booking.holdExpiresAt && (
-            <div role="status" className="p-3.5 rounded-xl bg-amber-50 border border-amber-300/80 flex items-center gap-2 text-xs text-amber-900 font-medium">
+          {/* Special notice for pending payment */}
+          {isPendingPayment && (
+            <div role="status" className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2 text-xs text-amber-900 font-semibold">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
               <span>
                 Aguardando confirmação do pagamento. Horário retido temporariamente.
@@ -375,7 +372,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           )}
 
           {isExpired && (
-            <div role="alert" className="p-3.5 rounded-xl bg-slate-100 border border-slate-300 flex items-center gap-2 text-xs text-slate-700 font-medium">
+            <div role="status" className="p-3.5 rounded-xl bg-slate-100 border border-slate-300 flex items-center gap-2 text-xs text-slate-700 font-medium">
               <AlertTriangle className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
               <span>
                 O tempo de retenção deste horário expirou. Por favor, faça um novo agendamento.
@@ -383,14 +380,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-100">
+          {/* Floating Actions - Mobile Vertical Stack */}
+          <div className="flex flex-col gap-2.5 pt-2 bg-transparent">
             {isPendingPayment && onContinuePayment && (
               <Button
                 type="button"
                 variant="primary"
                 size="md"
-                className="w-full min-h-11 font-bold"
+                className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
                 onClick={() => onContinuePayment(booking)}
                 leftIcon={<CreditCard className="w-4 h-4" aria-hidden="true" />}
                 aria-label="Concluir pagamento desta reserva pendente"
@@ -404,28 +401,26 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 type="button"
                 variant="outline"
                 size="md"
-                className={`${isUpcoming && !isPendingPayment ? 'w-1/2' : 'w-full'} min-h-11 font-medium`}
+                className="w-full min-h-[44px] font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all"
                 onClick={() => onOpenChat(booking)}
-                leftIcon={<MessageSquare className="w-4 h-4" aria-hidden="true" />}
+                leftIcon={<MessageSquare className="w-4 h-4 text-slate-600" aria-hidden="true" />}
                 aria-label="Abrir conversa no chat sobre esta reserva"
               >
                 {isCancelled ? 'Ver Chat' : 'Abrir Chat'}
               </Button>
             )}
 
-            {/* Cancel Button when eligible */}
+            {/* Soft Danger Cancel Trigger Button */}
             {isUpcoming && (
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="md"
-                className="w-1/2 min-h-11 font-bold text-rose-700 border-rose-200 hover:bg-rose-50"
                 onClick={() => setIsConfirmingCancel(true)}
-                leftIcon={<XCircle className="w-4 h-4 text-rose-600" aria-hidden="true" />}
+                className="w-full min-h-[44px] bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 font-semibold rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 text-xs shadow-2xs hover:shadow-xs active:scale-[0.98]"
                 aria-label="Cancelar esta aula"
               >
-                Cancelar aula
-              </Button>
+                <XCircle className="w-4 h-4 text-rose-600" aria-hidden="true" />
+                <span>Cancelar aula</span>
+              </button>
             )}
           </div>
         </div>

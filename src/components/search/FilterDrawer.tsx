@@ -307,11 +307,11 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
           </div>
         </div>
 
-        {/* Fixed footer flush against the bottom of the modal covering the entire bottom */}
-        <div className="shrink-0 border-t border-[var(--mazzi-border)] bg-white px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-6 -mb-6 flex items-center gap-3 sticky bottom-0 z-[60] shadow-[0_-8px_20px_rgba(0,0,0,0.06)]">
+        {/* Floating action footer flush against bottom with transparent background */}
+        <div className="shrink-0 bg-transparent px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-6 -mb-6 flex items-center gap-3 sticky bottom-0 z-[60]">
           <SecondaryButton
             size="md"
-            className="w-1/3 min-h-[48px] font-bold shadow-2xs"
+            className="w-1/3 min-h-[48px] font-bold shadow-sm hover:shadow-md transition-all rounded-2xl border-slate-300 bg-white"
             onClick={handleReset}
             aria-label="Limpar todos os filtros selecionados"
           >
@@ -319,7 +319,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
           </SecondaryButton>
           <PrimaryButton
             size="md"
-            className="w-2/3 min-h-[48px] font-bold shadow-xs"
+            className="w-2/3 min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
             onClick={handleApply}
             aria-label="Aplicar filtros selecionados à busca"
           >
