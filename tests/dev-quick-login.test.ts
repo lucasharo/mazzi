@@ -12,9 +12,9 @@ describe('Dev Quick Login Automated Suite (TASK-005 Hardening)', () => {
     vi.unstubAllEnvs();
   });
 
-  it('B14-1. Preserves all 21 demo accounts (10 Student, 8 Instructor, 2 School Admin, 1 Platform Admin)', () => {
+  it('B14-1. Preserves all 27 demo accounts (10 Student, 14 Instructor, 2 School Admin, 1 Platform Admin)', () => {
     expect(STUDENT_DEMO_ACCOUNTS.length).toBe(10);
-    expect(INSTRUCTOR_DEMO_ACCOUNTS.length).toBe(8);
+    expect(INSTRUCTOR_DEMO_ACCOUNTS.length).toBe(14);
     expect(SCHOOL_DEMO_ACCOUNTS.length).toBe(2);
     expect(ADMIN_DEMO_ACCOUNTS.length).toBe(1);
 
@@ -24,7 +24,7 @@ describe('Dev Quick Login Automated Suite (TASK-005 Hardening)', () => {
       SCHOOL_DEMO_ACCOUNTS.length +
       ADMIN_DEMO_ACCOUNTS.length;
 
-    expect(total).toBe(21);
+    expect(total).toBe(27);
   });
 
   it('B14-2. Demo account objects contain 0 hardcoded passwords', () => {
