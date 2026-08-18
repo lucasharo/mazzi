@@ -43,7 +43,8 @@ describe('Student new template phase 5 finalization contracts', () => {
     expect(checkout).toContain('role="alert"');
     expect(checkout).toContain('formatTimeBR');
     expect(review).toContain('createReviewForBooking');
-    expect(review).toContain('aria-label={`${value}');
+    expect(review).toContain('<Rating value={rating} interactive');
+    expect(review).toContain('ariaLabel="Nota geral"');
     expect(review).toContain('Não foi possível enviar sua avaliação.');
   });
 

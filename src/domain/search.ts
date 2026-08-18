@@ -34,7 +34,12 @@ import {
   ProviderType,
   AvailabilityCandidate,
 } from '../types';
-import { generateAvailableSlots, DEFAULT_DEVELOPMENT_CONFIGURATION } from './availability';
+import {
+  generateAvailableSlots,
+  DEFAULT_DEVELOPMENT_CONFIGURATION,
+  STUDENT_BOOKING_HORIZON_DAYS,
+  AVAILABILITY_SEARCH_HORIZON_DAYS,
+} from './availability';
 
 export class SearchValidationError extends Error {
   constructor(public errors: string[]) {
@@ -43,10 +48,12 @@ export class SearchValidationError extends Error {
   }
 }
 
+// Re-export Canonical Horizon Constants from availability domain
+export { STUDENT_BOOKING_HORIZON_DAYS, AVAILABILITY_SEARCH_HORIZON_DAYS };
+
 // System Constants & Limits
 export const MAX_SEARCH_RADIUS_METERS = 50000; // 50 km max configurable radius
 export const DEFAULT_SEARCH_RADIUS_METERS = 10000; // 10 km default radius
-export const AVAILABILITY_SEARCH_HORIZON_DAYS = 30; // 30 days max search horizon
 export const DEFAULT_PAGE_SIZE = 10;
 export const MAX_PAGE_SIZE = 50;
 
@@ -327,8 +334,11 @@ export function sanitizePublicSearchProviderResult(
     nextAvailableSlot = 'Sem horários disponíveis no período';
   }
 
-  // Determine lowest normalized price among public offerings
-  const startingPriceInCents = provider.startingPriceInCents;
+  // Determine lowest normalized and nominal price among filtered public offerings
+  const startingPriceInCents =
+    publicOfferings.length > 0
+      ? Math.min(...publicOfferings.map((o) => o.priceInCents))
+      : provider.startingPriceInCents;
   let normalizedPricePerFiftyMinInCents = startingPriceInCents;
 
   if (publicOfferings.length > 0) {
@@ -337,6 +347,16 @@ export function sanitizePublicSearchProviderResult(
     );
     normalizedPricePerFiftyMinInCents = Math.min(...normPrices);
   }
+
+  const effectiveCategories =
+    publicOfferings.length > 0
+      ? Array.from(new Set(publicOfferings.map((o) => o.category)))
+      : provider.categories;
+
+  const effectiveTransmissions =
+    publicOfferings.length > 0
+      ? Array.from(new Set(publicOfferings.map((o) => o.transmission)))
+      : provider.transmissions;
 
   return {
     providerId: provider.id,
@@ -353,8 +373,8 @@ export function sanitizePublicSearchProviderResult(
     formattedDistance,
     neighborhood: provider.neighborhood,
     city: provider.city,
-    categories: provider.categories,
-    transmissions: provider.transmissions,
+    categories: effectiveCategories,
+    transmissions: effectiveTransmissions,
     startingPriceInCents,
     normalizedPricePerFiftyMinInCents,
     publicOfferings,
@@ -636,12 +656,16 @@ export function executePublicSearch(
         return rB - rA; // DESC
       }
     } else if (sanitized.sortBy === 'PRICE_ASC') {
-      if (a.provider.startingPriceInCents !== b.provider.startingPriceInCents) {
-        return a.provider.startingPriceInCents - b.provider.startingPriceInCents;
+      const priceA = a.publicOfferings.length > 0 ? Math.min(...a.publicOfferings.map((o) => o.priceInCents)) : a.provider.startingPriceInCents;
+      const priceB = b.publicOfferings.length > 0 ? Math.min(...b.publicOfferings.map((o) => o.priceInCents)) : b.provider.startingPriceInCents;
+      if (priceA !== priceB) {
+        return priceA - priceB;
       }
     } else if (sanitized.sortBy === 'PRICE_DESC') {
-      if (a.provider.startingPriceInCents !== b.provider.startingPriceInCents) {
-        return b.provider.startingPriceInCents - a.provider.startingPriceInCents;
+      const priceA = a.publicOfferings.length > 0 ? Math.min(...a.publicOfferings.map((o) => o.priceInCents)) : a.provider.startingPriceInCents;
+      const priceB = b.publicOfferings.length > 0 ? Math.min(...b.publicOfferings.map((o) => o.priceInCents)) : b.provider.startingPriceInCents;
+      if (priceA !== priceB) {
+        return priceB - priceA;
       }
     }
 

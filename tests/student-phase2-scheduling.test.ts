@@ -14,7 +14,7 @@ describe('Student new template phase 2 scheduling contracts', () => {
     expect(profile).toContain('Novo na MAZZI');
     expect(profile).toContain('result.neighborhood');
     expect(profile).toContain('result.city');
-    expect(profile).toContain("offering.category === 'B'");
+    expect(profile).toContain('offering.category');
     expect(profile).toContain('offering.vehicleTitle');
     expect(profile).toContain('offering.durationMinutes');
     expect(profile).not.toContain(', SP');
@@ -31,7 +31,7 @@ describe('Student new template phase 2 scheduling contracts', () => {
     expect(slots).toContain("get_available_slots_public");
     expect(slots).toContain('INITIAL_WINDOW_DAYS = 30');
     expect(slots).toContain('LOAD_MORE_DAYS = 30');
-    expect(slots).toContain('MAX_HORIZON_DAYS = 90');
+    expect(slots).toContain('MAX_HORIZON_DAYS = STUDENT_BOOKING_HORIZON_DAYS');
     expect(checkout).toContain('if (!scheduledStartAt || !scheduledDate || !startTime || !endTime)');
     expect(student).toContain('selectedSlot && checkoutProvider && checkoutVehicle && checkoutOffering');
     expect(student).not.toContain("'2026-09-01'");

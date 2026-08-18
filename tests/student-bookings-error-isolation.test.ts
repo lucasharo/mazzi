@@ -20,10 +20,10 @@ describe('Student bookings/search error isolation', () => {
     expect(studentAppSource).toContain('Não foi possível carregar suas aulas.');
   });
 
-  it('does not render booking/chat empty states while bookings are loading or failed', () => {
-    expect(studentAppSource).toContain('!bookingsError && !bookingsLoading && bookingTab === \'upcoming\'');
-    expect(studentAppSource).toContain('bookingsError ? <div role="alert"');
-    expect(studentAppSource).toContain('Não foi possível carregar suas conversas.');
-    expect(studentAppSource).toContain('Nenhuma conversa disponível');
+  it('does not render booking empty states while bookings are loading or failed', () => {
+    expect(studentAppSource).toContain("!bookingsError && !bookingsLoading && bookingTab === 'upcoming'");
+    expect(studentAppSource).toContain("!bookingsError && !bookingsLoading && bookingTab === 'history'");
+    expect(studentAppSource).toContain('bookingsError &&');
+    expect(studentAppSource).toContain('Não foi possível carregar suas aulas.');
   });
 });

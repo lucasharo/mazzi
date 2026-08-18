@@ -8,11 +8,13 @@ const header = readFileSync(join(root, 'src/components/search/SearchHeader.tsx')
 const drawer = readFileSync(join(root, 'src/components/search/FilterDrawer.tsx'), 'utf8');
 
 describe('Student search layout hierarchy', () => {
-  it('separates date, quick filters and results without changing search handlers', () => {
+  it('keeps filters beside the list and map controls without changing search handlers', () => {
     expect(student).toContain('student-results-title');
     expect(student).toContain('setSearchViewMode(\'list\')');
     expect(student).toContain('setSearchViewMode(\'map\')');
-    expect(student).toContain('onOpenFilters={() => setIsFilterDrawerOpen(true)}');
+    expect(student).toContain('onClick={() => setIsFilterDrawerOpen(true)}');
+    expect(student).toContain('<SlidersHorizontal');
+    expect(header).not.toContain('Filtros');
     expect(student).not.toContain('>Carro<');
   });
 

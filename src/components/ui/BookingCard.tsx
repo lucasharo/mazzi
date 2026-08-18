@@ -1,111 +1,238 @@
 import React from 'react';
-import { Calendar, Clock, MapPin, MessageSquare, CheckCircle2, Star, Car, Gauge } from 'lucide-react';
 import { Booking } from '../../types';
-import { StatusBadge } from './StatusBadge';
-import { Button } from './Button';
-import { Price } from './Price';
-import { formatDateBR, formatTimeBR } from '../../lib/date-format';
+import { formatDateBR, formatTimeRange } from '../../lib/date-format';
 import { formatMeetingPoint } from '../../lib/meeting-point';
+import { formatCentsToBRL } from '../../domain/money';
+import { Button, PrimaryButton, SecondaryButton } from './Button';
+import {
+  Calendar,
+  Clock,
+  Car,
+  ChevronRight,
+  MapPin,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  MessageSquare,
+  Star,
+} from 'lucide-react';
+
+export type BookingPerspective = 'STUDENT' | 'INSTRUCTOR';
+
+function getInitials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'M'
+  );
+}
+
+function formatVehicleLabel(vehicle: {
+  brand?: string;
+  model?: string;
+  year?: number | string;
+  plate?: string;
+  licensePlate?: string;
+}): string {
+  const parts = [vehicle.brand, vehicle.model].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : 'Veículo';
+}
 
 export interface BookingCardProps {
   booking: Booking;
+  perspective?: BookingPerspective;
+  variant?: 'default' | 'student' | 'instructor';
   onCheckIn?: (booking: Booking) => void;
   onOpenChat?: (booking: Booking) => void;
-  onReview?: (booking: Booking) => void;
   onViewDetails?: (booking: Booking) => void;
-  isInstructorPerspective?: boolean;
-  variant?: 'default' | 'student';
-  id?: string;
+  onReview?: (booking: Booking) => void;
 }
-
-const transmissionLabel = (value?: string) => value === 'AUTOMATIC' ? 'Automático' : value === 'MANUAL' ? 'Manual' : '';
 
 export const BookingCard: React.FC<BookingCardProps> = ({
   booking,
+  perspective = 'STUDENT',
+  variant,
   onCheckIn,
   onOpenChat,
-  onReview,
   onViewDetails,
-  isInstructorPerspective = false,
-  variant = 'default',
-  id,
+  onReview,
 }) => {
-  const isStudent = variant === 'student';
-  const isUpcoming = booking.status === 'CONFIRMED' || booking.status === 'PENDING_PAYMENT' || booking.status === 'IN_PROGRESS';
+  const isInstructorPerspective = variant === 'instructor' || perspective === 'INSTRUCTOR';
+  const isStudent = !isInstructorPerspective;
+  const isPending = booking.status === 'PENDING_PAYMENT';
+  const isConfirmed = booking.status === 'CONFIRMED';
+  const isInProgress = booking.status === 'IN_PROGRESS';
   const isCompleted = booking.status === 'COMPLETED';
-  const point = formatMeetingPoint(booking.meetingPoint || booking.snapshot?.meetingPoint);
-  const vehicle = booking.vehicleName || booking.snapshot?.vehicleName;
-  const transmission = transmissionLabel(booking.snapshot?.transmission);
-  const instructor = booking.instructorName || booking.snapshot?.instructorName;
-  const provider = booking.providerName || booking.snapshot?.providerName;
-  const showProvider = Boolean(provider && provider !== instructor);
-  const date = booking.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : formatDateBR(booking.scheduledDate);
-  const time = booking.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : [booking.startTime, booking.endTime].filter(Boolean).join(' – ');
+  const isCancelled = booking.status === 'CANCELLED';
+  const isUpcoming = isConfirmed || isInProgress;
+
+  const vehicle =
+    (booking.vehicle ? formatVehicleLabel(booking.vehicle) : undefined) ||
+    booking.vehicleTitle ||
+    booking.snapshot?.vehicleName ||
+    'Veículo não informado';
+
+  const instructor = booking.instructorName || booking.instructor?.name || 'Instrutor';
+  const provider = booking.providerName || booking.provider?.name || 'Autoescola';
+  const student = booking.studentName || booking.student?.name || 'Aluno';
+  const point = formatMeetingPoint(booking.meetingPoint) || 'Ponto de encontro a combinar';
+  const transLabel = booking.snapshot?.transmission === 'AUTOMATIC' ? 'Automático' : 'Manual';
+  const category = booking.snapshot?.category || 'B';
+  const duration = booking.snapshot?.durationMinutes || 50;
+  const totalInCents =
+    booking.snapshot?.totalInCents || booking.totalInCents || booking.priceInCents || 0;
+
+  // Single name display: show instructor name (or student name if in instructor perspective) exactly once
+  const mainDisplayName = isInstructorPerspective ? student : instructor;
 
   return (
-    <div
-      id={id || `booking-card-${booking.id}`}
-      className={`mazzi-card p-5 transition ${isStudent ? 'space-y-4' : ''}`}
+    <article
+      id={`booking-card-${booking.id}`}
+      aria-label={`Aula com ${mainDisplayName}, ${formatDateBR(booking.scheduledDate)}`}
+      className="mazzi-card p-4 sm:p-5 transition-all duration-200 text-left space-y-3.5 hover:shadow-md"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-emerald-600" />
-            <span className="font-bold text-slate-900 text-sm">
-              {date}
-            </span>
-            <span className="text-slate-400">•</span>
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span className="font-semibold text-slate-700 text-xs">
-              {time}
-            </span>
+      {/* 1. HERO: Prominent Date, Time & Status in Evidence */}
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--mazzi-border)]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] border border-amber-200/60 shadow-2xs">
+            <Calendar className="h-5 w-5 text-amber-600" aria-hidden="true" />
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            {isInstructorPerspective ? (
-              booking.studentName ? <span>Aluno: <strong className="text-slate-800">{booking.studentName}</strong></span> : null
-            ) : (
-              instructor ? <span><strong className="text-slate-800">{instructor}</strong></span> : null
-            )}
-          </p>
-          {!isInstructorPerspective && showProvider && <p className="text-xs text-slate-500">{provider}</p>}
+          <div className="min-w-0">
+            <p className="text-sm sm:text-base font-extrabold text-[var(--mazzi-dark)] leading-tight truncate">
+              {formatDateBR(booking.scheduledDate)}
+            </p>
+            <p className="text-xs font-bold text-amber-600 flex items-center gap-1 mt-0.5">
+              <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>{formatTimeRange(booking.startTime, booking.endTime)}</span>
+            </p>
+          </div>
         </div>
-        <StatusBadge status={booking.status} audience={isStudent ? 'student' : 'default'} />
+
+        {/* Status Badge */}
+        <div className="shrink-0">
+          {isConfirmed && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 shadow-2xs">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+              <span>Confirmada</span>
+            </span>
+          )}
+          {isInProgress && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/60 shadow-2xs">
+              <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" aria-hidden="true" />
+              <span>Em Andamento</span>
+            </span>
+          )}
+          {isPending && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 shadow-2xs">
+              <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" aria-hidden="true" />
+              <span>Pendente</span>
+            </span>
+          )}
+          {isCompleted && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 shadow-2xs">
+              <CheckCircle2 className="h-3.5 w-3.5 text-slate-600 shrink-0" aria-hidden="true" />
+              <span>Concluída</span>
+            </span>
+          )}
+          {isCancelled && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200/60 shadow-2xs">
+              <XCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" aria-hidden="true" />
+              <span>Cancelada</span>
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="mazzi-soft-card grid gap-2 px-4 py-3 text-xs text-[var(--mazzi-muted)]">
-        <div className="flex items-center gap-1.5">
-          <Car className="w-4 h-4 text-slate-400" />
-          {vehicle && <><span className="truncate">{vehicle}</span>{transmission && <><span className="text-slate-300">•</span><Gauge className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" /><span>{transmission}</span></>}</>}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <MapPin className="w-4 h-4 text-slate-400" />
-          <span className="truncate">
-            {point}
+      {/* 2. Provider / Person Info (Render name ONLY ONCE) */}
+      <div className="flex items-center gap-3">
+        {/* Avatar */}
+        <div className="mazzi-avatar h-12 w-12 shrink-0 text-sm font-bold shadow-xs ring-1 ring-black/5">
+          <span
+            className="flex h-full w-full items-center justify-center bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)]"
+            aria-hidden="true"
+          >
+            {getInitials(mainDisplayName)}
           </span>
         </div>
+
+        {/* Info: Name once + optional Autoescola tag + Location */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h2 className="text-sm sm:text-base font-bold text-[var(--mazzi-dark)] leading-snug break-words">
+              {mainDisplayName}
+            </h2>
+            {provider && provider !== mainDisplayName && (
+              <span className="text-[10px] font-semibold text-slate-600 bg-[var(--mazzi-surface-soft)] px-2 py-0.5 rounded-md border border-[var(--mazzi-border)]">
+                {provider}
+              </span>
+            )}
+          </div>
+
+          <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-slate-500 truncate">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden="true" />
+            <span className="truncate">{point}</span>
+          </p>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <Price cents={booking.snapshot.totalInCents} size="sm" showPeriodLabel={false} />
-        
-        <div className="flex items-center gap-2">
+      {/* 3. Vehicle & Transmission Soft Card (Aligned with ProviderResultCard) */}
+      <div className="mazzi-soft-card flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[var(--mazzi-dark)] border border-[var(--mazzi-border)]">
+        <Car className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+        <span className="truncate">{vehicle}</span>
+        <span className="shrink-0 text-[var(--mazzi-muted)] font-medium">· {transLabel}</span>
+        <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] px-2 py-0.5 rounded-md">
+          Cat. {category}
+        </span>
+      </div>
+
+      {/* 4. Pricing & Action Buttons Footer */}
+      <div className="mt-3.5 pt-3 border-t border-[var(--mazzi-border)] flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+            Valor total
+          </p>
+          <p className="mt-0.5 text-base sm:text-lg font-bold text-[var(--mazzi-dark)]">
+            {formatCentsToBRL(totalInCents)}
+            {duration ? (
+              <span className="ml-1 text-xs font-normal text-slate-500">· {duration} min</span>
+            ) : null}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
           {onOpenChat && (
-            <Button
-              variant="outline"
+            <SecondaryButton
+              type="button"
               size="sm"
+              className="min-h-11 px-3.5 text-xs font-bold shadow-2xs"
               onClick={() => onOpenChat(booking)}
-              leftIcon={<MessageSquare className="w-3.5 h-3.5" />}
+              leftIcon={<MessageSquare className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />}
+              aria-label="Abrir chat da reserva"
             >
               Chat
-            </Button>
+            </SecondaryButton>
           )}
 
           {!isStudent && isUpcoming && onCheckIn && (
-            <Button
-              variant="primary"
+            <PrimaryButton
+              type="button"
               size="sm"
+              className="min-h-11 px-4 text-xs font-bold shadow-xs"
               onClick={() => onCheckIn(booking)}
-              leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
+              leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-current" aria-hidden="true" />}
+              aria-label={
+                isInstructorPerspective
+                  ? booking.instructorCheckedIn
+                    ? 'Check-in já realizado pelo instrutor'
+                    : 'Fazer Check-in como instrutor'
+                  : booking.studentCheckedIn
+                  ? 'Check-in já realizado pelo aluno'
+                  : 'Fazer Check-in como aluno'
+              }
             >
               {isInstructorPerspective
                 ? booking.instructorCheckedIn
@@ -114,31 +241,37 @@ export const BookingCard: React.FC<BookingCardProps> = ({
                 : booking.studentCheckedIn
                 ? 'Check-in Realizado'
                 : 'Fazer Check-in'}
-            </Button>
+            </PrimaryButton>
           )}
 
           {isCompleted && onReview && !isInstructorPerspective && (
             <Button
+              type="button"
               variant="secondary"
               size="sm"
+              className="min-h-11 px-3.5 text-xs font-bold"
               onClick={() => onReview(booking)}
-              leftIcon={<Star className="w-3.5 h-3.5" />}
+              leftIcon={<Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" aria-hidden="true" />}
+              aria-label="Avaliar esta aula concluída"
             >
               Avaliar Aula
             </Button>
           )}
 
           {onViewDetails && (
-            <Button
-              variant="ghost"
+            <PrimaryButton
+              type="button"
               size="sm"
+              className="min-h-11 px-4 text-xs font-bold shadow-xs"
               onClick={() => onViewDetails(booking)}
+              rightIcon={<ChevronRight className="h-4 w-4" aria-hidden="true" />}
+              aria-label="Ver detalhes completos da reserva"
             >
               Detalhes
-            </Button>
+            </PrimaryButton>
           )}
         </div>
       </div>
-    </div>
+    </article>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronRight, Navigation, Search, SlidersHorizontal } from 'lucide-react';
+import { Navigation, Search } from 'lucide-react';
 import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
 import { geocodeAddress } from '../../lib/geocoding';
@@ -12,8 +12,6 @@ export interface SearchHeaderProps {
   currentLocationName?: string;
   currentLocation?: { lat: number; lng: number };
   onLocationResolved?: (addressName: string, lat: number, lng: number) => void;
-  onOpenFilters?: () => void;
-  activeFilterCount?: number;
 }
 
 export const SearchHeader: React.FC<SearchHeaderProps> = ({
@@ -23,8 +21,6 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   currentLocationName = '',
   currentLocation,
   onLocationResolved,
-  onOpenFilters,
-  activeFilterCount = 0,
 }) => {
   const [addressInput, setAddressInput] = useState(currentLocationName);
   const [isLocating, setIsLocating] = useState(false);
@@ -39,8 +35,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   }, [currentLocationName]);
 
   const handleUseMyLocation = async () => {
-    // A localização atual é representada pelo placeholder, não por um
-    // endereço reverso que pode ser impreciso ou excessivamente longo.
+    // A localização atual é representada pelo placeholder
     setAddressInput('');
     setIsLocating(true);
     try {
@@ -83,9 +78,40 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
   return (
     <section className="space-y-4" aria-label="Buscar aulas">
-      <form onSubmit={handleAddressSubmit} className="mazzi-card p-4 focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)]">
-        <div className="flex items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]"><Navigation className={`h-5 w-5 ${isLocating ? 'animate-spin' : ''}`}/></span><label className="min-w-0 flex-1"><span className="block text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--mazzi-muted)]">Localização</span><input type="text" aria-label="Endereço para buscar instrutores" value={addressInput} onChange={(event) => setAddressInput(event.target.value)} placeholder="Sua localização atual" className="mt-1 w-full truncate bg-transparent text-sm font-extrabold outline-none placeholder:text-[var(--mazzi-text)]"/></label><button type="submit" aria-label="Buscar endereço" className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--mazzi-dark)] text-white"><ChevronRight className="h-5 w-5"/></button></div>
-        <div className="mt-3 flex justify-end gap-2"><button type="button" onClick={handleUseMyLocation} disabled={isLocating} aria-label="Usar minha localização atual" title="Usar minha localização atual" className="grid h-11 w-11 place-items-center rounded-[14px] bg-white text-slate-700 shadow-[inset_0_0_0_1px_var(--mazzi-border),0_4px_12px_rgba(32,33,38,.06)] transition hover:text-slate-950 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-yellow)]"><Navigation className={`h-[18px] w-[18px] ${isLocating ? 'animate-pulse' : ''}`} aria-hidden="true" /></button>{onOpenFilters && <button type="button" onClick={onOpenFilters} className="flex min-h-11 items-center gap-2 rounded-[14px] bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4"/>Filtros{activeFilterCount > 0 ? ` ${activeFilterCount}` : ''}</button>}</div>
+      <form onSubmit={handleAddressSubmit} className="mazzi-card p-3 sm:p-4 focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)] focus-within:ring-offset-2 transition-all">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 sm:gap-3">
+          <button
+            type="button"
+            onClick={handleUseMyLocation}
+            disabled={isLocating}
+            aria-label="Usar minha localização atual"
+            title="Usar minha localização atual"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] transition hover:brightness-95 active:scale-95 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
+          >
+            <Navigation className={`h-5 w-5 ${isLocating ? 'animate-spin' : ''}`} aria-hidden="true" />
+          </button>
+          <label className="min-w-0 flex-1 cursor-text">
+            <span className="block text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--mazzi-muted)]">
+              Localização
+            </span>
+            <input
+              type="text"
+              aria-label="Endereço para buscar instrutores"
+              value={addressInput}
+              onChange={(event) => setAddressInput(event.target.value)}
+              placeholder="Sua localização atual"
+              className="mt-0.5 sm:mt-1 w-full min-h-[32px] bg-transparent text-sm font-extrabold text-[var(--mazzi-dark)] outline-none placeholder:text-slate-400 focus:outline-none"
+            />
+          </label>
+          <button
+            type="submit"
+            aria-label="Buscar endereço"
+            title="Buscar endereço"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-dark)] text-white transition hover:bg-[#34353a] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
+          >
+            <Search className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
       </form>
     </section>
   );

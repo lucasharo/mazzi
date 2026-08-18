@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { AlertCircle } from 'lucide-react';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -18,9 +18,14 @@ export const Input: React.FC<InputProps> = ({
   className = '',
   id,
   disabled,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   ...props
 }) => {
-  const generatedId = id || `input-${Math.random().toString(36).substring(2, 8)}`;
+  const reactId = useId().replace(/:/g, '');
+  const generatedId = id || `input-${reactId}`;
+  const messageId = `${generatedId}-${error ? 'error' : 'description'}`;
+  const describedBy = [ariaDescribedBy, error || helperText ? messageId : undefined].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className="w-full space-y-1.5 text-left">
@@ -41,12 +46,14 @@ export const Input: React.FC<InputProps> = ({
         <input
           id={generatedId}
           disabled={disabled}
-          className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
+          aria-invalid={error ? true : Boolean(ariaInvalid)}
+          aria-describedby={describedBy}
+          className={`w-full min-h-11 rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
             leftIcon ? 'pl-10' : ''
           } ${rightIcon || error ? 'pr-10' : ''} ${
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-200'
-              : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-100'
+              : 'border-slate-300 focus:border-[var(--mazzi-dark)] focus:ring-[var(--mazzi-focus-glow)]'
           } ${className}`}
           {...props}
         />
@@ -63,11 +70,11 @@ export const Input: React.FC<InputProps> = ({
         )}
       </div>
       {error ? (
-        <p className="text-xs text-rose-600 flex items-center gap-1 font-medium">
+        <p id={messageId} role="alert" className="text-xs text-rose-600 flex items-center gap-1 font-medium">
           {error}
         </p>
       ) : (
-        helperText && <p className="text-xs text-slate-500">{helperText}</p>
+        helperText && <p id={messageId} className="text-xs text-slate-500">{helperText}</p>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, ImagePlus } from 'lucide-react';
+import { Camera, ImagePlus, Loader2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface ProfilePhotoPickerProps {
   value?: string;
@@ -24,6 +25,7 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
   const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -60,7 +62,45 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
     }
   };
 
-  const capturePhoto = () => {
+  const uploadBlobToStorage = async (blob: Blob): Promise<string> => {
+    const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
+    
+    if (isRealSupabase) {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData?.user) {
+        throw new Error('Usuário não autenticado para upload.');
+      }
+      const userId = authData.user.id;
+      const fileName = `${userId}/avatar-${Date.now()}.jpg`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error('Falha ao enviar a foto para o armazenamento.');
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      return publicUrlData.publicUrl;
+    }
+
+    // Fallback for local mock/dev testing without Supabase credentials
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const capturePhoto = async () => {
     const video = videoRef.current;
     if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
       setError('A câmera ainda não está pronta. Tente novamente.');
@@ -81,22 +121,45 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
       512,
       512,
     );
-    onChange(canvas.toDataURL('image/jpeg', 0.85));
+
     stopCamera();
+    setIsUploading(true);
+    setError(null);
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        setError('Não foi possível processar a foto.');
+        setIsUploading(false);
+        return;
+      }
+      try {
+        const publicUrl = await uploadBlobToStorage(blob);
+        onChange(publicUrl);
+      } catch (err: any) {
+        setError(err?.message || 'Falha ao salvar a foto de perfil.');
+      } finally {
+        setIsUploading(false);
+      }
+    }, 'image/jpeg', 0.85);
   };
 
-  const handleFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Selecione uma imagem válida.');
+
+    // Validate type and size (5MB limit)
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Selecione uma imagem em formato JPEG, PNG ou WebP.');
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      setError('A imagem deve ter no máximo 8 MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      setError('A imagem deve ter no máximo 5 MB.');
       return;
     }
+
+    setIsUploading(true);
+    setError(null);
 
     const objectUrl = URL.createObjectURL(file);
     const image = new Image();
@@ -117,52 +180,98 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
         512,
       );
       URL.revokeObjectURL(objectUrl);
-      setError(null);
-      onChange(canvas.toDataURL('image/jpeg', 0.85));
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          setError('Não foi possível processar a imagem.');
+          setIsUploading(false);
+          return;
+        }
+        try {
+          const publicUrl = await uploadBlobToStorage(blob);
+          onChange(publicUrl);
+        } catch (err: any) {
+          setError(err?.message || 'Falha ao enviar a foto para o armazenamento.');
+        } finally {
+          setIsUploading(false);
+        }
+      }, 'image/jpeg', 0.85);
     };
+
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);
       setError('Não foi possível ler a imagem.');
+      setIsUploading(false);
     };
     image.src = objectUrl;
   };
 
   return (
     <div className="flex items-center gap-3">
-      <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-slate-200 text-slate-700 flex items-center justify-center font-black">
-        {value ? <img src={value} alt="Foto do perfil" className="h-full w-full object-cover" /> : initials(name)}
+      <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] text-[var(--mazzi-dark)] flex items-center justify-center font-black">
+        {isUploading ? (
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--mazzi-muted)]" aria-label="Enviando foto..." />
+        ) : value ? (
+          <img src={value} alt="Foto do perfil" className="h-full w-full object-cover" />
+        ) : (
+          initials(name)
+        )}
       </div>
       <div className="space-y-1">
-        <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleFile} disabled={disabled} className="hidden" />
-        <button
-          type="button"
-          onClick={() => void openCamera()}
-          disabled={disabled}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-        >
-          <Camera className="h-4 w-4" />
-          Tirar foto
-        </button>
-        <button
-          type="button"
-          onClick={() => galleryInputRef.current?.click()}
-          disabled={disabled}
-          className="ml-2 inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-        >
-          <ImagePlus className="h-4 w-4" />
-          Galeria
-        </button>
-        {value && <button type="button" onClick={() => onChange(undefined)} disabled={disabled} className="block text-[11px] font-semibold text-rose-600">Remover foto</button>}
-        {error && <p className="text-[11px] text-rose-600">{error}</p>}
+        <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFile} disabled={disabled || isUploading} className="hidden" />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void openCamera()}
+            disabled={disabled || isUploading}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2 text-xs font-extrabold text-[var(--mazzi-dark)] hover:bg-slate-50 transition cursor-pointer disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
+          >
+            <Camera className="h-4 w-4 text-amber-500" aria-hidden="true" />
+            Tirar foto
+          </button>
+          <button
+            type="button"
+            onClick={() => galleryInputRef.current?.click()}
+            disabled={disabled || isUploading}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2 text-xs font-extrabold text-[var(--mazzi-dark)] hover:bg-slate-50 transition cursor-pointer disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
+          >
+            <ImagePlus className="h-4 w-4 text-amber-500" aria-hidden="true" />
+            Galeria
+          </button>
+        </div>
+        {value && !isUploading && (
+          <button
+            type="button"
+            onClick={() => onChange(undefined)}
+            disabled={disabled}
+            className="block text-[11px] font-bold text-rose-600 hover:text-rose-700 transition cursor-pointer mt-1"
+          >
+            Remover foto
+          </button>
+        )}
+        {error && <p role="alert" className="text-[11px] font-semibold text-rose-600">{error}</p>}
       </div>
+
       {isCameraOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-label="Tirar foto do perfil">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-4 shadow-2xl">
-            <h3 className="mb-3 text-base font-black text-slate-900">Tirar foto do perfil</h3>
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4" role="dialog" aria-modal="true" aria-label="Tirar foto do perfil">
+          <div className="w-full max-w-sm rounded-3xl bg-white border border-[var(--mazzi-border)] p-5 shadow-2xl space-y-4">
+            <h3 className="text-base font-extrabold text-[var(--mazzi-dark)]">Tirar foto do perfil</h3>
             <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-2xl bg-slate-950 object-cover" />
-            <div className="mt-3 flex gap-2">
-              <button type="button" onClick={stopCamera} className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700">Cancelar</button>
-              <button type="button" onClick={capturePhoto} className="flex-1 rounded-xl bg-amber-400 px-3 py-2 text-sm font-black text-slate-950">Capturar foto</button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={stopCamera}
+                className="flex-1 min-h-11 rounded-xl border border-[var(--mazzi-border)] px-3 py-2 text-xs font-bold text-[var(--mazzi-dark)] hover:bg-slate-50 transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void capturePhoto()}
+                className="flex-1 min-h-11 rounded-xl bg-[var(--mazzi-yellow)] px-3 py-2 text-xs font-extrabold text-[var(--mazzi-dark)] shadow-sm hover:brightness-95 transition cursor-pointer"
+              >
+                Capturar foto
+              </button>
             </div>
           </div>
         </div>
@@ -170,4 +279,3 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
     </div>
   );
 };
-

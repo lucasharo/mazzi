@@ -8,10 +8,13 @@ const searchHeader = readFileSync(join(root, 'src/components/search/SearchHeader
 const providerCard = readFileSync(join(root, 'src/components/search/ProviderResultCard.tsx'), 'utf8');
 
 describe('Student new template phase 1', () => {
-  it('uses a full-width mobile-first shell with notification bell and chat tab', () => {
+  it('uses a full-width mobile-first shell with notification bell and focused 3-tab navigation', () => {
     expect(studentApp).toContain('mazzi-app');
     expect(studentApp).toContain('aria-label="Abrir notificações"');
-    expect(studentApp).toContain("id: 'messages'");
+    expect(studentApp).toContain("id: 'search'");
+    expect(studentApp).toContain("id: 'bookings'");
+    expect(studentApp).toContain("id: 'profile'");
+    expect(studentApp).not.toContain("id: 'messages'");
     expect(studentApp).not.toContain("id: 'notifications'");
     expect(studentApp).not.toContain('max-w-md z-40');
   });

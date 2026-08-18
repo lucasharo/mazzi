@@ -80,6 +80,8 @@ export const DesignSystemShowcase: React.FC = () => {
 
           <div className="mt-4">
             <Tabs
+              id="design-system-tabs"
+              ariaLabel="Design system"
               activeTab={activeTab}
               onChange={setActiveTab}
               tabs={[
@@ -95,7 +97,7 @@ export const DesignSystemShowcase: React.FC = () => {
 
         {/* Tab: Components Base */}
         {activeTab === 'components' && (
-          <div className="space-y-8">
+          <div id="design-system-tabs-panel-components" role="tabpanel" aria-labelledby="design-system-tabs-tab-components" tabIndex={0} className="space-y-8">
             {/* Color Palette */}
             <div>
               <h3 className="font-extrabold text-base text-slate-900 mb-3">1. Paleta de Cores (Brand Palette)</h3>
@@ -211,7 +213,7 @@ export const DesignSystemShowcase: React.FC = () => {
 
         {/* Tab: Domain Cards */}
         {activeTab === 'domain-cards' && (
-          <div className="space-y-6">
+          <div id="design-system-tabs-panel-domain-cards" role="tabpanel" aria-labelledby="design-system-tabs-tab-domain-cards" tabIndex={0} className="space-y-6">
             <h3 className="font-extrabold text-base text-slate-900">Cards de Domínio do Marketplace</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ProviderCard provider={MOCK_PROVIDERS[0]} onSelect={() => setIsModalOpen(true)} />
@@ -227,7 +229,7 @@ export const DesignSystemShowcase: React.FC = () => {
 
         {/* Tab: Maps & Geolocation */}
         {activeTab === 'maps' && (
-          <div className="space-y-6">
+          <div id="design-system-tabs-panel-maps" role="tabpanel" aria-labelledby="design-system-tabs-tab-maps" tabIndex={0} className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-extrabold text-base text-slate-900">
@@ -250,7 +252,7 @@ export const DesignSystemShowcase: React.FC = () => {
 
         {/* Tab: Scheduling */}
         {activeTab === 'scheduling' && (
-          <div className="space-y-6">
+          <div id="design-system-tabs-panel-scheduling" role="tabpanel" aria-labelledby="design-system-tabs-tab-scheduling" tabIndex={0} className="space-y-6">
             <h3 className="font-extrabold text-base text-slate-900">Agendamento & Seleção de Horários</h3>
             <div className="p-6 bg-slate-50 rounded-3xl border border-slate-200 space-y-6">
               <Calendar selectedDate={selectedDate} onSelectDate={setSelectedDate} />
@@ -265,7 +267,7 @@ export const DesignSystemShowcase: React.FC = () => {
 
         {/* Tab: States */}
         {activeTab === 'states' && (
-          <div className="space-y-6">
+          <div id="design-system-tabs-panel-states" role="tabpanel" aria-labelledby="design-system-tabs-tab-states" tabIndex={0} className="space-y-6">
             <h3 className="font-extrabold text-base text-slate-900">Estados de Feedback (Empty / Error / Skeleton)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <EmptyState

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, RefreshCw, Send, Calendar, Clock, Car, Radio } from 'lucide-react';
+import { AlertCircle, RefreshCw, SendHorizontal, Calendar, Clock, Car, Radio } from 'lucide-react';
 import { Booking, Conversation, Message } from '../../types';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../ui/Button';
@@ -138,17 +138,46 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
   };
 
   return (
-    <div className="space-y-4">
-      <div className="mazzi-card p-4">
+    <div className="space-y-4 text-left">
+      <div className="mazzi-card p-4 border border-[var(--mazzi-border)]">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Conversa da aula</p><h4 className="mt-1 truncate text-base font-black text-slate-950">{title}</h4>{provider && <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{provider}</p>}</div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-amber-600">Conversa da aula</p>
+            <h4 className="mt-1 truncate text-base font-extrabold text-[var(--mazzi-dark)]">{title}</h4>
+            {provider && <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{provider}</p>}
+          </div>
           <StatusBadge status={booking.status} audience="student" />
         </div>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-slate-600"><span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />{formatDateBR(start)}</span><span className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />{formatTimeBR(start)}{end ? `–${formatTimeBR(end)}` : ''}</span>{vehicle && <span className="inline-flex items-center gap-1.5"><Car className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />{vehicle}</span>}</div>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-slate-600">
+          <span className="inline-flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+            {formatDateBR(start)}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+            {formatTimeBR(start)}{end ? `–${formatTimeBR(end)}` : ''}
+          </span>
+          {vehicle && (
+            <span className="inline-flex items-center gap-1.5">
+              <Car className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+              {vehicle}
+            </span>
+          )}
+        </div>
       </div>
 
-      {realtimeReady && <p className="flex items-center gap-1.5 px-1 text-[11px] font-semibold text-slate-500"><Radio className="h-3.5 w-3.5 text-emerald-500" aria-hidden="true" />Atualização em tempo real</p>}
-      {!realtimeReady && !loading && conversation && <p className="flex items-center gap-1.5 px-1 text-[11px] font-semibold text-amber-700"><Radio className="h-3.5 w-3.5" aria-hidden="true" />Reconectando…</p>}
+      {realtimeReady && (
+        <p className="flex items-center gap-1.5 px-1 text-[11px] font-semibold text-emerald-600">
+          <Radio className="h-3.5 w-3.5 text-emerald-500" aria-hidden="true" />
+          Atualização em tempo real
+        </p>
+      )}
+      {!realtimeReady && !loading && conversation && (
+        <p className="flex items-center gap-1.5 px-1 text-[11px] font-semibold text-amber-700">
+          <Radio className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+          Reconectando…
+        </p>
+      )}
 
       {error && (
         <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-start gap-2">
@@ -168,12 +197,16 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
         </div>
       )}
 
-      <div ref={scrollContainerRef} aria-live="polite" aria-busy={loading} className="mazzi-card h-[min(55vh,28rem)] space-y-2 overflow-y-auto p-3">
+      <div ref={scrollContainerRef} aria-live="polite" aria-busy={loading} className="mazzi-card h-[min(50vh,26rem)] space-y-2 overflow-y-auto p-3 border border-[var(--mazzi-border)]">
         {loading ? (
-          <div aria-hidden="true" className="space-y-3 p-2">{[1, 2, 3].map((item) => <div key={item} className={`h-12 animate-pulse rounded-2xl bg-slate-100 ${item % 2 ? 'w-3/4' : 'ml-auto w-2/3'}`} />)}</div>
+          <div aria-hidden="true" className="space-y-3 p-2">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className={`h-12 animate-pulse rounded-2xl bg-slate-100 ${item % 2 ? 'w-3/4' : 'ml-auto w-2/3'}`} />
+            ))}
+          </div>
         ) : messages.length === 0 ? (
           <div className="h-full flex items-center justify-center text-center text-xs text-slate-500 px-6">
-            Nenhuma mensagem ainda. Use este chat apenas para combinar detalhes da aula já agendada.
+            Nenhuma mensagem ainda. Use este chat para combinar detalhes da aula agendada.
           </div>
         ) : (
           messages.map((message, index) => {
@@ -182,11 +215,23 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
             const showDateSeparator = !previous || formatDateBR(previous.createdAt) !== formatDateBR(message.createdAt);
             return (
               <React.Fragment key={message.id}>
-                {showDateSeparator && <div className="py-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">{formatDateBR(message.createdAt)}</div>}
+                {showDateSeparator && (
+                  <div className="py-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {formatDateBR(message.createdAt)}
+                  </div>
+                )}
                 <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[82%] rounded-2xl px-3 py-2 text-xs ${isMine ? 'rounded-br-sm bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]' : 'rounded-bl-sm bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-text)]'}`}>
+                  <div
+                    className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs ${
+                      isMine
+                        ? 'rounded-br-xs bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-medium shadow-2xs'
+                        : 'rounded-bl-xs bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] border border-[var(--mazzi-border)]'
+                    }`}
+                  >
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                    <p className={`text-[10px] mt-1 ${isMine ? 'text-slate-400' : 'text-slate-500'}`}>{formatTimeBR(message.createdAt)}</p>
+                    <p className={`text-[10px] mt-1 text-right font-medium ${isMine ? 'text-amber-950/70' : 'text-slate-400'}`}>
+                      {formatTimeBR(message.createdAt)}
+                    </p>
                   </div>
                 </div>
               </React.Fragment>
@@ -196,31 +241,42 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
         <div ref={messagesEndRef} aria-hidden="true" />
       </div>
 
-      <div className="flex items-end gap-2">
-        <textarea
-          aria-label="Mensagem"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          rows={2}
-          maxLength={2000}
-          className="mazzi-input flex-1 resize-none text-sm"
-          placeholder="Escreva uma mensagem sobre esta aula..."
-          disabled={!conversation || loading || sending}
-          onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void handleSend(); } }}
-        />
-        <Button
-          variant="primary"
-          size="md"
-          onClick={handleSend}
-          isLoading={sending}
-          aria-label="Enviar mensagem"
-          disabled={!conversation || loading || sending || !draft.trim()}
-          leftIcon={<Send className="w-4 h-4" />}
-        >
-          Enviar
-        </Button>
+      {/* Modern Integrated Composer */}
+      <div className="space-y-1.5">
+        <div className="relative flex items-center rounded-2xl bg-white border border-[var(--mazzi-border)] focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-[var(--mazzi-focus-glow)] transition-all shadow-xs">
+          <textarea
+            aria-label="Mensagem"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={2}
+            maxLength={2000}
+            className="w-full resize-none border-0 bg-transparent px-4 py-3 text-xs sm:text-sm text-[var(--mazzi-dark)] placeholder:text-slate-400 focus:outline-none focus:ring-0 pr-14 leading-relaxed"
+            placeholder="Escreva uma mensagem sobre esta aula..."
+            disabled={!conversation || loading || sending}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                void handleSend();
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!conversation || loading || sending || !draft.trim()}
+            aria-label="Enviar mensagem"
+            title="Enviar mensagem"
+            className="absolute right-2.5 bottom-2.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
+          >
+            {sending ? (
+              <RefreshCw className="h-4 w-4 animate-spin text-current" aria-hidden="true" />
+            ) : (
+              <SendHorizontal className="h-4 w-4 text-current" aria-hidden="true" />
+            )}
+          </button>
+        </div>
+        <p className="px-1 text-[10px] text-slate-400 font-medium">Pressione Enter para enviar, Shift+Enter para quebrar linha.</p>
       </div>
-      <p className="px-1 text-[10px] text-slate-400">Use Ctrl+Enter (ou Cmd+Enter) para enviar sem fechar o teclado.</p>
     </div>
   );
 };

@@ -1128,6 +1128,8 @@ export const ProviderApp: React.FC = () => {
                     </div>
 
                     <Tabs
+                      id="provider-schedule-tabs"
+                      ariaLabel="Agenda"
                       variant="pills"
                       activeTab={scheduleSubTab}
                       onChange={(st) => setScheduleSubTab(st as any)}
@@ -1141,7 +1143,7 @@ export const ProviderApp: React.FC = () => {
 
                   {/* Rules Subtab */}
                   {scheduleSubTab === 'rules' && (
-                    <div className="space-y-4">
+                    <div id="provider-schedule-tabs-panel-rules" role="tabpanel" aria-labelledby="provider-schedule-tabs-tab-rules" tabIndex={0} className="space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500">
                           Dias e horários em que você ou seu veículo estão disponíveis para aulas.
@@ -1188,7 +1190,7 @@ export const ProviderApp: React.FC = () => {
 
                   {/* Exceptions Subtab */}
                   {scheduleSubTab === 'exceptions' && (
-                    <div className="space-y-4">
+                    <div id="provider-schedule-tabs-panel-exceptions" role="tabpanel" aria-labelledby="provider-schedule-tabs-tab-exceptions" tabIndex={0} className="space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500">
                           Bloqueios pontuais por manutenção de veículo, compromissos pessoais ou feriados.
@@ -1237,7 +1239,7 @@ export const ProviderApp: React.FC = () => {
 
                   {/* Simulator Subtab */}
                   {scheduleSubTab === 'simulator' && (
-                    <div className="p-5 rounded-3xl bg-slate-900 text-white space-y-4">
+                    <div id="provider-schedule-tabs-panel-simulator" role="tabpanel" aria-labelledby="provider-schedule-tabs-tab-simulator" tabIndex={0} className="p-5 rounded-3xl bg-slate-900 text-white space-y-4">
                       <h4 className="font-bold text-sm text-amber-400 uppercase tracking-wider">
                         Simulador de Geração Algorítmica de Slots de Aula
                       </h4>
@@ -1325,20 +1327,22 @@ export const ProviderApp: React.FC = () => {
                     </div>
 
                     <Tabs
+                      id="provider-bookings-tabs"
+                      ariaLabel="Filtrar reservas"
                       variant="pills"
                       activeTab={bookingFilterTab}
                       onChange={(f) => setBookingFilterTab(f as any)}
                       tabs={[
-                        { id: 'all', label: 'Todas', count: providerBookings.length },
-                        { id: 'today', label: 'Hoje', count: todayBookings.length },
-                        { id: 'upcoming', label: 'Confirmadas / Futuras', count: confirmedBookings.length },
-                        { id: 'history', label: 'Histórico', count: completedBookings.length },
+                        { id: 'all', label: 'Todas', count: providerBookings.length, panelId: 'provider-bookings-panel' },
+                        { id: 'today', label: 'Hoje', count: todayBookings.length, panelId: 'provider-bookings-panel' },
+                        { id: 'upcoming', label: 'Confirmadas / Futuras', count: confirmedBookings.length, panelId: 'provider-bookings-panel' },
+                        { id: 'history', label: 'Histórico', count: completedBookings.length, panelId: 'provider-bookings-panel' },
                       ]}
                     />
                   </div>
 
                   {/* Booking Items List */}
-                  <div className="space-y-3">
+                  <div id="provider-bookings-panel" role="tabpanel" aria-labelledby={`provider-bookings-tabs-tab-${bookingFilterTab}`} tabIndex={0} className="space-y-3">
                     {filteredBookings.length === 0 ? (
                       <div className="p-8 text-center bg-slate-50 rounded-3xl border border-slate-200 text-slate-500 text-xs">
                         Nenhuma reserva encontrada para este filtro.
@@ -1400,6 +1404,8 @@ export const ProviderApp: React.FC = () => {
                 <div className="space-y-6">
                   <div className="border-b border-slate-200 pb-3">
                     <Tabs
+                      id="provider-management-tabs"
+                      ariaLabel="Gestão"
                       variant="pills"
                       activeTab={managementSubTab}
                       onChange={(st) => setManagementSubTab(st as any)}
@@ -1413,7 +1419,7 @@ export const ProviderApp: React.FC = () => {
 
                   {/* Vehicles Subtab */}
                   {managementSubTab === 'vehicles' && (
-                    <div className="space-y-4">
+                    <div id="provider-management-tabs-panel-vehicles" role="tabpanel" aria-labelledby="provider-management-tabs-tab-vehicles" tabIndex={0} className="space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500">
                           Frota de veículos credenciada para aulas de direção.
@@ -1455,7 +1461,7 @@ export const ProviderApp: React.FC = () => {
 
                   {/* Offerings Subtab */}
                   {managementSubTab === 'offerings' && (
-                    <div className="space-y-4">
+                    <div id="provider-management-tabs-panel-offerings" role="tabpanel" aria-labelledby="provider-management-tabs-tab-offerings" tabIndex={0} className="space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500">
                           Catálogo de serviços e valores comerciais publicados para os alunos.
@@ -1499,7 +1505,7 @@ export const ProviderApp: React.FC = () => {
 
                   {/* Compliance Subtab */}
                   {managementSubTab === 'compliance' && (
-                    <div className="space-y-4">
+                    <div id="provider-management-tabs-panel-compliance" role="tabpanel" aria-labelledby="provider-management-tabs-tab-compliance" tabIndex={0} className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-500">
                           Verificação regulatória e documentos de credenciamento oficial.

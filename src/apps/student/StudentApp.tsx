@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   Calendar as CalendarIcon,
@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Map,
   List,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   Provider,
@@ -18,7 +19,7 @@ import {
   ServiceOffering,
 } from '../../types';
 import { BookingCard } from '../../components/ui/BookingCard';
-import { Button } from '../../components/ui/Button';
+import { Button, PrimaryButton, SecondaryButton } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
@@ -106,7 +107,7 @@ export const StudentApp: React.FC = () => {
   const { user, logout } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
-  const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'messages' | 'profile'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'profile'>('search');
   const [bookingTab, setBookingTab] = useState<'upcoming' | 'history'>('upcoming');
   const [searchLocation, setSearchLocation] = useState('');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
@@ -123,6 +124,8 @@ export const StudentApp: React.FC = () => {
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
+
+  const searchRequestIdRef = useRef(0);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -149,12 +152,11 @@ export const StudentApp: React.FC = () => {
     }
   }, [user?.name, user?.phone, user?.avatarUrl]);
 
-  // Live Supabase database state
+  // Bookings are an independent data boundary from the public search pipeline.
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
   const [searchLoading, setSearchLoading] = useState(isRealSupabase);
   const [searchError, setSearchError] = useState(false);
 
-  // Bookings are an independent data boundary from the public search pipeline.
   useEffect(() => {
     async function loadBookings() {
       setBookingsLoading(true);
@@ -187,6 +189,7 @@ export const StudentApp: React.FC = () => {
   });
 
   const handleUpdateSearch = (updates: Partial<SearchRequest>) => {
+    setSearchLoading(true);
     setSearchRequest((prev) => ({
       ...prev,
       ...updates,
@@ -194,17 +197,76 @@ export const StudentApp: React.FC = () => {
     }));
   };
 
+function applyStrictProviderFilters(
+  results: PublicSearchProviderResult[],
+  req: SearchRequest,
+): PublicSearchProviderResult[] {
+  const filtered: PublicSearchProviderResult[] = [];
+
+  for (const provider of results) {
+    // 1. Provider type match
+    if (req.providerType && req.providerType !== 'ALL') {
+      if (provider.providerType !== req.providerType) continue;
+    }
+
+    // 2. Distance / Radius filter match
+    if (req.radiusMeters !== undefined && req.radiusMeters > 0) {
+      if ((provider.roundedDistanceMeters || 0) > req.radiusMeters) continue;
+    }
+
+    // 3. Minimum rating filter match
+    if (req.minimumRating !== undefined && req.minimumRating > 0) {
+      if (!provider.ratingCount || (provider.ratingAverage || 0) < req.minimumRating) continue;
+    }
+
+    // 4. Compute matching offerings
+    const allOfferings = provider.publicOfferings || [];
+    const matchingOfferings = allOfferings.filter((offering) => {
+      // Category match
+      if (req.category && offering.category !== req.category) return false;
+      // Transmission match
+      if (req.transmission && req.transmission !== 'ALL' && offering.transmission !== req.transmission) return false;
+      // Max price match
+      if (req.maxPriceInCents !== undefined && offering.priceInCents > req.maxPriceInCents) return false;
+      // Min price match
+      if (req.minPriceInCents !== undefined && offering.priceInCents < req.minPriceInCents) return false;
+      return true;
+    });
+
+    // If no matching offerings satisfy the active filters, omit provider completely
+    if (matchingOfferings.length === 0 && allOfferings.length > 0) {
+      continue;
+    }
+
+    // Determine displayed prices and offerings strictly from matching offerings
+    const effectiveOfferings = matchingOfferings.length > 0 ? matchingOfferings : allOfferings;
+    const lowestPrice = effectiveOfferings.length > 0 ? Math.min(...effectiveOfferings.map((o) => o.priceInCents)) : provider.startingPriceInCents;
+    const effectiveCategories = Array.from(new Set(effectiveOfferings.map((o) => o.category)));
+    const effectiveTransmissions = Array.from(new Set(effectiveOfferings.map((o) => o.transmission)));
+
+    filtered.push({
+      ...provider,
+      publicOfferings: effectiveOfferings,
+      startingPriceInCents: lowestPrice,
+      categories: effectiveCategories.length > 0 ? effectiveCategories : provider.categories,
+      transmissions: effectiveTransmissions.length > 0 ? effectiveTransmissions : provider.transmissions,
+    });
+  }
+
+  return filtered;
+}
+
   const [searchRefreshKey, setSearchRefreshKey] = useState(0);
   const [realSearchResponse, setRealSearchResponse] = useState<SearchResultResponse | null>(null);
 
   useEffect(() => {
     if (!isRealSupabase) return;
-    let cancelled = false;
     setSearchLoading(true);
     setSearchError(false);
+    const requestId = ++searchRequestIdRef.current;
     const timer = window.setTimeout(async () => {
       try {
-        const results = await dbService.searchPublicProviderResults({
+        const rawResults = await dbService.searchPublicProviderResults({
           userLat: searchRequest.latitude,
           userLng: searchRequest.longitude,
           radiusMeters: searchRequest.radiusMeters,
@@ -217,7 +279,11 @@ export const StudentApp: React.FC = () => {
           offset: ((searchRequest.page || 1) - 1) * (searchRequest.limit || 10),
           date: searchRequest.date,
         });
-        if (cancelled) return;
+        if (requestId !== searchRequestIdRef.current) return;
+
+        // Apply strict multi-filter validation on returned results
+        const results = applyStrictProviderFilters(rawResults, searchRequest);
+
         const sortedResults = [...results].sort((a, b) => {
           if (searchRequest.sortBy === 'PRICE_ASC') return a.startingPriceInCents - b.startingPriceInCents || a.providerId.localeCompare(b.providerId);
           if (searchRequest.sortBy === 'PRICE_DESC') return b.startingPriceInCents - a.startingPriceInCents || a.providerId.localeCompare(b.providerId);
@@ -236,7 +302,7 @@ export const StudentApp: React.FC = () => {
         });
         setSearchLoading(false);
       } catch (error) {
-        if (!cancelled) {
+        if (requestId === searchRequestIdRef.current) {
           console.error('Failed to execute public provider search:', error);
           setSearchError(true);
           setSearchLoading(false);
@@ -244,7 +310,6 @@ export const StudentApp: React.FC = () => {
       }
     }, 300);
     return () => {
-      cancelled = true;
       window.clearTimeout(timer);
     };
   }, [isRealSupabase, searchRequest, searchRefreshKey]);
@@ -263,10 +328,12 @@ export const StudentApp: React.FC = () => {
   const additionalFilterCount = countAdditionalStudentFilters(searchRequest);
 
   useEffect(() => {
+    if (!userLocation) return;
+    setSearchLoading(true);
     setSearchRequest((prev) => ({
       ...prev,
-      latitude: userLocation?.lat ?? prev.latitude,
-      longitude: userLocation?.lng ?? prev.longitude,
+      latitude: userLocation.lat,
+      longitude: userLocation.lng,
       radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
       category: 'B',
       providerType: 'ALL',
@@ -406,12 +473,10 @@ export const StudentApp: React.FC = () => {
                   setSearchLocation(addr);
                   setSearchedLocation({ lat, lng, label: addr });
                 }}
-                onOpenFilters={() => setIsFilterDrawerOpen(true)}
-                activeFilterCount={additionalFilterCount}
               />
 
               <section aria-labelledby="student-results-title" className="mt-8">
-                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><button type="button" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></button><button type="button" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><Map className="h-4 w-4"/></button></div></div>
+                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</button><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><button type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></button><button type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><Map className="h-4 w-4"/></button></div></div></div>
               </section>
 
               {searchError && (
@@ -471,6 +536,7 @@ export const StudentApp: React.FC = () => {
               <FilterDrawer
                 isOpen={isFilterDrawerOpen}
                 onClose={() => setIsFilterDrawerOpen(false)}
+                filters={searchRequest}
                 searchRequest={searchRequest}
                 onApplyFilters={(updated) => handleUpdateSearch(updated)}
                 onResetFilters={() =>
@@ -510,16 +576,16 @@ export const StudentApp: React.FC = () => {
               </div>
 
               {/* Filter Tabs: Próximas vs Histórico */}
-              <div role="tablist" aria-label="Aulas" className="grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1">
+              <div role="tablist" aria-label="Aulas" className="grid grid-cols-2 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
                 <button
                   role="tab"
                   aria-selected={bookingTab === 'upcoming'}
                   type="button"
                   onClick={() => setBookingTab('upcoming')}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-11 flex items-center justify-center ${
                     bookingTab === 'upcoming'
-                      ? 'bg-slate-950 text-amber-400 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
+                      : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
                   }`}
                 >
                   Próximas {!bookingsLoading && `(${upcomingBookings.length})`}
@@ -529,10 +595,10 @@ export const StudentApp: React.FC = () => {
                   aria-selected={bookingTab === 'history'}
                   type="button"
                   onClick={() => setBookingTab('history')}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-11 flex items-center justify-center ${
                     bookingTab === 'history'
-                      ? 'bg-slate-950 text-amber-400 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
+                      : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
                   }`}
                 >
                   Histórico {!bookingsLoading && `(${historyBookings.length})`}
@@ -540,7 +606,7 @@ export const StudentApp: React.FC = () => {
               </div>
 
               {/* Upcoming Bookings Section */}
-              {bookingsError && <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="text-sm font-black text-rose-800">Não foi possível carregar suas aulas.</p><button type="button" onClick={() => setBookingsRefreshKey((value) => value + 1)} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Tentar novamente</button></div>}
+              {bookingsError && <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="text-sm font-bold text-rose-800">Não foi possível carregar suas aulas.</p><button type="button" onClick={() => setBookingsRefreshKey((value) => value + 1)} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-bold text-rose-800 shadow-sm">Tentar novamente</button></div>}
               {bookingsLoading && <div aria-busy="true" aria-label="Carregando suas aulas" className="space-y-3">{[1, 2, 3].map((item) => <div key={item} aria-hidden="true" className="h-44 animate-pulse rounded-3xl border border-slate-200 bg-white p-5"><div className="h-4 w-1/2 rounded bg-slate-100" /><div className="mt-4 h-3 w-2/3 rounded bg-slate-100" /><div className="mt-6 h-3 w-full rounded bg-slate-100" /><div className="mt-3 h-3 w-4/5 rounded bg-slate-100" /></div>)}</div>}
               {!bookingsError && !bookingsLoading && bookingTab === 'upcoming' && (
                 <div className="space-y-3">
@@ -551,7 +617,7 @@ export const StudentApp: React.FC = () => {
                       <Button
                         variant="primary"
                         size="sm"
-                        className="mt-3"
+                        className="mt-3 font-bold"
                         onClick={() => setActiveTab('search')}
                       >
                         Buscar aulas
@@ -575,7 +641,7 @@ export const StudentApp: React.FC = () => {
               {!bookingsError && !bookingsLoading && bookingTab === 'history' && (
                 <div className="space-y-3">
                   {historyBookings.length === 0 ? (
-                    <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
+                    <div className="p-8 text-center bg-white rounded-3xl border border-[var(--mazzi-border)]">
                       <p className="text-sm font-bold text-slate-800">Seu histórico ainda está vazio.</p>
                     </div>
                   ) : (
@@ -594,63 +660,183 @@ export const StudentApp: React.FC = () => {
             </div>
           )}
 
-          {/* CHAT TAB — conversation access stays scoped to real bookings */}
-          {activeTab === 'messages' && (
-            <div className="space-y-5">
-              <div><p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Conversas</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Conversas</h2><p className="mt-1 text-sm text-slate-500">Combine detalhes das suas aulas com instrutores e autoescolas.</p></div>
-              {bookingsLoading ? <div aria-busy="true" aria-label="Carregando conversas" className="grid gap-3 md:grid-cols-2">{[1, 2, 3].map((item) => <div key={item} aria-hidden="true" className="h-32 animate-pulse rounded-3xl border border-slate-200 bg-white p-4"><div className="h-4 w-2/3 rounded bg-slate-100" /><div className="mt-4 h-3 w-1/2 rounded bg-slate-100" /><div className="mt-5 h-8 w-28 rounded-xl bg-slate-100" /></div>)}</div> : bookingsError ? <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="text-sm font-black text-rose-800">Não foi possível carregar suas conversas.</p><button type="button" onClick={() => setBookingsRefreshKey((value) => value + 1)} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-black text-rose-800 shadow-sm">Tentar novamente</button></div> : confirmedBookings.length === 0 ? <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm"><MessageSquare className="mx-auto h-8 w-8 text-slate-300" aria-hidden="true" /><p className="mt-3 text-sm font-black text-slate-800">Nenhuma conversa disponível.</p><p className="mt-1 text-xs text-slate-500">Quando você agendar uma aula, poderá conversar com o profissional por aqui.</p><Button variant="primary" size="sm" className="mt-4" onClick={() => setActiveTab('search')}>Buscar aulas</Button></div> : <div className="grid gap-3 md:grid-cols-2">{chatBookings.map((booking) => { const start = booking.scheduledStartAt || `${booking.scheduledDate}T${booking.startTime}:00`; const instructor = booking.instructorName || booking.snapshot?.instructorName || 'Aula MAZZI'; const provider = booking.providerName && booking.providerName !== instructor ? booking.providerName : ''; const vehicle = booking.vehicleName || booking.snapshot?.vehicleName; return <article key={booking.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><div aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-amber-400">{instructor.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-black text-slate-950">{instructor}</p>{provider && <p className="truncate text-xs font-semibold text-slate-500">{provider}</p>}</div></div><StatusBadge status={booking.status} audience="student" /></div><div className="mt-4 grid gap-2 text-xs font-semibold text-slate-600 sm:grid-cols-2"><span>{formatDateBR(start)} · {formatTimeBR(start)}</span>{vehicle && <span className="truncate">{vehicle}</span>}</div><button type="button" aria-label={`Abrir conversa com ${instructor}`} onClick={() => setSelectedBookingForChat(booking)} className="mt-4 w-full rounded-xl bg-slate-950 px-3 py-2.5 text-xs font-black text-amber-400 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">Abrir conversa</button></article>; })}</div>}
-            </div>
-          )}
-
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="space-y-5">
               <div className="text-center">
-                    <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] bg-[var(--mazzi-yellow)] text-2xl font-black shadow-[var(--mazzi-shadow)]">
-                      {profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (user?.name ? user.name.split(' ').map((name) => name[0]).join('').slice(0, 2).toUpperCase() : 'AN')}
-                    </div>
-                    <h3 className="mt-4 truncate text-2xl font-extrabold">{profileName || user?.name || 'Nome não informado'}</h3><p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p><button type="button" onClick={() => setIsEditingProfile((value) => !value)} className="mt-4 text-xs font-extrabold">{isEditingProfile ? 'Cancelar' : 'Editar perfil'}</button>
+                <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] bg-[var(--mazzi-yellow)] text-2xl font-bold shadow-[var(--mazzi-shadow)] border border-[var(--mazzi-border)]">
+                  {profileAvatar ? (
+                    <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" />
+                  ) : user?.name ? (
+                    user.name.split(' ').map((name) => name[0]).join('').slice(0, 2).toUpperCase()
+                  ) : (
+                    'AN'
+                  )}
+                </div>
+                <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">{profileName || user?.name || 'Nome não informado'}</h3>
+                <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p>
+                {!isEditingProfile && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(true)}
+                    className="mt-3 text-xs font-bold text-[var(--mazzi-dark)] hover:underline cursor-pointer"
+                  >
+                    Editar perfil
+                  </button>
+                )}
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h4 className="text-sm font-black text-slate-950">Dados do perfil</h4>
-                {isEditingProfile ? <div className="mt-4 space-y-4">
-                  <div><label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-photo">Foto</label><div id="student-profile-photo"><ProfilePhotoPicker value={profileAvatar} name={profileName || user?.name} onChange={setProfileAvatar} disabled={profileSaving} /></div></div>
-                  <div><label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-name">Nome</label><input id="student-profile-name" value={profileName} onChange={(event) => setProfileName(event.target.value)} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" /></div>
-                  <div><label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-phone">Telefone</label><input id="student-profile-phone" value={profilePhone} onChange={(event) => setProfilePhone(formatPhone(event.target.value))} placeholder="(11) 99999-9999" className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200" /></div>
-                  <div><label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-email">E-mail</label><input id="student-profile-email" value={user?.email || ''} readOnly aria-readonly="true" className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm text-slate-500" /></div>
-                  <p className="text-[11px] text-slate-500">E-mail, papel e identificador são informações protegidas e não podem ser alterados.</p>
-                  <Button variant="primary" size="md" className="w-full" isLoading={profileSaving} onClick={async () => { setProfileSaving(true); setProfileError(null); try { await dbService.updateMyProfile(profileName, profilePhone, profileAvatar); setIsEditingProfile(false); } catch (error: any) { if (process.env.NODE_ENV !== 'production') console.error('Failed to save student profile:', error); setProfileError('Não foi possível salvar seu perfil.'); } finally { setProfileSaving(false); } }}>Salvar perfil</Button>
-                  {profileError && <p role="alert" className="text-xs font-semibold text-rose-700">{profileError}</p>}
-                </div> : <dl className="mt-4 space-y-3 text-sm"><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Telefone</dt><dd className="font-semibold text-slate-900">{profilePhone || 'Não informado'}</dd></div><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">E-mail</dt><dd className="truncate font-semibold text-slate-900">{user?.email || 'Não informado'}</dd></div></dl>}
+              <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+                <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Dados do perfil</h4>
+                {isEditingProfile ? (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-photo">
+                        Foto de perfil
+                      </label>
+                      <div id="student-profile-photo">
+                        <ProfilePhotoPicker
+                          value={profileAvatar}
+                          name={profileName || user?.name}
+                          onChange={setProfileAvatar}
+                          disabled={profileSaving}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-name">
+                        Nome completo
+                      </label>
+                      <input
+                        id="student-profile-name"
+                        value={profileName}
+                        onChange={(event) => setProfileName(event.target.value)}
+                        disabled={profileSaving}
+                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-phone">
+                        Telefone
+                      </label>
+                      <input
+                        id="student-profile-phone"
+                        value={profilePhone}
+                        onChange={(event) => setProfilePhone(formatPhone(event.target.value))}
+                        placeholder="(11) 99999-9999"
+                        disabled={profileSaving}
+                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-email">
+                        E-mail
+                      </label>
+                      <input
+                        id="student-profile-email"
+                        value={user?.email || ''}
+                        readOnly
+                        aria-readonly="true"
+                        className="w-full min-h-11 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500 cursor-not-allowed"
+                      />
+                    </div>
+
+                    <p className="text-[11px] text-slate-500">
+                      E-mail e identificador são informações protegidas e não podem ser alterados.
+                    </p>
+
+                    {profileError && (
+                      <p role="alert" className="text-xs font-semibold text-rose-700">
+                        {profileError}
+                      </p>
+                    )}
+
+                    {/* Side-by-side Cancel and Save Buttons */}
+                    <div className="flex items-center gap-2.5 pt-2">
+                      <SecondaryButton
+                        type="button"
+                        size="md"
+                        className="w-1/2 min-h-11 font-bold shadow-2xs"
+                        disabled={profileSaving}
+                        onClick={() => {
+                          setProfileName(user?.name || '');
+                          setProfilePhone(formatPhone(user?.phone || ''));
+                          setProfileAvatar(user?.avatarUrl);
+                          setProfileError(null);
+                          setIsEditingProfile(false);
+                        }}
+                      >
+                        Cancelar
+                      </SecondaryButton>
+                      <PrimaryButton
+                        type="button"
+                        size="md"
+                        className="w-1/2 min-h-11 font-bold shadow-xs"
+                        isLoading={profileSaving}
+                        onClick={async () => {
+                          setProfileSaving(true);
+                          setProfileError(null);
+                          try {
+                            await dbService.updateMyProfile(profileName, profilePhone, profileAvatar);
+                            setIsEditingProfile(false);
+                          } catch (error: any) {
+                            if (process.env.NODE_ENV !== 'production') console.error('Failed to save student profile:', error);
+                            setProfileError('Não foi possível salvar seu perfil.');
+                          } finally {
+                            setProfileSaving(false);
+                          }
+                        }}
+                      >
+                        Salvar perfil
+                      </PrimaryButton>
+                    </div>
+                  </div>
+                ) : (
+                  <dl className="mt-4 space-y-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-500">Telefone</dt>
+                      <dd className="font-semibold text-slate-900">{profilePhone || 'Não informado'}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-500">E-mail</dt>
+                      <dd className="truncate font-semibold text-slate-900">{user?.email || 'Não informado'}</dd>
+                    </div>
+                  </dl>
+                )}
               </div>
 
               <div className="mazzi-hero text-left">
-                  <div className="p-5">
-                    <span className="text-xl font-black text-slate-900 block">
-                      {historyBookings.filter((b) => b.status === 'COMPLETED').length}
-                    </span>
-                    <span className="text-[11px] text-slate-500 font-semibold">Aulas Concluídas</span>
-                  </div>
-                  <div className="p-5">
-                    <span className="block text-xl font-black text-white">
-                      {upcomingBookings.length}
-                    </span>
-                    <span className="text-[11px] font-semibold text-white/60">Aulas Agendadas</span>
-                  </div>
+                <div className="p-5">
+                  <span className="text-xl font-bold text-slate-900 block">
+                    {historyBookings.filter((b) => b.status === 'COMPLETED').length}
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-semibold">Aulas Concluídas</span>
+                </div>
+                <div className="p-5">
+                  <span className="block text-xl font-bold text-white">
+                    {upcomingBookings.length}
+                  </span>
+                  <span className="text-[11px] font-semibold text-white/60">Aulas Agendadas</span>
+                </div>
               </div>
 
-              <div className="border-t border-slate-200 pt-4"><Button variant="ghost" size="md" className="w-full text-rose-700 hover:bg-rose-50" onClick={() => { void logout(); }}>Sair</Button></div>
+              <div className="border-t border-[var(--mazzi-border)] pt-4">
+                <Button variant="ghost" size="md" className="w-full text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void logout(); }}>
+                  Sair
+                </Button>
+              </div>
             </div>
           )}
         </main>
 
-        {/* Bottom navigation */}
-        <nav aria-label="Navegação principal" className="mazzi-bottom-nav grid-cols-4">
+        {/* Bottom navigation: 3 main tabs for Student (Search, Bookings, Profile) */}
+        <nav aria-label="Navegação principal" className="mazzi-bottom-nav grid-cols-3">
           {[
             { id: 'search', label: 'Buscar', icon: <Search className="w-5 h-5" /> },
             { id: 'bookings', label: 'Aulas', icon: <CalendarIcon className="w-5 h-5" /> },
-            { id: 'messages', label: 'Chat', icon: <MessageSquare className="w-5 h-5" /> },
             { id: 'profile', label: 'Perfil', icon: <User className="w-5 h-5" /> },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -661,12 +847,16 @@ export const StudentApp: React.FC = () => {
                 aria-label={tab.label}
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`mx-1 flex min-h-12 items-center justify-center rounded-2xl transition ${isActive ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-[0_6px_16px_rgba(246,201,69,.28)]' : 'flex-col text-[var(--mazzi-muted)]'}`}
+                className={`mx-1 flex min-h-12 items-center justify-center rounded-2xl transition ${
+                  isActive
+                    ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-[0_6px_16px_rgba(246,201,69,.28)] font-bold'
+                    : 'flex-col text-[var(--mazzi-muted)] hover:text-[var(--mazzi-dark)]'
+                }`}
               >
                 <div className="grid h-8 w-8 place-items-center rounded-xl">
                   {tab.icon}
                 </div>
-                {!isActive && <span className="mt-0.5 text-[10px]">{tab.label}</span>}
+                {!isActive && <span className="mt-0.5 text-[10px] font-semibold">{tab.label}</span>}
               </button>
             );
           })}

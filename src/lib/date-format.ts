@@ -45,6 +45,12 @@ export function formatDateRangeBR(start: string | Date, end: string | Date): str
   return `${formatDateTimeBR(start)} - ${formatTimeBR(end)}`;
 }
 
+export function formatTimeRange(start?: string, end?: string): string {
+  if (!start && !end) return 'Horário a confirmar';
+  if (start && end) return `${start.substring(0, 5)} - ${end.substring(0, 5)}`;
+  return (start || end || '').substring(0, 5);
+}
+
 /** Returns a YYYY-MM-DD business date in the app timezone, safely across UTC offsets. */
 export function getBusinessDateOnly(offsetDays = 0, now = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-CA', {

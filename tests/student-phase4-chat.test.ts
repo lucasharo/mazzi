@@ -22,12 +22,11 @@ describe('Student new template phase 4 chat contracts', () => {
     expect(result[1].content).toBe('updated');
   });
 
-  it('keeps chat list booking-based without creating conversations in a loop', () => {
-    expect(student).toContain('const chatBookings = useMemo');
-    expect(student).toContain('chatBookings.map');
-    expect(student).not.toContain('getConversationForBooking(booking.id)');
-    expect(student).toContain('scheduledStartAt');
-    expect(student).toContain('StatusBadge');
+  it('keeps chat access booking-scoped through bookings without standalone chats tab', () => {
+    expect(student).not.toContain("{ id: 'messages', label: 'Chat'");
+    expect(student).toContain('onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}');
+    expect(student).toContain('selectedBookingForChat');
+    expect(student).toContain('BookingChatPanel');
   });
 
   it('preserves realtime, polling fallback, reconnect refetch and cleanup', () => {

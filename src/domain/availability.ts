@@ -30,17 +30,20 @@ export class AvailabilityDomainError extends Error {
   }
 }
 
+/** Canonical Single Source of Truth for Student Booking Horizon (MVP: 60 moving days) */
+export const STUDENT_BOOKING_HORIZON_DAYS = 60;
+export const AVAILABILITY_SEARCH_HORIZON_DAYS = STUDENT_BOOKING_HORIZON_DAYS;
+
 // Global System Configuration Defaults
 // IMPORTANT: These default values are configured for development/testing environments (DEFAULT_DEVELOPMENT_CONFIGURATION).
 // They MUST NOT be treated as rigid commercial business decisions and can be overridden dynamically at runtime.
 export const DEFAULT_DEVELOPMENT_CONFIGURATION = {
-  horizonDays: 30,
+  horizonDays: STUDENT_BOOKING_HORIZON_DAYS,
   noticeMinutes: 120, // 2 hours minimum notice
   defaultTimezone: 'America/Sao_Paulo',
 };
 
 export const DEFAULT_TIMEZONE = DEFAULT_DEVELOPMENT_CONFIGURATION.defaultTimezone;
-export const AVAILABILITY_SEARCH_HORIZON_DAYS = DEFAULT_DEVELOPMENT_CONFIGURATION.horizonDays;
 export const MINIMUM_BOOKING_NOTICE_MINUTES = DEFAULT_DEVELOPMENT_CONFIGURATION.noticeMinutes;
 
 // Day of Week Mapping Table (ISO 1=Monday .. 7=Sunday)

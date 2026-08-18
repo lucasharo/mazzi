@@ -450,17 +450,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     >
       <div className="space-y-4 text-left">
         {/* Environment Safety Banner */}
-        <div className="p-3 rounded-2xl bg-amber-500/15 border border-amber-400/40 text-amber-900 text-xs font-bold flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-400/30 text-amber-900 text-xs font-bold flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
           <span>
-            <strong>Ambiente de Desenvolvimento:</strong> Pagamento simulado sem cobrança financeira real.
+            <strong>Ambiente de Testes:</strong> Pagamento simulado sem cobrança financeira real.
           </span>
         </div>
 
         {/* Global Error Banner */}
         {errorMessage && (
-          <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2">
-            <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2">
+            <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1">
               <p>{errorMessage}</p>
             </div>
@@ -471,9 +471,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'QUOTE_PREVIEW' && quote && (
           <div className="space-y-4">
             {/* Countdown Badge */}
-            <div className="flex items-center justify-between rounded-2xl bg-[var(--mazzi-dark)] p-3 text-white">
+            <div className="flex items-center justify-between rounded-2xl bg-[var(--mazzi-dark)] p-3.5 text-white shadow-xs" aria-live="polite">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+                <Clock className="w-4 h-4 text-amber-400 animate-pulse" aria-hidden="true" />
                 <span className="text-xs font-bold">Cotação Válida Por:</span>
               </div>
               <span className="font-mono text-sm font-extrabold text-amber-400">
@@ -482,62 +482,114 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Provider & Schedule Summary */}
-            <div className="mazzi-card space-y-3 p-5 text-xs text-slate-700">
-              <div className="flex items-center justify-between">
-                  <div><span className="font-bold text-slate-900 text-sm block">{offering.instructorName || provider.name}</span>{offering.instructorName && offering.instructorName !== provider.name && <span className="text-[11px] text-slate-500">{provider.name}</span>}</div>
-                <Badge variant="primary" size="sm">
+            <div className="mazzi-card space-y-3 p-4 sm:p-5 text-xs text-slate-700">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="font-extrabold text-[var(--mazzi-dark)] text-sm sm:text-base block truncate">
+                    {offering.instructorName || provider.name}
+                  </span>
+                  {offering.instructorName && offering.instructorName !== provider.name && (
+                    <span className="text-[11px] text-slate-500 block truncate">{provider.name}</span>
+                  )}
+                </div>
+                <span className="shrink-0 bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
                   Cat. {offering.category}
-                </Badge>
+                </span>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <div className="pt-2.5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                  <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden="true" />
                   <span>{formatDateBR(scheduledDate)}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{scheduledStartAt ? formatTimeBR(scheduledStartAt) : `${startTime} - ${endTime}`} {offering.durationMinutes ? `(${offering.durationMinutes} min)` : ''}</span>
+                <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                  <span>
+                    {scheduledStartAt ? formatTimeBR(scheduledStartAt) : `${startTime} - ${endTime}`}
+                    {offering.durationMinutes ? ` (${offering.durationMinutes} min)` : ''}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 col-span-2">
-                  <Car className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{vehicle.brand} {vehicle.model} {vehicle.transmission === 'AUTOMATIC' ? '(Automático)' : vehicle.transmission === 'MANUAL' ? '(Manual)' : ''}</span>
+                <div className="flex items-center gap-1.5 col-span-1 sm:col-span-2 text-slate-700 font-medium truncate">
+                  <Car className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    {vehicle.brand} {vehicle.model}
+                    {vehicle.transmission === 'AUTOMATIC' ? ' (Automático)' : vehicle.transmission === 'MANUAL' ? ' (Manual)' : ''}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Commercial Price Breakdown */}
-            <div className="rounded-[22px] bg-[var(--mazzi-yellow-soft)] p-5 space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-700">
-                  <span>Aula prática{durationLabel}</span>
-                <span className="font-semibold">{formatCentsToBRL(quote.priceInCents)}</span>
+            <div className="rounded-[22px] bg-[var(--mazzi-yellow-soft)] p-4 sm:p-5 space-y-2 text-slate-900 border border-amber-300/60">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
+                <span>Aula prática{durationLabel}</span>
+                <span>{formatCentsToBRL(quote.priceInCents)}</span>
               </div>
-              <div className="flex items-center justify-between text-xs text-slate-700">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
                 <span>Taxa de Serviço MAZZI</span>
-                <span className="font-semibold">{formatCentsToBRL(quote.platformFeeInCents)}</span>
+                <span>{formatCentsToBRL(quote.platformFeeInCents)}</span>
               </div>
-              <div className="pt-2 border-t border-amber-300/80 flex items-center justify-between text-sm font-black text-slate-950">
+              <div className="pt-2 border-t border-amber-400/60 flex items-center justify-between text-sm sm:text-base font-black text-slate-950">
                 <span>Total a Pagar</span>
                 <span>{formatCentsToBRL(quote.totalInCents)}</span>
               </div>
             </div>
 
-            <div className="mazzi-soft-card space-y-3 p-4">
-              <p className="text-xs font-black text-slate-900">Ponto de encontro</p>
+            {/* Meeting Point Selection */}
+            <div className="mazzi-soft-card space-y-3 p-4 border border-[var(--mazzi-border)]">
+              <p className="text-xs font-black text-[var(--mazzi-dark)] uppercase tracking-wider">Ponto de encontro</p>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" aria-pressed={meetingPointType === 'PROVIDER'} onClick={() => setMeetingPointType('PROVIDER')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'PROVIDER' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Instrutor / autoescola</button>
-                <button type="button" aria-pressed={meetingPointType === 'STUDENT'} onClick={() => setMeetingPointType('STUDENT')} className={`p-2 rounded-xl border text-xs font-bold ${meetingPointType === 'STUDENT' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}`}>Meu endereço</button>
+                <button
+                  type="button"
+                  aria-pressed={meetingPointType === 'PROVIDER'}
+                  onClick={() => setMeetingPointType('PROVIDER')}
+                  className={`min-h-11 p-2.5 rounded-xl border text-xs font-extrabold transition text-center cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                    meetingPointType === 'PROVIDER'
+                      ? 'border-amber-400/80 bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] shadow-xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  Instrutor / Autoescola
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={meetingPointType === 'STUDENT'}
+                  onClick={() => setMeetingPointType('STUDENT')}
+                  className={`min-h-11 p-2.5 rounded-xl border text-xs font-extrabold transition text-center cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                    meetingPointType === 'STUDENT'
+                      ? 'border-amber-400/80 bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] shadow-xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  Meu endereço
+                </button>
               </div>
-              {meetingPointType === 'STUDENT' && <div><label htmlFor="checkout-student-address" className="mb-1.5 block text-xs font-bold text-slate-700">Endereço do aluno</label><input id="checkout-student-address" value={studentAddress} onChange={(event) => setStudentAddress(event.target.value)} placeholder="Digite seu endereço" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs" required /></div>}
+              {meetingPointType === 'STUDENT' && (
+                <div>
+                  <label htmlFor="checkout-student-address" className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Endereço completo para o ponto de encontro
+                  </label>
+                  <input
+                    id="checkout-student-address"
+                    value={studentAddress}
+                    onChange={(event) => setStudentAddress(event.target.value)}
+                    placeholder="Digite seu endereço com número e bairro"
+                    className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-[var(--mazzi-dark)] placeholder:text-slate-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--mazzi-focus-ring)]"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             <Button
+              type="button"
               variant="primary"
               size="lg"
-              className="w-full"
+              className="w-full min-h-[50px] font-extrabold shadow-sm"
               isLoading={isProcessing}
               onClick={handleProceedToBookingHold}
-              rightIcon={<ShieldCheck className="w-4 h-4" />}
+              rightIcon={<ShieldCheck className="w-4 h-4" aria-hidden="true" />}
+              aria-label="Confirmar reserva da aula"
             >
               Confirmar aula
             </Button>
@@ -548,7 +600,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'AUTH_REQUIRED' && (
           <div className="py-6 text-center space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center mx-auto">
-              <KeyRound className="w-6 h-6" />
+              <KeyRound className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
               <h3 className="font-black text-base text-slate-900">Identificação Necessária</h3>
@@ -557,13 +609,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-[var(--mazzi-border)] space-y-3">
               <p className="text-sm font-black text-slate-900">Sua sessão expirou</p>
               <p className="text-xs text-slate-600">Entre novamente para continuar com segurança.</p>
               <Button
+                type="button"
                 variant="primary"
                 size="md"
-                className="w-full"
+                className="w-full min-h-11 font-extrabold"
                 onClick={onClose}
               >
                 Entrar novamente
@@ -576,7 +629,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'ERROR_SLOT_UNAVAILABLE' && (
           <div className="py-6 text-center space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center mx-auto">
-              <AlertCircle className="w-6 h-6" />
+              <AlertCircle className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
               <h3 className="font-black text-base text-slate-900">Esse horário acabou de ficar indisponível</h3>
@@ -585,9 +638,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </p>
             </div>
             <Button
+              type="button"
               variant="primary"
               size="md"
-              className="w-full"
+              className="w-full min-h-11 font-extrabold"
               onClick={() => { onClose(); onChooseAnotherSlot?.(); }}
             >
               Selecionar Outro Horário
@@ -599,7 +653,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'ERROR_QUOTE_EXPIRED' && (
           <div className="py-6 text-center space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-800 flex items-center justify-center mx-auto">
-              <Clock className="w-6 h-6" />
+              <Clock className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
               <h3 className="font-black text-base text-slate-900">Esta cotação expirou</h3>
@@ -608,9 +662,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </p>
             </div>
             <Button
+              type="button"
               variant="primary"
               size="md"
-              className="w-full"
+              className="w-full min-h-11 font-extrabold"
               onClick={() => {
                 onClose();
                 onChooseAnotherSlot?.();
@@ -625,9 +680,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'PAYMENT_SELECTION' && booking && payment && (
           <div className="space-y-4">
             {/* Hold Expiration Counter */}
-            <div className="p-3 rounded-2xl bg-slate-900 text-white flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-[var(--mazzi-dark)] text-white flex items-center justify-between shadow-xs" aria-live="polite">
               <div className="flex items-center gap-2 text-xs font-bold">
-                <Clock className="w-4 h-4 text-amber-400" />
+                <Clock className="w-4 h-4 text-amber-400" aria-hidden="true" />
                 <span>Horário Reservado Temporariamente:</span>
               </div>
               <span className="font-mono text-sm font-extrabold text-amber-400">
@@ -639,62 +694,68 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                aria-pressed={paymentMethod === 'PIX'}
                 onClick={() => setPaymentMethod('PIX')}
-                className={`p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                className={`min-h-11 p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                   paymentMethod === 'PIX'
-                    ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/30'
+                    ? 'border-amber-400/80 bg-[var(--mazzi-yellow-soft)] shadow-xs'
                     : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}
               >
-                <QrCode className="w-4 h-4 text-amber-600" />
-                <div>
-                  <span className="font-bold text-xs text-slate-900 block">PIX Simulado</span>
-                  <span className="text-[10px] text-slate-500">Aprovação instantânea</span>
+                <QrCode className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+                <div className="min-w-0">
+                  <span className="font-extrabold text-xs text-slate-900 block truncate">PIX Simulado</span>
+                  <span className="text-[10px] text-slate-500 font-medium block truncate">Aprovação instantânea</span>
                 </div>
               </button>
 
               <button
                 type="button"
+                aria-pressed={paymentMethod === 'CREDIT_CARD'}
                 onClick={() => setPaymentMethod('CREDIT_CARD')}
-                className={`p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                className={`min-h-11 p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                   paymentMethod === 'CREDIT_CARD'
-                    ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-400/30'
+                    ? 'border-amber-400/80 bg-[var(--mazzi-yellow-soft)] shadow-xs'
                     : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}
               >
-                <CreditCard className="w-4 h-4 text-amber-600" />
-                <div>
-                  <span className="font-bold text-xs text-slate-900 block">Cartão Simulado</span>
-                  <span className="text-[10px] text-slate-500">Testar cenários</span>
+                <CreditCard className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+                <div className="min-w-0">
+                  <span className="font-extrabold text-xs text-slate-900 block truncate">Cartão Simulado</span>
+                  <span className="text-[10px] text-slate-500 font-medium block truncate">Testar cenários</span>
                 </div>
               </button>
             </div>
 
             {/* PIX Fake View */}
             {paymentMethod === 'PIX' && (
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 text-center space-y-3">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 text-center space-y-3 shadow-xs">
                 <p className="text-xs font-bold text-slate-800">Código PIX Copia e Cola (Simulado)</p>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] text-slate-600 break-all select-all">
                   {payment.pixQrCode || `FAKE_PIX_SIMULATED_PAYMENT_ENV_DEVELOPMENT_${payment.id}`}
                 </div>
 
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
-                  className="w-full"
+                  className="w-full min-h-11 font-bold"
                   onClick={handleCopyPixCode}
-                  leftIcon={copiedPix ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  leftIcon={copiedPix ? <Check className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
+                  aria-label="Copiar código PIX para a área de transferência"
                 >
                   {copiedPix ? 'Código Copiado!' : 'Copiar Código PIX'}
                 </Button>
 
-                <div className="pt-2">
+                <div className="pt-1">
                   <Button
+                    type="button"
                     variant="primary"
                     size="md"
-                    className="w-full"
+                    className="w-full min-h-11 font-extrabold shadow-sm"
                     isLoading={isProcessing}
                     onClick={() => handleExecuteFakePayment('APPROVED')}
+                    aria-label="Simular aprovação do pagamento PIX"
                   >
                     Simular Pagamento PIX Aprovado
                   </Button>
@@ -704,34 +765,37 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {/* Credit Card Fake View */}
             {paymentMethod === 'CREDIT_CARD' && (
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-3">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-xs">
                 <p className="text-xs font-bold text-slate-800 text-center">
                   Simulador de Testes de Cartão
                 </p>
 
                 <div className="space-y-2">
                   <Button
+                    type="button"
                     variant="primary"
                     size="md"
-                    className="w-full"
+                    className="w-full min-h-11 font-extrabold shadow-sm"
                     isLoading={isProcessing}
                     onClick={() => handleExecuteFakePayment('APPROVED')}
-                    leftIcon={<CheckCircle2 className="w-4 h-4 text-amber-950" />}
+                    leftIcon={<CheckCircle2 className="w-4 h-4 text-amber-950" aria-hidden="true" />}
+                    aria-label="Simular pagamento de cartão aprovado"
                   >
                     Simular Pagamento Aprovado
                   </Button>
 
                   <Button
+                    type="button"
                     variant="outline"
                     size="md"
-                    className="w-full text-rose-700 border-rose-200 hover:bg-rose-50"
+                    className="w-full min-h-11 font-bold text-rose-700 border-rose-200 hover:bg-rose-50"
                     isLoading={isProcessing}
                     onClick={() => handleExecuteFakePayment('DECLINED')}
-                    leftIcon={<XCircle className="w-4 h-4 text-rose-600" />}
+                    leftIcon={<XCircle className="w-4 h-4 text-rose-600" aria-hidden="true" />}
+                    aria-label="Simular pagamento de cartão recusado"
                   >
                     Simular Pagamento Recusado
                   </Button>
-
                 </div>
               </div>
             )}
@@ -741,8 +805,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {/* STEP: SUCCESS */}
         {step === 'SUCCESS' && booking && (
           <div className="py-4 text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center mx-auto shadow-sm">
-              <CheckCircle2 className="w-8 h-8" />
+            <div className="w-14 h-14 rounded-2xl bg-[var(--mazzi-yellow)] text-slate-950 flex items-center justify-center mx-auto shadow-sm">
+              <CheckCircle2 className="w-8 h-8" aria-hidden="true" />
             </div>
 
             <div>
@@ -752,20 +816,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1.5">
               <p className="font-extrabold text-slate-900">{booking.instructorName || booking.providerName}</p>
-              <p className="text-slate-600">{booking.scheduledStartAt ? `${formatDateBR(booking.scheduledStartAt)} às ${formatTimeBR(booking.scheduledStartAt)}` : `${formatDateBR(booking.scheduledDate)} às ${booking.startTime}`}</p>
+              <p className="text-slate-600">
+                {booking.scheduledStartAt
+                  ? `${formatDateBR(booking.scheduledStartAt)} às ${formatTimeBR(booking.scheduledStartAt)}`
+                  : `${formatDateBR(booking.scheduledDate)} às ${booking.startTime}`}
+              </p>
               <p className="text-slate-500">Ponto de Encontro: {formatMeetingPoint(booking.meetingPoint)}</p>
             </div>
 
             <Button
+              type="button"
               variant="secondary"
               size="md"
-              className="w-full"
+              className="w-full min-h-11 font-extrabold"
               onClick={() => {
                 onClose();
                 onGoToBookings?.();
               }}
+              aria-label="Ir para a listagem das minhas aulas"
             >
               Ver Minhas Aulas
             </Button>

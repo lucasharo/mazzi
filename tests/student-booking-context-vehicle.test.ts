@@ -13,9 +13,10 @@ describe('Student booking context vehicle mapping', () => {
 
   it('uses Search as the single student discovery surface', () => {
     expect(studentAppSource).toContain("category: 'B'");
-    expect(studentAppSource).toContain("useState<'search' | 'bookings' | 'messages' | 'profile'>('search')");
+    expect(studentAppSource).toContain("useState<'search' | 'bookings' | 'profile'>('search')");
     expect(studentAppSource).toContain('aria-label="Navegação principal"');
-    expect(studentAppSource).toContain("id: 'messages'");
+    expect(studentAppSource).toContain("grid-cols-3");
+    expect(studentAppSource).not.toContain("id: 'messages'");
     expect(studentAppSource).toContain('Abrir notificações');
     expect(studentAppSource).not.toContain("id: 'notifications'");
     expect(studentAppSource).not.toContain("id: 'home'");

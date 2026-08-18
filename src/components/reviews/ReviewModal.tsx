@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Star } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Booking, Review } from '../../types';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { dbService } from '../../lib/db-service';
 import { formatDateBR, formatTimeBR } from '../../lib/date-format';
+import { Rating } from '../ui/Rating';
 
 interface ReviewModalProps {
   booking: Booking | null;
@@ -105,22 +106,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             <>
               <div>
                 <p className="text-xs font-bold text-slate-700 mb-2">Nota geral</p>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-label={`${value} ${value === 1 ? 'estrela' : 'estrelas'}`}
-                      aria-pressed={value === rating}
-                      onClick={() => setRating(value)}
-                      className={`p-2 rounded-xl transition ${
-                        value <= rating ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-300'
-                      }`}
-                    >
-                      <Star className="w-5 h-5 fill-current" />
-                    </button>
-                  ))}
-                </div>
+                <Rating value={rating} interactive onChange={setRating} showValue={false} size="lg" ariaLabel="Nota geral" />
               </div>
 
               <div>
