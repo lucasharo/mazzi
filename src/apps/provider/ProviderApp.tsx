@@ -97,7 +97,16 @@ import {
   LessonSession,
   LessonSessionState,
 } from '../../domain/lesson-session';
-import { calculateCancellationPolicy, performProviderCancellation } from '../../domain/cancellation';
+import { ProviderCancellationReasonCode, calculateCancellationPolicy, performProviderCancellation } from '../../domain/cancellation';
+
+const PROVIDER_CANCEL_REASON_OPTIONS: { code: ProviderCancellationReasonCode; label: string }[] = [
+  { code: 'SCHEDULE_CONFLICT', label: 'Conflito de agenda' },
+  { code: 'VEHICLE_ISSUE', label: 'Problema no veículo' },
+  { code: 'PERSONAL_EMERGENCY', label: 'Emergência pessoal' },
+  { code: 'WEATHER_OR_SAFETY', label: 'Clima ou segurança' },
+  { code: 'OPERATIONAL_ISSUE', label: 'Problema operacional' },
+  { code: 'OTHER', label: 'Outro motivo' },
+];
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 
@@ -202,6 +211,14 @@ export const ProviderApp: React.FC = () => {
     vehicleId: '',
   });
   const [exceptionError, setExceptionError] = useState<string | null>(null);
+
+  // Provider Cancellation Modal State
+  const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<Booking | null>(null);
+  const [providerCancelReasonCode, setProviderCancelReasonCode] = useState<ProviderCancellationReasonCode>('SCHEDULE_CONFLICT');
+  const [providerCustomReason, setProviderCustomReason] = useState('');
+  const [isCancellingBooking, setIsCancellingBooking] = useState(false);
+  const [providerCancelError, setProviderCancelError] = useState<string | null>(null);
+  const [chatOrigin, setChatOrigin] = useState<'details' | 'list'>('list');
 
   // Slot Generator Simulator State
   const [simOfferingId, setSimOfferingId] = useState<string>('');
@@ -430,26 +447,45 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
-  const handleCancelBooking = async (b: Booking) => {
-    if (!window.confirm('Deseja realmente cancelar este agendamento?')) return;
-    setBookingActionError(null);
-    setBookingActionSuccess(null);
+  const handleConfirmProviderCancel = async () => {
+    if (!selectedBookingForCancel) return;
+    if (providerCancelReasonCode === 'OTHER' && !providerCustomReason.trim()) {
+      setProviderCancelError('A descrição textual é obrigatória para a opção "Outro motivo".');
+      return;
+    }
+    setIsCancellingBooking(true);
+    setProviderCancelError(null);
     try {
-      const result = performProviderCancellation({
-        booking: b,
-        providerId: currentProvider.id,
-        actorUserId: user.id,
-        actorRole: currentRole,
-        reasonCode: 'SCHEDULE_CONFLICT',
-        idempotencyKey: `cancel_${b.id}_${Date.now()}`,
+      const finalReason = providerCancelReasonCode === 'OTHER'
+        ? providerCustomReason.trim()
+        : providerCustomReason.trim()
+        ? `${providerCancelReasonCode}: ${providerCustomReason.trim()}`
+        : providerCancelReasonCode;
+
+      const res = await dbService.cancelBooking({
+        bookingId: selectedBookingForCancel.id,
+        reasonCode: providerCancelReasonCode,
+        reason: finalReason,
       });
 
-      await dbService.updateBookingStatus(b.id, result.booking.status, { cancellation_data: result.cancellationResult });
-      setBookings((prev) => prev.map((item) => (item.id === b.id ? result.booking : item)));
-      setSelectedBooking(result.booking);
-      setBookingActionSuccess(`✓ Agendamento cancelado. ${result.cancellationResult.policyDescription}`);
+      const updatedBooking: Booking = {
+        ...selectedBookingForCancel,
+        status: (res.status as any) || 'CANCELLED_BY_PROVIDER',
+        cancelledAt: new Date().toISOString(),
+        cancellationReason: finalReason,
+      };
+
+      setBookings((prev) => prev.map((item) => item.id === selectedBookingForCancel.id ? updatedBooking : item));
+      if (selectedBooking?.id === selectedBookingForCancel.id) {
+        setSelectedBooking(updatedBooking);
+      }
+      setSelectedBookingForCancel(null);
+      setBookingActionSuccess('✓ Agendamento cancelado. Reembolso integral de 100% será processado para o aluno.');
     } catch (err: any) {
-      setBookingActionError(err.message || 'Erro ao cancelar agendamento.');
+      if (process.env.NODE_ENV !== 'production') console.error('Error in provider cancellation:', err);
+      setProviderCancelError(err?.message || 'Erro ao cancelar agendamento.');
+    } finally {
+      setIsCancellingBooking(false);
     }
   };
 
@@ -1379,7 +1415,10 @@ export const ProviderApp: React.FC = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setSelectedBookingForChat(b)}
+                              onClick={() => {
+                                setChatOrigin('list');
+                                setSelectedBookingForChat(b);
+                              }}
                               leftIcon={<MessageSquare className="w-3.5 h-3.5" />}
                             >
                               Chat
@@ -1871,7 +1910,11 @@ export const ProviderApp: React.FC = () => {
                   variant="outline"
                   size="sm"
                   leftIcon={<MessageSquare className="w-4 h-4" />}
-                  onClick={() => setSelectedBookingForChat(selectedBooking)}
+                  onClick={() => {
+                    setChatOrigin('details');
+                    setSelectedBookingForChat(selectedBooking);
+                    setSelectedBooking(null);
+                  }}
                 >
                   Abrir Chat
                 </Button>
@@ -1914,9 +1957,14 @@ export const ProviderApp: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-rose-600 border-rose-200 hover:bg-rose-50"
+                    className="text-rose-600 border-rose-200 hover:bg-rose-50 font-bold"
                     leftIcon={<Ban className="w-4 h-4" />}
-                    onClick={() => handleCancelBooking(selectedBooking)}
+                    onClick={() => {
+                      setSelectedBookingForCancel(selectedBooking);
+                      setProviderCancelReasonCode('SCHEDULE_CONFLICT');
+                      setProviderCustomReason('');
+                      setProviderCancelError(null);
+                    }}
                   >
                     Cancelar Agendamento
                   </Button>
@@ -1926,13 +1974,151 @@ export const ProviderApp: React.FC = () => {
           </Modal>
         )}
 
+        {/* PROVIDER CANCELLATION MODAL */}
+        {selectedBookingForCancel && (
+          <Modal
+            isOpen={!!selectedBookingForCancel}
+            onClose={() => {
+              setSelectedBookingForCancel(null);
+              setProviderCancelError(null);
+            }}
+            title="Cancelar Agendamento (Prestador)"
+            size="md"
+          >
+            <div className="space-y-4 text-left">
+              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2">
+                <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+                  <span>Confirmar cancelamento da aula</span>
+                </div>
+                <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                  O cancelamento pelo prestador gera **reembolso de 100%** ao aluno. Informe obrigatoriamente o motivo do cancelamento.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1.5 font-semibold text-slate-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Aluno:</span>
+                  <span className="font-bold text-slate-900">{selectedBookingForCancel.studentName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Data e Horário:</span>
+                  <span className="font-bold text-slate-900">{selectedBookingForCancel.scheduledDate} às {selectedBookingForCancel.startTime}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Reembolso ao Aluno (DEC-013):</span>
+                  <span className="font-extrabold text-emerald-700">100% REEMBOLSO</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-extrabold text-slate-800">
+                  Motivo do cancelamento <span className="text-rose-600">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {PROVIDER_CANCEL_REASON_OPTIONS.map((option) => (
+                    <button
+                      key={option.code}
+                      type="button"
+                      onClick={() => setProviderCancelReasonCode(option.code)}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition cursor-pointer flex items-center justify-between ${
+                        providerCancelReasonCode === option.code
+                          ? 'border-amber-400 bg-amber-50 text-amber-950 font-extrabold shadow-2xs'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {providerCancelReasonCode === option.code && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {providerCancelReasonCode === 'OTHER' && (
+                  <div className="space-y-1 pt-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Descrição obrigatória para "Outro motivo" <span className="text-rose-600">*</span>
+                    </label>
+                    <textarea
+                      value={providerCustomReason}
+                      onChange={(e) => setProviderCustomReason(e.target.value)}
+                      placeholder="Descreva detalhadamente a razão do cancelamento..."
+                      rows={2}
+                      maxLength={300}
+                      className="w-full rounded-2xl border border-slate-200 p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] resize-none"
+                    />
+                  </div>
+                )}
+                {providerCancelReasonCode !== 'OTHER' && (
+                  <textarea
+                    value={providerCustomReason}
+                    onChange={(e) => setProviderCustomReason(e.target.value)}
+                    placeholder="Observações adicionais (opcional)..."
+                    rows={2}
+                    maxLength={300}
+                    className="w-full rounded-2xl border border-slate-200 p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] resize-none"
+                  />
+                )}
+              </div>
+
+              {providerCancelError && (
+                <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{providerCancelError}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 pt-3 border-t border-slate-100/60 bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  className="w-1/2 min-h-11 font-bold rounded-2xl border-[var(--mazzi-border)] text-slate-700 hover:bg-slate-100 transition-all active:scale-[0.98] cursor-pointer"
+                  disabled={isCancellingBooking}
+                  onClick={() => setSelectedBookingForCancel(null)}
+                >
+                  Manter aula
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="md"
+                  className="w-1/2 min-h-11 font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
+                  isLoading={isCancellingBooking}
+                  onClick={handleConfirmProviderCancel}
+                >
+                  Confirmar cancelamento
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
         <Modal
           isOpen={!!selectedBookingForChat}
-          onClose={() => setSelectedBookingForChat(null)}
+          onClose={() => {
+            const target = selectedBookingForChat;
+            setSelectedBookingForChat(null);
+            if (chatOrigin === 'details' && target) {
+              setSelectedBooking(target);
+            }
+          }}
           title="Chat da aula"
           size="lg"
         >
-          {selectedBookingForChat && <BookingChatPanel booking={selectedBookingForChat} />}
+          {selectedBookingForChat && (
+            <BookingChatPanel
+              booking={selectedBookingForChat}
+              onBack={() => {
+                const target = selectedBookingForChat;
+                setSelectedBookingForChat(null);
+                if (chatOrigin === 'details' && target) {
+                  setSelectedBooking(target);
+                }
+              }}
+            />
+          )}
         </Modal>
 
         {/* ADD RULE MODAL */}

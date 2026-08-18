@@ -196,11 +196,18 @@ export function hasBookingConflict(
     instructorId: string;
     vehicleId: string;
     status?: BookingStatus;
+    holdExpiresAt?: string;
   }[]
 ): { hasConflict: boolean; reason?: string } {
+  const nowMs = Date.now();
   for (const existing of existingBookings) {
     if (existing.status && !isBookingActiveConflictStatus(existing.status)) {
       continue;
+    }
+    if (existing.status === 'PENDING_PAYMENT' && existing.holdExpiresAt) {
+      if (new Date(existing.holdExpiresAt).getTime() <= nowMs) {
+        continue;
+      }
     }
 
     const bookingDate = existing.scheduledDate || existing.date;

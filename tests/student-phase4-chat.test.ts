@@ -24,7 +24,7 @@ describe('Student new template phase 4 chat contracts', () => {
 
   it('keeps chat access booking-scoped through bookings without standalone chats tab', () => {
     expect(student).not.toContain("{ id: 'messages', label: 'Chat'");
-    expect(student).toContain('onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}');
+    expect(student).toContain('onOpenChat');
     expect(student).toContain('selectedBookingForChat');
     expect(student).toContain('BookingChatPanel');
   });

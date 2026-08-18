@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { Input, PasswordInput } from '../ui/Input';
 import { PrimaryButton, SecondaryButton } from '../ui/Button';
 import { OtpInput } from '../ui/OtpInput';
+import { AUTH_OTP_LENGTH } from '../../lib/auth-constants';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../utils/cpf';
 import { formatDateMask, toISODateString, validateBirthDate } from '../../utils/age';
 import { formatPhone, isValidPhone, normalizePhone } from '../../utils/phone';
@@ -53,7 +54,7 @@ export function formatAuthError(errorMsg: string): string {
     return 'E-mail ou senha incorretos. Confira seus dados e tente novamente.';
   }
   if (lower.includes('email not confirmed') || lower.includes('email_not_confirmed')) {
-    return 'Seu e-mail ainda não foi confirmado. Digite o código de 6 dígitos enviado.';
+    return `Seu e-mail ainda não foi confirmado. Digite o código de ${AUTH_OTP_LENGTH} dígitos enviado.`;
   }
   if (lower.includes('user already registered') || lower.includes('already exists') || lower.includes('user already exists')) {
     return 'Este e-mail já está cadastrado. Faça login ou recupere sua senha.';
@@ -320,8 +321,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       setErrors({ otp: 'Campo obrigatório.' });
       return;
     }
-    if (otp.length !== 6) {
-      setErrors({ otp: 'Digite o código de 6 dígitos enviado por e-mail.' });
+    if (otp.length !== AUTH_OTP_LENGTH) {
+      setErrors({ otp: `Digite o código de ${AUTH_OTP_LENGTH} dígitos enviado por e-mail.` });
       return;
     }
     setErrors({});
@@ -421,8 +422,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       setErrors({ otp: 'Campo obrigatório.' });
       return;
     }
-    if (otp.length !== 6) {
-      setErrors({ otp: 'Digite o código de 6 dígitos recebido por e-mail.' });
+    if (otp.length !== AUTH_OTP_LENGTH) {
+      setErrors({ otp: `Digite o código de ${AUTH_OTP_LENGTH} dígitos recebido por e-mail.` });
       return;
     }
     setErrors({});
@@ -524,7 +525,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             Confirme seu e-mail
           </h1>
           <p className="text-sm text-slate-600">
-            Enviamos um código de 6 dígitos para{' '}
+            Enviamos um código de {AUTH_OTP_LENGTH} dígitos para{' '}
             <strong className="text-slate-900 font-semibold">{otpEmail}</strong>.
           </p>
         </div>
@@ -558,14 +559,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             disabled={isLoading}
             error={errors.otp}
             label="Código de confirmação"
-            hint="Digite os 6 dígitos recebidos no seu e-mail."
+            hint={`Digite os ${AUTH_OTP_LENGTH} dígitos recebidos no seu e-mail.`}
           />
 
           <PrimaryButton
             type="submit"
             size="lg"
             className="w-full min-h-[48px] font-bold shadow-xs cursor-pointer"
-            disabled={isLoading || otp.length !== 6}
+            disabled={isLoading || otp.length !== AUTH_OTP_LENGTH}
             loading={isLoading}
           >
             {isLoading ? 'Confirmando…' : 'Confirmar e-mail'}
@@ -610,7 +611,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             Digite o código
           </h1>
           <p className="text-sm text-slate-600">
-            Informe o código de 6 dígitos enviado para{' '}
+            Informe o código de {AUTH_OTP_LENGTH} dígitos enviado para{' '}
             <strong className="text-slate-900 font-semibold">{otpEmail}</strong>.
           </p>
         </div>
@@ -644,14 +645,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             disabled={isLoading}
             error={errors.otp}
             label="Código de recuperação"
-            hint="Código de 6 dígitos enviado por e-mail."
+            hint={`Código de ${AUTH_OTP_LENGTH} dígitos enviado por e-mail.`}
           />
 
           <PrimaryButton
             type="submit"
             size="lg"
             className="w-full min-h-[48px] font-bold shadow-xs cursor-pointer"
-            disabled={isLoading || otp.length !== 6}
+            disabled={isLoading || otp.length !== AUTH_OTP_LENGTH}
             loading={isLoading}
           >
             {isLoading ? 'Validando…' : 'Validar código'}
@@ -783,7 +784,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             Recuperar senha
           </h1>
           <p className="text-sm text-slate-600">
-            Informe seu e-mail cadastrado para receber um código de 6 dígitos.
+            Informe seu e-mail cadastrado para receber um código de {AUTH_OTP_LENGTH} dígitos.
           </p>
         </div>
 

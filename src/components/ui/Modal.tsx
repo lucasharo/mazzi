@@ -75,7 +75,7 @@ export const Modal: React.FC<ModalProps> = ({
         <div className="p-6 overflow-y-auto flex-1">{children}</div>
 
         {footer && (
-          <div className="px-6 py-3.5 bg-[var(--mazzi-surface-soft)] border-t border-[var(--mazzi-border)] flex items-center justify-end gap-2.5">
+          <div className="px-6 py-4 bg-transparent border-t border-[var(--mazzi-border)]/60 flex items-center justify-end gap-3 pb-[max(16px,env(safe-area-inset-bottom))]">
             {footer}
           </div>
         )}

@@ -34,7 +34,7 @@ describe('Premium auth UX & Harmonization', () => {
     expect(login).not.toMatch(/<select/i);
   });
 
-  it('provides native 6-digit OTP verification for signup and recovery', () => {
+  it('provides native 8-digit OTP verification for signup and recovery', () => {
     expect(service).toContain('verifyEmailOtp');
     expect(service).toContain('verifyRecoveryOtp');
     expect(service).toContain('resendSignupOtp');
@@ -43,7 +43,7 @@ describe('Premium auth UX & Harmonization', () => {
     expect(login).toContain('resendSignupOtp(');
     expect(otpComponent).toContain('autoComplete="one-time-code"');
     expect(otpComponent).toContain('inputMode="numeric"');
-    expect(otpComponent).toContain('maxLength={6}');
+    expect(otpComponent).toContain('AUTH_OTP_LENGTH');
   });
 
   it('does not publicly escalate instructor, school, or admin roles', () => {

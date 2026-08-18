@@ -128,6 +128,7 @@ export const StudentApp: React.FC = () => {
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
+  const [chatOrigin, setChatOrigin] = useState<'details' | 'list'>('list');
 
   const searchRequestIdRef = useRef(0);
 
@@ -674,7 +675,10 @@ function applyStrictProviderFilters(
                         key={b.id}
                         booking={b}
                         variant="student"
-                        onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}
+                        onOpenChat={(bookingToChat) => {
+                          setChatOrigin('list');
+                          setSelectedBookingForChat(bookingToChat);
+                        }}
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
                       />
                     ))
@@ -964,19 +968,37 @@ function applyStrictProviderFilters(
         }}
         onOpenChat={() => {
           if (selectedBookingForDetails) {
+            setChatOrigin('details');
             setSelectedBookingForChat(selectedBookingForDetails);
+            setSelectedBookingForDetails(null);
           }
-          setSelectedBookingForDetails(null);
         }}
       />
 
       <Modal
         isOpen={!!selectedBookingForChat}
-        onClose={() => setSelectedBookingForChat(null)}
+        onClose={() => {
+          const target = selectedBookingForChat;
+          setSelectedBookingForChat(null);
+          if (chatOrigin === 'details' && target) {
+            setSelectedBookingForDetails(target);
+          }
+        }}
         title="Chat da aula"
         size="lg"
       >
-        {selectedBookingForChat && <BookingChatPanel booking={selectedBookingForChat} />}
+        {selectedBookingForChat && (
+          <BookingChatPanel
+            booking={selectedBookingForChat}
+            onBack={() => {
+              const target = selectedBookingForChat;
+              setSelectedBookingForChat(null);
+              if (chatOrigin === 'details' && target) {
+                setSelectedBookingForDetails(target);
+              }
+            }}
+          />
+        )}
       </Modal>
 
       <ReviewModal

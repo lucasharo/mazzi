@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
+import { AUTH_OTP_LENGTH, AUTH_OTP_CLEAN_REGEX } from '../../lib/auth-constants';
 
 export interface OtpInputProps {
   id?: string;
@@ -11,6 +12,7 @@ export interface OtpInputProps {
   label?: string;
   hint?: string;
   autoFocus?: boolean;
+  length?: number;
 }
 
 export const OtpInput: React.FC<OtpInputProps> = ({
@@ -20,18 +22,19 @@ export const OtpInput: React.FC<OtpInputProps> = ({
   onEnter,
   disabled = false,
   error,
-  label = 'Código de 6 dígitos',
+  label = `Código de ${AUTH_OTP_LENGTH} dígitos`,
   hint,
   autoFocus = true,
+  length = AUTH_OTP_LENGTH,
 }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    const digits = raw.replace(/\D/g, '').slice(0, 6);
+    const digits = raw.replace(AUTH_OTP_CLEAN_REGEX, '').slice(0, length);
     onChange(digits);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && onEnter && value.length === 6 && !disabled) {
+    if (e.key === 'Enter' && onEnter && value.length === length && !disabled) {
       e.preventDefault();
       onEnter();
     }
@@ -40,9 +43,11 @@ export const OtpInput: React.FC<OtpInputProps> = ({
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text');
-    const digits = pasted.replace(/\D/g, '').slice(0, 6);
+    const digits = pasted.replace(AUTH_OTP_CLEAN_REGEX, '').slice(0, length);
     onChange(digits);
   };
+
+  const placeholderText = '0'.repeat(length);
 
   return (
     <div className="w-full flex flex-col gap-1.5 text-left">
@@ -62,17 +67,17 @@ export const OtpInput: React.FC<OtpInputProps> = ({
           inputMode="numeric"
           pattern="[0-9]*"
           autoComplete="one-time-code"
-          maxLength={6}
+          maxLength={length}
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           disabled={disabled}
           autoFocus={autoFocus}
-          placeholder="000000"
+          placeholder={placeholderText}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-          className={`w-full min-h-[56px] text-center font-mono text-2xl sm:text-3xl tracking-[0.4em] sm:tracking-[0.5em] font-bold rounded-2xl border px-4 py-2 transition-all outline-none bg-white text-slate-900 shadow-2xs placeholder:text-slate-300 placeholder:tracking-[0.4em] ${
+          className={`w-full min-h-[56px] text-center font-mono text-xl sm:text-2xl tracking-[0.3em] sm:tracking-[0.4em] font-bold rounded-2xl border px-3 py-2 transition-all outline-none bg-white text-slate-900 shadow-2xs placeholder:text-slate-300 placeholder:tracking-[0.3em] ${
             error
               ? 'border-rose-400 focus:border-rose-500 focus:ring-4 focus:ring-rose-100'
               : 'border-[var(--mazzi-border)] focus:border-amber-400 focus:ring-4 focus:ring-[var(--mazzi-focus-glow)]'
@@ -99,3 +104,4 @@ export const OtpInput: React.FC<OtpInputProps> = ({
     </div>
   );
 };
+

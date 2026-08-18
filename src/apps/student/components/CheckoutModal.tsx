@@ -134,19 +134,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   }, []);
 
   const createQuoteInFlightRef = React.useRef(false);
+  const checkoutAttemptIdRef = React.useRef<string>('');
 
   // Reset and generate quote when modal opens or params change
   useEffect(() => {
     let active = true;
 
-    if (!isOpen || !provider || !vehicle || !offering) {
-      return;
-    }
-
+    setQuote(null);
     setErrorMessage(null);
     setBooking(null);
     setPayment(null);
     setStep('QUOTE_PREVIEW');
+
+    if (!isOpen) {
+      checkoutAttemptIdRef.current = '';
+      return;
+    }
+
+    if (!checkoutAttemptIdRef.current) {
+      checkoutAttemptIdRef.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `att_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    }
+
+    if (!provider || !vehicle || !offering) {
+      return;
+    }
 
     if (!scheduledStartAt || !scheduledDate || !startTime || !endTime) {
       setErrorMessage('Escolha um horário disponível antes de continuar.');
@@ -164,17 +175,34 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
       try {
         const finalScheduledStartAt = scheduledStartAt;
-        const idempotencyKey = `idem_quote_${offering.id}_${finalScheduledStartAt}`;
+        let idempotencyKey = `idem_quote_${offering.id}_${finalScheduledStartAt}_${checkoutAttemptIdRef.current}`;
 
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(offering.id);
 
         if (isUuid) {
           try {
-            const rpcRes = await dbService.createQuoteFromOffering(
-              offering.id,
-              finalScheduledStartAt,
-              idempotencyKey
-            );
+            let rpcRes;
+            try {
+              rpcRes = await dbService.createQuoteFromOffering(
+                offering.id,
+                finalScheduledStartAt,
+                idempotencyKey
+              );
+            } catch (firstErr: any) {
+              const errStr = String(firstErr?.message || '');
+              if (errStr.includes('QUOTE_IDEMPOTENCY_KEY_STALE') || errStr.includes('STALE') || errStr.includes('23505')) {
+                // Historical key was stale -> generate fresh attempt key and retry once
+                checkoutAttemptIdRef.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `att_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+                idempotencyKey = `idem_quote_${offering.id}_${finalScheduledStartAt}_${checkoutAttemptIdRef.current}`;
+                rpcRes = await dbService.createQuoteFromOffering(
+                  offering.id,
+                  finalScheduledStartAt,
+                  idempotencyKey
+                );
+              } else {
+                throw firstErr;
+              }
+            }
 
             if (!active) return;
 

@@ -227,12 +227,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           )}
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2.5 pt-3 border-t border-slate-100">
+          <div className="flex items-center gap-3 pt-3 border-t border-slate-100/60 bg-transparent">
             <Button
               type="button"
               variant="outline"
               size="md"
-              className="w-1/2 min-h-11 font-bold shadow-2xs"
+              className="w-1/2 min-h-11 font-bold rounded-2xl border-[var(--mazzi-border)] hover:bg-slate-100 text-slate-700 transition-all active:scale-[0.98] cursor-pointer"
               disabled={isCancelling}
               onClick={() => setIsConfirmingCancel(false)}
             >
@@ -242,7 +242,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               type="button"
               variant="danger"
               size="md"
-              className="w-1/2 min-h-11 font-bold bg-rose-600 hover:bg-rose-700 text-white"
+              className="w-1/2 min-h-11 font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
               isLoading={isCancelling}
               onClick={handleConfirmCancel}
             >

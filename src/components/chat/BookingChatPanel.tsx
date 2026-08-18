@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, RefreshCw, SendHorizontal, Calendar, Clock, Car, Radio } from 'lucide-react';
+import { AlertCircle, RefreshCw, SendHorizontal, Calendar, Clock, Car, Radio, ArrowLeft } from 'lucide-react';
 import { Booking, Conversation, Message } from '../../types';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../ui/Button';
@@ -11,9 +11,10 @@ import { StatusBadge } from '../ui/StatusBadge';
 
 interface BookingChatPanelProps {
   booking: Booking;
+  onBack?: () => void;
 }
 
-export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) => {
+export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onBack }) => {
   const { user } = useAuth();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -140,6 +141,17 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
   return (
     <div className="space-y-4 text-left">
       <div className="mazzi-card p-4 border border-[var(--mazzi-border)]">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-700 hover:text-slate-950 transition-colors py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 cursor-pointer mb-3 shadow-2xs active:scale-95"
+            aria-label="Voltar para os detalhes da aula"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>← Voltar</span>
+          </button>
+        )}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-amber-600">Conversa da aula</p>
