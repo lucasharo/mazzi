@@ -10,6 +10,8 @@ jobs:
   build-and-deploy:
     name: Build & Publish Apps
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_PAT: ${{ secrets.DEPLOY_PAT }}
 
     steps:
       - name: Checkout Repository
@@ -39,7 +41,7 @@ jobs:
 
       - name: Deploy Student App to mazzi-student
         uses: peaceiris/actions-gh-pages@v4
-        if: ${{ secrets.DEPLOY_PAT != '' }}
+        if: ${{ env.DEPLOY_PAT != '' }}
         with:
           personal_token: ${{ secrets.DEPLOY_PAT }}
           external_repository: ${{ github.repository_owner }}/mazzi-student
@@ -49,7 +51,7 @@ jobs:
 
       - name: Deploy Provider App to mazzi-pro
         uses: peaceiris/actions-gh-pages@v4
-        if: ${{ secrets.DEPLOY_PAT != '' }}
+        if: ${{ env.DEPLOY_PAT != '' }}
         with:
           personal_token: ${{ secrets.DEPLOY_PAT }}
           external_repository: ${{ github.repository_owner }}/mazzi-pro
@@ -59,7 +61,7 @@ jobs:
 
       - name: Deploy Admin App to mazzi-admin
         uses: peaceiris/actions-gh-pages@v4
-        if: ${{ secrets.DEPLOY_PAT != '' }}
+        if: ${{ env.DEPLOY_PAT != '' }}
         with:
           personal_token: ${{ secrets.DEPLOY_PAT }}
           external_repository: ${{ github.repository_owner }}/mazzi-admin
