@@ -24,7 +24,7 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm install --os=linux --cpu=x64 || npm install
 
       - name: Run Typecheck & Linter
         run: npm run lint
