@@ -9,14 +9,14 @@ function getImportMetaEnv(): RuntimeEnv {
 }
 
 export function getRuntimeEnvValue(key: string): string | undefined {
-  const viteEnv = getImportMetaEnv();
-  const viteValue = viteEnv[key];
-  if (typeof viteValue === 'string') return viteValue;
-
   if (typeof process !== 'undefined') {
     const nodeValue = process.env?.[key];
     if (typeof nodeValue === 'string') return nodeValue;
   }
+
+  const viteEnv = getImportMetaEnv();
+  const viteValue = viteEnv[key];
+  if (typeof viteValue === 'string') return viteValue;
 
   return undefined;
 }
