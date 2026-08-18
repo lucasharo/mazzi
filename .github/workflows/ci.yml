@@ -1,0 +1,45 @@
+name: MAZZI CI
+
+on:
+  push:
+    branches:
+      - main
+      - premium_ui_v2
+  pull_request:
+    branches:
+      - main
+      - premium_ui_v2
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Lint, Test & Multi-App Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Typecheck & Linter (npm run lint)
+        run: npm run lint
+
+      - name: Run Unit & Integration Test Suite (npm test)
+        run: npm test
+
+      - name: Validate Multi-App Production Build (npm run build:all)
+        run: npm run build:all
