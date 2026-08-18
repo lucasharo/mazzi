@@ -2079,23 +2079,23 @@ export const ProviderApp: React.FC = () => {
                   type="button"
                   variant="outline"
                   size="md"
-                  className="w-1/2 min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs shadow-sm"
+                  leftIcon={<ArrowLeft className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />}
+                  className="w-1/2 min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-sm text-xs"
                   disabled={isCancellingBooking}
                   onClick={() => setSelectedBookingForCancel(null)}
                 >
-                  <ArrowLeft className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
-                  <span>Voltar sem cancelar</span>
+                  Voltar sem cancelar
                 </Button>
                 <Button
                   type="button"
                   variant="danger"
                   size="md"
-                  className="w-1/2 min-h-[48px] font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 text-xs"
+                  leftIcon={<Ban className="w-4 h-4 text-white shrink-0" aria-hidden="true" />}
+                  className="w-1/2 min-h-[48px] font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer text-xs"
                   isLoading={isCancellingBooking}
                   onClick={handleConfirmProviderCancel}
                 >
-                  <Ban className="w-4 h-4 text-white shrink-0" aria-hidden="true" />
-                  <span>Confirmar cancelamento</span>
+                  Confirmar cancelamento
                 </Button>
               </div>
             </div>

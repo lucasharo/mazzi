@@ -166,9 +166,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               ? 'bg-amber-50 border-amber-200 text-amber-900'
               : 'bg-rose-50 border-rose-200 text-rose-900'
           }`}>
-            <div className="flex items-center justify-between font-extrabold text-xs">
-              <span className="uppercase tracking-wider">Política de Reembolso (DEC-013)</span>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
+            <div className="flex items-center justify-between gap-2 font-extrabold text-xs">
+              <span className="uppercase tracking-wider font-extrabold text-[11px] sm:text-xs">Política de Reembolso (DEC-013)</span>
+              <span className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 whitespace-nowrap ${
                 policyCalc.refundPercentage === 100
                   ? 'bg-emerald-200 text-emerald-900'
                   : policyCalc.refundPercentage === 50
@@ -232,23 +232,23 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               type="button"
               variant="outline"
               size="md"
-              className="w-1/2 min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs shadow-sm"
+              leftIcon={<ArrowLeft className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />}
+              className="w-1/2 min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-sm text-xs"
               disabled={isCancelling}
               onClick={() => setIsConfirmingCancel(false)}
             >
-              <ArrowLeft className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
-              <span>Manter aula</span>
+              Manter aula
             </Button>
             <Button
               type="button"
               variant="danger"
               size="md"
-              className="w-1/2 min-h-[48px] font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 text-xs"
+              leftIcon={<XCircle className="w-4 h-4 text-white shrink-0" aria-hidden="true" />}
+              className="w-1/2 min-h-[48px] font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer text-xs"
               isLoading={isCancelling}
               onClick={handleConfirmCancel}
             >
-              <XCircle className="w-4 h-4 text-white shrink-0" aria-hidden="true" />
-              <span>Confirmar cancelamento</span>
+              Confirmar cancelamento
             </Button>
           </div>
         </div>
