@@ -1,0 +1,68 @@
+name: Deploy MAZZI Multi-App to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build & Publish Apps
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Typecheck & Linter
+        run: npm run lint
+
+      - name: Run Test Suite
+        run: npm test
+
+      - name: Build All Apps for GitHub Pages
+        env:
+          GITHUB_PAGES_DEPLOY: 'true'
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build:all
+
+      - name: Deploy Student App to mazzi-student
+        uses: peaceiris/actions-gh-pages@v4
+        if: ${{ secrets.DEPLOY_PAT != '' }}
+        with:
+          personal_token: ${{ secrets.DEPLOY_PAT }}
+          external_repository: ${{ github.repository_owner }}/mazzi-student
+          publish_dir: ./dist/student
+          publish_branch: main
+          force_orphan: true
+
+      - name: Deploy Provider App to mazzi-pro
+        uses: peaceiris/actions-gh-pages@v4
+        if: ${{ secrets.DEPLOY_PAT != '' }}
+        with:
+          personal_token: ${{ secrets.DEPLOY_PAT }}
+          external_repository: ${{ github.repository_owner }}/mazzi-pro
+          publish_dir: ./dist/instructor
+          publish_branch: main
+          force_orphan: true
+
+      - name: Deploy Admin App to mazzi-admin
+        uses: peaceiris/actions-gh-pages@v4
+        if: ${{ secrets.DEPLOY_PAT != '' }}
+        with:
+          personal_token: ${{ secrets.DEPLOY_PAT }}
+          external_repository: ${{ github.repository_owner }}/mazzi-admin
+          publish_dir: ./dist/admin
+          publish_branch: main
+          force_orphan: true
