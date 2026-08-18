@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, RefreshCw, Check } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button, PrimaryButton } from '../../../components/ui/Button';
 import { supabase } from '../../../lib/supabase';
@@ -372,12 +372,12 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           </div>
         </div>
 
-        {/* Floating action footer with transparent background and safe area */}
-        <div className="shrink-0 pt-3.5 bg-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))] sticky bottom-0 z-10 -mx-6 -mb-6 px-6">
+        {/* Sticky white footer overlay with elevated floating button */}
+        <div className="shrink-0 bg-white border-t border-[var(--mazzi-border)]/60 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-6 -mb-6 sticky bottom-0 z-10">
           <PrimaryButton
             size="md"
             disabled={!selectedSlot || isLoading}
-            className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
+            className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl flex items-center justify-center gap-2"
             onClick={() => {
               if (selectedSlot) {
                 onSelect(selectedSlot);
@@ -386,7 +386,8 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
             }}
             aria-label="Confirmar horário selecionado"
           >
-            Confirmar Horário
+            <Check className="w-4 h-4 text-slate-950" aria-hidden="true" />
+            <span>Confirmar Horário</span>
           </PrimaryButton>
         </div>
       </div>

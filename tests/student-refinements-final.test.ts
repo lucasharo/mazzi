@@ -287,7 +287,8 @@ describe('Student Final Refinements: Detalhes Button, Typography & 60-Day Horizo
       expect(slotSource).toContain('aria-label="Mês anterior"');
       expect(slotSource).toContain('aria-label="Mês seguinte"');
       expect(slotSource).toContain('Confirmar Horário');
-      expect(slotSource).toContain('sticky bottom-0 z-10 -mx-6 -mb-6 px-6');
+      expect(slotSource).toContain('sticky bottom-0');
+      expect(slotSource).toContain('bg-white');
     });
   });
 });

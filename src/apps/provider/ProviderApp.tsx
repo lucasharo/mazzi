@@ -28,6 +28,7 @@ import {
   Bike,
   Tag,
   Check,
+  ArrowLeft,
   X,
   Lock,
   Play,
@@ -1906,18 +1907,38 @@ export const ProviderApp: React.FC = () => {
 
               {/* OPERATIONAL ACTION BUTTONS */}
               <div className="pt-2 flex flex-wrap gap-2 justify-end border-t border-slate-200">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<MessageSquare className="w-4 h-4" />}
-                  onClick={() => {
-                    setChatOrigin('details');
-                    setSelectedBookingForChat(selectedBooking);
-                    setSelectedBooking(null);
-                  }}
-                >
-                  Abrir Chat
-                </Button>
+                <div className="flex items-center gap-2.5 w-full">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-1/2 min-h-[44px] font-bold text-slate-800 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 text-xs"
+                    leftIcon={<MessageSquare className="w-4 h-4 text-slate-600" />}
+                    onClick={() => {
+                      setChatOrigin('details');
+                      setSelectedBookingForChat(selectedBooking);
+                      setSelectedBooking(null);
+                    }}
+                  >
+                    {selectedBooking.status === 'CANCELLED_BY_STUDENT' || selectedBooking.status === 'CANCELLED_BY_PROVIDER' ? 'Ver Chat' : 'Abrir Chat'}
+                  </Button>
+
+                  {(selectedBooking.status === 'CONFIRMED' || selectedBooking.status === 'PENDING_PAYMENT') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedBookingForCancel(selectedBooking);
+                        setProviderCancelReasonCode('SCHEDULE_CONFLICT');
+                        setProviderCustomReason('');
+                        setProviderCancelError(null);
+                      }}
+                      className="w-1/2 min-h-[44px] bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 font-bold rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 text-xs shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                      aria-label="Cancelar agendamento"
+                    >
+                      <Ban className="w-4 h-4 text-rose-600 shrink-0" aria-hidden="true" />
+                      <span className="font-bold">Cancelar agendamento</span>
+                    </button>
+                  )}
+                </div>
 
                 {selectedBooking.status === 'CONFIRMED' && !getOrCreateSession(selectedBooking).instructorCheckedInAt && (
                   <Button
@@ -1951,23 +1972,6 @@ export const ProviderApp: React.FC = () => {
                   >
                     Finalizar Aula Prática
                   </Button>
-                )}
-
-                {(selectedBooking.status === 'CONFIRMED' || selectedBooking.status === 'PENDING_PAYMENT') && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedBookingForCancel(selectedBooking);
-                      setProviderCancelReasonCode('SCHEDULE_CONFLICT');
-                      setProviderCustomReason('');
-                      setProviderCancelError(null);
-                    }}
-                    className="w-full min-h-[44px] bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 font-semibold rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 text-xs shadow-2xs hover:shadow-xs active:scale-[0.98]"
-                    aria-label="Cancelar agendamento"
-                  >
-                    <Ban className="w-4 h-4 text-rose-600" aria-hidden="true" />
-                    <span>Cancelar agendamento</span>
-                  </button>
                 )}
               </div>
             </div>
@@ -2069,26 +2073,30 @@ export const ProviderApp: React.FC = () => {
                 </div>
               )}
 
-              {/* Action buttons - Vertical hierarchy with clear primary destructive CTA */}
-              <div className="flex flex-col gap-2.5 pt-3 bg-transparent">
+              {/* Action buttons - Side-by-side confirmation footer (LADO A LADO) */}
+              <div className="flex items-center gap-2.5 pt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  className="w-1/2 min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs shadow-sm"
+                  disabled={isCancellingBooking}
+                  onClick={() => setSelectedBookingForCancel(null)}
+                >
+                  <ArrowLeft className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
+                  <span>Voltar sem cancelar</span>
+                </Button>
                 <Button
                   type="button"
                   variant="danger"
                   size="md"
-                  className="w-full min-h-[48px] font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-1/2 min-h-[48px] font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 text-xs"
                   isLoading={isCancellingBooking}
                   onClick={handleConfirmProviderCancel}
                 >
-                  Confirmar cancelamento
+                  <Ban className="w-4 h-4 text-white shrink-0" aria-hidden="true" />
+                  <span>Confirmar cancelamento</span>
                 </Button>
-                <button
-                  type="button"
-                  disabled={isCancellingBooking}
-                  onClick={() => setSelectedBookingForCancel(null)}
-                  className="w-full py-2.5 px-4 font-semibold text-slate-600 hover:text-slate-900 bg-transparent rounded-2xl transition-colors text-xs text-center cursor-pointer disabled:opacity-50"
-                >
-                  Voltar sem cancelar
-                </button>
               </div>
             </div>
           </Modal>

@@ -8,6 +8,7 @@ import {
   Star,
   Check,
   ArrowUpDown,
+  RotateCcw,
 } from 'lucide-react';
 import { Button, PrimaryButton, SecondaryButton } from '../ui/Button';
 import { Modal } from '../ui/Modal';
@@ -307,23 +308,25 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
           </div>
         </div>
 
-        {/* Floating action footer flush against bottom with transparent background */}
-        <div className="shrink-0 bg-transparent px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-6 -mb-6 flex items-center gap-3 sticky bottom-0 z-[60]">
+        {/* Sticky white footer overlay with elevated floating buttons */}
+        <div className="shrink-0 bg-white border-t border-[var(--mazzi-border)]/60 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-6 -mb-6 flex items-center gap-3 sticky bottom-0 z-[60]">
           <SecondaryButton
             size="md"
-            className="w-1/3 min-h-[48px] font-bold shadow-sm hover:shadow-md transition-all rounded-2xl border-slate-300 bg-white"
+            className="w-1/2 min-h-[48px] font-bold shadow-sm hover:shadow-md transition-all rounded-2xl border-slate-300 bg-white flex items-center justify-center gap-2 text-slate-700"
             onClick={handleReset}
             aria-label="Limpar todos os filtros selecionados"
           >
-            Limpar
+            <RotateCcw className="w-4 h-4 text-slate-500" aria-hidden="true" />
+            <span>Limpar</span>
           </SecondaryButton>
           <PrimaryButton
             size="md"
-            className="w-2/3 min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
+            className="w-1/2 min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl flex items-center justify-center gap-2"
             onClick={handleApply}
             aria-label="Aplicar filtros selecionados à busca"
           >
-            Aplicar Filtros
+            <Check className="w-4 h-4 text-slate-950" aria-hidden="true" />
+            <span>Aplicar Filtros</span>
           </PrimaryButton>
         </div>
       </div>

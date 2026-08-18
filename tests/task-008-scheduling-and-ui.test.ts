@@ -62,22 +62,23 @@ describe('TASK-008 — RPC 405 Fix, Read-Only Scheduling & UX Refinement Tests',
       expect(code).toContain('bg-transparent');
     });
 
-    it('FilterDrawer bottom action footer has bg-transparent with no solid white plank background', () => {
+    it('FilterDrawer bottom action footer has sticky white background with floating elevated buttons', () => {
       const drawerPath = path.join(process.cwd(), 'src', 'components', 'search', 'FilterDrawer.tsx');
       const code = fs.readFileSync(drawerPath, 'utf8');
-      expect(code).toContain('bg-transparent');
-      expect(code).not.toContain('bg-white px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-6 -mb-6 flex items-center gap-3 sticky bottom-0 z-[60] shadow-[0_-8px_20px_rgba(0,0,0,0.06)]');
+      expect(code).toContain('bg-white');
+      expect(code).toContain('sticky bottom-0');
     });
 
-    it('SlotSelectorModal bottom action area has bg-transparent', () => {
+    it('SlotSelectorModal bottom action area has sticky white footer', () => {
       const modalPath = path.join(process.cwd(), 'src', 'apps', 'student', 'components', 'SlotSelectorModal.tsx');
       const code = fs.readFileSync(modalPath, 'utf8');
-      expect(code).toContain('bg-transparent');
+      expect(code).toContain('bg-white');
+      expect(code).toContain('sticky bottom-0');
     });
   });
 
   describe('3. Student & Provider Cancellation UX Integrity', () => {
-    it('BookingDetailsModal uses vertical hierarchy with soft danger cancel trigger button', () => {
+    it('BookingDetailsModal uses side-by-side hierarchy with soft danger cancel trigger button', () => {
       const detailsPath = path.join(process.cwd(), 'src', 'apps', 'student', 'components', 'BookingDetailsModal.tsx');
       const code = fs.readFileSync(detailsPath, 'utf8');
 
@@ -86,9 +87,9 @@ describe('TASK-008 — RPC 405 Fix, Read-Only Scheduling & UX Refinement Tests',
       expect(code).toContain('text-rose-700');
       expect(code).toContain('Cancelar aula');
 
-      // Vertical stack with primary destructive CTA
+      // Side-by-side with primary destructive CTA
       expect(code).toContain('Confirmar cancelamento');
-      expect(code).toContain('Manter minha aula');
+      expect(code).toContain('Manter aula');
     });
 
     it('ProviderApp cancellation modal uses vertical hierarchy with Voltar sem cancelar', () => {
