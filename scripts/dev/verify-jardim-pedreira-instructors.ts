@@ -6,10 +6,15 @@ dotenv.config({ path: '.env.local' });
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const databaseUrl = process.env.DATABASE_URL;
 const devPassword =
   process.env.VITE_DEV_QUICK_LOGIN_INSTRUCTOR_PASSWORD ||
-  process.env.MAZZI_DEV_DEMO_PASSWORD ||
-  'teste123';
+  process.env.MAZZI_DEV_DEMO_PASSWORD;
+
+if (!supabaseUrl || !anonKey || !databaseUrl || !devPassword) {
+  console.error('REQUIRED ENVIRONMENT VARIABLES MISSING FOR VERIFIER: SUPABASE_URL, ANON_KEY, DATABASE_URL, or devPassword');
+  process.exit(1);
+}
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 

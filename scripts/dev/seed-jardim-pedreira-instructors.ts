@@ -6,13 +6,13 @@ dotenv.config({ path: '.env.local' });
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const databaseUrl = process.env.DATABASE_URL;
 const devPassword =
   process.env.VITE_DEV_QUICK_LOGIN_INSTRUCTOR_PASSWORD ||
-  process.env.MAZZI_DEV_DEMO_PASSWORD ||
-  'teste123';
+  process.env.MAZZI_DEV_DEMO_PASSWORD;
 
-if (!supabaseUrl || !serviceKey) {
-  console.error('SUPABASE ADMIN CREDENTIAL REQUIRED');
+if (!supabaseUrl || !serviceKey || !databaseUrl || !devPassword) {
+  console.error('REQUIRED ENVIRONMENT VARIABLES MISSING FOR SEEDER: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, or devPassword');
   process.exit(1);
 }
 
