@@ -62,18 +62,16 @@ describe('TASK-008 — RPC 405 Fix, Read-Only Scheduling & UX Refinement Tests',
       expect(code).toContain('bg-transparent');
     });
 
-    it('FilterDrawer bottom action footer has sticky white background with floating elevated buttons', () => {
+    it('FilterDrawer bottom action footer passes footerContent via Modal footer prop', () => {
       const drawerPath = path.join(process.cwd(), 'src', 'components', 'search', 'FilterDrawer.tsx');
       const code = fs.readFileSync(drawerPath, 'utf8');
-      expect(code).toContain('bg-white');
-      expect(code).toContain('sticky bottom-0');
+      expect(code).toContain('footer={footerContent}');
     });
 
-    it('SlotSelectorModal bottom action area has sticky white footer', () => {
+    it('SlotSelectorModal bottom action area passes footerContent via Modal footer prop', () => {
       const modalPath = path.join(process.cwd(), 'src', 'apps', 'student', 'components', 'SlotSelectorModal.tsx');
       const code = fs.readFileSync(modalPath, 'utf8');
-      expect(code).toContain('bg-white');
-      expect(code).toContain('sticky bottom-0');
+      expect(code).toContain('footer={footerContent}');
     });
   });
 

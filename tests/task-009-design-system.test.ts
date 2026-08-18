@@ -12,19 +12,18 @@ describe('TASK-009 — MAZZI Design System & Component Catalog Tests', () => {
     expect(content).toContain('env(safe-area-inset-bottom)');
   });
 
-  it('Modal.tsx uses sticky white footer overlay with content bottom padding', () => {
+  it('Modal.tsx uses flush white footer overlay with safe area bottom padding', () => {
     const filePath = path.join(process.cwd(), 'src/components/ui/Modal.tsx');
     const content = fs.readFileSync(filePath, 'utf-8');
     expect(content).toContain('bg-white');
-    expect(content).toContain('sticky bottom-0');
-    expect(content).toContain('pb-8');
+    expect(content).toContain('border-t');
+    expect(content).toContain('env(safe-area-inset-bottom)');
   });
 
-  it('FilterDrawer.tsx uses sticky white footer with RotateCcw and Check icons', () => {
+  it('FilterDrawer.tsx uses white modal footer prop with RotateCcw and Check icons', () => {
     const filePath = path.join(process.cwd(), 'src/components/search/FilterDrawer.tsx');
     const content = fs.readFileSync(filePath, 'utf-8');
-    expect(content).toContain('bg-white');
-    expect(content).toContain('sticky bottom-0');
+    expect(content).toContain('footer={footerContent}');
     expect(content).toContain('RotateCcw');
     expect(content).toContain('Check');
   });

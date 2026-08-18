@@ -72,10 +72,10 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
 
-        <div className="p-6 overflow-y-auto flex-1 pb-8">{children}</div>
+        <div className="p-6 overflow-y-auto flex-1">{children}</div>
 
         {footer && (
-          <div className="shrink-0 bg-white border-t border-[var(--mazzi-border)]/60 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] px-6 py-4 flex items-center justify-end gap-3 pb-[max(16px,env(safe-area-inset-bottom))] sticky bottom-0 z-[60]">
+          <div className="shrink-0 bg-white border-t border-[var(--mazzi-border)]/60 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] px-6 py-4 flex items-center justify-end gap-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {footer}
           </div>
         )}

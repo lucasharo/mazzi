@@ -169,8 +169,32 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
     return acc;
   }, {});
 
+  const footerContent = (
+    <PrimaryButton
+      size="md"
+      disabled={!selectedSlot || isLoading}
+      className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
+      leftIcon={<Check className="w-4 h-4 text-slate-950" aria-hidden="true" />}
+      onClick={() => {
+        if (selectedSlot) {
+          onSelect(selectedSlot);
+          onClose();
+        }
+      }}
+      aria-label="Confirmar horário selecionado"
+    >
+      Confirmar Horário
+    </PrimaryButton>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Escolha uma data e horário" size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Escolha uma data e horário"
+      size="md"
+      footer={footerContent}
+    >
       <div className="space-y-5 text-left" aria-busy={isLoading}>
         {/* Scrollable Body Content */}
         <div className="space-y-5">
@@ -370,25 +394,6 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
               </p>
             )}
           </div>
-        </div>
-
-        {/* Sticky white footer overlay with elevated floating button */}
-        <div className="shrink-0 bg-white border-t border-[var(--mazzi-border)]/60 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-6 -mb-6 sticky bottom-0 z-10">
-          <PrimaryButton
-            size="md"
-            disabled={!selectedSlot || isLoading}
-            className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl flex items-center justify-center gap-2"
-            onClick={() => {
-              if (selectedSlot) {
-                onSelect(selectedSlot);
-                onClose();
-              }
-            }}
-            aria-label="Confirmar horário selecionado"
-          >
-            <Check className="w-4 h-4 text-slate-950" aria-hidden="true" />
-            <span>Confirmar Horário</span>
-          </PrimaryButton>
         </div>
       </div>
     </Modal>

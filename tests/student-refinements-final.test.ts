@@ -102,7 +102,7 @@ describe('Student Final Refinements: Detalhes Button, Typography & 60-Day Horizo
       expect(filterSource).toContain('font-semibold hover:border-slate-300');
       expect(filterSource).toContain('Aplicar Filtros');
       expect(filterSource).toContain('Limpar');
-      expect(filterSource).toContain('sticky bottom-0 z-[60]');
+      expect(filterSource).toContain('footer={footerContent}');
       expect(filterSource).toContain('<PrimaryButton');
       expect(filterSource).toContain('<SecondaryButton');
     });
@@ -287,8 +287,7 @@ describe('Student Final Refinements: Detalhes Button, Typography & 60-Day Horizo
       expect(slotSource).toContain('aria-label="Mês anterior"');
       expect(slotSource).toContain('aria-label="Mês seguinte"');
       expect(slotSource).toContain('Confirmar Horário');
-      expect(slotSource).toContain('sticky bottom-0');
-      expect(slotSource).toContain('bg-white');
+      expect(slotSource).toContain('footerContent');
     });
   });
 });
