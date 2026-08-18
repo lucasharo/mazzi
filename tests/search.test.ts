@@ -437,6 +437,8 @@ describe('Sprint 07 — Search Pipeline Execution', () => {
       exceptions: [],
       existingBookings: [],
       searchRequest: {
+        latitude: -23.5658,
+        longitude: -46.6872,
         category: 'B',
         transmission: 'AUTOMATIC',
         radiusMeters: 10000,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Calendar,
   Clock,
@@ -9,6 +9,9 @@ import {
   CreditCard,
   MessageSquare,
   AlertTriangle,
+  XCircle,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
@@ -17,6 +20,8 @@ import { Button } from '../../../components/ui/Button';
 import { formatCentsToBRL } from '../../../domain/money';
 import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
+import { dbService } from '../../../lib/db-service';
+import { calculateCancellationPolicy } from '../../../domain/cancellation';
 
 export interface BookingDetailsModalProps {
   isOpen: boolean;
@@ -25,7 +30,15 @@ export interface BookingDetailsModalProps {
   onCheckIn?: (booking: Booking) => void;
   onOpenChat?: (booking: Booking) => void;
   onContinuePayment?: (booking: Booking) => void;
+  onBookingUpdated?: (updatedBooking: Booking) => void;
 }
+
+const CANCEL_REASON_CHIPS = [
+  'Imprevisto pessoal',
+  'Mudança de horário',
+  'Problema de saúde',
+  'Outro motivo',
+];
 
 export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   isOpen,
@@ -34,13 +47,23 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onCheckIn,
   onOpenChat,
   onContinuePayment,
+  onBookingUpdated,
 }) => {
+  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+  const [selectedReasonChip, setSelectedReasonChip] = useState<string>('');
+  const [customReason, setCustomReason] = useState<string>('');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
   if (!booking) return null;
 
   const snapshot = booking.snapshot;
-  const isUpcoming = booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS';
+  const isUpcoming = booking.status === 'CONFIRMED' || booking.status === 'PENDING_PAYMENT';
   const isPendingPayment = booking.status === 'PENDING_PAYMENT';
   const isExpired = booking.status === 'EXPIRED';
+  const isCancelled = booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER';
+  const isCompleted = booking.status === 'COMPLETED';
+
   const meetingPoint = formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint);
   const start = booking.scheduledStartAt || (booking.scheduledDate && booking.startTime ? `${booking.scheduledDate}T${booking.startTime}:00` : '');
   const end = booking.scheduledEndAt || (booking.scheduledDate && booking.endTime ? `${booking.scheduledDate}T${booking.endTime}:00` : '');
@@ -50,158 +73,363 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const instructor = snapshot.instructorName || booking.instructorName;
   const vehicle = snapshot.vehicleName || booking.vehicleName;
 
+  // Compute cancellation policy numbers for preview
+  const lessonDate = start ? new Date(start) : new Date(booking.scheduledDate);
+  const hoursUntilLesson = (lessonDate.getTime() - Date.now()) / (1000 * 60 * 60);
+
+  const policyCalc = calculateCancellationPolicy({
+    cancelledBy: 'STUDENT',
+    hoursUntilLesson,
+    totalPaidInCents: snapshot.totalInCents || booking.totalInCents || 0,
+    lessonPriceInCents: snapshot.priceInCents || booking.priceInCents || 0,
+    platformFeeInCents: snapshot.platformFeeInCents || booking.platformFeeInCents || 0,
+  });
+
+  const handleConfirmCancel = async () => {
+    setIsCancelling(true);
+    setCancelError(null);
+
+    const finalReason = [selectedReasonChip, customReason.trim()].filter(Boolean).join(': ') || undefined;
+
+    try {
+      const res = await dbService.cancelBooking({
+        bookingId: booking.id,
+        reason: finalReason,
+      });
+
+      const updated: Booking = {
+        ...booking,
+        status: (res.status as any) || 'CANCELLED_BY_STUDENT',
+        cancelledAt: new Date().toISOString(),
+        cancellationReason: finalReason,
+      };
+
+      if (onBookingUpdated) {
+        onBookingUpdated(updated);
+      }
+
+      setIsConfirmingCancel(false);
+      onClose();
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production') console.error('Error cancelling booking:', err);
+      setCancelError(err?.message || 'Não foi possível cancelar este agendamento.');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
-      title="Detalhes da Reserva"
+      onClose={() => {
+        setIsConfirmingCancel(false);
+        setCancelError(null);
+        onClose();
+      }}
+      title={isConfirmingCancel ? 'Cancelar Agendamento' : 'Detalhes da Reserva'}
       size="md"
     >
-      <div className="space-y-4 text-left">
-        {/* Status Header */}
-        <div className="flex items-center justify-between rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
-          <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mazzi-muted)]">Detalhes da aula</p>
-            <p className="mt-0.5 text-sm font-extrabold text-[var(--mazzi-dark)]">Sua reserva MAZZI</p>
+      {isConfirmingCancel ? (
+        /* CANCELLATION CONFIRMATION VIEW (DEC-013) */
+        <div className="space-y-4 text-left">
+          <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2">
+            <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+              <span>Deseja cancelar esta aula?</span>
+            </div>
+            <p className="text-xs text-amber-800 leading-relaxed font-medium">
+              Confira os detalhes e o reembolso aplicável antes de prosseguir. O agendamento permanecerá em seu histórico como cancelado.
+            </p>
           </div>
-          <StatusBadge status={booking.status} audience="student" />
-        </div>
 
-        {/* Schedule & Meeting Point */}
-        <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-2.5 shadow-xs">
-          <div className="flex items-center gap-2 text-[var(--mazzi-dark)] font-extrabold text-sm">
-            <Calendar className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" />
-            <span>Data: {start ? formatDateBR(start) : formatDateBR(booking.scheduledDate)}</span>
+          {/* Lesson summary */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1.5 font-semibold text-slate-700">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Data e Horário:</span>
+              <span className="font-bold text-slate-900">{formatDateBR(start)} às {formatTimeBR(start)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Instrutor:</span>
+              <span className="font-bold text-slate-900">{instructor}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Valor pago:</span>
+              <span className="font-bold text-slate-900">{formatCentsToBRL(snapshot.totalInCents || booking.totalInCents)}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
-            <Clock className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
-            <span>
-              Horário: {start ? formatTimeBR(start) : booking.startTime}
-              {end ? ` às ${formatTimeBR(end)}` : ''}
-              {duration ? ` · ${duration} min` : ''}
-            </span>
-          </div>
-          {meetingPoint && (
-            <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
-              <MapPin className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
-              <span>Ponto de Encontro: {meetingPoint}</span>
-            </div>
-          )}
-        </div>
 
-        {/* Frozen Historical Snapshot Details */}
-        <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-3 shadow-xs">
-          <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
-            Detalhamento do Profissional & Veículo
-          </h4>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="space-y-1">
-              <span className="text-slate-400 text-[11px] block font-medium">Prestador</span>
-              <div className="flex items-center gap-1.5 font-bold text-[var(--mazzi-dark)]">
-                <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
-                <span className="truncate">{provider}</span>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-slate-400 text-[11px] block font-medium">Instrutor</span>
-              <div className="flex items-center gap-1.5 font-bold text-[var(--mazzi-dark)]">
-                <UserCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
-                <span className="truncate">{instructor}</span>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-slate-400 text-[11px] block font-medium">Veículo</span>
-              <div className="flex items-center gap-1.5 font-bold text-[var(--mazzi-dark)]">
-                <Car className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
-                <span className="truncate">{vehicle}</span>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-slate-400 text-[11px] block font-medium">Categoria / Câmbio</span>
-              <span className="font-bold text-[var(--mazzi-dark)]">
-                Cat. {snapshot.category}{transmission ? ` • ${transmission}` : ''}
+          {/* Financial Policy Result Banner */}
+          <div className={`p-4 rounded-2xl border space-y-1 ${
+            policyCalc.refundPercentage === 100
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : policyCalc.refundPercentage === 50
+              ? 'bg-amber-50 border-amber-200 text-amber-900'
+              : 'bg-rose-50 border-rose-200 text-rose-900'
+          }`}>
+            <div className="flex items-center justify-between font-extrabold text-xs">
+              <span className="uppercase tracking-wider">Política de Reembolso (DEC-013)</span>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
+                policyCalc.refundPercentage === 100
+                  ? 'bg-emerald-200 text-emerald-900'
+                  : policyCalc.refundPercentage === 50
+                  ? 'bg-amber-200 text-amber-900'
+                  : 'bg-rose-200 text-rose-900'
+              }`}>
+                {policyCalc.refundPercentage}% REEMBOLSO
               </span>
             </div>
-          </div>
-        </div>
-
-        {/* Pricing Breakdown Snapshot */}
-        <div className="p-4 rounded-2xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] space-y-2">
-          <h4 className="text-xs font-semibold text-[var(--mazzi-dark)] uppercase tracking-wider flex items-center gap-1.5">
-            <CreditCard className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
-            Resumo do Pagamento
-          </h4>
-
-          <div className="flex items-center justify-between text-xs text-slate-700">
-            <span>Valor da Aula Prática</span>
-            <span className="font-bold">{formatCentsToBRL(snapshot.priceInCents)}</span>
+            <p className="text-xs font-semibold leading-relaxed pt-1">
+              {policyCalc.policyDescription}
+            </p>
+            {policyCalc.refundPercentage > 0 && (
+              <p className="text-xs font-black pt-1">
+                Valor estimado do reembolso: {formatCentsToBRL(policyCalc.refundAmountInCents)}
+              </p>
+            )}
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-700">
-            <span>Taxa de Serviço MAZZI</span>
-            <span className="font-bold">{formatCentsToBRL(snapshot.platformFeeInCents)}</span>
+          {/* Optional reason selector */}
+          <div className="space-y-2 pt-1">
+            <label className="block text-xs font-bold text-slate-700">
+              Motivo do cancelamento <span className="text-slate-400 font-normal">(opcional)</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {CANCEL_REASON_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => setSelectedReasonChip(selectedReasonChip === chip ? '' : chip)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                    selectedReasonChip === chip
+                      ? 'bg-amber-500 text-slate-950 font-extrabold shadow-2xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={customReason}
+              onChange={(e) => setCustomReason(e.target.value)}
+              placeholder="Observações adicionais (opcional)..."
+              rows={2}
+              maxLength={300}
+              className="w-full rounded-2xl border border-slate-200 p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] resize-none"
+            />
           </div>
 
-          <div className="pt-2 border-t border-[var(--mazzi-border)] flex items-center justify-between text-sm font-bold text-[var(--mazzi-dark)]">
-            <span>Total da Reserva</span>
-            <span>{formatCentsToBRL(snapshot.totalInCents)}</span>
-          </div>
-        </div>
-
-        {/* Hold Expiration Alert if pending */}
-        {isPendingPayment && booking.holdExpiresAt && (
-          <div role="status" className="p-3.5 rounded-xl bg-amber-50 border border-amber-300/80 flex items-center gap-2 text-xs text-amber-900 font-medium">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
-            <span>
-              Aguardando confirmação do pagamento. Horário retido temporariamente.
-            </span>
-          </div>
-        )}
-
-        {isExpired && (
-          <div role="alert" className="p-3.5 rounded-xl bg-slate-100 border border-slate-300 flex items-center gap-2 text-xs text-slate-700 font-medium">
-            <AlertTriangle className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
-            <span>
-              O tempo de retenção deste horário expirou. Por favor, faça um novo agendamento.
-            </span>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-100">
-          {isPendingPayment && onContinuePayment && (
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              className="w-full min-h-11 font-bold"
-              onClick={() => onContinuePayment(booking)}
-              leftIcon={<CreditCard className="w-4 h-4" aria-hidden="true" />}
-              aria-label="Concluir pagamento desta reserva pendente"
-            >
-              Concluir Pagamento
-            </Button>
+          {cancelError && (
+            <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{cancelError}</span>
+            </div>
           )}
 
-          {onOpenChat && (
+          {/* Action buttons */}
+          <div className="flex items-center gap-2.5 pt-3 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
               size="md"
-              className={`${isUpcoming && !isPendingPayment ? 'w-full' : isPendingPayment ? 'w-full sm:w-auto' : 'w-full'} min-h-11 font-medium`}
-              onClick={() => onOpenChat(booking)}
-              leftIcon={<MessageSquare className="w-4 h-4" aria-hidden="true" />}
-              aria-label="Abrir conversa no chat sobre esta reserva"
+              className="w-1/2 min-h-11 font-bold shadow-2xs"
+              disabled={isCancelling}
+              onClick={() => setIsConfirmingCancel(false)}
             >
-              Abrir Chat
+              Voltar
             </Button>
-          )}
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              className="w-1/2 min-h-11 font-bold bg-rose-600 hover:bg-rose-700 text-white"
+              isLoading={isCancelling}
+              onClick={handleConfirmCancel}
+            >
+              Confirmar cancelamento
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* STANDARD DETAILS VIEW */
+        <div className="space-y-4 text-left">
+          {/* Status Header */}
+          <div className="flex items-center justify-between rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mazzi-muted)]">Detalhes da aula</p>
+              <p className="mt-0.5 text-sm font-extrabold text-[var(--mazzi-dark)]">Sua reserva MAZZI</p>
+            </div>
+            <StatusBadge status={booking.status} audience="student" />
+          </div>
+
+          {/* Schedule & Meeting Point */}
+          <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-2.5 shadow-xs">
+            <div className="flex items-center gap-2 text-[var(--mazzi-dark)] font-extrabold text-sm">
+              <Calendar className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" />
+              <span>Data: {start ? formatDateBR(start) : formatDateBR(booking.scheduledDate)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
+              <Clock className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
+              <span>
+                Horário: {start ? formatTimeBR(start) : booking.startTime}
+                {end ? ` às ${formatTimeBR(end)}` : ''}
+                {duration ? ` · ${duration} min` : ''}
+              </span>
+            </div>
+            {meetingPoint && (
+              <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
+                <MapPin className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
+                <span>Ponto de Encontro: {meetingPoint}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Frozen Historical Snapshot Details */}
+          <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-3 shadow-xs">
+            <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
+              Detalhamento do Profissional & Veículo
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <span className="text-slate-400 text-[11px] block font-medium">Prestador</span>
+                <div className="flex items-center gap-1.5 font-bold text-[var(--mazzi-dark)]">
+                  <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{provider}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 text-[11px] block font-medium">Instrutor</span>
+                <div className="flex items-center gap-1.5 font-bold text-[var(--mazzi-dark)]">
+                  <UserCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{instructor}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 text-[11px] block font-medium">Veículo</span>
+                <div className="flex items-center gap-1.5 font-bold text-[var(--mazzi-dark)]">
+                  <Car className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{vehicle}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-slate-400 text-[11px] block font-medium">Categoria / Câmbio</span>
+                <span className="font-bold text-[var(--mazzi-dark)]">
+                  Cat. {snapshot.category}{transmission ? ` • ${transmission}` : ''}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing Breakdown Snapshot */}
+          <div className="p-4 rounded-2xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] space-y-2">
+            <h4 className="text-xs font-semibold text-[var(--mazzi-dark)] uppercase tracking-wider flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
+              Resumo do Pagamento
+            </h4>
+
+            <div className="flex items-center justify-between text-xs text-slate-700">
+              <span>Valor da Aula Prática</span>
+              <span className="font-bold">{formatCentsToBRL(snapshot.priceInCents)}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-700">
+              <span>Taxa de Serviço MAZZI</span>
+              <span className="font-bold">{formatCentsToBRL(snapshot.platformFeeInCents)}</span>
+            </div>
+
+            <div className="pt-2 border-t border-[var(--mazzi-border)] flex items-center justify-between text-sm font-bold text-[var(--mazzi-dark)]">
+              <span>Total da Reserva</span>
+              <span>{formatCentsToBRL(snapshot.totalInCents)}</span>
+            </div>
+          </div>
+
+          {/* Cancelled Banner if applicable */}
+          {isCancelled && (
+            <div role="status" className="p-3.5 rounded-xl bg-slate-100 border border-slate-200 space-y-1 text-xs text-slate-700">
+              <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                <XCircle className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
+                <span>
+                  {booking.status === 'CANCELLED_BY_STUDENT' ? 'Cancelada pelo aluno' : 'Cancelada pelo profissional'}
+                </span>
+              </div>
+              {booking.cancellationReason && (
+                <p className="text-[11px] text-slate-600 pl-5">
+                  Motivo: {booking.cancellationReason}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Hold Expiration Alert if pending */}
+          {isPendingPayment && booking.holdExpiresAt && (
+            <div role="status" className="p-3.5 rounded-xl bg-amber-50 border border-amber-300/80 flex items-center gap-2 text-xs text-amber-900 font-medium">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+              <span>
+                Aguardando confirmação do pagamento. Horário retido temporariamente.
+              </span>
+            </div>
+          )}
+
+          {isExpired && (
+            <div role="alert" className="p-3.5 rounded-xl bg-slate-100 border border-slate-300 flex items-center gap-2 text-xs text-slate-700 font-medium">
+              <AlertTriangle className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
+              <span>
+                O tempo de retenção deste horário expirou. Por favor, faça um novo agendamento.
+              </span>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-100">
+            {isPendingPayment && onContinuePayment && (
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                className="w-full min-h-11 font-bold"
+                onClick={() => onContinuePayment(booking)}
+                leftIcon={<CreditCard className="w-4 h-4" aria-hidden="true" />}
+                aria-label="Concluir pagamento desta reserva pendente"
+              >
+                Concluir Pagamento
+              </Button>
+            )}
+
+            {onOpenChat && (
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                className={`${isUpcoming && !isPendingPayment ? 'w-1/2' : 'w-full'} min-h-11 font-medium`}
+                onClick={() => onOpenChat(booking)}
+                leftIcon={<MessageSquare className="w-4 h-4" aria-hidden="true" />}
+                aria-label="Abrir conversa no chat sobre esta reserva"
+              >
+                {isCancelled ? 'Ver Chat' : 'Abrir Chat'}
+              </Button>
+            )}
+
+            {/* Cancel Button when eligible */}
+            {isUpcoming && (
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                className="w-1/2 min-h-11 font-bold text-rose-700 border-rose-200 hover:bg-rose-50"
+                onClick={() => setIsConfirmingCancel(true)}
+                leftIcon={<XCircle className="w-4 h-4 text-rose-600" aria-hidden="true" />}
+                aria-label="Cancelar esta aula"
+              >
+                Cancelar aula
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </Modal>
   );
 };

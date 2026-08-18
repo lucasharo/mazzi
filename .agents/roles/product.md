@@ -14,8 +14,8 @@
 - Elaborar **Critérios de Aceite** objetivos e numerados (`AC01`, `AC02`, etc.);
 - Proteger o produto contra *scope creep* (bloquear adições fora do MVP);
 - Manter e consultar as fontes canônicas de produto:
-  - [`docs/product/MVP_RULES.md`](file:///d:/mazzi_premium_ui_v2/docs/product/MVP_RULES.md)
-  - [`docs/product/PRODUCT_DECISIONS.md`](file:///d:/mazzi_premium_ui_v2/docs/product/PRODUCT_DECISIONS.md)
+  - [`docs/product/MVP_RULES.md`](../../docs/product/MVP_RULES.md)
+  - [`docs/product/PRODUCT_DECISIONS.md`](../../docs/product/PRODUCT_DECISIONS.md)
 
 ---
 

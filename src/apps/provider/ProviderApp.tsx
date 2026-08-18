@@ -440,6 +440,7 @@ export const ProviderApp: React.FC = () => {
         providerId: currentProvider.id,
         actorUserId: user.id,
         actorRole: currentRole,
+        reasonCode: 'SCHEDULE_CONFLICT',
         idempotencyKey: `cancel_${b.id}_${Date.now()}`,
       });
 

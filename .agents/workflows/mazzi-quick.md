@@ -45,8 +45,8 @@ description: MAZZI Quick - pequenas correções com Dev e QA rápido
 
 ### ETAPA 1 — MAZZI DEV (Implementação Enxuta)
 Ao iniciar:
-1. Ler [`.agents/agents.md`](file:///d:/mazzi_premium_ui_v2/.agents/agents.md);
-2. Ler [`.agents/roles/dev.md`](file:///d:/mazzi_premium_ui_v2/.agents/roles/dev.md);
+1. Ler [`.agents/agents.md`](../agents.md);
+2. Ler [`.agents/roles/dev.md`](../roles/dev.md);
 3. Consultar **apenas** a documentação e os arquivos de código diretamente relacionados à solicitação (economia de contexto);
 4. Se envolver interface do usuário (UI), consultar a Skill **`ui-ux-pro-max`** e manter os padrões MAZZI Premium V2;
 5. Implementar a **menor alteração possível** que resolva o problema;
@@ -60,7 +60,7 @@ Ao iniciar:
 ### ETAPA 2 — MAZZI QA (Auditoria Rápida e Independente)
 Após a implementação do Dev:
 1. Abandonar a perspectiva do Dev e assumir postura crítica de auditor;
-2. Ler [`.agents/roles/qa.md`](file:///d:/mazzi_premium_ui_v2/.agents/roles/qa.md);
+2. Ler [`.agents/roles/qa.md`](../roles/qa.md);
 3. **Não confiar no relatório do Dev**: revisar o `git diff` real;
 4. Verificar se a solicitação foi estritamente atendida sem sobras;
 5. Buscar proativamente regressões óbvias em telas ou módulos vizinhos;

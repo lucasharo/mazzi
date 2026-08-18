@@ -8,7 +8,17 @@ export default defineConfig(({ mode }) => {
   const appTarget = mode === 'student' || mode === 'instructor' || mode === 'admin' ? mode : '';
   const appEntrypoint = appTarget ? `/src/entrypoints/${appTarget}/main.tsx` : '/src/main.tsx';
   const appOutDir = appTarget ? `dist/${appTarget}` : 'dist';
+
+  const base = process.env.GITHUB_PAGES_DEPLOY === 'true'
+    ? (appTarget === 'student' ? '/mazzi-student/' : appTarget === 'instructor' ? '/mazzi-pro/' : appTarget === 'admin' ? '/mazzi-admin/' : '/')
+    : '/';
+
   const appManifest = appTarget === 'student' ? '/manifest.student.webmanifest' : appTarget === 'instructor' ? '/manifest.instructor.webmanifest' : appTarget === 'admin' ? '' : '/manifest.webmanifest';
+
+  const finalManifest = appManifest && appManifest.startsWith('/')
+    ? `${base}${appManifest.slice(1)}`
+    : appManifest;
+
   for (const [key, value] of Object.entries(env)) {
     if (process.env[key] === undefined) {
       process.env[key] = value;
@@ -16,14 +26,15 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    base,
     plugins: [react(), tailwindcss(), {
       name: 'mazzi-mode-entrypoint',
       transformIndexHtml: {
         order: 'pre',
         handler(html) {
           const withEntrypoint = html.replace(/<script type="module" src="[^"]+"><\/script>/, `<script type="module" src="${appEntrypoint}"></script>`);
-          return appManifest
-            ? withEntrypoint.replace(/<link rel="manifest" href="[^"]+"\s*\/>/g, '').replace('</head>', `<link rel="manifest" href="${appManifest}"/></head>`)
+          return finalManifest
+            ? withEntrypoint.replace(/<link rel="manifest" href="[^"]+"\s*\/>/g, '').replace('</head>', `<link rel="manifest" href="${finalManifest}"/></head>`)
             : withEntrypoint.replace(/<link rel="manifest" href="[^"]+"\s*\/>/g, '');
         },
       },
@@ -38,6 +49,11 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || ''),
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
       'import.meta.env.VITE_PAYMENT_GATEWAY_PROVIDER': JSON.stringify(env.VITE_PAYMENT_GATEWAY_PROVIDER || env.PAYMENT_GATEWAY_PROVIDER || 'fake'),
+      'import.meta.env.VITE_ENABLE_DEV_QUICK_LOGIN': process.env.GITHUB_PAGES_DEPLOY === 'true' ? JSON.stringify('false') : JSON.stringify(env.VITE_ENABLE_DEV_QUICK_LOGIN || 'true'),
+      'import.meta.env.VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD': process.env.GITHUB_PAGES_DEPLOY === 'true' ? JSON.stringify('') : JSON.stringify(env.VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD || ''),
+      'import.meta.env.VITE_DEV_QUICK_LOGIN_INSTRUCTOR_PASSWORD': process.env.GITHUB_PAGES_DEPLOY === 'true' ? JSON.stringify('') : JSON.stringify(env.VITE_DEV_QUICK_LOGIN_INSTRUCTOR_PASSWORD || ''),
+      'import.meta.env.VITE_DEV_QUICK_LOGIN_SCHOOL_PASSWORD': process.env.GITHUB_PAGES_DEPLOY === 'true' ? JSON.stringify('') : JSON.stringify(env.VITE_DEV_QUICK_LOGIN_SCHOOL_PASSWORD || ''),
+      'import.meta.env.VITE_DEV_QUICK_LOGIN_ADMIN_PASSWORD': process.env.GITHUB_PAGES_DEPLOY === 'true' ? JSON.stringify('') : JSON.stringify(env.VITE_DEV_QUICK_LOGIN_ADMIN_PASSWORD || ''),
     },
     server: {
       port: Number(env.VITE_APP_PORT || (appTarget === 'student' ? 3001 : appTarget === 'instructor' ? 3002 : appTarget === 'admin' ? 3003 : 3000)),

@@ -41,6 +41,8 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
+import { maskCpf } from '../../utils/cpf';
+import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
 
 function mapPublicResultToProvider(result: PublicSearchProviderResult): Provider {
   return {
@@ -115,9 +117,11 @@ export const StudentApp: React.FC = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
   const [searchedLocation, setSearchedLocation] = useState<{ lat: number; lng: number; label?: string } | undefined>();
+  const [locationStatus, setLocationStatus] = useState<'RESOLVING' | 'RESOLVED' | 'UNAVAILABLE'>('RESOLVING');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
+  const [profileBirthDate, setProfileBirthDate] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
@@ -135,10 +139,27 @@ export const StudentApp: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setLocationStatus('UNAVAILABLE');
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
-      (position) => setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude }),
-      () => undefined,
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          setUserLocation({ lat, lng });
+          setLocationStatus('RESOLVED');
+        } else {
+          setLocationStatus('UNAVAILABLE');
+        }
+      },
+      (error) => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[MAZZI Search] Geolocation error or denied:', error);
+        }
+        setLocationStatus('UNAVAILABLE');
+      },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
     );
   }, []);
@@ -146,11 +167,12 @@ export const StudentApp: React.FC = () => {
   useEffect(() => {
     setProfileName(user?.name || '');
     setProfilePhone(formatPhone(user?.phone || ''));
+    setProfileBirthDate(formatDateMask(user?.birthDate || ''));
     setProfileAvatar(user?.avatarUrl);
     if (user?.id) {
       void getMyProfileAvatar().then((avatarUrl) => setProfileAvatar(avatarUrl)).catch(() => undefined);
     }
-  }, [user?.name, user?.phone, user?.avatarUrl]);
+  }, [user?.name, user?.phone, user?.avatarUrl, user?.birthDate]);
 
   // Bookings are an independent data boundary from the public search pipeline.
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
@@ -177,8 +199,8 @@ export const StudentApp: React.FC = () => {
 
   // Search Engine Pipeline Request State
   const [searchRequest, setSearchRequest] = useState<SearchRequest>({
-    latitude: -23.5505,
-    longitude: -46.6333,
+    latitude: undefined,
+    longitude: undefined,
     radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
     category: 'B',
     providerType: 'ALL',
@@ -209,9 +231,10 @@ function applyStrictProviderFilters(
       if (provider.providerType !== req.providerType) continue;
     }
 
-    // 2. Distance / Radius filter match
+    // 2. Distance / Radius filter match (strict against undefined/null/NaN)
     if (req.radiusMeters !== undefined && req.radiusMeters > 0) {
-      if ((provider.roundedDistanceMeters || 0) > req.radiusMeters) continue;
+      const dist = provider.roundedDistanceMeters;
+      if (dist === undefined || dist === null || !Number.isFinite(dist) || dist > req.radiusMeters) continue;
     }
 
     // 3. Minimum rating filter match
@@ -261,14 +284,31 @@ function applyStrictProviderFilters(
 
   useEffect(() => {
     if (!isRealSupabase) return;
+
+    const hasValidLocation =
+      searchRequest.latitude !== undefined &&
+      searchRequest.longitude !== undefined &&
+      Number.isFinite(searchRequest.latitude) &&
+      Number.isFinite(searchRequest.longitude) &&
+      searchRequest.latitude >= -90 &&
+      searchRequest.latitude <= 90 &&
+      searchRequest.longitude >= -180 &&
+      searchRequest.longitude <= 180;
+
+    if (!hasValidLocation) {
+      setRealSearchResponse(null);
+      setSearchLoading(false);
+      return;
+    }
+
     setSearchLoading(true);
     setSearchError(false);
     const requestId = ++searchRequestIdRef.current;
     const timer = window.setTimeout(async () => {
       try {
         const rawResults = await dbService.searchPublicProviderResults({
-          userLat: searchRequest.latitude,
-          userLng: searchRequest.longitude,
+          userLat: searchRequest.latitude!,
+          userLng: searchRequest.longitude!,
           radiusMeters: searchRequest.radiusMeters,
           category: searchRequest.category,
           providerType: searchRequest.providerType,
@@ -287,7 +327,7 @@ function applyStrictProviderFilters(
         const sortedResults = [...results].sort((a, b) => {
           if (searchRequest.sortBy === 'PRICE_ASC') return a.startingPriceInCents - b.startingPriceInCents || a.providerId.localeCompare(b.providerId);
           if (searchRequest.sortBy === 'PRICE_DESC') return b.startingPriceInCents - a.startingPriceInCents || a.providerId.localeCompare(b.providerId);
-          if (searchRequest.sortBy === 'DISTANCE') return (a.roundedDistanceMeters || 0) - (b.roundedDistanceMeters || 0) || a.providerId.localeCompare(b.providerId);
+          if (searchRequest.sortBy === 'DISTANCE') return ((a.roundedDistanceMeters ?? Infinity) - (b.roundedDistanceMeters ?? Infinity)) || a.providerId.localeCompare(b.providerId);
           if (searchRequest.sortBy === 'RATING') return (b.ratingAverage || 0) - (a.ratingAverage || 0) || a.providerId.localeCompare(b.providerId);
           return 0;
         });
@@ -328,20 +368,20 @@ function applyStrictProviderFilters(
   const additionalFilterCount = countAdditionalStudentFilters(searchRequest);
 
   useEffect(() => {
-    if (!userLocation) return;
-    setSearchLoading(true);
-    setSearchRequest((prev) => ({
-      ...prev,
-      latitude: userLocation.lat,
-      longitude: userLocation.lng,
-      radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
-      category: 'B',
-      providerType: 'ALL',
-      transmission: 'ALL',
-      page: 1,
-      limit: 10,
-    }));
-  }, [user?.id, userLocation]);
+    const loc = searchedLocation || userLocation;
+    if (!loc) return;
+    if (Number.isFinite(loc.lat) && Number.isFinite(loc.lng) && loc.lat >= -90 && loc.lat <= 90 && loc.lng >= -180 && loc.lng <= 180) {
+      setLocationStatus('RESOLVED');
+      setSearchRequest((prev) => {
+        if (prev.latitude === loc.lat && prev.longitude === loc.lng) return prev;
+        return {
+          ...prev,
+          latitude: loc.lat,
+          longitude: loc.lng,
+        };
+      });
+    }
+  }, [userLocation, searchedLocation]);
 
   // Execute Public Search Engine
   const searchResponse = useMemo(() => realSearchResponse, [realSearchResponse]);
@@ -476,7 +516,7 @@ function applyStrictProviderFilters(
               />
 
               <section aria-labelledby="student-results-title" className="mt-8">
-                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</button><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><button type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></button><button type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><Map className="h-4 w-4"/></button></div></div></div>
+                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</button><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><button type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></button><button type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><Map className="h-4 w-4"/></button></div></div></div>
               </section>
 
               {searchError && (
@@ -509,11 +549,16 @@ function applyStrictProviderFilters(
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {searchLoading ? (
+                  {searchLoading || (locationStatus === 'RESOLVING' && searchRequest.latitude === undefined) ? (
                     <div aria-busy="true" className="space-y-3" aria-label="Carregando resultados">
                       {[1, 2, 3, 4].map((item) => <div key={item} aria-hidden="true" className="h-44 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><div className="h-12 w-12 animate-pulse rounded-2xl bg-slate-100" /><div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-slate-100" /><div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-slate-100" /></div>)}
                     </div>
-                  ) : searchError ? null : (!searchResponse?.results || searchResponse.results.length === 0) ? (
+                  ) : searchError ? null : (searchRequest.latitude === undefined || searchRequest.longitude === undefined) ? (
+                    <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+                      <p className="text-sm font-bold text-slate-800">Informe sua localização para encontrar instrutores próximos.</p>
+                      <p className="text-xs text-slate-500 mt-1">Digite seu endereço ou bairro na busca acima para ver os profissionais disponíveis na sua região.</p>
+                    </div>
+                  ) : (!searchResponse?.results || searchResponse.results.length === 0) ? (
                     <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
                       <p className="text-sm font-bold text-slate-800">Nenhum profissional encontrado com esses filtros.</p>
                       <p className="text-xs text-slate-500 mt-1">Tente aumentar o raio de busca ou remover alguns filtros.</p>
@@ -732,6 +777,36 @@ function applyStrictProviderFilters(
                     </div>
 
                     <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-birthdate">
+                        Data de nascimento
+                      </label>
+                      <input
+                        id="student-profile-birthdate"
+                        value={profileBirthDate}
+                        onChange={(event) => setProfileBirthDate(formatDateMask(event.target.value))}
+                        placeholder="DD/MM/AAAA"
+                        disabled={profileSaving}
+                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-cpf">
+                        CPF
+                      </label>
+                      <input
+                        id="student-profile-cpf"
+                        value={maskCpf(user?.cpf)}
+                        readOnly
+                        aria-readonly="true"
+                        className="w-full min-h-11 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500 cursor-not-allowed font-mono"
+                      />
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        CPF não pode ser alterado pelo aplicativo.
+                      </p>
+                    </div>
+
+                    <div>
                       <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-email">
                         E-mail
                       </label>
@@ -743,10 +818,6 @@ function applyStrictProviderFilters(
                         className="w-full min-h-11 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500 cursor-not-allowed"
                       />
                     </div>
-
-                    <p className="text-[11px] text-slate-500">
-                      E-mail e identificador são informações protegidas e não podem ser alterados.
-                    </p>
 
                     {profileError && (
                       <p role="alert" className="text-xs font-semibold text-rose-700">
@@ -764,6 +835,7 @@ function applyStrictProviderFilters(
                         onClick={() => {
                           setProfileName(user?.name || '');
                           setProfilePhone(formatPhone(user?.phone || ''));
+                          setProfileBirthDate(formatDateMask(user?.birthDate || ''));
                           setProfileAvatar(user?.avatarUrl);
                           setProfileError(null);
                           setIsEditingProfile(false);
@@ -780,7 +852,13 @@ function applyStrictProviderFilters(
                           setProfileSaving(true);
                           setProfileError(null);
                           try {
-                            await dbService.updateMyProfile(profileName, profilePhone, profileAvatar);
+                            if (profileBirthDate && !validateBirthDate(profileBirthDate).valid) {
+                              setProfileError('Informe uma data de nascimento válida (idade mínima 18 anos).');
+                              setProfileSaving(false);
+                              return;
+                            }
+                            const isoBirthDate = profileBirthDate ? toISODateString(profileBirthDate) : undefined;
+                            await dbService.updateMyProfile(profileName, profilePhone, profileAvatar, isoBirthDate);
                             setIsEditingProfile(false);
                           } catch (error: any) {
                             if (process.env.NODE_ENV !== 'production') console.error('Failed to save student profile:', error);
@@ -803,6 +881,14 @@ function applyStrictProviderFilters(
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-slate-500">E-mail</dt>
                       <dd className="truncate font-semibold text-slate-900">{user?.email || 'Não informado'}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-500">CPF</dt>
+                      <dd className="font-mono font-semibold text-slate-900">{maskCpf(user?.cpf)}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-500">Data de nascimento</dt>
+                      <dd className="font-semibold text-slate-900">{formatBirthDateForDisplay(user?.birthDate)}</dd>
                     </div>
                   </dl>
                 )}
@@ -871,6 +957,11 @@ function applyStrictProviderFilters(
         isOpen={!!selectedBookingForDetails}
         onClose={() => setSelectedBookingForDetails(null)}
         booking={selectedBookingForDetails}
+        onBookingUpdated={(updated) => {
+          setConfirmedBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+          setBookingsRefreshKey((k) => k + 1);
+          setSelectedBookingForDetails(null);
+        }}
         onOpenChat={() => {
           if (selectedBookingForDetails) {
             setSelectedBookingForChat(selectedBookingForDetails);
@@ -920,7 +1011,7 @@ function applyStrictProviderFilters(
                   setIsSlotSelectorOpen(true);
                 }}
               >
-                <span className="flex items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-amber-400">{(ctx.instructor_name || ctx.instructorName || 'Instrutor disponível').split(/\s+/).map((part: string) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-black text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{ctx.vehicle_brand || 'Veículo'} {ctx.vehicle_model || ''} · {ctx.vehicle_transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. B</span><span className="mt-1 block text-xs font-bold text-slate-700">{ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}</span></span></span>
+                <span className="flex items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-amber-400">{(ctx.instructor_name || ctx.instructorName || 'Instrutor disponível').split(/\s+/).map((part: string) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-black text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{ctx.vehicle_brand || 'Veículo'} {ctx.vehicle_model || ''} · {ctx.vehicle_transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. {ctx.category || ctx.offering_category || 'B'}</span><span className="mt-1 block text-xs font-bold text-slate-700">{ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}</span></span></span>
               </button>
             ))}
           </div>

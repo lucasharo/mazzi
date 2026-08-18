@@ -13,7 +13,7 @@ async function main() {
 
   // Ensure we are connecting to bhvpkgonhlujmxvwnxix
   if (!databaseUrl.includes('bhvpkgonhlujmxvwnxix')) {
-    throw new Error(`DATABASE_URL does not point to bhvpkgonhlujmxvwnxix: ${databaseUrl}`);
+    throw new Error('DATABASE_URL does not point to remote database');
   }
 
   console.log('Connecting to Supabase remote database (bhvpkgonhlujmxvwnxix)...');

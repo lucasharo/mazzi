@@ -61,13 +61,18 @@ export interface Database {
           phone: string;
           role: UserRole;
           status: UserStatus;
+          cpf: string | null;
+          birth_date: string | null;
           avatar_url: string | null;
           metadata: Json;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
         };
-        Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at' | 'updated_at'>;
+        Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at' | 'updated_at' | 'cpf' | 'birth_date'> & {
+          cpf?: string | null;
+          birth_date?: string | null;
+        };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
       };
       providers: {

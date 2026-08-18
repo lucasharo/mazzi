@@ -71,6 +71,7 @@ describe('Domain: Configurable Cancellation & Refund Policies', () => {
   it('supports custom administrative policy configuration dynamically injected', () => {
     // Custom strict policy: > 48h = 100%, 12-48h = 70%, < 12h = 0%
     const customAdminPolicy: CancellationPolicyConfig = {
+      version: 'CUSTOM_TEST_POLICY',
       providerInitiatedRefundPercentage: 100,
       noShowStudentRefundPercentage: 0,
       noShowProviderRefundPercentage: 100,

@@ -7,3 +7,10 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Scratch directory
+scratch/

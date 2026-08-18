@@ -453,6 +453,10 @@ export interface Booking {
   confirmedAt?: string;
   completedAt?: string;
   cancelledAt?: string;
+  cancelledBy?: string;
+  cancellationReason?: string;
+  refundAmountInCents?: number;
+  lessonDateTime?: string;
   expiredAt?: string;
 }
 

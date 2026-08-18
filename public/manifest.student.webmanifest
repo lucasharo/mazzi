@@ -1,1 +1,1 @@
-{"name":"MAZZI Aluno","short_name":"MAZZI Aluno","start_url":"/","scope":"/","display":"standalone","theme_color":"#fbbf24","background_color":"#0f172a","icons":[{"src":"/icons/mazzi-icon.svg","sizes":"any","type":"image/svg+xml"}]}
+{"name":"MAZZI Aluno","short_name":"MAZZI Aluno","start_url":"./","scope":"./","display":"standalone","theme_color":"#fbbf24","background_color":"#0f172a","icons":[{"src":"./icons/mazzi-icon.svg","sizes":"any","type":"image/svg+xml"}]}

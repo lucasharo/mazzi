@@ -11,9 +11,11 @@ const otpComponent = fs.readFileSync('src/components/ui/OtpInput.tsx', 'utf8');
 const accessDenied = fs.readFileSync('src/components/auth/AccessDenied.tsx', 'utf8');
 
 describe('Premium auth UX & Harmonization', () => {
-  it('keeps app-filtered quick login dev-only and backed by real signIn', () => {
+  it('keeps app-filtered quick login dev-only and backed by real signIn with local env passwords (DEC-012)', () => {
     expect(login).toContain('import.meta.env.DEV');
-    expect(quickLogin).toContain('await signIn(account.email, DEV_QUICK_LOGIN_PASSWORD)');
+    expect(quickLogin).toContain('await signIn(account.email, password)');
+    expect(quickLogin).toContain('getDemoPasswordForAccount');
+    expect(quickLogin).not.toContain('DEV_QUICK_LOGIN_PASSWORD');
     expect(quickLogin).not.toContain('switchRole');
     expect(context).not.toContain('loginAsDemoUser');
     expect(demos).toContain("'aluno'");
@@ -95,11 +97,11 @@ describe('Premium auth UX & Harmonization', () => {
     expect(login).toContain('formatAuthError(contextError)');
   });
 
-  it('checks email existence on forgot password and offers direct signup CTA if not registered', () => {
-    expect(login).toContain('checkUserEmailExists');
-    expect(service).toContain('checkUserEmailExists');
-    expect(login).toContain('Este e-mail não está cadastrado no MAZZI. Verifique o endereço digitado ou crie sua conta.');
-    expect(login).toContain('Criar minha conta no MAZZI');
+  it('enforces anti-account enumeration on forgot password using canonical generic message (DEC-011)', () => {
+    expect(login).not.toContain('checkUserEmailExists');
+    expect(service).not.toContain('checkUserEmailExists');
+    expect(login).toContain('Se existir uma conta associada a este e-mail, enviaremos um código de recuperação.');
+    expect(login).not.toContain('Este e-mail não está cadastrado no MAZZI');
   });
 });
 

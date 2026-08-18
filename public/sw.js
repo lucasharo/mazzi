@@ -2,8 +2,13 @@
  * Do not cache Supabase/Auth/REST/RPC/private API responses.
  */
 
+const basePath = self.location.pathname.substring(0, self.location.pathname.lastIndexOf('/') + 1);
 const CACHE_NAME = 'mazzi-public-assets-v1';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/mazzi-icon.svg'];
+const APP_SHELL = [
+  basePath,
+  basePath + 'manifest.student.webmanifest',
+  basePath + 'icons/mazzi-icon.svg'
+];
 
 function isPrivateOrDynamicRequest(request) {
   const url = new URL(request.url);
@@ -46,7 +51,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/'))
+      fetch(request).catch(() => caches.match(basePath))
     );
     return;
   }

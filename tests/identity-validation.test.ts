@@ -51,10 +51,12 @@ describe('CPF Utilities & Mathematical Validation', () => {
     expect(isValidCpf('abcdefghijk')).toBe(false);
   });
 
-  it('masks CPF correctly for privacy', () => {
-    expect(maskCpf('52998224725')).toBe('***.***.***-25');
-    expect(maskCpf('529.982.247-25')).toBe('***.***.***-25');
-    expect(maskCpf('123')).toBe('***.***.***-**');
+  it('masks CPF correctly for privacy displaying first 3 and last 2 digits', () => {
+    expect(maskCpf('52998224725')).toBe('529.***.***-25');
+    expect(maskCpf('529.982.247-25')).toBe('529.***.***-25');
+    expect(maskCpf('12345678909')).toBe('123.***.***-09');
+    expect(maskCpf('123')).toBe('CPF indisponível');
+    expect(maskCpf(undefined)).toBe('CPF indisponível');
   });
 });
 

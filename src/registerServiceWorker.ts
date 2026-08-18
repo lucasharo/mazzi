@@ -14,7 +14,8 @@ export function registerServiceWorker(): void {
   }
 
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((error) => {
+    const base = (import.meta as any).env?.BASE_URL || '/';
+    navigator.serviceWorker.register(base + 'sw.js', { scope: base }).catch((error) => {
       if ((import.meta as any).env?.DEV) {
         console.error('[MAZZI_PWA_REGISTRATION_FAILED]', error);
       }

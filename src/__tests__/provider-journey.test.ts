@@ -374,6 +374,7 @@ describe('SPRINT 11 — PROVIDER APP JOURNEY & LESSON LIFECYCLE TESTS', () => {
       providerId: 'prov_1',
       actorUserId: 'usr_instructor_1',
       actorRole: 'INSTRUCTOR',
+      reasonCode: 'SCHEDULE_CONFLICT',
       now: new Date('2026-08-14T12:00:00Z'),
     });
 
@@ -387,6 +388,7 @@ describe('SPRINT 11 — PROVIDER APP JOURNEY & LESSON LIFECYCLE TESTS', () => {
       providerId: 'prov_1',
       actorUserId: 'usr_instructor_1',
       actorRole: 'INSTRUCTOR',
+      reasonCode: 'SCHEDULE_CONFLICT',
       now: new Date('2026-08-14T12:01:00Z'),
     });
 

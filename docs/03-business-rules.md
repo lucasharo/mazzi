@@ -19,14 +19,19 @@
 - O valor pago pelo aluno não é repassado imediatamente.
 - O repasse entra no estado `PENDING`, transiciona para `AVAILABLE` somente após a aula estar `COMPLETED` e decorrido o período de segurança de 24 horas (`Safety Period`), prevenindo fraudes e contestações.
 
-## 5. Política de Cancelamento e Reembolso
-- **[DECISÃO PENDENTE]:** A política comercial definitiva de cancelamento será configurada administrativamente na plataforma via `CancellationPolicyConfig`.
-- **Configuração Inicial de Desenvolvimento (`DEFAULT_DEVELOPMENT_POLICY`):**
-  - Cancelamento pelo Fornecedor: Reembolso integral (100%) imediato ao aluno.
-  - Cancelamento pelo Aluno:
-    - ≥ 24 horas de antecedência: Reembolso integral (100%).
-    - Entre 6 e 24 horas: Reembolso de 50%.
-    - < 6 horas ou No-Show: Sem reembolso (fornecedor recebe o valor deduzida a taxa).
+## 5. Política Comercial de Cancelamento e Reembolso (DEC-013)
+- **Política Oficial do MVP (`MVP_CANCELLATION_POLICY`):**
+  | Evento | Antecedência | Reembolso Aluno | Obs |
+  |---|---:|---:|---|
+  | Cancelamento Aluno | >= 24h | 100% | Reembolso integral ao aluno; 0% prestador |
+  | Cancelamento Aluno | >= 6h e < 24h | 50% | Reembolso parcial (50%); 50% compensação/retido |
+  | Cancelamento Aluno | < 6h | 0% | Cancelamento tardio (0% reembolso) |
+  | Cancelamento Prestador | Qualquer | 100% | Reembolso integral ao aluno; motivo obrigatório |
+  | No-Show do Aluno | — | 0% | Sem reembolso |
+  | No-Show do Prestador | — | 100% | Reembolso integral ao aluno |
+
+- *Nota Legal:* Direitos legais obrigatórios do consumidor aplicáveis (`LEGAL_OVERRIDE`) prevalecem sobre esta política comercial.
+
 
 ## 6. Verificação de Fornecedores (Compliance)
 - Apenas fornecedores com status `ACTIVE` e veículos com status `ACTIVE` têm ofertas listadas na busca pública e podem receber reservas.

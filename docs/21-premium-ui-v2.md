@@ -25,4 +25,4 @@ Referência visual: `reference/premium-driver-ui.png` (analisada visualmente em 
 2. Mostrar somente informação que ajuda a decisão atual.
 3. Student e Instructor usam viewport mobile integral, sem moldura de telefone e sem cabeçalho de site.
 4. Admin mantém layout web, mas usa sidebar grafite, fundo marfim e cards da mesma família.
-5. A categoria pública do Student permanece exclusivamente B.
+5. A categoria pública do Student permanece exclusivamente B (a Categoria A permanece preparada tecnicamente no domínio, modelo de dados e busca para ativação futura).

@@ -263,16 +263,6 @@ export function getPublicMapLocation(provider: Provider): PublicMapLocation {
     };
   }
 
-  // Default regional center for São Paulo region
-  if (!provider.city || provider.city.toLowerCase().includes('são paulo') || provider.city.toLowerCase().includes('sao paulo')) {
-    return {
-      latitude: -23.5505,
-      longitude: -46.6333,
-      type: 'REGIONAL_CENTROID',
-      label: 'São Paulo (Região)',
-    };
-  }
-
   // 5. Safe Text-Only Fallback (Zero coordinate leakage)
   return {
     type: 'UNAVAILABLE',
@@ -460,8 +450,30 @@ export function executePublicSearch(
     throw new SearchValidationError(errors);
   }
 
-  const userLat = sanitized.latitude ?? -23.5658; // Default to Pinheiros, SP if lat not provided
-  const userLng = sanitized.longitude ?? -46.6872;
+  const hasUserLocation =
+    sanitized.latitude !== undefined &&
+    sanitized.longitude !== undefined &&
+    Number.isFinite(sanitized.latitude) &&
+    Number.isFinite(sanitized.longitude) &&
+    sanitized.latitude >= -90 &&
+    sanitized.latitude <= 90 &&
+    sanitized.longitude >= -180 &&
+    sanitized.longitude <= 180;
+
+  if (!hasUserLocation) {
+    return {
+      results: [],
+      totalCount: 0,
+      page: sanitized.page || 1,
+      totalPages: 1,
+      hasMore: false,
+      appliedFilters: sanitized,
+      executionTimeMs: Date.now() - startTimeMs,
+    };
+  }
+
+  const userLat = sanitized.latitude!;
+  const userLng = sanitized.longitude!;
   const radiusMeters = sanitized.radiusMeters!;
   const rankingConfig = options.rankingConfig || DEFAULT_SEARCH_RANKING_CONFIG;
   const referenceNow = options.referenceTime || new Date();
@@ -488,9 +500,26 @@ export function executePublicSearch(
 
   for (const provider of activeProviders) {
     // Step 2: Spatial Radius Filter (In-Memory Reference Fallback for PostGIS ST_DWithin)
-    const provLat = provider.latitude ?? -23.5658;
-    const provLng = provider.longitude ?? -46.6872;
-    const distanceMeters = calculateHaversineDistanceMeters(userLat, userLng, provLat, provLng);
+    const hasProvLocation =
+      provider.latitude !== undefined &&
+      provider.longitude !== undefined &&
+      Number.isFinite(provider.latitude) &&
+      Number.isFinite(provider.longitude) &&
+      provider.latitude >= -90 &&
+      provider.latitude <= 90 &&
+      provider.longitude >= -180 &&
+      provider.longitude <= 180;
+
+    if (!hasProvLocation) {
+      continue; // Exclude provider without valid coordinates from geospatial radius search
+    }
+
+    const distanceMeters = calculateHaversineDistanceMeters(
+      userLat,
+      userLng,
+      provider.latitude!,
+      provider.longitude!
+    );
 
     if (distanceMeters > radiusMeters) {
       continue; // Outside search radius boundary

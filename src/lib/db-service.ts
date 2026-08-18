@@ -38,6 +38,8 @@ export function mapUserFromDb(row: any): User | null {
     name: row.name,
     email: row.email,
     phone: row.phone,
+    cpf: row.cpf || undefined,
+    birthDate: row.birth_date ? String(row.birth_date).slice(0, 10) : undefined,
     role: row.role as UserRole,
     avatarUrl: row.avatar_url || undefined,
     createdAt: row.created_at,
@@ -236,8 +238,13 @@ export function mapNotificationFromDb(row: any): Notification {
 
 // DATABASE SERVICE OPERATIONS
 export const dbService = {
-  async updateMyProfile(name: string, phone: string, avatarUrl?: string): Promise<void> {
-    const { error } = await sp.rpc('update_my_profile', { p_name: name.trim(), p_phone: phone.trim(), p_avatar_url: avatarUrl || null });
+  async updateMyProfile(name: string, phone: string, avatarUrl?: string, birthDate?: string): Promise<void> {
+    const { error } = await sp.rpc('update_my_profile', {
+      p_name: name.trim(),
+      p_phone: phone.trim(),
+      p_avatar_url: avatarUrl || null,
+      p_birth_date: birthDate || null,
+    });
     if (error) throw error;
   },
   async getUsers(): Promise<User[]> {
@@ -357,9 +364,22 @@ export const dbService = {
     limit?: number;
     offset?: number;
   } = {}): Promise<Provider[]> {
+    if (
+      params.userLat === undefined ||
+      params.userLng === undefined ||
+      !Number.isFinite(params.userLat) ||
+      !Number.isFinite(params.userLng) ||
+      params.userLat < -90 ||
+      params.userLat > 90 ||
+      params.userLng < -180 ||
+      params.userLng > 180
+    ) {
+      return [];
+    }
+
     const {
-      userLat = -23.5505,
-      userLng = -46.6333,
+      userLat,
+      userLng,
       radiusMeters = 20000,
       category = null,
       providerType = 'ALL',
@@ -420,9 +440,22 @@ export const dbService = {
     limit?: number;
     offset?: number;
   } = {}): Promise<PublicSearchProviderResult[]> {
+    if (
+      params.userLat === undefined ||
+      params.userLng === undefined ||
+      !Number.isFinite(params.userLat) ||
+      !Number.isFinite(params.userLng) ||
+      params.userLat < -90 ||
+      params.userLat > 90 ||
+      params.userLng < -180 ||
+      params.userLng > 180
+    ) {
+      return [];
+    }
+
     const {
-      userLat = -23.5505,
-      userLng = -46.6333,
+      userLat,
+      userLng,
       radiusMeters = 20000,
       category = null,
       date = undefined,
@@ -1027,5 +1060,27 @@ export const dbService = {
     } catch (err) {
       console.warn('Note: Client-side audit log write restricted by least-privilege matrix. Handled gracefully.', err);
     }
+  },
+
+  async cancelBooking(params: {
+    bookingId: string;
+    reason?: string;
+    reasonCode?: string;
+  }): Promise<{
+    success: boolean;
+    is_idempotent?: boolean;
+    booking_id: string;
+    status: string;
+    refund_percentage?: number;
+    refund_amount_in_cents?: number;
+    policy_description?: string;
+  }> {
+    const { data, error } = await sp.rpc('cancel_booking_v2', {
+      p_booking_id: params.bookingId,
+      p_reason: params.reason || null,
+      p_reason_code: params.reasonCode || null,
+    });
+    if (error) throw error;
+    return data;
   }
 };

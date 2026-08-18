@@ -1,7 +1,7 @@
 # 02 — Escopo do MVP (O que entra e o que não entra)
 
 ## Escopo Incluído no MVP (In-Scope)
-1. **Aulas Práticas de Direção:** Categorias A (Moto) e B (Carro).
+1. **Aulas Práticas de Direção:** Lançamento público inicial do App Aluno restrito à **Categoria B** (Carro). *Nota: Embora a arquitetura do MAZZI suporte categorias A e B, o lançamento público inicial do App Aluno será restrito à Categoria B. A Categoria A permanece preparada tecnicamente para ativação futura.*
 2. **Fornecedores Suportados:**
    - Instrutores Autônomos (`INSTRUCTOR`).
    - Autoescolas / Centros de Formação de Condutores (`DRIVING_SCHOOL`).

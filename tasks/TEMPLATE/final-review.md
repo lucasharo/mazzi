@@ -14,9 +14,10 @@ LAST_UPDATED: YYYY-MM-DD
 [Análise dos bugs identificados pelo QA e suas respectivas mitigações]
 
 ## 3. Avaliação Arquitetural e de Segurança
-- Conformidade com [`SECURITY_RULES.md`](file:///d:/mazzi_premium_ui_v2/docs/architecture/SECURITY_RULES.md): [OK]
-- Conformidade com [`ARCHITECTURE.md`](file:///d:/mazzi_premium_ui_v2/docs/architecture/ARCHITECTURE.md): [OK]
+- Conformidade com [`SECURITY_RULES.md`](../../docs/architecture/SECURITY_RULES.md): [OK]
+- Conformidade com [`ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md): [OK]
 - RLS e Triggers integrados: [OK]
+- NUNCA registrar em relatórios/reports: passwords, OTPs, tokens de acesso/refresh ou service keys: [OK]
 
 ## 4. Dívida Técnica Criada
 [Nenhuma / Descrição de débitos conscientemente assumidos]

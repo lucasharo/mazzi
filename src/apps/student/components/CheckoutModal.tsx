@@ -133,8 +133,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     return new PaymentService(new FakePaymentGateway());
   }, []);
 
+  const createQuoteInFlightRef = React.useRef(false);
+
   // Reset and generate quote when modal opens or params change
   useEffect(() => {
+    let active = true;
+
     if (!isOpen || !provider || !vehicle || !offering) {
       return;
     }
@@ -155,6 +159,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         return;
       }
 
+      if (createQuoteInFlightRef.current) return;
+      createQuoteInFlightRef.current = true;
+
       try {
         const finalScheduledStartAt = scheduledStartAt;
         const idempotencyKey = `idem_quote_${offering.id}_${finalScheduledStartAt}`;
@@ -168,6 +175,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               finalScheduledStartAt,
               idempotencyKey
             );
+
+            if (!active) return;
 
             const persistedQuote: Quote = {
               id: rpcRes.quote_id,
@@ -201,6 +210,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             setQuoteTimeRemainingSec(remaining);
             return;
           } catch (dbErr: any) {
+            if (!active) return;
             console.error('QUOTE_CREATE_FAILED on real Database:', dbErr);
             if (dbErr?.message?.includes('SELECTED_SLOT_NOT_AVAILABLE')) {
               setStep('ERROR_SLOT_UNAVAILABLE');
@@ -208,16 +218,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               setErrorMessage(friendlyCheckoutError(dbErr, 'Não foi possível criar a cotação. Tente novamente.'));
             }
             return;
+          } finally {
+            if (active) {
+              createQuoteInFlightRef.current = false;
+            }
           }
         }
 
         throw new Error('QUOTE_CREATE_FAILED: Oferta inválida para cotação no Supabase.');
       } catch (err: any) {
+        if (!active) return;
         setErrorMessage(friendlyCheckoutError(err, 'Não foi possível gerar a cotação para este horário. Tente novamente.'));
       }
     };
 
     initializeQuote();
+
+    return () => {
+      active = false;
+      createQuoteInFlightRef.current = false;
+    };
   }, [isOpen, provider, vehicle, offering, scheduledDate, startTime, endTime, scheduledStartAt, user?.id]);
 
   // Quote Expiration Countdown Timer
@@ -259,6 +279,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   // Step 1: Create Booking Hold (Locks calendar slot temporarily)
   const handleProceedToBookingHold = async () => {
+    if (isProcessing) return;
+
     if (!isAuthenticated || !user) {
       setStep('AUTH_REQUIRED');
       return;

@@ -134,31 +134,6 @@ export async function signInWithEmail({ email, password }: SignInParams) {
   return data;
 }
 
-/**
- * Check if user email is registered in the database
- */
-export async function checkUserEmailExists(email: string): Promise<boolean> {
-  if (!email || !email.trim()) return false;
-  try {
-    const { data, error } = await (supabase.rpc as any)('check_user_email_exists', {
-      email_to_check: email.trim().toLowerCase(),
-    });
-
-    if (error) {
-      console.warn('check_user_email_exists RPC error:', error);
-      const { count } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('email', email.trim().toLowerCase());
-      return Boolean(count && count > 0);
-    }
-
-    return Boolean(data);
-  } catch (err) {
-    console.warn('Error checking user email existence:', err);
-    return false;
-  }
-}
 
 /**
  * Trigger password reset request (Sends 6-digit OTP to user email)

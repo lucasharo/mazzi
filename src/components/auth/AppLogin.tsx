@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import {
-  checkUserEmailExists,
   requestPasswordReset,
   resendSignupOtp,
   updatePassword,
@@ -25,6 +24,8 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
+
+import { DevQuickLogin } from './dev/DevQuickLogin';
 
 export type AppLoginKind = 'student' | 'instructor' | 'admin';
 type Screen =
@@ -384,24 +385,22 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
     setIsSubmitting(true);
     try {
-      // 1. Check if email exists in database
-      const exists = await checkUserEmailExists(email.trim());
-      if (!exists) {
-        setFeedback({
-          tone: 'error',
-          message: 'Este e-mail não está cadastrado no MAZZI. Verifique o endereço digitado ou crie sua conta.',
-        });
-        return;
+      // Direct password reset request (anti-account enumeration contract)
+      try {
+        await requestPasswordReset(email.trim());
+      } catch (err) {
+        // Log technical errors silently; do NOT leak account status to user
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[MAZZI Auth] Password reset request error:', err);
+        }
       }
 
-      // 2. Email exists: request reset OTP and navigate to recovery_otp screen
-      await requestPasswordReset(email.trim());
       setOtpEmail(email.trim());
       setResendCooldown(45);
       goTo('recovery_otp');
       setFeedback({
         tone: 'success',
-        message: `Código de 6 dígitos enviado para ${email.trim()}.`,
+        message: 'Se existir uma conta associada a este e-mail, enviaremos um código de recuperação.',
       });
     } catch (caught: any) {
       setFeedback({
@@ -1123,14 +1122,16 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         )}
       </form>
 
-      {import.meta.env.DEV && DevQuickLogin && (
-        <div className="pt-2">
-          <DevQuickLogin
-            kind={kind}
-            onError={(msg) => setFeedback({ tone: 'error', message: formatAuthError(msg) })}
-          />
-        </div>
-      )}
+      {import.meta.env.DEV &&
+        import.meta.env.VITE_ENABLE_DEV_QUICK_LOGIN === 'true' &&
+        typeof DevQuickLogin === 'function' && (
+          <div className="pt-2">
+            <DevQuickLogin
+              kind={kind}
+              onError={(msg) => setFeedback({ tone: 'error', message: formatAuthError(msg) })}
+            />
+          </div>
+        )}
     </div>
   );
 };

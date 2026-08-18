@@ -78,10 +78,14 @@ export function isValidCpf(value: string | null | undefined): boolean {
 }
 
 /**
- * Masks CPF for privacy preservation (e.g. ***.***.***-09).
+ * Masks CPF for display and privacy preservation (e.g. 123.***.***-09).
+ * Returns 'CPF indisponível' for missing, null, or incomplete CPFs (< 11 digits).
  */
 export function maskCpf(value: string | null | undefined): string {
   const digits = normalizeCpf(value);
-  if (digits.length !== 11) return '***.***.***-**';
-  return `***.***.***-${digits.slice(9, 11)}`;
+  if (digits.length !== 11) return 'CPF indisponível';
+  return `${digits.slice(0, 3)}.***.***-${digits.slice(9, 11)}`;
 }
+
+export const maskCpfForDisplay = maskCpf;
+

@@ -8,9 +8,10 @@
 ## 1. Responsabilidades (Pré-Implementação)
 
 - Ler e analisar detalhadamente `tasks/TASK-XXX/requirement.md`;
-- Consultar a arquitetura e regras de segurança:
-  - [`docs/architecture/ARCHITECTURE.md`](file:///d:/mazzi_premium_ui_v2/docs/architecture/ARCHITECTURE.md)
-  - [`docs/architecture/SECURITY_RULES.md`](file:///d:/mazzi_premium_ui_v2/docs/architecture/SECURITY_RULES.md)
+- Consultar a arquitetura, regras de segurança e estado atual de implementação:
+  - [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md)
+  - [`docs/architecture/SECURITY_RULES.md`](../../docs/architecture/SECURITY_RULES.md)
+  - [`docs/CURRENT_IMPLEMENTATION_STATUS.md`](../../docs/CURRENT_IMPLEMENTATION_STATUS.md)
 - Inspecionar os arquivos e módulos existentes relacionados;
 - Definir a estratégia técnica, identificando:
   - Componentes e hooks impactados;

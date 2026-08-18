@@ -48,8 +48,8 @@ description: MAZZI Audit - auditoria independente QA seguida de Tech Lead
 > **Regra**: Assuma que o código existente contém falhas. Não confie em relatórios anteriores ou na suposição de que testes existentes cobrem tudo.
 
 Ao iniciar:
-1. Ler [`.agents/agents.md`](file:///d:/mazzi_premium_ui_v2/.agents/agents.md) e [`.agents/roles/qa.md`](file:///d:/mazzi_premium_ui_v2/.agents/roles/qa.md);
-2. Ler a estratégia de testes canônica em [`docs/qa/QA_STRATEGY.md`](file:///d:/mazzi_premium_ui_v2/docs/qa/QA_STRATEGY.md);
+1. Ler [`.agents/agents.md`](../agents.md) e [`.agents/roles/qa.md`](../roles/qa.md);
+2. Ler a estratégia de testes canônica em [`docs/qa/QA_STRATEGY.md`](../../docs/qa/QA_STRATEGY.md);
 3. **Auditar o Comportamento Real**:
    - Requisitos de negócio vs. implementação atual;
    - Integridade de tipos (`npm run lint` / `tsc --noEmit`);
@@ -84,7 +84,7 @@ Ao iniciar:
 > **Regra**: Abandone a perspectiva do QA e atue como auditor sênior de arquitetura e risco.
 
 Ao iniciar:
-1. Ler [`.agents/roles/tech-lead.md`](file:///d:/mazzi_premium_ui_v2/.agents/roles/tech-lead.md), [`docs/architecture/ARCHITECTURE.md`](file:///d:/mazzi_premium_ui_v2/docs/architecture/ARCHITECTURE.md) e [`docs/architecture/SECURITY_RULES.md`](file:///d:/mazzi_premium_ui_v2/docs/architecture/SECURITY_RULES.md);
+1. Ler [`.agents/roles/tech-lead.md`](../roles/tech-lead.md), [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md) e [`docs/architecture/SECURITY_RULES.md`](../../docs/architecture/SECURITY_RULES.md);
 2. Revisar criticamente cada achado do QA;
 3. Classificar o status técnico de cada bug:
    - `CONFIRMADO`: Problema real verificado e reproduzível;

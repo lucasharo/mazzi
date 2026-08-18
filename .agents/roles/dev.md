@@ -10,11 +10,12 @@
 - Ler atentamente antes de programar:
   - `tasks/TASK-XXX/requirement.md`
   - `tasks/TASK-XXX/technical-plan.md`
-  - [`docs/product/MVP_RULES.md`](file:///d:/mazzi_premium_ui_v2/docs/product/MVP_RULES.md)
-  - [`docs/architecture/SECURITY_RULES.md`](file:///d:/mazzi_premium_ui_v2/docs/architecture/SECURITY_RULES.md)
+  - [`docs/product/MVP_RULES.md`](../../docs/product/MVP_RULES.md)
+  - [`docs/architecture/SECURITY_RULES.md`](../../docs/architecture/SECURITY_RULES.md)
+  - [`docs/CURRENT_IMPLEMENTATION_STATUS.md`](../../docs/CURRENT_IMPLEMENTATION_STATUS.md)
 - Para implementações visuais / UI:
   - Ativar e utilizar obrigatoriamente a Skill **`ui-ux-pro-max`**;
-  - Preservar os componentes do design system MAZZI Premium V2 ([`PrimaryButton`](file:///d:/mazzi_premium_ui_v2/src/components/ui/PrimaryButton.tsx), [`SecondaryButton`](file:///d:/mazzi_premium_ui_v2/src/components/ui/SecondaryButton.tsx), [`Input`](file:///d:/mazzi_premium_ui_v2/src/components/ui/Input.tsx), [`PasswordInput`](file:///d:/mazzi_premium_ui_v2/src/components/ui/Input.tsx), [`OtpInput`](file:///d:/mazzi_premium_ui_v2/src/components/ui/OtpInput.tsx));
+  - Preservar os componentes do design system MAZZI Premium V2 (`PrimaryButton`, `SecondaryButton`, `Input`, `PasswordInput`, `OtpInput`);
 - Escrever testes unitários e de integração correspondentes à nova funcionalidade;
 - Aplicar somente migrations autorizadas pelo `technical-plan.md`;
 - Executar os portões de qualidade locais antes da entrega:

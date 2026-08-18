@@ -241,6 +241,14 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
         <div ref={messagesEndRef} aria-hidden="true" />
       </div>
 
+      {/* Read-Only Notice for Cancelled Bookings */}
+      {(booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER') && (
+        <div role="status" className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-slate-500 shrink-0" />
+          <span>Esta aula foi cancelada. O histórico de mensagens permanece preservado para consulta.</span>
+        </div>
+      )}
+
       {/* Modern Integrated Composer */}
       <div className="space-y-1.5">
         <div className="relative flex items-center rounded-2xl bg-white border border-[var(--mazzi-border)] focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-[var(--mazzi-focus-glow)] transition-all shadow-xs">
@@ -250,9 +258,9 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
             onChange={(event) => setDraft(event.target.value)}
             rows={2}
             maxLength={2000}
-            className="w-full resize-none border-0 bg-transparent px-4 py-3 text-xs sm:text-sm text-[var(--mazzi-dark)] placeholder:text-slate-400 focus:outline-none focus:ring-0 pr-14 leading-relaxed"
-            placeholder="Escreva uma mensagem sobre esta aula..."
-            disabled={!conversation || loading || sending}
+            className="w-full resize-none border-0 bg-transparent px-4 py-3 text-xs sm:text-sm text-[var(--mazzi-dark)] placeholder:text-slate-400 focus:outline-none focus:ring-0 pr-14 leading-relaxed disabled:bg-slate-50 disabled:cursor-not-allowed"
+            placeholder={booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER' ? 'Chat encerrado por cancelamento da aula.' : 'Escreva uma mensagem sobre esta aula...'}
+            disabled={!conversation || loading || sending || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
@@ -263,7 +271,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) =
           <button
             type="button"
             onClick={handleSend}
-            disabled={!conversation || loading || sending || !draft.trim()}
+            disabled={!conversation || loading || sending || !draft.trim() || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             aria-label="Enviar mensagem"
             title="Enviar mensagem"
             className="absolute right-2.5 bottom-2.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"

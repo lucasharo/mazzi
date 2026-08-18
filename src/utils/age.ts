@@ -191,11 +191,22 @@ export function validateBirthDate(
 }
 
 /**
- * Applies progressive DD/MM/AAAA mask to raw digits
+ * Applies progressive DD/MM/AAAA mask to raw digits or formats YYYY-MM-DD civil dates to DD/MM/AAAA cleanly.
  */
 export function formatDateMask(value: string | null | undefined): string {
-  if (!value) return '';
-  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (!value || typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  const parsed = parseCivilDate(trimmed);
+  if (parsed) {
+    const y = String(parsed.year).padStart(4, '0');
+    const m = String(parsed.month).padStart(2, '0');
+    const d = String(parsed.day).padStart(2, '0');
+    return `${d}/${m}/${y}`;
+  }
+
+  const digits = trimmed.replace(/\D/g, '').slice(0, 8);
   if (!digits) return '';
 
   if (digits.length <= 2) {
@@ -205,6 +216,14 @@ export function formatDateMask(value: string | null | undefined): string {
     return `${digits.slice(0, 2)}/${digits.slice(2)}`;
   }
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+}
+
+/**
+ * Formats a birth date for BR display or returns fallback 'Não informada'
+ */
+export function formatBirthDateForDisplay(value: string | null | undefined): string {
+  const result = formatDateMask(value);
+  return result || 'Não informada';
 }
 
 /**

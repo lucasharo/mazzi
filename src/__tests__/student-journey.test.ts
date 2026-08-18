@@ -43,6 +43,8 @@ describe('Sprint 10: Complete Student App Journey & Domain Rules', () => {
     ratingCount: 120,
     neighborhood: 'Pinheiros',
     city: 'São Paulo',
+    latitude: -23.5658,
+    longitude: -46.6872,
     categories: ['A', 'B'],
     transmissions: ['MANUAL', 'AUTOMATIC'],
     startingPriceInCents: 10000,

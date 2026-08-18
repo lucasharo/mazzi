@@ -8,7 +8,7 @@ dotenv.config({ path: '.env.local' });
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl || !databaseUrl.includes('bhvpkgonhlujmxvwnxix')) {
-    throw new Error(`DATABASE_URL invalid or does not point to bhvpkgonhlujmxvwnxix: ${databaseUrl}`);
+    throw new Error('DATABASE_URL invalid or does not point to remote database');
   }
 
   console.log('Connecting to Supabase remote database (bhvpkgonhlujmxvwnxix)...');

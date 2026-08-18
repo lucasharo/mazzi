@@ -7,7 +7,7 @@ O projeto utiliza quatro papéis especializados.
 ## MAZZI Product
 
 **Fonte de instruções:**
-[.agents/roles/product.md](file:///d:/mazzi_premium_ui_v2/.agents/roles/product.md)
+[.agents/roles/product.md](./roles/product.md)
 
 **Responsabilidade:**
 Definir **O QUE** precisa ser construído.
@@ -25,7 +25,7 @@ Definir **O QUE** precisa ser construído.
 ## MAZZI Tech Lead
 
 **Fonte:**
-[.agents/roles/tech-lead.md](file:///d:/mazzi_premium_ui_v2/.agents/roles/tech-lead.md)
+[.agents/roles/tech-lead.md](./roles/tech-lead.md)
 
 **Responsabilidade:**
 Definir **COMO** implementar e fazer revisão técnica final.
@@ -46,7 +46,7 @@ Definir **COMO** implementar e fazer revisão técnica final.
 ## MAZZI Dev
 
 **Fonte:**
-[.agents/roles/dev.md](file:///d:/mazzi_premium_ui_v2/.agents/roles/dev.md)
+[.agents/roles/dev.md](./roles/dev.md)
 
 **Responsabilidade:**
 **IMPLEMENTAR** requisito e plano técnico aprovados.
@@ -69,7 +69,7 @@ Usar a skill **`ui-ux-pro-max`**.
 ## MAZZI QA
 
 **Fonte:**
-[.agents/roles/qa.md](file:///d:/mazzi_premium_ui_v2/.agents/roles/qa.md)
+[.agents/roles/qa.md](./roles/qa.md)
 
 **Responsabilidade:**
 **TENTAR QUEBRAR** a implementação.

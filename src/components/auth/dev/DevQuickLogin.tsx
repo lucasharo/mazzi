@@ -4,12 +4,37 @@ import { useAuth } from '../AuthContext';
 import type { AppLoginKind } from '../AppLogin';
 import {
   ADMIN_DEMO_ACCOUNTS,
-  DEV_QUICK_LOGIN_PASSWORD,
   INSTRUCTOR_DEMO_ACCOUNTS,
   SCHOOL_DEMO_ACCOUNTS,
   STUDENT_DEMO_ACCOUNTS,
   type DevDemoAccount,
 } from './demo-accounts';
+
+import { getRuntimeEnvValue } from '../../../lib/runtime-env';
+
+export function getDemoPasswordForAccount(account: DevDemoAccount): string | undefined {
+  const roleOrLabel = (account.role || account.label || '').toUpperCase();
+  let pass: string | undefined;
+
+  if (roleOrLabel === 'ADMIN' || roleOrLabel === 'PLATFORM_ADMIN') {
+    pass = getRuntimeEnvValue('VITE_DEV_QUICK_LOGIN_ADMIN_PASSWORD');
+  } else if (
+    roleOrLabel === 'AUTOESCOLA' ||
+    roleOrLabel === 'SCHOOL' ||
+    roleOrLabel === 'SCHOOL_ADMIN' ||
+    roleOrLabel === 'DRIVING_SCHOOL'
+  ) {
+    pass = getRuntimeEnvValue('VITE_DEV_QUICK_LOGIN_SCHOOL_PASSWORD');
+  } else if (roleOrLabel === 'INSTRUTOR' || roleOrLabel === 'INSTRUCTOR') {
+    pass = getRuntimeEnvValue('VITE_DEV_QUICK_LOGIN_INSTRUCTOR_PASSWORD');
+  } else {
+    pass = getRuntimeEnvValue('VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD');
+  }
+
+  if (!pass) return undefined;
+  const clean = pass.replace(/^"|"$/g, '').trim();
+  return clean || undefined;
+}
 
 export const DevQuickLogin: React.FC<{
   kind: AppLoginKind;
@@ -32,9 +57,15 @@ export const DevQuickLogin: React.FC<{
 
   const login = async (account: DevDemoAccount) => {
     if (selected || isLoading) return;
+    const password = getDemoPasswordForAccount(account);
+    if (!password || !password.trim()) {
+      onError('Credencial local de desenvolvimento não configurada.');
+      return;
+    }
+
     setSelected(account.email);
     try {
-      await signIn(account.email, DEV_QUICK_LOGIN_PASSWORD);
+      await signIn(account.email, password);
     } catch (caught) {
       onError(caught instanceof Error ? caught.message : 'Falha ao autenticar.');
     } finally {
@@ -107,3 +138,5 @@ export const DevQuickLogin: React.FC<{
     </section>
   );
 };
+
+export default DevQuickLogin;

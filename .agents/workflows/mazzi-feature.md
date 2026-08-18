@@ -70,7 +70,11 @@ Ao receber o comando `/mazzi-feature <solicitação>`:
 
 > **Regra**: Abandone qualquer perspectiva técnica ou de implementação.
 
-1. Ler [`.agents/roles/product.md`](file:///d:/mazzi_premium_ui_v2/.agents/roles/product.md), [`docs/product/MVP_RULES.md`](file:///d:/mazzi_premium_ui_v2/docs/product/MVP_RULES.md) e [`docs/product/PRODUCT_DECISIONS.md`](file:///d:/mazzi_premium_ui_v2/docs/product/PRODUCT_DECISIONS.md);
+### ETAPA 1 — MAZZI PRODUCT (Definição de Requisitos)
+
+> **Regra**: Abandone qualquer perspectiva técnica ou de implementação.
+
+1. Ler [`.agents/roles/product.md`](../roles/product.md), [`docs/product/MVP_RULES.md`](../../docs/product/MVP_RULES.md) e [`docs/product/PRODUCT_DECISIONS.md`](../../docs/product/PRODUCT_DECISIONS.md);
 2. Transformar a solicitação em requisitos determinísticos e testáveis;
 3. Gerar o arquivo: `tasks/TASK-XXX/requirement.md`;
 4. **Conteúdo Obrigatório**:
@@ -99,7 +103,7 @@ Ao receber o comando `/mazzi-feature <solicitação>`:
 
 > **Regra**: Abandone a perspectiva Product. O foco é segurança, arquitetura e integridade.
 
-1. Ler [`.agents/roles/tech-lead.md`](file:///d:/mazzi_premium_ui_v2/.agents/roles/tech-lead.md), `tasks/TASK-XXX/requirement.md`, [`docs/architecture/ARCHITECTURE.md`](file:///d:/mazzi_premium_ui_v2/docs/architecture/ARCHITECTURE.md) e [`docs/architecture/SECURITY_RULES.md`](file:///d:/mazzi_premium_ui_v2/docs/architecture/SECURITY_RULES.md);
+1. Ler [`.agents/roles/tech-lead.md`](../roles/tech-lead.md), `tasks/TASK-XXX/requirement.md`, [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md) e [`docs/architecture/SECURITY_RULES.md`](../../docs/architecture/SECURITY_RULES.md);
 2. Inspecionar o código e módulos existentes relacionados;
 3. Gerar o arquivo: `tasks/TASK-XXX/technical-plan.md`;
 4. **Conteúdo Obrigatório**:
@@ -125,7 +129,7 @@ Ao receber o comando `/mazzi-feature <solicitação>`:
 
 > **Regra**: Abandone a perspectiva do Tech Lead. Implemente SOMENTE o escopo aprovado.
 
-1. Ler [`.agents/roles/dev.md`](file:///d:/mazzi_premium_ui_v2/.agents/roles/dev.md), `requirement.md`, `technical-plan.md`, `MVP_RULES.md`, `ARCHITECTURE.md` e `SECURITY_RULES.md`;
+1. Ler [`.agents/roles/dev.md`](../roles/dev.md), `requirement.md`, `technical-plan.md`, `MVP_RULES.md`, `ARCHITECTURE.md` e `SECURITY_RULES.md`;
 2. Se envolver interface do usuário (UI), utilizar obrigatoriamente a Skill **`ui-ux-pro-max`** e manter os tokens do MAZZI Premium V2;
 3. **Diretrizes de Engenharia**:
    - Mudanças mínimas e controladas;
@@ -167,7 +171,7 @@ Ao receber o comando `/mazzi-feature <solicitação>`:
 
 > **Regra**: Abandone completamente a mentalidade do Dev. Assuma uma postura adversária: **a implementação pode conter falhas ocultas**.
 
-1. Ler [`.agents/roles/qa.md`](file:///d:/mazzi_premium_ui_v2/.agents/roles/qa.md) e [`docs/qa/QA_STRATEGY.md`](file:///d:/mazzi_premium_ui_v2/docs/qa/QA_STRATEGY.md);
+1. Ler [`.agents/roles/qa.md`](../roles/qa.md) e [`docs/qa/QA_STRATEGY.md`](../../docs/qa/QA_STRATEGY.md);
 2. Ler `requirement.md` e `technical-plan.md` antes de olhar o relatório do Dev;
 3. Inspecionar o `git diff` real e o comportamento no banco/navegador;
 4. Avaliar individualmente cada critério de aceite (`AC01`, `AC02`...) com veredito `PASS` ou `FAIL`;
@@ -218,7 +222,7 @@ Se o QA emitir o resultado `REPROVADO`:
 
 > **Regra**: Somente o Tech Lead possui a prerrogativa de homologar tecnicamente e declarar a TASK como `DONE`.
 
-1. Ler [`.agents/roles/tech-lead.md`](file:///d:/mazzi_premium_ui_v2/.agents/roles/tech-lead.md);
+1. Ler [`.agents/roles/tech-lead.md`](../roles/tech-lead.md);
 2. Revisar integralmente `requirement.md`, `technical-plan.md`, `implementation-report.md`, `qa-report.md`, `git diff` e resultados de testes;
 3. Gerar o arquivo: `tasks/TASK-XXX/final-review.md`;
 4. **Conteúdo Obrigatório**:

@@ -11,7 +11,8 @@
   - `tasks/TASK-XXX/requirement.md`
   - `tasks/TASK-XXX/technical-plan.md`
   - `tasks/TASK-XXX/implementation-report.md`
-  - [`docs/qa/QA_STRATEGY.md`](file:///d:/mazzi_premium_ui_v2/docs/qa/QA_STRATEGY.md)
+  - [`docs/qa/QA_STRATEGY.md`](../../docs/qa/QA_STRATEGY.md)
+  - [`docs/CURRENT_IMPLEMENTATION_STATUS.md`](../../docs/CURRENT_IMPLEMENTATION_STATUS.md)
 - **Não confiar cegamente no relatório do Dev**: Executar e auditar o código na prática;
 - Validar cada Critério de Aceite (`AC01`, `AC02`...) individualmente com veredito `PASS` ou `FAIL`;
 - Executar testes de caminhos negativos (valores inválidos, datas futuras, menores de idade, dados nulos);
