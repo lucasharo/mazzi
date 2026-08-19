@@ -829,15 +829,6 @@ function applyStrictProviderFilters(
                       <Pencil className="h-5 w-5 text-slate-700" aria-hidden="true" />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    aria-label="Abrir notificações"
-                    title="Notificações"
-                    onClick={() => setIsNotificationsOpen(true)}
-                    className="mazzi-avatar grid h-12 w-12 place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-2xs active:scale-95"
-                  >
-                    <Bell className="h-5 w-5 text-slate-700" aria-hidden="true" />
-                  </button>
                 </div>
               </header>
 
