@@ -387,16 +387,22 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql50).toContain('GRANT EXECUTE ON FUNCTION public.search_providers_public(\n  DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, TEXT, TEXT, DOUBLE PRECISION, INT, INT, INT, DATE\n)');
   });
 
-  it('[STATIC SCHEMA CONTRACT] verifies Migration 51 harden_category_b_booking_funnel RPC funnel defenses', () => {
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 51 harden_category_b_booking_funnel RPC funnel defenses & LIVE parity', () => {
     const migration51Path = path.join(process.cwd(), 'supabase/migrations/20260818000051_harden_category_b_booking_funnel.sql');
     expect(fs.existsSync(migration51Path)).toBe(true);
     const sql51 = fs.readFileSync(migration51Path, 'utf8');
 
     expect(sql51).toContain('get_provider_booking_context_public');
+    expect(sql51).toContain('provider_name TEXT');
     expect(sql51).toContain("AND o.category::TEXT = 'B'");
     expect(sql51).toContain('get_available_slots_public');
+    expect(sql51).toContain('slot_start_at TIMESTAMPTZ');
+    expect(sql51).toContain('slot_end_at TIMESTAMPTZ');
+    expect(sql51).toContain('timezone TEXT');
     expect(sql51).toContain("IF v_offering.category::TEXT <> 'B' THEN");
     expect(sql51).toContain('create_quote_from_offering');
+    expect(sql51).toContain('TRIM(p_idempotency_key)');
+    expect(sql51).toContain('ON CONFLICT (student_id, idempotency_key)');
     expect(sql51).toContain("INVALID_PUBLIC_CATEGORY: Only category B is supported for quotes");
     expect(sql51).toContain('create_booking_hold');
     expect(sql51).toContain("INVALID_PUBLIC_CATEGORY: Only category B is supported for booking holds");
