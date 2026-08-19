@@ -297,18 +297,24 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql46).toContain('GRANT EXECUTE ON FUNCTION public.update_provider_profile');
   });
 
-  it('[STATIC SCHEMA CONTRACT] verifies Migration 47 fix_provider_availability_rls policies & can_manage_provider_schedule RBAC', () => {
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 47 fix_provider_availability_rls policies, driving_school_staff GRANT & RBAC overrides', () => {
     const migration47Path = path.join(process.cwd(), 'supabase/migrations/20260818000047_fix_provider_availability_rls.sql');
     expect(fs.existsSync(migration47Path)).toBe(true);
     const sql47 = fs.readFileSync(migration47Path, 'utf8');
 
+    expect(sql47).toContain('GRANT SELECT ON TABLE public.driving_school_staff TO authenticated');
+    expect(sql47).toContain('REVOKE ALL ON TABLE public.driving_school_staff FROM anon');
+    expect(sql47).toContain('CREATE OR REPLACE FUNCTION public.current_user_has_permission');
     expect(sql47).toContain('CREATE OR REPLACE FUNCTION public.can_manage_provider_schedule');
     expect(sql47).toContain('public.is_current_user_active()');
+    expect(sql47).toContain('user_custom_permissions');
     expect(sql47).toContain('role_permissions');
     expect(sql47).toContain('school.schedule.manage');
+    expect(sql47).toContain('provider.schedule.manage_own');
     expect(sql47).toContain('driving_school_staff');
     expect(sql47).toContain("p.type = 'DRIVING_SCHOOL'");
-    expect(sql47).not.toContain('is_school_member(');
+    expect(sql47).not.toContain('public.is_school_member(target_provider_id)');
+    expect(sql47).not.toContain('DISABLE ROW LEVEL SECURITY');
     expect(sql47).toContain('CREATE POLICY "availabilities_owner_insert" ON public.availabilities');
     expect(sql47).toContain('CREATE POLICY "exceptions_owner_insert" ON public.availability_exceptions');
     expect(sql47).toContain('public.can_manage_provider_schedule(provider_id)');

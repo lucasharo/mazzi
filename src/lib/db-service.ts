@@ -735,12 +735,12 @@ export const dbService = {
   ): Promise<void> {
     const { error: rpcError } = await sp.rpc('update_provider_profile', {
       p_provider_id: providerId,
-      p_name: profileData.name ? profileData.name.trim() : null,
-      p_public_contact: profileData.publicContact ? profileData.publicContact.trim() : null,
-      p_neighborhood: profileData.neighborhood ? profileData.neighborhood.trim() : null,
-      p_city: profileData.city ? profileData.city.trim() : null,
-      p_state: profileData.state ? profileData.state.toUpperCase().trim() : null,
-      p_service_radius_km: profileData.serviceRadiusKm || null,
+      p_name: profileData.name !== undefined ? profileData.name.trim() : null,
+      p_public_contact: profileData.publicContact !== undefined ? profileData.publicContact.trim() : null,
+      p_neighborhood: profileData.neighborhood !== undefined ? profileData.neighborhood.trim() : null,
+      p_city: profileData.city !== undefined ? profileData.city.trim() : null,
+      p_state: profileData.state !== undefined ? profileData.state.toUpperCase().trim() : null,
+      p_service_radius_km: profileData.serviceRadiusKm !== undefined ? profileData.serviceRadiusKm : null,
       p_bio: profileData.bio !== undefined ? profileData.bio.trim() : null,
     });
 

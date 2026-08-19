@@ -136,10 +136,61 @@ describe('SPRINT 03 — RBAC, Auth Guards & Multi-Tenant Authorization Engine', 
       expect(canAccessSchoolResource(schoolStaffPaulista, 'school-pinheiros-uuid')).toBe(false);
     });
 
-    it('denies all permissions for BLOCKED accounts even if JWT claims roles', () => {
+    it('denies all permissions for BLOCKED accounts even if JWT claims roles or custom grants', () => {
       const perms = resolveUserPermissions(blockedUserWithActiveJWT);
       expect(perms.size).toBe(0);
       expect(hasPermission(blockedUserWithActiveJWT, 'student.profile.read')).toBe(false);
+
+      const blockedWithCustomGrant: AuthContext = {
+        ...blockedUserWithActiveJWT,
+        customPermissions: {
+          granted: ['school.schedule.manage'],
+          revoked: [],
+        },
+      };
+      const permsBlockedGrant = resolveUserPermissions(blockedWithCustomGrant);
+      expect(permsBlockedGrant.size).toBe(0);
+      expect(hasPermission(blockedWithCustomGrant, 'school.schedule.manage')).toBe(false);
+    });
+
+    it('respects custom grants and custom revokes over base role permissions', () => {
+      const staffWithRevoke: AuthContext = {
+        ...schoolStaffPaulista,
+        customPermissions: {
+          granted: [],
+          revoked: ['school.schedule.manage'],
+        },
+      };
+      const staffRevokedPerms = resolveUserPermissions(staffWithRevoke);
+      expect(staffRevokedPerms.has('school.schedule.manage')).toBe(false);
+
+      const instructorWithRevoke: AuthContext = {
+        ...instructorCarlos,
+        customPermissions: {
+          granted: [],
+          revoked: ['provider.schedule.manage_own'],
+        },
+      };
+      const instructorRevokedPerms = resolveUserPermissions(instructorWithRevoke);
+      expect(instructorRevokedPerms.has('provider.schedule.manage_own')).toBe(false);
+
+      const studentWithCustomGrant: AuthContext = {
+        ...studentAlice,
+        customPermissions: {
+          granted: ['school.schedule.manage'],
+          revoked: [],
+        },
+      };
+      const studentGrantedPerms = resolveUserPermissions(studentWithCustomGrant);
+      expect(studentGrantedPerms.has('school.schedule.manage')).toBe(true);
+
+      const supportPerms = resolveUserPermissions(supportAgent);
+      expect(supportPerms.has('school.schedule.manage')).toBe(false);
+      expect(supportPerms.has('provider.schedule.manage_own')).toBe(false);
+
+      const alicePerms = resolveUserPermissions(studentAlice);
+      expect(alicePerms.has('school.schedule.manage')).toBe(false);
+      expect(alicePerms.has('provider.schedule.manage_own')).toBe(false);
     });
   });
 

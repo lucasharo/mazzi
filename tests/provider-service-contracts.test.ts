@@ -361,6 +361,29 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
       });
     });
 
+    it('preserves explicit empty strings and 0 in update_provider_profile RPC payload', async () => {
+      (supabase.rpc as any).mockResolvedValue({ data: null, error: null });
+
+      await dbService.updateProviderProfile('prov-123', {
+        name: '',
+        publicContact: '',
+        city: '',
+        state: '',
+        serviceRadiusKm: 0,
+      });
+
+      expect(supabase.rpc).toHaveBeenCalledWith('update_provider_profile', {
+        p_provider_id: 'prov-123',
+        p_name: '',
+        p_public_contact: '',
+        p_neighborhood: null,
+        p_city: '',
+        p_state: '',
+        p_service_radius_km: 0,
+        p_bio: null,
+      });
+    });
+
     it('fails closed gracefully when update_provider_profile RPC is absent (migration pending)', async () => {
       (supabase.rpc as any).mockResolvedValue({
         data: null,
