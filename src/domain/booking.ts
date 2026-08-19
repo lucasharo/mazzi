@@ -135,6 +135,14 @@ export function mapDatabaseErrorToDomainError(dbError: { code?: string; message?
   const code = dbError.code || '';
   const message = dbError.message || '';
 
+  if (message.includes('exclude_student_overlapping_bookings') || message.includes('STUDENT_ALREADY_BOOKED_FOR_SLOT')) {
+    return new BookingDomainError(
+      'STUDENT_ALREADY_BOOKED_FOR_SLOT',
+      'Você já possui uma aula agendada nesse horário.',
+      409
+    );
+  }
+
   if (code === '23P01' || message.includes('exclude_') || message.includes('SLOT_NO_LONGER_AVAILABLE')) {
     return new BookingDomainError(
       'SLOT_NO_LONGER_AVAILABLE',
@@ -265,6 +273,21 @@ export function createBookingHold(input: CreateBookingHoldInput): CreateBookingH
     throw new BookingDomainError(
       'SLOT_NO_LONGER_AVAILABLE',
       'O veículo selecionado já está alocado para outra aula neste horário.',
+      409
+    );
+  }
+
+  const studentConflict = activeBookingsAfterCleanup.find(
+    (b) =>
+      isBlocking(b) &&
+      b.studentId === studentId &&
+      hasTimeIntervalOverlap(quote.scheduledStartAt, quote.scheduledEndAt, b.scheduledStartAt, b.scheduledEndAt)
+  );
+
+  if (studentConflict) {
+    throw new BookingDomainError(
+      'STUDENT_ALREADY_BOOKED_FOR_SLOT',
+      'Você já possui uma aula agendada nesse horário.',
       409
     );
   }

@@ -24,6 +24,8 @@ import {
   Building2,
   UserCheck,
   UserRound,
+  UserPen,
+  ClipboardList,
   CreditCard,
   RefreshCw,
   Ban,
@@ -409,9 +411,15 @@ export const DesignSystemShowcase: React.FC = () => {
                         <SecondaryButton size="sm" className="min-h-11" leftIcon={<UserRound className="w-4 h-4" />}>
                           Perfil
                         </SecondaryButton>
-                        <PrimaryButton size="sm" className="min-h-11" leftIcon={<CalendarIcon className="w-4 h-4" />} rightIcon={<ChevronRight className="w-4 h-4" />}>
+                        <PrimaryButton size="sm" className="min-h-11" leftIcon={<CalendarIcon className="w-4 h-4" />}>
                           Agenda
                         </PrimaryButton>
+                        <PrimaryButton size="sm" className="min-h-11" leftIcon={<ClipboardList className="w-4 h-4" />}>
+                          Detalhes
+                        </PrimaryButton>
+                        <SecondaryButton size="sm" className="min-h-11" leftIcon={<UserPen className="w-4 h-4" />}>
+                          Editar perfil
+                        </SecondaryButton>
                         <button
                           type="button"
                           className="h-11 w-11 grid place-items-center rounded-2xl bg-[#f7f5ef] border border-[#e9e6de] text-slate-700"

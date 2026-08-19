@@ -90,6 +90,9 @@ function friendlyCheckoutError(error: unknown, fallback: string): string {
   if (technicalMessage.includes('MEETING_POINT_TYPE_INVALID')) {
     return 'Selecione um ponto de encontro válido.';
   }
+  if (technicalMessage.includes('STUDENT_ALREADY_BOOKED_FOR_SLOT') || technicalMessage.includes('EXCLUDE_STUDENT_OVERLAPPING_BOOKINGS')) {
+    return 'Você já possui uma aula agendada nesse horário.';
+  }
   if (technicalMessage.includes('SELECTED_SLOT_NOT_AVAILABLE') || technicalMessage.includes('SLOT_NO_LONGER_AVAILABLE')) {
     return 'Esse horário acabou de ser reservado por outra pessoa. Escolha outro horário.';
   }
@@ -156,21 +159,54 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     if (resumeBooking) {
       setBooking(resumeBooking);
-      setPayment({
-        id: `pay_${resumeBooking.id}`,
-        bookingId: resumeBooking.id,
-        studentId: user?.id || resumeBooking.studentId,
-        providerId: resumeBooking.providerId,
-        offeringId: resumeBooking.offeringId,
-        amountInCents: resumeBooking.totalInCents || resumeBooking.snapshot?.totalInCents || 0,
-        currency: 'BRL',
-        status: 'PENDING',
-        method: 'PIX',
-        idempotencyKey: `idem_pay_${resumeBooking.id}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      setStep('PAYMENT_SELECTION');
+
+      const fetchOrCreateRealPayment = async () => {
+        try {
+          const isRealDb = (import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder');
+          let realPayId: string | undefined;
+
+          if (isRealDb) {
+            const payRes = await dbService.createBookingPayment(
+              resumeBooking.id,
+              paymentMethod || 'PIX',
+              `idem_pay_${resumeBooking.id}`
+            );
+            if (payRes && (payRes.payment_id || payRes.id)) {
+              realPayId = payRes.payment_id || payRes.id;
+            }
+          }
+
+          const initialPay: Payment = {
+            id: realPayId || resumeBooking.id,
+            bookingId: resumeBooking.id,
+            studentId: user?.id || resumeBooking.studentId,
+            providerId: resumeBooking.providerId,
+            gateway: 'DEVELOPMENT_MOCK',
+            idempotencyKey: `idem_pay_${resumeBooking.id}`,
+            method: paymentMethod || 'PIX',
+            status: 'PENDING',
+            amountInCents: resumeBooking.totalInCents || resumeBooking.snapshot?.totalInCents || 0,
+            platformFeeInCents: resumeBooking.platformFeeInCents || resumeBooking.snapshot?.platformFeeInCents || 0,
+            providerAmountInCents: (resumeBooking.totalInCents || 0) - (resumeBooking.platformFeeInCents || 0),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          if (active) {
+            setPayment(initialPay);
+            setStep('PAYMENT_SELECTION');
+          }
+        } catch (err: any) {
+          if (!active) return;
+          if (err?.message?.includes('BOOKING_HOLD_EXPIRED') || err?.message?.includes('EXPIRED')) {
+            setErrorMessage('Tempo para pagamento expirado.');
+            setStep('ERROR_QUOTE_EXPIRED');
+          } else {
+            setErrorMessage(friendlyCheckoutError(err, 'Não foi possível carregar o pagamento pendente.'));
+          }
+        }
+      };
+
+      fetchOrCreateRealPayment();
       return;
     }
 
@@ -525,10 +561,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     >
       <div className="space-y-4 text-left">
         {/* Environment Safety Banner */}
-        <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200/60 text-amber-900 text-[11px] font-medium flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+        <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-medium flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
           <span>
-            <strong>Ambiente de Testes:</strong> Pagamento simulado sem cobrança real.
+            <strong className="font-semibold text-slate-900">Ambiente de Testes:</strong> Pagamento simulado sem cobrança real.
           </span>
         </div>
 
@@ -595,7 +631,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Commercial Price Breakdown */}
-            <div className="rounded-2xl bg-amber-50/60 border border-amber-200/60 p-4 space-y-2 text-slate-900">
+            <div className="rounded-2xl bg-white border border-[#e9e6de] p-4 space-y-2 text-slate-900 shadow-2xs">
               <div className="flex items-center justify-between text-xs font-medium text-slate-600">
                 <span>Aula prática{durationLabel}</span>
                 <span className="font-semibold text-slate-800">{formatCentsToBRL(quote.priceInCents)}</span>
@@ -604,7 +640,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span>Taxa de serviço</span>
                 <span className="font-semibold text-slate-800">{formatCentsToBRL(quote.platformFeeInCents)}</span>
               </div>
-              <div className="pt-2 border-t border-amber-200 flex items-center justify-between">
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-900">Total</span>
                 <span className="text-xl font-extrabold text-slate-950">{formatCentsToBRL(quote.totalInCents)}</span>
               </div>

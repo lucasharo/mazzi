@@ -3,6 +3,7 @@ import {
   Search,
   Calendar as CalendarIcon,
   User,
+  UserPen,
   Bell,
   MessageSquare,
   Map,
@@ -824,13 +825,15 @@ function applyStrictProviderFilters(
                 <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">{profileName || user?.name || 'Nome não informado'}</h3>
                 <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p>
                 {!isEditingProfile && (
-                  <button
+                  <SecondaryButton
                     type="button"
+                    size="sm"
+                    className="mt-4 min-h-11 px-4 text-xs font-bold shadow-2xs"
                     onClick={() => setIsEditingProfile(true)}
-                    className="mt-3 text-xs font-bold text-[var(--mazzi-dark)] hover:underline cursor-pointer"
+                    leftIcon={<UserPen className="w-4 h-4 text-slate-700" aria-hidden="true" />}
                   >
                     Editar perfil
-                  </button>
+                  </SecondaryButton>
                 )}
               </div>
 

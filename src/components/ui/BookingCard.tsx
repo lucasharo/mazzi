@@ -8,7 +8,7 @@ import {
   Calendar,
   Clock,
   Car,
-  ChevronRight,
+  ClipboardList,
   MapPin,
   CheckCircle2,
   AlertCircle,
@@ -237,7 +237,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
               size="sm"
               className="min-h-11 px-4 text-xs font-bold shadow-xs"
               onClick={() => onViewDetails(booking)}
-              rightIcon={<ChevronRight className="h-4 w-4" aria-hidden="true" />}
+              leftIcon={<ClipboardList className="h-4 w-4 shrink-0" aria-hidden="true" />}
               aria-label="Ver detalhes completos da reserva"
             >
               Detalhes

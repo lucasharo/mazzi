@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { isBookingEnded } from '../src/domain/booking';
+import { isBookingEnded, createBookingHold, BookingDomainError } from '../src/domain/booking';
 
 describe('TASK-009 — Pending Payment Resume, Realtime Refresh & UI Refinements', () => {
   const statusBadgePath = path.resolve(process.cwd(), 'src/components/ui/StatusBadge.tsx');
@@ -217,6 +217,137 @@ describe('TASK-009 — Pending Payment Resume, Realtime Refresh & UI Refinements
       expect(content).toContain('Continuar para pagamento');
       expect(content).toContain('Confirmar pagamento');
       expect(content).toContain('min-h-[48px]');
+    });
+  });
+
+  describe('9. Student Schedule Overlap Protection & Behavioral Domain Tests (PARTE B & C)', () => {
+    it('blocks student from holding two overlapping active bookings (STUDENT_ALREADY_BOOKED_FOR_SLOT)', () => {
+      const now = new Date('2026-08-20T10:00:00Z');
+      const studentId = 's-123';
+
+      const quote: any = {
+        id: 'q-1',
+        studentId,
+        providerId: 'p-1',
+        instructorId: 'inst-1',
+        vehicleId: 'v-1',
+        offeringId: 'off-1',
+        scheduledStartAt: '2026-08-20T14:00:00Z',
+        scheduledEndAt: '2026-08-20T14:50:00Z',
+        priceInCents: 10000,
+        platformFeeInCents: 1000,
+        totalInCents: 11000,
+        status: 'ACTIVE',
+        expiresAt: '2026-08-20T10:10:00Z',
+      };
+
+      const existingBookings: any[] = [
+        {
+          id: 'b-exist-1',
+          studentId,
+          providerId: 'p-2', // Different provider
+          instructorId: 'inst-2',
+          vehicleId: 'v-2',
+          status: 'CONFIRMED',
+          scheduledStartAt: '2026-08-20T14:00:00Z',
+          scheduledEndAt: '2026-08-20T14:50:00Z',
+        },
+      ];
+
+      const provider: any = { id: 'p-1', status: 'ACTIVE', trade_name: 'CFC Alpha', type: 'DRIVING_SCHOOL' };
+      const vehicle: any = { id: 'v-1', status: 'ACTIVE', brand: 'VW', model: 'Gol', transmission: 'MANUAL' };
+      const offering: any = { id: 'off-1', status: 'ACTIVE', is_active: true, durationMinutes: 50 };
+
+      expect(() => {
+        createBookingHold({
+          quote,
+          studentId,
+          provider,
+          vehicle,
+          offering,
+          existingBookings,
+          now,
+        });
+      }).toThrowError(BookingDomainError);
+
+      try {
+        createBookingHold({
+          quote,
+          studentId,
+          provider,
+          vehicle,
+          offering,
+          existingBookings,
+          now,
+        });
+      } catch (err: any) {
+        expect(err.code).toBe('STUDENT_ALREADY_BOOKED_FOR_SLOT');
+        expect(err.message).toBe('Você já possui uma aula agendada nesse horário.');
+      }
+    });
+
+    it('allows adjacent non-overlapping slots [14:00, 14:50) and [14:50, 15:40)', () => {
+      const now = new Date('2026-08-20T10:00:00Z');
+      const studentId = 's-123';
+
+      const quote: any = {
+        id: 'q-2',
+        studentId,
+        providerId: 'p-1',
+        instructorId: 'inst-1',
+        vehicleId: 'v-1',
+        offeringId: 'off-1',
+        scheduledStartAt: '2026-08-20T14:50:00Z',
+        scheduledEndAt: '2026-08-20T15:40:00Z',
+        priceInCents: 10000,
+        platformFeeInCents: 1000,
+        totalInCents: 11000,
+        status: 'ACTIVE',
+        expiresAt: '2026-08-20T10:10:00Z',
+      };
+
+      const existingBookings: any[] = [
+        {
+          id: 'b-exist-1',
+          studentId,
+          providerId: 'p-2',
+          instructorId: 'inst-2',
+          vehicleId: 'v-2',
+          status: 'CONFIRMED',
+          scheduledStartAt: '2026-08-20T14:00:00Z',
+          scheduledEndAt: '2026-08-20T14:50:00Z',
+        },
+      ];
+
+      const provider: any = { id: 'p-1', status: 'ACTIVE', trade_name: 'CFC Alpha', type: 'DRIVING_SCHOOL' };
+      const vehicle: any = { id: 'v-1', status: 'ACTIVE', brand: 'VW', model: 'Gol', transmission: 'MANUAL' };
+      const offering: any = { id: 'off-1', status: 'ACTIVE', is_active: true, durationMinutes: 50 };
+
+      const res = createBookingHold({
+        quote,
+        studentId,
+        provider,
+        vehicle,
+        offering,
+        existingBookings,
+        now,
+      });
+
+      expect(res.booking).toBeDefined();
+      expect(res.booking.status).toBe('PENDING_PAYMENT');
+    });
+
+    it('enforces canonical icon patterns for Agenda, Perfil, and Detalhes without decorative chevrons', () => {
+      const providerCardContent = fs.readFileSync(providerResultCardPath, 'utf8');
+      expect(providerCardContent).toContain('Calendar');
+      expect(providerCardContent).not.toContain('rightIcon={<ChevronRight');
+
+      const bookingCardContent = fs.readFileSync(bookingCardPath, 'utf8');
+      expect(bookingCardContent).toContain('ClipboardList');
+      expect(bookingCardContent).not.toContain('rightIcon={<ChevronRight');
+
+      const studentAppContent = fs.readFileSync(studentAppPath, 'utf8');
+      expect(studentAppContent).toContain('UserPen');
     });
   });
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Car, ChevronRight, MapPin, ShieldCheck, Star, UserRound } from 'lucide-react';
+import { Calendar, Car, MapPin, ShieldCheck, Star, UserRound } from 'lucide-react';
 import { PublicSearchProviderResult } from '../../types';
 import { formatCentsToBRL } from '../../domain/money';
 import { trackSearchAnalytics } from './SearchAnalytics';
@@ -175,7 +175,6 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
             className="min-h-11 px-4 text-xs font-bold shadow-xs flex items-center justify-center gap-1.5"
             onClick={handleSchedule}
             leftIcon={<Calendar className="h-4 w-4 shrink-0" aria-hidden="true" />}
-            rightIcon={<ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />}
             aria-label={`Agendar aula com ${result.displayName}`}
           >
             Agenda
