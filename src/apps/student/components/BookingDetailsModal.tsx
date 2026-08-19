@@ -68,8 +68,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     ? Math.max(1, Math.ceil((new Date(booking.holdExpiresAt).getTime() - Date.now()) / (1000 * 60)))
     : null;
 
+  const isLessonEnded =
+    (booking.scheduledEndAt && new Date(booking.scheduledEndAt).getTime() <= Date.now()) ||
+    (snapshot.scheduledEndAt && new Date(snapshot.scheduledEndAt).getTime() <= Date.now()) ||
+    (booking.scheduledDate && booking.endTime && new Date(`${booking.scheduledDate}T${booking.endTime}:00`).getTime() <= Date.now());
+
   const isExpired = booking.status === 'EXPIRED' || (isPendingPayment && !isHoldValid);
-  const isUpcoming = (booking.status === 'CONFIRMED' || (isPendingPayment && isHoldValid)) && !isExpired;
+  const isUpcoming = (booking.status === 'CONFIRMED' || (isPendingPayment && isHoldValid)) && !isExpired && !isLessonEnded;
   const isCancelled = booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER';
   const isCompleted = booking.status === 'COMPLETED';
 
@@ -411,7 +416,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 leftIcon={<CreditCard className="w-4 h-4" aria-hidden="true" />}
                 aria-label="Finalizar pagamento desta reserva pendente"
               >
-                Finalizar pagamento
+                Realizar pagamento
               </Button>
             )}
 

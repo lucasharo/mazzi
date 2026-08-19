@@ -1,31 +1,24 @@
 TASK: TASK-009
 STATUS: QA_APPROVED
 OWNER: MAZZI QA
-LAST_UPDATED: 2026-08-18T21:25:00-03:00
+LAST_UPDATED: 2026-08-18T21:52:00-03:00
 
 # Resultado da Auditoria
 
 **APROVADO**
 
-Todas as verificações funcionais, comportamentais, visuais e de concorrência/idempotência foram executadas com sucesso.
+Todas as verificações de UI/UX, acessibilidade, microcopy, classificação temporal de aulas passadas e transição sem restart foram homologadas com sucesso.
 
 # Matriz de Testes de QA
 
-* **AC01 — Retomada de Reserva Pendente:** `PASS`. O fluxo permite que um aluno retome o pagamento de um booking em `PENDING_PAYMENT` com tempo de retenção ativo sem precisar buscar o instrutor novamente ou recriar quotes.
-* **AC02 — CTA "Finalizar pagamento":** `PASS`. Exibido nos Detalhes da Aula para reservas pendentes válidas com altura >= 48px e acessibilidade completa.
-* **AC03 — Confirmação e Invalidação da Lista:** `PASS`. Ao confirmar o pagamento no FakePaymentGateway, a lista de aulas é atualizada imediatamente no estado local e via re-fetch.
-* **AC04 — Tratamento de Hold Expirado:** `PASS`. Caso `hold_expires_at <= NOW()`, o pagamento é bloqueado e o aluno é orientado a fazer um novo agendamento.
-* **AC05 — Status nos Cards do Histórico:** `PASS`. Todos os cards na aba Histórico exibem o `StatusBadge` padronizado.
-* **AC06 — Verified Icon-Only:** `PASS`. O texto impresso "Verificado" foi removido dos avatares, mantendo o badge `ShieldCheck` com `aria-label="Prestador verificado"`.
-* **AC07 — Ícones nos Botões dos Cards de Busca:** `PASS`. O botão "Perfil" possui o ícone `UserRound` e o botão "Agenda" possui o ícone `Calendar`, ambos com min-height >= 44px.
-* **AC08 — Design System Showcase:** `PASS`. Vitrine atualizada com amostras de todos os novos padrões.
-* **AC09 — Quality Gates:** `PASS`. Lint (`0` erros), Vitest (`499/499` testes aprovados) e Build de Produção (`0` erros em student, instructor e admin).
+* **AC01 — Redesign Modal "Confirmar sua aula":** `PASS`. Alinhamento perfeito ao MAZZI Premium V2, microcopy humanizada ("Este valor fica reservado por mais"), resumo financeiro limpo e CTA `[ Continuar para pagamento ]` com min-height >= 48px.
+* **AC02 — Redesign Modal "Confirmar pagamento":** `PASS`. Banner de teste secundário, seletor PIX/Cartão com min-height >= 44px e CTA `[ Confirmar pagamento ]` funcional com feedback de erro amigável.
+* **AC03 — Classificação Temporal do Histórico (`scheduled_end_at <= NOW()`):** `PASS`. Testes A a H validados. Aulas passadas são exibidas na aba Histórico independente de status `CONFIRMED` ou `IN_PROGRESS`.
+* **AC04 — Transição Automática em Tempo Real sem Restart:** `PASS`. O timer calcula o término da aula e move o booking para o Histórico instantaneamente.
+* **AC05 — Ocultação de Ações Ativas em Aulas Passadas:** `PASS`. Botões de cancelamento e pagamento são ocultados ao abrir detalhes de aulas passadas.
+* **AC06 — Design System Showcase:** `PASS`. Atualizado com amostras dos modais e cards temporais.
+* **AC07 — Portões de Qualidade:** `PASS`. Linter (`0` erros), Vitest (`510/510` testes aprovados) e Builds de Produção verde.
 
-# Testes Negativos & Idempotência
+# Homologação do QA
 
-* Testada a tentativa de pagamento duplo: a chave de idempotência `idem_pay_<booking_id>` evita a criação de pagamentos duplicados.
-* Reuso de booking: a retomada não chama os RPCs `create_quote_from_offering` ou `create_booking_hold` novamente, reutilizando o booking e snapshot existentes.
-
-# Recomendação para o Tech Lead
-
-Homologar a entrega e proceder com o commit e push para a branch `origin/premium_ui_v2`.
+Liberado para encerramento pelo Tech Lead.

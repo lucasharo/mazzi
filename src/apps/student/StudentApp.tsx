@@ -23,6 +23,7 @@ import { BookingCard } from '../../components/ui/BookingCard';
 import { Button, PrimaryButton, SecondaryButton } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
+import { getBookingEndTimestamp, isBookingEnded } from '../../domain/booking';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { SearchHeader } from '../../components/search/SearchHeader';
 import { FilterDrawer } from '../../components/search/FilterDrawer';
@@ -508,26 +509,70 @@ function applyStrictProviderFilters(
     handleOpenCheckoutByProviderId(provider.id);
   };
 
-  // Filter Bookings for Upcoming vs History
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  // Automatic transition timer: schedule lightweight re-evaluation at the exact moment the next active lesson ends
+  useEffect(() => {
+    const futureEnds = confirmedBookings
+      .map((b) => getBookingEndTimestamp(b))
+      .filter((ts) => ts > Date.now());
+
+    if (futureEnds.length === 0) return;
+
+    const nextEndTs = Math.min(...futureEnds);
+    const msUntilNextEnd = Math.max(1000, nextEndTs - Date.now() + 500);
+
+    const timer = setTimeout(() => {
+      setNowMs(Date.now());
+    }, msUntilNextEnd);
+
+    return () => clearTimeout(timer);
+  }, [confirmedBookings, nowMs]);
+
+  // Filter Bookings for Upcoming vs History with strict temporal classification
   const upcomingBookings = useMemo(() => {
-    return confirmedBookings.filter(
-      (b) => b.status === 'CONFIRMED' || b.status === 'PENDING_PAYMENT' || b.status === 'IN_PROGRESS'
-    ).sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b));
-  }, [confirmedBookings]);
+    return confirmedBookings
+      .filter((b) => {
+        if (isBookingEnded(b, nowMs)) return false;
+
+        if (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') return true;
+
+        if (b.status === 'PENDING_PAYMENT') {
+          const holdValid = b.holdExpiresAt ? new Date(b.holdExpiresAt).getTime() > nowMs : true;
+          return holdValid;
+        }
+
+        return false;
+      })
+      .sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b));
+  }, [confirmedBookings, nowMs]);
 
   const historyBookings = useMemo(() => {
-    return confirmedBookings.filter(
-      (b) =>
-        b.status === 'COMPLETED' ||
-        b.status === 'CANCELLED_BY_STUDENT' ||
-        b.status === 'CANCELLED_BY_PROVIDER' ||
-        b.status === 'EXPIRED' ||
-        b.status === 'PAYMENT_FAILED' ||
-        b.status === 'NO_SHOW_STUDENT' ||
-        b.status === 'NO_SHOW_PROVIDER' ||
-        b.status === 'REFUNDED'
-    ).sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a));
-  }, [confirmedBookings]);
+    return confirmedBookings
+      .filter((b) => {
+        if (isBookingEnded(b, nowMs)) return true;
+
+        if (
+          b.status === 'COMPLETED' ||
+          b.status === 'CANCELLED_BY_STUDENT' ||
+          b.status === 'CANCELLED_BY_PROVIDER' ||
+          b.status === 'EXPIRED' ||
+          b.status === 'PAYMENT_FAILED' ||
+          b.status === 'NO_SHOW_STUDENT' ||
+          b.status === 'NO_SHOW_PROVIDER' ||
+          b.status === 'REFUNDED'
+        ) {
+          return true;
+        }
+
+        if (b.status === 'PENDING_PAYMENT' && b.holdExpiresAt) {
+          if (new Date(b.holdExpiresAt).getTime() <= nowMs) return true;
+        }
+
+        return false;
+      })
+      .sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a));
+  }, [confirmedBookings, nowMs]);
 
   const chatBookings = useMemo(() => {
     const upcomingStatus = new Set(['CONFIRMED', 'PENDING_PAYMENT', 'IN_PROGRESS']);

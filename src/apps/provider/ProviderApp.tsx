@@ -2095,7 +2095,7 @@ export const ProviderApp: React.FC = () => {
                   isLoading={isCancellingBooking}
                   onClick={handleConfirmProviderCancel}
                 >
-                  Confirmar cancelamento
+                  Cancelar aula
                 </Button>
               </div>
             </div>

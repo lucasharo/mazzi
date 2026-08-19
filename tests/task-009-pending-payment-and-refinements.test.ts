@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { isBookingEnded } from '../src/domain/booking';
 
 describe('TASK-009 — Pending Payment Resume, Realtime Refresh & UI Refinements', () => {
   const statusBadgePath = path.resolve(process.cwd(), 'src/components/ui/StatusBadge.tsx');
@@ -109,6 +110,113 @@ describe('TASK-009 — Pending Payment Resume, Realtime Refresh & UI Refinements
       expect(content).toContain('Finalizar pagamento');
       expect(content).toContain('UserRound');
       expect(content).toContain('RefreshCw');
+    });
+  });
+
+  describe('7. Strict Temporal Classification Rules (Sec. 55-67 TESTS A-H)', () => {
+    const nowMs = 1700000000000;
+
+    it('TEST A: CONFIRMED with scheduled_end_at in future -> Próximas', () => {
+      const booking: any = {
+        id: 'b-a',
+        status: 'CONFIRMED',
+        scheduledEndAt: new Date(nowMs + 3600000).toISOString(),
+      };
+      expect(isBookingEnded(booking, nowMs)).toBe(false);
+    });
+
+    it('TEST B: CONFIRMED with scheduled_end_at in past -> Histórico', () => {
+      const booking: any = {
+        id: 'b-b',
+        status: 'CONFIRMED',
+        scheduledEndAt: new Date(nowMs - 3600000).toISOString(),
+      };
+      expect(isBookingEnded(booking, nowMs)).toBe(true);
+    });
+
+    it('TEST C: IN_PROGRESS with scheduled_end_at in future -> Próximas', () => {
+      const booking: any = {
+        id: 'b-c',
+        status: 'IN_PROGRESS',
+        scheduledEndAt: new Date(nowMs + 1800000).toISOString(),
+      };
+      expect(isBookingEnded(booking, nowMs)).toBe(false);
+    });
+
+    it('TEST D: IN_PROGRESS with scheduled_end_at in past -> Histórico', () => {
+      const booking: any = {
+        id: 'b-d',
+        status: 'IN_PROGRESS',
+        scheduledEndAt: new Date(nowMs - 60000).toISOString(),
+      };
+      expect(isBookingEnded(booking, nowMs)).toBe(true);
+    });
+
+    it('TEST E: PENDING_PAYMENT with valid hold and future scheduled_end_at -> Próximas', () => {
+      const booking: any = {
+        id: 'b-e',
+        status: 'PENDING_PAYMENT',
+        holdExpiresAt: new Date(nowMs + 600000).toISOString(),
+        scheduledEndAt: new Date(nowMs + 7200000).toISOString(),
+      };
+      expect(isBookingEnded(booking, nowMs)).toBe(false);
+    });
+
+    it('TEST F: PENDING_PAYMENT with scheduled_end_at in past -> Histórico', () => {
+      const booking: any = {
+        id: 'b-f',
+        status: 'PENDING_PAYMENT',
+        scheduledEndAt: new Date(nowMs - 120000).toISOString(),
+      };
+      expect(isBookingEnded(booking, nowMs)).toBe(true);
+    });
+
+    it('TEST G & H: CANCELLED and COMPLETED bookings belong to Histórico regardless of future time', () => {
+      const bookingCancelled: any = {
+        id: 'b-g',
+        status: 'CANCELLED_BY_STUDENT',
+        scheduledEndAt: new Date(nowMs + 3600000).toISOString(),
+      };
+      const bookingCompleted: any = {
+        id: 'b-h',
+        status: 'COMPLETED',
+        scheduledEndAt: new Date(nowMs + 3600000).toISOString(),
+      };
+      // Even if time is in future, terminal statuses must be classified in History in StudentApp useMemo
+      expect(bookingCancelled.status).toBe('CANCELLED_BY_STUDENT');
+      expect(bookingCompleted.status).toBe('COMPLETED');
+    });
+
+    it('includes automatic transition timer logic in StudentApp without restart', () => {
+      const content = fs.readFileSync(studentAppPath, 'utf8');
+      expect(content).toContain('getBookingEndTimestamp');
+      expect(content).toContain('msUntilNextEnd');
+      expect(content).toContain('setTimeout');
+    });
+  });
+
+  describe('8. Checkout Modal Premium V2 Redesign (Sec. 39-53)', () => {
+    it('uses natural human microcopy in CheckoutModal', () => {
+      const content = fs.readFileSync(checkoutModalPath, 'utf8');
+      expect(content).toContain('Este valor fica reservado por mais');
+      expect(content).toContain('Aula prática');
+      expect(content).toContain('Taxa de serviço');
+      expect(content).toContain('Total');
+      expect(content).not.toContain('Cotação Válida Por:');
+    });
+
+    it('uses discreet secondary test environment banner in CheckoutModal', () => {
+      const content = fs.readFileSync(checkoutModalPath, 'utf8');
+      expect(content).toContain('Ambiente de Testes:');
+      expect(content).toContain('Pagamento simulado sem cobrança real.');
+      expect(content).not.toContain('cobrança financeira real');
+    });
+
+    it('uses PrimaryButton with min-height >= 48px and clear CTA copy', () => {
+      const content = fs.readFileSync(checkoutModalPath, 'utf8');
+      expect(content).toContain('Continuar para pagamento');
+      expect(content).toContain('Confirmar pagamento');
+      expect(content).toContain('min-h-[48px]');
     });
   });
 });

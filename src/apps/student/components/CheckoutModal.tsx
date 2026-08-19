@@ -17,6 +17,7 @@ import {
   Sparkles,
   ArrowLeft,
   KeyRound,
+  MapPin,
 } from 'lucide-react';
 import {
   Provider,
@@ -524,10 +525,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     >
       <div className="space-y-4 text-left">
         {/* Environment Safety Banner */}
-        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-400/30 text-amber-900 text-xs font-bold flex items-center gap-2">
+        <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200/60 text-amber-900 text-[11px] font-medium flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
           <span>
-            <strong>Ambiente de Testes:</strong> Pagamento simulado sem cobrança financeira real.
+            <strong>Ambiente de Testes:</strong> Pagamento simulado sem cobrança real.
           </span>
         </div>
 
@@ -545,33 +546,33 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'QUOTE_PREVIEW' && quote && (
           <div className="space-y-4">
             {/* Countdown Badge */}
-            <div className="flex items-center justify-between rounded-2xl bg-[var(--mazzi-dark)] p-3.5 text-white shadow-xs" aria-live="polite">
+            <div className="flex items-center justify-between rounded-2xl bg-amber-50/80 border border-amber-200/80 p-3 text-amber-900" aria-live="polite">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-400 animate-pulse" aria-hidden="true" />
-                <span className="text-xs font-bold">Cotação Válida Por:</span>
+                <Clock className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+                <span className="text-xs font-semibold">Este valor fica reservado por mais</span>
               </div>
-              <span className="font-mono text-sm font-extrabold text-amber-400">
+              <span className="font-mono text-sm font-extrabold text-amber-900">
                 {formatCountdown(quoteTimeRemainingSec)}
               </span>
             </div>
 
             {/* Provider & Schedule Summary */}
-            <div className="mazzi-card space-y-3 p-4 sm:p-5 text-xs text-slate-700">
+            <div className="rounded-2xl border border-[#e9e6de] bg-white space-y-3 p-4 sm:p-5 text-xs text-slate-700 shadow-2xs">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <span className="font-extrabold text-[var(--mazzi-dark)] text-sm sm:text-base block truncate">
+                  <span className="font-extrabold text-slate-900 text-base block truncate">
                     {offering.instructorName || provider.name}
                   </span>
                   {offering.instructorName && offering.instructorName !== provider.name && (
                     <span className="text-[11px] text-slate-500 block truncate">{provider.name}</span>
                   )}
                 </div>
-                <span className="shrink-0 bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
+                <span className="shrink-0 bg-amber-100/80 text-amber-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
                   Cat. {offering.category}
                 </span>
               </div>
 
-              <div className="pt-2.5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className="pt-2.5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                 <div className="flex items-center gap-1.5 text-slate-700 font-medium">
                   <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden="true" />
                   <span>{formatDateBR(scheduledDate)}</span>
@@ -594,48 +595,50 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Commercial Price Breakdown */}
-            <div className="rounded-[22px] bg-[var(--mazzi-yellow-soft)] p-4 sm:p-5 space-y-2 text-slate-900 border border-amber-300/60">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
+            <div className="rounded-2xl bg-amber-50/60 border border-amber-200/60 p-4 space-y-2 text-slate-900">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
                 <span>Aula prática{durationLabel}</span>
-                <span>{formatCentsToBRL(quote.priceInCents)}</span>
+                <span className="font-semibold text-slate-800">{formatCentsToBRL(quote.priceInCents)}</span>
               </div>
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
-                <span>Taxa de Serviço MAZZI</span>
-                <span>{formatCentsToBRL(quote.platformFeeInCents)}</span>
+              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                <span>Taxa de serviço</span>
+                <span className="font-semibold text-slate-800">{formatCentsToBRL(quote.platformFeeInCents)}</span>
               </div>
-              <div className="pt-2 border-t border-amber-400/60 flex items-center justify-between text-sm sm:text-base font-black text-slate-950">
-                <span>Total a Pagar</span>
-                <span>{formatCentsToBRL(quote.totalInCents)}</span>
+              <div className="pt-2 border-t border-amber-200 flex items-center justify-between">
+                <span className="text-sm font-bold text-slate-900">Total</span>
+                <span className="text-xl font-extrabold text-slate-950">{formatCentsToBRL(quote.totalInCents)}</span>
               </div>
             </div>
 
             {/* Meeting Point Selection */}
-            <div className="mazzi-soft-card space-y-3 p-4 border border-[var(--mazzi-border)]">
-              <p className="text-xs font-black text-[var(--mazzi-dark)] uppercase tracking-wider">Ponto de encontro</p>
+            <div className="rounded-2xl border border-[#e9e6de] bg-white p-4 space-y-3">
+              <p className="text-xs font-bold text-slate-900">Ponto de encontro</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   aria-pressed={meetingPointType === 'PROVIDER'}
                   onClick={() => setMeetingPointType('PROVIDER')}
-                  className={`min-h-11 p-2.5 rounded-xl border text-xs font-extrabold transition text-center cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     meetingPointType === 'PROVIDER'
-                      ? 'border-amber-400/80 bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] shadow-xs'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      ? 'border-amber-400 bg-amber-50/80 text-slate-950 shadow-2xs'
+                      : 'border-[#e9e6de] bg-white text-slate-600 hover:border-slate-300'
                   }`}
                 >
-                  Instrutor / Autoescola
+                  <Building2 className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
+                  <span>Autoescola / Local</span>
                 </button>
                 <button
                   type="button"
                   aria-pressed={meetingPointType === 'STUDENT'}
                   onClick={() => setMeetingPointType('STUDENT')}
-                  className={`min-h-11 p-2.5 rounded-xl border text-xs font-extrabold transition text-center cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     meetingPointType === 'STUDENT'
-                      ? 'border-amber-400/80 bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] shadow-xs'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      ? 'border-amber-400 bg-amber-50/80 text-slate-950 shadow-2xs'
+                      : 'border-[#e9e6de] bg-white text-slate-600 hover:border-slate-300'
                   }`}
                 >
-                  Meu endereço
+                  <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
+                  <span>Meu endereço</span>
                 </button>
               </div>
               {meetingPointType === 'STUDENT' && (
@@ -648,7 +651,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     value={studentAddress}
                     onChange={(event) => setStudentAddress(event.target.value)}
                     placeholder="Digite seu endereço com número e bairro"
-                    className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-[var(--mazzi-dark)] placeholder:text-slate-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--mazzi-focus-ring)]"
+                    className="min-h-[44px] w-full rounded-xl border border-[#e9e6de] bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     required
                   />
                 </div>
@@ -658,14 +661,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <Button
               type="button"
               variant="primary"
-              size="lg"
-              className="w-full min-h-[50px] font-extrabold shadow-sm"
+              size="md"
+              className="w-full min-h-[48px] text-sm font-bold shadow-xs"
               isLoading={isProcessing}
               onClick={handleProceedToBookingHold}
-              rightIcon={<ShieldCheck className="w-4 h-4" aria-hidden="true" />}
-              aria-label="Confirmar reserva da aula"
+              aria-label="Continuar para pagamento da aula"
             >
-              Confirmar aula
+              Continuar para pagamento
             </Button>
           </div>
         )}
@@ -754,14 +756,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'PAYMENT_SELECTION' && booking && payment && (
           <div className="space-y-4">
             {/* Hold Expiration Counter */}
-            <div className="p-3.5 rounded-2xl bg-[var(--mazzi-dark)] text-white flex items-center justify-between shadow-xs" aria-live="polite">
-              <div className="flex items-center gap-2 text-xs font-bold">
-                <Clock className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                <span>Horário Reservado Temporariamente:</span>
+            <div className="flex items-center justify-between rounded-2xl bg-amber-50/80 border border-amber-200/80 p-3 text-amber-900" aria-live="polite">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+                <span className="text-xs font-semibold">Horário reservado temporariamente por mais</span>
               </div>
-              <span className="font-mono text-sm font-extrabold text-amber-400">
+              <span className="font-mono text-sm font-extrabold text-amber-900">
                 {formatCountdown(holdTimeRemainingSec)}
               </span>
+            </div>
+
+            {/* Total summary banner */}
+            <div className="rounded-2xl bg-amber-50/60 border border-amber-200/60 p-4 flex items-center justify-between text-slate-900">
+              <span className="text-xs font-bold text-slate-700">Total a pagar</span>
+              <span className="text-xl font-extrabold text-slate-950">{formatCentsToBRL(payment.amountInCents)}</span>
             </div>
 
             {/* Payment Method Selector */}
@@ -770,10 +778,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 type="button"
                 aria-pressed={paymentMethod === 'PIX'}
                 onClick={() => setPaymentMethod('PIX')}
-                className={`min-h-11 p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                className={`min-h-[44px] p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                   paymentMethod === 'PIX'
-                    ? 'border-amber-400/80 bg-[var(--mazzi-yellow-soft)] shadow-xs'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
+                    ? 'border-amber-400 bg-amber-50/80 shadow-2xs'
+                    : 'border-[#e9e6de] bg-white hover:border-slate-300'
                 }`}
               >
                 <QrCode className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
@@ -787,10 +795,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 type="button"
                 aria-pressed={paymentMethod === 'CREDIT_CARD'}
                 onClick={() => setPaymentMethod('CREDIT_CARD')}
-                className={`min-h-11 p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                className={`min-h-[44px] p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                   paymentMethod === 'CREDIT_CARD'
-                    ? 'border-amber-400/80 bg-[var(--mazzi-yellow-soft)] shadow-xs'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
+                    ? 'border-amber-400 bg-amber-50/80 shadow-2xs'
+                    : 'border-[#e9e6de] bg-white hover:border-slate-300'
                 }`}
               >
                 <CreditCard className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
@@ -803,7 +811,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {/* PIX Fake View */}
             {paymentMethod === 'PIX' && (
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 text-center space-y-3 shadow-xs">
+              <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] text-center space-y-3 shadow-2xs">
                 <p className="text-xs font-bold text-slate-800">Código PIX Copia e Cola (Simulado)</p>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] text-slate-600 break-all select-all">
                   {payment.pixQrCode || `FAKE_PIX_SIMULATED_PAYMENT_ENV_DEVELOPMENT_${payment.id}`}
@@ -813,7 +821,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="w-full min-h-11 font-bold"
+                  className="w-full min-h-[44px] font-bold"
                   onClick={handleCopyPixCode}
                   leftIcon={copiedPix ? <Check className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
                   aria-label="Copiar código PIX para a área de transferência"
@@ -826,12 +834,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     type="button"
                     variant="primary"
                     size="md"
-                    className="w-full min-h-11 font-extrabold shadow-sm"
+                    className="w-full min-h-[48px] text-sm font-bold shadow-xs"
                     isLoading={isProcessing}
+                    disabled={isProcessing}
                     onClick={() => handleExecuteFakePayment('APPROVED')}
-                    aria-label="Simular aprovação do pagamento PIX"
+                    aria-label="Confirmar pagamento PIX"
                   >
-                    Simular Pagamento PIX Aprovado
+                    Confirmar pagamento
                   </Button>
                 </div>
               </div>
@@ -839,7 +848,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {/* Credit Card Fake View */}
             {paymentMethod === 'CREDIT_CARD' && (
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-xs">
+              <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] space-y-3 shadow-2xs">
                 <p className="text-xs font-bold text-slate-800 text-center">
                   Simulador de Testes de Cartão
                 </p>
@@ -849,21 +858,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     type="button"
                     variant="primary"
                     size="md"
-                    className="w-full min-h-11 font-extrabold shadow-sm"
+                    className="w-full min-h-[48px] text-sm font-bold shadow-xs"
                     isLoading={isProcessing}
+                    disabled={isProcessing}
                     onClick={() => handleExecuteFakePayment('APPROVED')}
-                    leftIcon={<CheckCircle2 className="w-4 h-4 text-amber-950" aria-hidden="true" />}
-                    aria-label="Simular pagamento de cartão aprovado"
+                    leftIcon={<CheckCircle2 className="w-4 h-4 text-slate-950" aria-hidden="true" />}
+                    aria-label="Confirmar pagamento do cartão"
                   >
-                    Simular Pagamento Aprovado
+                    Confirmar pagamento
                   </Button>
 
                   <Button
                     type="button"
                     variant="outline"
                     size="md"
-                    className="w-full min-h-11 font-bold text-rose-700 border-rose-200 hover:bg-rose-50"
+                    className="w-full min-h-[44px] font-bold text-rose-700 border-rose-200 hover:bg-rose-50"
                     isLoading={isProcessing}
+                    disabled={isProcessing}
                     onClick={() => handleExecuteFakePayment('DECLINED')}
                     leftIcon={<XCircle className="w-4 h-4 text-rose-600" aria-hidden="true" />}
                     aria-label="Simular pagamento de cartão recusado"

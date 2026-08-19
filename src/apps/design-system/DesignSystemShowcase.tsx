@@ -459,7 +459,7 @@ export const DesignSystemShowcase: React.FC = () => {
                         </button>
                         {/* Solid Danger */}
                         <Button variant="danger" size="md" leftIcon={<XCircle className="w-4 h-4 text-white" />}>
-                          Confirmar cancelamento (Solid Danger)
+                          Cancelar aula (Solid Danger)
                         </Button>
                       </div>
                     </div>
@@ -807,11 +807,14 @@ export const DesignSystemShowcase: React.FC = () => {
                 </section>
               )}
 
-              {/* 18. NAVIGATION */}
+              {/* 18. NAVIGATION & TEMPORAL CLASSIFICATION */}
               {activeSection === 'navigation' && (
                 <section className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-black text-[#202126]">18. Navegação & Tabs</h2>
+                    <h2 className="text-xl font-black text-[#202126]">18. Navegação, Tabs & Classificação Temporal</h2>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Aulas ativas ficam na aba Próximas. Aulas cujo horário já terminou (scheduled_end_at &lt;= NOW) migram automaticamente para o Histórico.
+                    </p>
                   </div>
                   <Tabs
                     id="demo-tabs"
@@ -823,17 +826,50 @@ export const DesignSystemShowcase: React.FC = () => {
                       { id: 't2', label: 'Histórico' },
                     ]}
                   />
+
+                  <div className="space-y-3 pt-2">
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Exemplo A: Aula Futura (Aba Próximas)</h4>
+                    <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-slate-900">Instrutor Carlos Silva</span>
+                        <StatusBadge status="CONFIRMED" audience="student" />
+                      </div>
+                      <p className="text-slate-500 font-medium">Data: Amanhã às 14:00 (50 min)</p>
+                    </div>
+
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Exemplo B: Aula Passada com status CONFIRMED (Classificada no Histórico)</h4>
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-slate-900">Instrutor Carlos Silva</span>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status="CONFIRMED" audience="student" />
+                          <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-md">Terminada (Histórico)</span>
+                        </div>
+                      </div>
+                      <p className="text-slate-500 font-medium">Data: Ontem às 10:00 (Finalizada)</p>
+                    </div>
+                  </div>
                 </section>
               )}
 
-              {/* 19. MOBILE PATTERNS */}
+              {/* 19. MOBILE PATTERNS & CHECKOUT MODALS */}
               {activeSection === 'mobile-patterns' && (
                 <section className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-black text-[#202126]">19. Mobile Patterns (360px - 430px)</h2>
+                    <h2 className="text-xl font-black text-[#202126]">19. Mobile Patterns & Checkout Modals (Premium V2)</h2>
                     <p className="text-xs text-slate-600 mt-1">
-                      Respeito a safe-areas PWA (<code className="font-mono bg-slate-100">env(safe-area-inset-bottom)</code>) e botões de toque mínimo 44-48px.
+                      Respeito a safe-areas PWA (<code className="font-mono bg-slate-100">env(safe-area-inset-bottom)</code>), botões min-height 48px e footers flutuantes sem placas brancas.
                     </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#f7f5ef] border border-[#e9e6de] space-y-3">
+                    <h4 className="text-xs font-bold text-[#202126]">Padrão Visual do Checkout (Confirmar Aula & Confirmar Pagamento)</h4>
+                    <ul className="list-disc pl-5 text-xs text-slate-700 space-y-1 font-medium">
+                      <li>Banner de ambiente de testes: Nota secundária em fundo âmbar suave.</li>
+                      <li>Contador de garantia de preço/hold: Badge âmbar suave discreto ("Este valor fica reservado por mais MM:SS").</li>
+                      <li>Resumo financeiro: Hierarquia com destaque no Total.</li>
+                      <li>CTA Principal: <code className="font-mono text-amber-800">PrimaryButton</code> min-height 48px, full-width no mobile.</li>
+                    </ul>
                   </div>
                 </section>
               )}

@@ -24,6 +24,38 @@ export const BLOCKING_BOOKING_STATUSES: BookingStatus[] = [
   'IN_PROGRESS',
 ];
 
+export function getBookingEndTimestamp(booking: Booking): number {
+  const endIso = booking.scheduledEndAt || (booking.snapshot as any)?.scheduledEndAt;
+  if (endIso) {
+    const ts = new Date(endIso).getTime();
+    if (Number.isFinite(ts) && ts > 0) return ts;
+  }
+  if (booking.scheduledDate && booking.endTime) {
+    const ts = new Date(`${booking.scheduledDate}T${booking.endTime}:00`).getTime();
+    if (Number.isFinite(ts) && ts > 0) return ts;
+  }
+  if (booking.scheduledDate && booking.startTime) {
+    const startTs = new Date(`${booking.scheduledDate}T${booking.startTime}:00`).getTime();
+    if (Number.isFinite(startTs) && startTs > 0) {
+      const duration = booking.snapshot?.durationMinutes || 50;
+      return startTs + duration * 60 * 1000;
+    }
+  }
+  if (booking.scheduledStartAt) {
+    const startTs = new Date(booking.scheduledStartAt).getTime();
+    if (Number.isFinite(startTs) && startTs > 0) {
+      const duration = booking.snapshot?.durationMinutes || 50;
+      return startTs + duration * 60 * 1000;
+    }
+  }
+  return 0;
+}
+
+export function isBookingEnded(booking: Booking, nowMs = Date.now()): boolean {
+  const endTs = getBookingEndTimestamp(booking);
+  return endTs > 0 && endTs <= nowMs;
+}
+
 export class BookingDomainError extends Error {
   constructor(
     public readonly code: string,
