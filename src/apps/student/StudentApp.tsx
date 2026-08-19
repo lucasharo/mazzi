@@ -262,6 +262,7 @@ export const StudentApp: React.FC = () => {
     setSearchRequest((prev) => ({
       ...prev,
       ...updates,
+      category: 'B', // Public search in MVP is restricted exclusively to Category B
       page: updates.page ?? 1,
     }));
   };
