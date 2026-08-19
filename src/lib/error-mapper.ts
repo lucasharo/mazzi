@@ -46,6 +46,10 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'Esta ação não está disponível no estado atual da aula.';
   }
 
+  if (msg.includes('BOOKING_CATEGORY_MISSING')) {
+    return 'Inconsistência nos dados do agendamento. Categoria não localizada.';
+  }
+
   // 2. RLS / Authorization / 403 Errors
   if (code === '42501' || msg.includes('permission denied') || msg.includes('row-level security') || msg.includes('ACCESS_DENIED') || msg.includes('UNAUTHORIZED')) {
     return 'Você não tem permissão para realizar esta ação neste perfil.';

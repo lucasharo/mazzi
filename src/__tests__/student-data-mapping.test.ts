@@ -30,7 +30,7 @@ describe('Student Experience Phase 1 formatters', () => {
       vehicle_id: 'vehicle-1', offering_id: 'offering-1', status: 'CONFIRMED',
       scheduled_start_at: '2026-08-25T02:30:00.000Z', scheduled_end_at: '2026-08-25T03:30:00.000Z',
       price_in_cents: 12000, platform_fee_in_cents: 0, total_in_cents: 12000,
-      snapshot_data: { instructorName: 'Aline Teixeira Costa', providerName: 'CFC Paulista', vehicleName: 'VW Polo', meetingPoint: { name: 'Bela Vista' } },
+      snapshot_data: { category: 'B', instructorName: 'Aline Teixeira Costa', providerName: 'CFC Paulista', vehicleName: 'VW Polo', meetingPoint: { name: 'Bela Vista' } },
       meeting_point: { name: 'Bela Vista' }, created_at: '2026-08-01T00:00:00Z',
     });
     expect(booking.instructorName).toBe('Aline Teixeira Costa');
@@ -46,7 +46,7 @@ describe('Student Experience Phase 1 formatters', () => {
       vehicle_id: 'vehicle-1', offering_id: 'offering-1', status: 'COMPLETED',
       scheduled_start_at: '2026-08-25T12:00:00.000Z', scheduled_end_at: '2026-08-25T13:00:00.000Z',
       price_in_cents: 12000, platform_fee_in_cents: 0, total_in_cents: 12000,
-      snapshot_data: { instructor_name: 'Carlos Eduardo Souza', provider_name: 'Autoescola Paulista', vehicle_name: 'Onix', meeting_point: { label: 'Centro' } },
+      snapshot_data: { category: 'B', instructor_name: 'Carlos Eduardo Souza', provider_name: 'Autoescola Paulista', vehicle_name: 'Onix', meeting_point: { label: 'Centro' } },
       meeting_point: { label: 'Centro' }, created_at: '2026-08-01T00:00:00Z',
     });
     expect(booking.instructorName).toBe('Carlos Eduardo Souza');

@@ -9,6 +9,7 @@ import {
   Vehicle,
   ServiceOffering,
   Booking,
+  VehicleCategory,
   ComplianceDocument,
   AuditLog,
   User,
@@ -111,7 +112,7 @@ export function mapOfferingFromDb(row: any): ServiceOffering {
   } as any;
 }
 
-export function mapBookingFromDb(row: any): Booking {
+export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
   const snapshot = typeof row.snapshot_data === 'string' 
     ? JSON.parse(row.snapshot_data) 
     : (row.snapshot_data || {});
@@ -123,7 +124,13 @@ export function mapBookingFromDb(row: any): Booking {
   const normalizedSnapshot = { ...snapshot, instructorName, providerName, vehicleName, meetingPoint };
   snapshot.vehicle_name = vehicleName;
 
-  const category = row.category || snapshot.category;
+  // Category resolution order: row.category -> snapshot.category -> offeringCategory
+  const rawCategory = row.category || snapshot.category || offeringCategory;
+  const category = typeof rawCategory === 'string' ? rawCategory.trim() : '';
+
+  if (!category) {
+    throw new Error(`BOOKING_CATEGORY_MISSING: A categoria do agendamento ${row.id || ''} não pôde ser determinada.`);
+  }
 
   return {
     id: row.id,
@@ -137,7 +144,7 @@ export function mapBookingFromDb(row: any): Booking {
     vehicleName: vehicleName || 'Veículo',
     offeringId: row.offering_id,
     quoteId: row.quote_id || undefined,
-    category: category || undefined,
+    category: category as VehicleCategory,
     status: row.status,
     scheduledDate: row.scheduled_start_at ? formatDateBR(row.scheduled_start_at) : '',
     startTime: row.scheduled_start_at ? formatTimeBR(row.scheduled_start_at) : '',
@@ -165,7 +172,7 @@ export function mapBookingFromDb(row: any): Booking {
     snapshot: normalizedSnapshot,
     meetingPoint,
     createdAt: row.created_at,
-  } as Booking;
+  };
 }
 
 export function mapComplianceFromDb(row: any): ComplianceDocument {
@@ -308,11 +315,17 @@ export const dbService = {
       if (result.error) throw result.error;
     }
 
+    const offeringCategoryMap = new Map<string, string>(
+      (offeringsResult.data || []).map((o: any) => [o.id, o.category])
+    );
+
     return {
       provider: providerResult.data ? mapProviderFromDb(providerResult.data) : null,
       vehicles: (vehiclesResult.data || []).map(mapVehicleFromDb),
       offerings: (offeringsResult.data || []).map(mapOfferingFromDb),
-      bookings: (bookingsResult.data || []).map(mapBookingFromDb),
+      bookings: (bookingsResult.data || []).map((row: any) =>
+        mapBookingFromDb(row, offeringCategoryMap.get(row.offering_id))
+      ),
       complianceDocuments: (documentsResult.data || []).map(mapComplianceFromDb),
       availabilityRules: rulesResult.data || [],
       availabilityExceptions: exceptionsResult.data || [],
@@ -864,8 +877,24 @@ export const dbService = {
     });
     if (namesError) throw namesError;
     const namesByBooking = new Map<string, any>((names || []).map((item: any) => [item.booking_id, item]));
+
+    const offeringIds = Array.from(new Set(rows.map((row: any) => row.offering_id).filter(Boolean)));
+    let offeringCategoryMap = new Map<string, string>();
+    if (offeringIds.length > 0) {
+      const { data: offeringsData } = await sp
+        .from('service_offerings')
+        .select('id, category')
+        .in('id', offeringIds);
+      if (offeringsData) {
+        offeringCategoryMap = new Map(offeringsData.map((o: any) => [o.id, o.category]));
+      }
+    }
+
     return rows
-      .map((row: any) => mapBookingFromDb({ ...row, ...(namesByBooking.get(row.id) || {}) }))
+      .map((row: any) => mapBookingFromDb(
+        { ...row, ...(namesByBooking.get(row.id) || {}) },
+        offeringCategoryMap.get(row.offering_id)
+      ))
       .sort((a: Booking, b: Booking) => {
         const aTime = new Date(a.scheduledStartAt || 0).getTime();
         const bTime = new Date(b.scheduledStartAt || 0).getTime();
