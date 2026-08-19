@@ -5,12 +5,12 @@
 
 -- 1. Table-Level Privileges for driving_school_staff (Row-Level Security enforces multi-tenant isolation)
 REVOKE ALL ON TABLE public.driving_school_staff FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.is_school_member(UUID) FROM PUBLIC;
 REVOKE ALL ON TABLE public.driving_school_staff FROM anon;
 GRANT SELECT ON TABLE public.driving_school_staff TO authenticated, service_role;
 
 -- 2. Helper: Checks if the current authenticated user has an effective permission
 -- Resolves: User Status (is_current_user_active), Base Roles (users.role & user_roles), and Custom Overrides (user_custom_permissions)
+-- Note: Permission resolution is strict and does NOT implicitly grant all permissions to PLATFORM_ADMIN.
 CREATE OR REPLACE FUNCTION public.current_user_has_permission(p_permission public.app_permission)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -29,12 +29,7 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- 2.2 Platform Admins have full administrative permissions
-  IF public.is_platform_admin() THEN
-    RETURN TRUE;
-  END IF;
-
-  -- 2.3 Check custom permission override in user_custom_permissions
+  -- 2.2 Check custom permission override in user_custom_permissions
   SELECT is_granted INTO v_custom_granted
   FROM public.user_custom_permissions
   WHERE user_id = v_uid AND permission = p_permission;
@@ -43,7 +38,7 @@ BEGIN
     RETURN v_custom_granted;
   END IF;
 
-  -- 2.4 Check base permissions across primary role (users.role) and additional roles (user_roles)
+  -- 2.3 Check base permissions across primary role (users.role) and additional roles (user_roles)
   SELECT EXISTS (
     SELECT 1
     FROM public.role_permissions rp
@@ -64,11 +59,11 @@ REVOKE ALL ON FUNCTION public.current_user_has_permission(public.app_permission)
 GRANT EXECUTE ON FUNCTION public.current_user_has_permission(public.app_permission) TO authenticated, service_role;
 
 -- 3. Helper: Determines if current authenticated user can manage schedule for target provider
--- Least-Privilege Rules:
+-- Least-Privilege & Direct Owner Rules:
 -- 3.1 Current user MUST be active (public.is_current_user_active())
 -- 3.2 AND one of:
---     a) Platform Admin
---     b) Direct Provider Owner AND has 'provider.schedule.manage_own' permission
+--     a) Platform Admin (public.is_platform_admin())
+--     b) Direct Provider Owner (providers.user_id = auth.uid()) AND has 'provider.schedule.manage_own' permission
 --     c) Active driving school staff member AND provider type is DRIVING_SCHOOL AND has 'school.schedule.manage' permission
 CREATE OR REPLACE FUNCTION public.can_manage_provider_schedule(target_provider_id UUID)
 RETURNS BOOLEAN
@@ -82,7 +77,12 @@ AS $$
     AND (
       public.is_platform_admin()
       OR (
-        public.is_provider_owner(target_provider_id)
+        EXISTS (
+          SELECT 1
+          FROM public.providers p
+          WHERE p.id = target_provider_id
+            AND p.user_id = auth.uid()
+        )
         AND public.current_user_has_permission('provider.schedule.manage_own'::public.app_permission)
       )
       OR (

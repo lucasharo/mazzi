@@ -313,6 +313,8 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql47).toContain('provider.schedule.manage_own');
     expect(sql47).toContain('driving_school_staff');
     expect(sql47).toContain("p.type = 'DRIVING_SCHOOL'");
+    expect(sql47).toContain('p.user_id = auth.uid()');
+    expect(sql47).not.toContain('is_provider_owner(');
     expect(sql47).not.toContain('public.is_school_member(target_provider_id)');
     expect(sql47).not.toContain('DISABLE ROW LEVEL SECURITY');
     expect(sql47).toContain('CREATE POLICY "availabilities_owner_insert" ON public.availabilities');

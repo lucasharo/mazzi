@@ -184,6 +184,17 @@ describe('SPRINT 03 — RBAC, Auth Guards & Multi-Tenant Authorization Engine', 
       const studentGrantedPerms = resolveUserPermissions(studentWithCustomGrant);
       expect(studentGrantedPerms.has('school.schedule.manage')).toBe(true);
 
+      const adminWithRevoke: AuthContext = {
+        ...schoolAdminPaulista,
+        customPermissions: {
+          granted: ['provider.schedule.manage_own'],
+          revoked: ['school.schedule.manage'],
+        },
+      };
+      const adminRevokedPerms = resolveUserPermissions(adminWithRevoke);
+      expect(adminRevokedPerms.has('school.schedule.manage')).toBe(false);
+      expect(adminRevokedPerms.has('provider.schedule.manage_own')).toBe(true);
+
       const supportPerms = resolveUserPermissions(supportAgent);
       expect(supportPerms.has('school.schedule.manage')).toBe(false);
       expect(supportPerms.has('provider.schedule.manage_own')).toBe(false);
