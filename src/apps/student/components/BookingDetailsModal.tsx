@@ -114,8 +114,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       const updated: Booking = {
         ...booking,
         status: (res.status as any) || 'CANCELLED_BY_STUDENT',
-        cancelledAt: new Date().toISOString(),
-        cancellationReason: finalReason,
+        cancelledAt: res.cancelled_at || new Date().toISOString(),
+        cancellationReason: res.cancellation_reason || finalReason,
+        refundAmountInCents: res.refund_amount_in_cents ?? booking.refundAmountInCents,
       };
 
       if (onBookingUpdated) {

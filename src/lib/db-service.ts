@@ -1177,6 +1177,8 @@ export const dbService = {
     refund_percentage?: number;
     refund_amount_in_cents?: number;
     policy_description?: string;
+    cancellation_reason?: string;
+    cancelled_at?: string;
   }> {
     const { data, error } = await sp.rpc('cancel_booking_v2', {
       p_booking_id: params.bookingId,

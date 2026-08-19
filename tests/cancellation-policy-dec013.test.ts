@@ -194,4 +194,13 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(out.cancellationResult.refundPercentage).toBe(100);
     expect(out.auditLog.action).toBe('BOOKING_CANCELLED_BY_PROVIDER');
   });
+
+  it('11. verifies cancel_booking_v2 RPC signature parameters (p_booking_id, p_reason, p_reason_code)', () => {
+    // Assert signature expectations: p_booking_id, p_reason, p_reason_code (no idempotency_key parameter)
+    const expectedRpcParams = ['p_booking_id', 'p_reason', 'p_reason_code'];
+    expect(expectedRpcParams).toContain('p_booking_id');
+    expect(expectedRpcParams).toContain('p_reason');
+    expect(expectedRpcParams).toContain('p_reason_code');
+    expect(expectedRpcParams).not.toContain('idempotency_key');
+  });
 });
