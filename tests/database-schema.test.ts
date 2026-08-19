@@ -325,22 +325,35 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql47).toContain('USING (public.can_manage_provider_schedule(provider_id))');
   });
 
-  it('[STATIC SCHEMA CONTRACT] verifies Migration 48 prevent_student_booking_overlap exclusion constraint & create_booking_hold error mapping', () => {
-    const migration48Path = path.join(process.cwd(), 'supabase/migrations/20260818000048_prevent_student_booking_overlap.sql');
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 48 remediate_student_overlapping_bookings safe transactional remediation', () => {
+    const migration48Path = path.join(process.cwd(), 'supabase/migrations/20260818000048_remediate_student_overlapping_bookings.sql');
     expect(fs.existsSync(migration48Path)).toBe(true);
     const sql48 = fs.readFileSync(migration48Path, 'utf8');
 
-    expect(sql48).toContain('exclude_student_overlapping_bookings');
-    expect(sql48).toContain('student_id WITH =');
-    expect(sql48).toContain('slot_range WITH &&');
-    expect(sql48).toContain('STUDENT_OVERLAP_EXISTING_DATA');
-    expect(sql48).toContain("STUDENT_ALREADY_BOOKED_FOR_SLOT' USING ERRCODE = 'P0001'");
-    expect(sql48).toContain('GET STACKED DIAGNOSTICS');
-    expect(sql48).toContain('v_constraint_name = CONSTRAINT_NAME');
-    expect(sql48).toContain('exclude_instructor_overlapping_bookings');
-    expect(sql48).toContain('exclude_vehicle_overlapping_bookings');
-    expect(sql48).toContain('SLOT_NO_LONGER_AVAILABLE');
-    expect(sql48).toContain('RAISE;\n      END IF;');
+    expect(sql48).toContain('f3e4d43a-dbf2-4e76-8f22-217d655741f8');
+    expect(sql48).toContain('78d44619-5f7f-46f4-b1b2-5cad8b85501a');
+    expect(sql48).toContain('CANCELLED_BY_PROVIDER');
+    expect(sql48).toContain('REFUNDED');
+    expect(sql48).toContain('SYSTEM_DOUBLE_BOOKING_OVERLAP_REMEDIATION');
+    expect(sql48).toContain('SYSTEM_DOUBLE_BOOKING_REMEDIATION');
+  });
+
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 49 prevent_student_booking_overlap exclusion constraint & create_booking_hold error mapping', () => {
+    const migration49Path = path.join(process.cwd(), 'supabase/migrations/20260818000049_prevent_student_booking_overlap.sql');
+    expect(fs.existsSync(migration49Path)).toBe(true);
+    const sql49 = fs.readFileSync(migration49Path, 'utf8');
+
+    expect(sql49).toContain('exclude_student_overlapping_bookings');
+    expect(sql49).toContain('student_id WITH =');
+    expect(sql49).toContain('slot_range WITH &&');
+    expect(sql49).toContain('STUDENT_OVERLAP_EXISTING_DATA');
+    expect(sql49).toContain("STUDENT_ALREADY_BOOKED_FOR_SLOT' USING ERRCODE = 'P0001'");
+    expect(sql49).toContain('GET STACKED DIAGNOSTICS');
+    expect(sql49).toContain('v_constraint_name = CONSTRAINT_NAME');
+    expect(sql49).toContain('exclude_instructor_overlapping_bookings');
+    expect(sql49).toContain('exclude_vehicle_overlapping_bookings');
+    expect(sql49).toContain('SLOT_NO_LONGER_AVAILABLE');
+    expect(sql49).toContain('RAISE;\n      END IF;');
   });
 
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
