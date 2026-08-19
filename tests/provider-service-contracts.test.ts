@@ -397,4 +397,48 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
       ).rejects.toThrow('Atualização do perfil profissional ainda não está disponível neste ambiente (migração pendente).');
     });
   });
+
+  describe('6. getProviderBookingContextPublic Category B Enforcement', () => {
+    it('returns empty array when provider has only Category A offerings (A-only)', async () => {
+      (supabase.rpc as any).mockResolvedValue({
+        data: [
+          { offering_id: 'off-a1', category: 'A', price_in_cents: 9000 },
+          { offering_id: 'off-a2', category: 'A', price_in_cents: 9500 },
+        ],
+        error: null,
+      });
+
+      const res = await dbService.getProviderBookingContextPublic('prov-123');
+      expect(res).toEqual([]);
+    });
+
+    it('returns ONLY Category B offerings when provider has mixed Category A+B offerings', async () => {
+      (supabase.rpc as any).mockResolvedValue({
+        data: [
+          { offering_id: 'off-a1', category: 'A', price_in_cents: 9000 },
+          { offering_id: 'off-b1', category: 'B', price_in_cents: 10000 },
+          { offering_id: 'off-b2', category: 'B', price_in_cents: 12000 },
+        ],
+        error: null,
+      });
+
+      const res = await dbService.getProviderBookingContextPublic('prov-123');
+      expect(res).toHaveLength(2);
+      expect(res.every((item: any) => item.category === 'B')).toBe(true);
+      expect(res.map((item: any) => item.offering_id)).toEqual(['off-b1', 'off-b2']);
+    });
+
+    it('returns Category B offerings when provider has B-only offerings', async () => {
+      (supabase.rpc as any).mockResolvedValue({
+        data: [
+          { offering_id: 'off-b1', category: 'B', price_in_cents: 10000 },
+        ],
+        error: null,
+      });
+
+      const res = await dbService.getProviderBookingContextPublic('prov-123');
+      expect(res).toHaveLength(1);
+      expect(res[0].offering_id).toBe('off-b1');
+    });
+  });
 });

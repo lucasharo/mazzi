@@ -534,9 +534,9 @@ export const dbService = {
       throw error;
     }
     const contexts = data || [];
-    // Public booking context in MVP is restricted exclusively to Category B
+    // Public booking context in MVP is restricted exclusively to Category B (no fallback)
     const catBContexts = contexts.filter((c: any) => c.category === 'B');
-    return catBContexts.length > 0 ? catBContexts : contexts;
+    return catBContexts;
   },
 
   async getProviderAvailabilities(providerId: string, instructorId?: string, vehicleId?: string): Promise<any[]> {
