@@ -138,11 +138,6 @@ export const BookingCard: React.FC<BookingCardProps> = ({
             <h2 className="text-sm sm:text-base font-bold text-[var(--mazzi-dark)] leading-snug break-words">
               {mainDisplayName}
             </h2>
-            {provider && provider !== mainDisplayName && (
-              <span className="text-[10px] font-semibold text-slate-600 bg-[var(--mazzi-surface-soft)] px-2 py-0.5 rounded-md border border-[var(--mazzi-border)]">
-                {provider}
-              </span>
-            )}
           </div>
 
           <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-slate-500 truncate">
