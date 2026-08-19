@@ -12,7 +12,6 @@ import {
 } from '../types';
 import {
   DevelopmentPaymentGateway,
-  MercadoPagoPaymentGateway,
   PaymentService,
   PaymentWebhookService,
   RefundService,
@@ -21,7 +20,6 @@ import {
 
 describe('Sprint 09: Payment Domain & Gateway Architecture', () => {
   let devGateway: DevelopmentPaymentGateway;
-  let mpGateway: MercadoPagoPaymentGateway;
   let ledger: FinancialLedgerService;
   let paymentService: PaymentService;
   let webhookService: PaymentWebhookService;
@@ -69,11 +67,6 @@ describe('Sprint 09: Payment Domain & Gateway Architecture', () => {
 
   beforeEach(() => {
     devGateway = new DevelopmentPaymentGateway();
-    mpGateway = new MercadoPagoPaymentGateway({
-      accessToken: 'TEST-ACCESS-TOKEN-123',
-      webhookSecret: 'test_webhook_secret_key',
-      isSandbox: true,
-    });
     ledger = new FinancialLedgerService();
     paymentService = new PaymentService(devGateway, ledger);
     webhookService = new PaymentWebhookService(devGateway, paymentService);

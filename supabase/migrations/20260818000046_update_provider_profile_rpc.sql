@@ -42,6 +42,7 @@ BEGIN
   END IF;
 
   -- 3. Input Validation & Normalization
+  -- trade_name (p_name): NOT NULL in schema
   IF p_name IS NOT NULL THEN
     v_clean_name := trim(p_name);
     IF v_clean_name = '' THEN
@@ -49,6 +50,7 @@ BEGIN
     END IF;
   END IF;
 
+  -- public_contact: Optional/Nullable
   IF p_public_contact IS NOT NULL THEN
     v_clean_contact := trim(p_public_contact);
     IF v_clean_contact <> '' THEN
@@ -60,6 +62,7 @@ BEGIN
     END IF;
   END IF;
 
+  -- neighborhood: Optional/Nullable
   IF p_neighborhood IS NOT NULL THEN
     v_clean_neighborhood := trim(p_neighborhood);
     IF v_clean_neighborhood = '' THEN
@@ -67,30 +70,30 @@ BEGIN
     END IF;
   END IF;
 
+  -- city: NOT NULL in schema
   IF p_city IS NOT NULL THEN
     v_clean_city := trim(p_city);
     IF v_clean_city = '' THEN
-      v_clean_city := NULL;
+      RAISE EXCEPTION 'PROVIDER_CITY_INVALID: A cidade do prestador não pode ser vazia.' USING ERRCODE = '22000';
     END IF;
   END IF;
 
+  -- state: NOT NULL in schema (must be 2 uppercase letters)
   IF p_state IS NOT NULL THEN
     v_clean_state := upper(trim(p_state));
-    IF v_clean_state <> '' THEN
-      IF NOT (v_clean_state ~ '^[A-Z]{2}$') THEN
-        RAISE EXCEPTION 'PROVIDER_STATE_INVALID: O estado (UF) deve ter exatamente 2 letras.' USING ERRCODE = '22000';
-      END IF;
-    ELSE
-      v_clean_state := NULL;
+    IF v_clean_state = '' OR NOT (v_clean_state ~ '^[A-Z]{2}$') THEN
+      RAISE EXCEPTION 'PROVIDER_STATE_INVALID: O estado (UF) deve ter exatamente 2 letras.' USING ERRCODE = '22000';
     END IF;
   END IF;
 
+  -- service_radius_km: 1 to 100
   IF p_service_radius_km IS NOT NULL THEN
     IF p_service_radius_km < 1 OR p_service_radius_km > 100 THEN
       RAISE EXCEPTION 'SERVICE_RADIUS_INVALID: O raio de atendimento deve estar entre 1 e 100 km.' USING ERRCODE = '22000';
     END IF;
   END IF;
 
+  -- bio: Optional/Nullable
   IF p_bio IS NOT NULL THEN
     v_clean_bio := trim(p_bio);
     IF v_clean_bio = '' THEN
@@ -98,14 +101,14 @@ BEGIN
     END IF;
   END IF;
 
-  -- 4. Execute Update (Modifying ONLY allowed columns)
+  -- 4. Execute Update (Modifying ONLY allowed columns, trade_name instead of name)
   UPDATE public.providers
   SET
-    name = COALESCE(v_clean_name, name),
+    trade_name = COALESCE(v_clean_name, trade_name),
     public_contact = CASE WHEN p_public_contact IS NOT NULL THEN v_clean_contact ELSE public_contact END,
     neighborhood = CASE WHEN p_neighborhood IS NOT NULL THEN v_clean_neighborhood ELSE neighborhood END,
-    city = CASE WHEN p_city IS NOT NULL THEN v_clean_city ELSE city END,
-    state = CASE WHEN p_state IS NOT NULL THEN v_clean_state ELSE state END,
+    city = COALESCE(v_clean_city, city),
+    state = COALESCE(v_clean_state, state),
     service_radius_km = COALESCE(p_service_radius_km, service_radius_km),
     bio = CASE WHEN p_bio IS NOT NULL THEN v_clean_bio ELSE bio END,
     updated_at = NOW()

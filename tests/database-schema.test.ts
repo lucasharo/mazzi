@@ -267,7 +267,7 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql16).not.toContain('WHERE idempotency_key = p_idempotency_key AND student_id = p_student_id');
   });
 
-  it('[STATIC SCHEMA CONTRACT] verifies Migration 46 update_provider_profile RPC security invariants', () => {
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 46 update_provider_profile RPC security invariants & schema compatibility', () => {
     const migration46Path = path.join(process.cwd(), 'supabase/migrations/20260818000046_update_provider_profile_rpc.sql');
     expect(fs.existsSync(migration46Path)).toBe(true);
     const sql46 = fs.readFileSync(migration46Path, 'utf8');
@@ -278,9 +278,21 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql46).toContain('auth.uid()');
     expect(sql46).toContain('public.is_provider_owner');
     expect(sql46).toContain('public.is_school_admin');
+    expect(sql46).toContain('trade_name =');
+    expect(sql46).not.toMatch(/\bname\s*=/);
+    expect(sql46).not.toMatch(/\blegal_name\s*=/);
     expect(sql46).not.toContain("'OWNER'");
     expect(sql46).not.toContain('status =');
     expect(sql46).not.toContain('document_number =');
+    expect(sql46).not.toContain('type =');
+    expect(sql46).not.toContain('user_id =');
+    expect(sql46).not.toContain('rating_average =');
+    expect(sql46).not.toContain('rating_count =');
+    expect(sql46).toContain('PROVIDER_NAME_INVALID');
+    expect(sql46).toContain('PROVIDER_CITY_INVALID');
+    expect(sql46).toContain('PROVIDER_STATE_INVALID');
+    expect(sql46).toContain('PROVIDER_CONTACT_INVALID');
+    expect(sql46).toContain('SERVICE_RADIUS_INVALID');
     expect(sql46).toContain('REVOKE ALL ON FUNCTION public.update_provider_profile');
     expect(sql46).toContain('GRANT EXECUTE ON FUNCTION public.update_provider_profile');
   });
