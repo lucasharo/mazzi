@@ -271,9 +271,11 @@ function applyStrictProviderFilters(
   req: SearchRequest,
 ): PublicSearchProviderResult[] {
   const filtered: PublicSearchProviderResult[] = [];
+  // Public search in MVP is restricted to Category B
+  const targetCategory = req.category && (req.category as string) !== 'ALL' ? req.category : 'B';
 
   for (const provider of results) {
-    // 1. Provider type match
+    // 1. Provider type match (INSTRUCTOR or DRIVING_SCHOOL)
     if (req.providerType && req.providerType !== 'ALL') {
       if (provider.providerType !== req.providerType) continue;
     }
@@ -289,11 +291,11 @@ function applyStrictProviderFilters(
       if (!provider.ratingCount || (provider.ratingAverage || 0) < req.minimumRating) continue;
     }
 
-    // 4. Compute matching offerings
+    // 4. Compute matching offerings (strictly enforcing requested category or Category B)
     const allOfferings = provider.publicOfferings || [];
     const matchingOfferings = allOfferings.filter((offering) => {
-      // Category match
-      if (req.category && offering.category !== req.category) return false;
+      // Category match: Enforce target category (default B, exclude Category A from public search)
+      if (offering.category !== targetCategory) return false;
       // Transmission match
       if (req.transmission && req.transmission !== 'ALL' && offering.transmission !== req.transmission) return false;
       // Max price match
@@ -304,22 +306,21 @@ function applyStrictProviderFilters(
     });
 
     // If no matching offerings satisfy the active filters, omit provider completely
-    if (matchingOfferings.length === 0 && allOfferings.length > 0) {
+    if (matchingOfferings.length === 0) {
       continue;
     }
 
     // Determine displayed prices and offerings strictly from matching offerings
-    const effectiveOfferings = matchingOfferings.length > 0 ? matchingOfferings : allOfferings;
-    const lowestPrice = effectiveOfferings.length > 0 ? Math.min(...effectiveOfferings.map((o) => o.priceInCents)) : provider.startingPriceInCents;
-    const effectiveCategories = Array.from(new Set(effectiveOfferings.map((o) => o.category)));
-    const effectiveTransmissions = Array.from(new Set(effectiveOfferings.map((o) => o.transmission)));
+    const lowestPrice = Math.min(...matchingOfferings.map((o) => o.priceInCents));
+    const effectiveCategories = Array.from(new Set(matchingOfferings.map((o) => o.category)));
+    const effectiveTransmissions = Array.from(new Set(matchingOfferings.map((o) => o.transmission)));
 
     filtered.push({
       ...provider,
-      publicOfferings: effectiveOfferings,
+      publicOfferings: matchingOfferings,
       startingPriceInCents: lowestPrice,
-      categories: effectiveCategories.length > 0 ? effectiveCategories : provider.categories,
-      transmissions: effectiveTransmissions.length > 0 ? effectiveTransmissions : provider.transmissions,
+      categories: effectiveCategories,
+      transmissions: effectiveTransmissions,
     });
   }
 
