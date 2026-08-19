@@ -1,0 +1,154 @@
+import React from 'react';
+import { AlertTriangle, XCircle, Info } from 'lucide-react';
+import { Booking } from '../../../types';
+import { Modal } from '../../../components/ui/Modal';
+import { Button } from '../../../components/ui/Button';
+import { ProviderCancellationReasonCode } from '../../../domain/cancellation';
+
+const PROVIDER_CANCEL_REASON_OPTIONS: { code: ProviderCancellationReasonCode; label: string }[] = [
+  { code: 'SCHEDULE_CONFLICT', label: 'Conflito de agenda' },
+  { code: 'VEHICLE_ISSUE', label: 'Problema no veículo' },
+  { code: 'PERSONAL_EMERGENCY', label: 'Emergência pessoal' },
+  { code: 'WEATHER_OR_SAFETY', label: 'Clima ou segurança' },
+  { code: 'OPERATIONAL_ISSUE', label: 'Problema operacional' },
+  { code: 'OTHER', label: 'Outro motivo' },
+];
+
+interface ProviderCancellationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  booking: Booking | null;
+  reasonCode: ProviderCancellationReasonCode;
+  onReasonCodeChange: (code: ProviderCancellationReasonCode) => void;
+  customReason: string;
+  onCustomReasonChange: (val: string) => void;
+  onConfirmCancel: () => void;
+  isProcessing: boolean;
+  errorMessage: string | null;
+}
+
+export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps> = ({
+  isOpen,
+  onClose,
+  booking,
+  reasonCode,
+  onReasonCodeChange,
+  customReason,
+  onCustomReasonChange,
+  onConfirmCancel,
+  isProcessing,
+  errorMessage,
+}) => {
+  if (!booking) return null;
+
+  const isOther = reasonCode === 'OTHER';
+  const isSubmitDisabled = isProcessing || (isOther && !customReason.trim());
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Cancelar Agendamento (Instrutor)"
+    >
+      <div className="space-y-5 text-left">
+        {/* Policy Warning Banner */}
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-3">
+          <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-extrabold text-amber-950">Política de Cancelamento (DEC-013):</p>
+            <p>
+              Ao realizar o cancelamento pelo instrutor, o agendamento será encerrado e o aluno receberá <strong>reembolso integral (100%)</strong> do valor pago.
+            </p>
+          </div>
+        </div>
+
+        {/* Booking Summary */}
+        <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-xs space-y-1">
+          <p className="font-extrabold text-slate-900">{booking.studentName}</p>
+          <p className="text-slate-600">
+            {booking.scheduledDate} • {booking.startTime} - {booking.endTime} (Cat. {booking.category})
+          </p>
+        </div>
+
+        {/* Error Feedback */}
+        {errorMessage && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Reason Select */}
+        <div className="space-y-2">
+          <label className="text-xs font-extrabold text-slate-900 block">
+            Motivo do Cancelamento *
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {PROVIDER_CANCEL_REASON_OPTIONS.map((opt) => {
+              const isSelected = reasonCode === opt.code;
+              return (
+                <button
+                  type="button"
+                  key={opt.code}
+                  onClick={() => onReasonCodeChange(opt.code)}
+                  className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs font-bold text-left transition ${
+                    isSelected
+                      ? 'bg-[#202126] text-white border-[#202126] shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <span
+                    className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      isSelected ? 'border-[#f6c945] bg-[#f6c945]' : 'border-slate-300'
+                    }`}
+                  >
+                    {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-[#202126]" />}
+                  </span>
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom Reason Text Input (Mandatory when OTHER) */}
+        {isOther && (
+          <div className="space-y-1">
+            <label className="text-xs font-extrabold text-slate-900 block">
+              Descrição Detalhada do Motivo *
+            </label>
+            <textarea
+              rows={3}
+              value={customReason}
+              onChange={(e) => onCustomReasonChange(e.target.value)}
+              placeholder="Descreva detalhadamente a justificativa para o cancelamento..."
+              className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-[#202126]"
+            />
+            {isOther && !customReason.trim() && (
+              <p className="text-[11px] font-bold text-rose-600">
+                A descrição textual é obrigatória para a opção "Outro motivo".
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Actions Footer */}
+        <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200">
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isProcessing}>
+            Voltar
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={onConfirmCancel}
+            disabled={isSubmitDisabled}
+            isLoading={isProcessing}
+            leftIcon={<XCircle className="w-4 h-4" />}
+          >
+            Confirmar Cancelamento
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};

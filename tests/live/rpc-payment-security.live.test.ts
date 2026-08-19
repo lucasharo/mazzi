@@ -8,7 +8,9 @@ import * as path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 const dbUrl = process.env.DATABASE_URL || '';
 
-describe('TASK-014: Payment FAILED Retry Flow (LIVE INTEGRATION)', () => {
+const shouldRunLive = process.env.RUN_LIVE_INTEGRATION_TESTS === 'true' && Boolean(process.env.DATABASE_URL);
+
+describe.runIf(shouldRunLive)('TASK-014/TASK-015: Payment FAILED Retry Flow (LIVE INTEGRATION)', () => {
   let bookingId: string = '00000000-0000-4000-a000-00000000c001';
   let bookingId2: string = '00000000-0000-4000-a000-00000000c002';
   let paymentAId: string;
