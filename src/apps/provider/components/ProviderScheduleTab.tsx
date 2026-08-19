@@ -358,7 +358,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Horário Inicial *</label>
               <Input
@@ -407,7 +407,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Data Início *</label>
               <Input

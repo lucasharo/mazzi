@@ -69,6 +69,40 @@ export function getTodayInSaoPaulo(now = new Date()): string {
   return getBusinessDateOnly(0, now);
 }
 
+/** Canonical helper: Converts any UTC ISO timestamp or Date into YYYY-MM-DD in America/Sao_Paulo timezone */
+export function getBusinessDateFromTimestamp(timestamp: string | Date): string {
+  const date = parseDate(timestamp);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BRAZIL_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const year = parts.find((p) => p.type === 'year')?.value;
+  const month = parts.find((p) => p.type === 'month')?.value;
+  const day = parts.find((p) => p.type === 'day')?.value;
+  return `${year}-${month}-${day}`;
+}
+
+/** Canonical helper: Checks if a booking belongs to today in America/Sao_Paulo timezone */
+export function isBookingTodayInSaoPaulo(
+  booking: { scheduledDate?: string | null; scheduledStartAt?: string | null },
+  now = new Date()
+): boolean {
+  const todayStr = getTodayInSaoPaulo(now);
+
+  if (booking.scheduledStartAt) {
+    const bookingDateInSp = getBusinessDateFromTimestamp(booking.scheduledStartAt);
+    return bookingDateInSp === todayStr;
+  }
+
+  if (booking.scheduledDate) {
+    return booking.scheduledDate === todayStr;
+  }
+
+  return false;
+}
+
 /**
  * Canonical helper: Resolves absolute epoch milliseconds for a booking timestamp.
  * Prefers ISO timestamp (scheduledEndAt / scheduledStartAt).

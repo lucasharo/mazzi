@@ -688,38 +688,22 @@ export const dbService = {
       bio?: string;
     }
   ): Promise<void> {
-    // 1. Try RPC update_provider_profile first
     const { error: rpcError } = await sp.rpc('update_provider_profile', {
       p_provider_id: providerId,
-      p_name: profileData.name || null,
-      p_public_contact: profileData.publicContact || null,
-      p_neighborhood: profileData.neighborhood || null,
-      p_city: profileData.city || null,
-      p_state: profileData.state || null,
+      p_name: profileData.name ? profileData.name.trim() : null,
+      p_public_contact: profileData.publicContact ? profileData.publicContact.trim() : null,
+      p_neighborhood: profileData.neighborhood ? profileData.neighborhood.trim() : null,
+      p_city: profileData.city ? profileData.city.trim() : null,
+      p_state: profileData.state ? profileData.state.toUpperCase().trim() : null,
       p_service_radius_km: profileData.serviceRadiusKm || null,
-      p_bio: profileData.bio || null,
+      p_bio: profileData.bio !== undefined ? profileData.bio.trim() : null,
     });
 
-    if (!rpcError) return;
-
-    // 2. Fallback to direct table update if RPC does not exist yet in LIVE database
-    const dbRow: Record<string, any> = {};
-    if (profileData.name) dbRow.name = profileData.name.trim();
-    if (profileData.publicContact) dbRow.public_contact = profileData.publicContact.trim();
-    if (profileData.neighborhood) dbRow.neighborhood = profileData.neighborhood.trim();
-    if (profileData.city) dbRow.city = profileData.city.trim();
-    if (profileData.state) dbRow.state = profileData.state.trim();
-    if (profileData.serviceRadiusKm) dbRow.service_radius_km = profileData.serviceRadiusKm;
-    if (profileData.bio !== undefined) dbRow.bio = profileData.bio.trim();
-    dbRow.updated_at = new Date().toISOString();
-
-    const { error: tableError } = await sp
-      .from('providers')
-      .update(dbRow)
-      .eq('id', providerId);
-
-    if (tableError) {
-      throw rpcError || tableError;
+    if (rpcError) {
+      if (rpcError.code === 'PGRST202' || rpcError.code === '42883' || rpcError.message?.includes('function public.update_provider_profile') || rpcError.message?.includes('Could not find')) {
+        throw new Error('Atualização do perfil profissional ainda não está disponível neste ambiente (migração pendente).');
+      }
+      throw rpcError;
     }
   },
 

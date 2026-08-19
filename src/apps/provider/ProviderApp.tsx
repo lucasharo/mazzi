@@ -48,9 +48,10 @@ import {
   LessonSession,
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
-import { getTodayInSaoPaulo, isLessonEnded } from '../../lib/date-format';
+import { getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
+import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
 
 import { ProviderHeader } from './components/ProviderHeader';
 import { ProviderBottomNav, ProviderTabId } from './components/ProviderBottomNav';
@@ -309,7 +310,7 @@ export const ProviderApp: React.FC = () => {
   // Filter Bookings & Calculate Metrics using Canonical Timezone (America/Sao_Paulo)
   const todayStr = getTodayInSaoPaulo();
 
-  const todayBookings = bookings.filter((b) => (b.scheduledDate === todayStr || (b.scheduledStartAt && b.scheduledStartAt.startsWith(todayStr))));
+  const todayBookings = bookings.filter((b) => isBookingTodayInSaoPaulo(b));
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS');
   const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
   const pendingPaymentBookings = bookings.filter((b) => b.status === 'PENDING_PAYMENT');
@@ -323,7 +324,7 @@ export const ProviderApp: React.FC = () => {
     const ended = isLessonEnded(b);
 
     if (bookingFilterTab === 'today') {
-      return (b.scheduledDate === todayStr || (b.scheduledStartAt && b.scheduledStartAt.startsWith(todayStr)));
+      return isBookingTodayInSaoPaulo(b);
     }
     if (bookingFilterTab === 'upcoming') {
       if (ended || b.status === 'EXPIRED') return false;
@@ -695,17 +696,28 @@ export const ProviderApp: React.FC = () => {
   };
 
   const handleSaveProfile = async () => {
-    const radiusKm = Math.max(1, Math.min(100, Number(profileForm.serviceRadiusKm) || 1));
+    const radiusKm = normalizeServiceRadius(profileForm.serviceRadiusKm);
+    const cleanPhone = normalizePhone(profileForm.publicContact);
+    const cleanState = maskStateUF(profileForm.state);
+    const cleanName = profileForm.displayName.trim();
+    const cleanNeighborhood = profileForm.neighborhood.trim();
+    const cleanCity = profileForm.city.trim();
+    const cleanBio = profileForm.bio.trim();
+
     try {
-      await dbService.updateMyProfile(profileForm.displayName || user?.name || '', profileForm.publicContact || user?.phone || '', profileAvatar);
+      await dbService.updateMyProfile(
+        cleanName || user?.name || '',
+        cleanPhone || user?.phone || '',
+        profileAvatar
+      );
       await dbService.updateProviderProfile(currentProvider.id, {
-        name: profileForm.displayName,
-        publicContact: profileForm.publicContact,
-        neighborhood: profileForm.neighborhood,
-        city: profileForm.city,
-        state: profileForm.state,
+        name: cleanName,
+        publicContact: cleanPhone,
+        neighborhood: cleanNeighborhood,
+        city: cleanCity,
+        state: cleanState,
         serviceRadiusKm: radiusKm,
-        bio: profileForm.bio,
+        bio: cleanBio,
       });
     } catch (error: any) {
       setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o perfil do prestador.'));

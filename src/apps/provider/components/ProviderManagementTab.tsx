@@ -36,7 +36,7 @@ import { VehicleCard } from '../../../components/ui/VehicleCard';
 import { formatCentsToBRL } from '../../../domain/money';
 import { DEFAULT_COMPLIANCE_REQUIREMENTS } from '../../../domain/compliance';
 import { formatTransmissionLabel } from '../../../lib/date-format';
-import { maskVehiclePlate, normalizeVehiclePlate } from '../../../lib/input-masks';
+import { maskVehiclePlate, normalizeVehiclePlate, maskBRLInput } from '../../../lib/input-masks';
 
 interface ProviderManagementTabProps {
   managementSubTab: 'vehicles' | 'offerings' | 'compliance';
@@ -362,7 +362,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Marca *</label>
               <Input
@@ -381,7 +381,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Ano *</label>
               <Input
@@ -418,7 +418,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Transmissão *</label>
               <Select
@@ -473,7 +473,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Duração (Minutos) *</label>
               <Select
@@ -490,7 +490,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Preço em R$ *</label>
               <Input
                 value={offeringForm.priceInBrl}
-                onChange={(e) => onOfferingFormChange({ ...offeringForm, priceInBrl: e.target.value })}
+                onChange={(e) => onOfferingFormChange({ ...offeringForm, priceInBrl: maskBRLInput(e.target.value) })}
                 placeholder="R$ 95,00"
               />
             </div>
