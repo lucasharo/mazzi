@@ -50,6 +50,7 @@ import {
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
 import { getTodayInSaoPaulo, isLessonEnded } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
+import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
 
 import { ProviderHeader } from './components/ProviderHeader';
 import { ProviderBottomNav, ProviderTabId } from './components/ProviderBottomNav';
@@ -566,7 +567,7 @@ export const ProviderApp: React.FC = () => {
         vehicleId: '',
       });
     } catch (err: any) {
-      setExceptionError(err.message || 'Erro ao criar exceção de agenda.');
+      setExceptionError(mapFriendlyErrorMessage(err, 'Erro ao criar exceção de agenda.'));
     }
   };
 
@@ -581,7 +582,7 @@ export const ProviderApp: React.FC = () => {
       await dbService.deleteAvailabilityException(exceptionId);
       setAvailabilityExceptions((prev) => prev.filter((e) => e.id !== exceptionId));
     } catch (err: any) {
-      alert(err.message || 'Ação não autorizada.');
+      alert(mapFriendlyErrorMessage(err, 'Ação não autorizada.'));
     }
   };
 
@@ -618,7 +619,7 @@ export const ProviderApp: React.FC = () => {
         photoUrl: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80',
       });
     } catch (err: any) {
-      setVehicleError(err.message || 'Erro ao cadastrar veículo.');
+      setVehicleError(mapFriendlyErrorMessage(err, 'Erro ao cadastrar veículo.'));
     }
   };
 
@@ -635,7 +636,7 @@ export const ProviderApp: React.FC = () => {
       const savedVehicle = await dbService.saveVehicle({ ...targetVehicle, status: nextStatus });
       setVehicles((prev) => prev.map((vehicle) => (vehicle.id === vehicleId ? savedVehicle : vehicle)));
     } catch (err: any) {
-      alert(err.message || 'Ação de ativação do veículo não permitida.');
+      alert(mapFriendlyErrorMessage(err, 'Ação de ativação do veículo não permitida.'));
     }
   };
 
@@ -669,7 +670,7 @@ export const ProviderApp: React.FC = () => {
         priceInBrl: '95',
       });
     } catch (err: any) {
-      setOfferingError(err.message || 'Erro ao cadastrar oferta de aula.');
+      setOfferingError(mapFriendlyErrorMessage(err, 'Erro ao cadastrar oferta de aula.'));
     }
   };
 
@@ -689,39 +690,29 @@ export const ProviderApp: React.FC = () => {
       const savedOffering = await dbService.saveOffering({ ...targetOffering, status: nextStatus });
       setOfferings((prev) => prev.map((offering) => (offering.id === offeringId ? savedOffering : offering)));
     } catch (err: any) {
-      alert(err.message || 'Ação de ativação da oferta não permitida.');
+      alert(mapFriendlyErrorMessage(err, 'Ação de ativação da oferta não permitida.'));
     }
   };
 
   const handleSaveProfile = async () => {
     const radiusKm = Math.max(1, Math.min(100, Number(profileForm.serviceRadiusKm) || 1));
     try {
-      await dbService.updateMyProfile(user.name, user.phone || '', profileAvatar);
-      await dbService.updateProviderServiceRadius(currentProvider.id, radiusKm);
+      await dbService.updateMyProfile(profileForm.displayName || user?.name || '', profileForm.publicContact || user?.phone || '', profileAvatar);
+      await dbService.updateProviderProfile(currentProvider.id, {
+        name: profileForm.displayName,
+        publicContact: profileForm.publicContact,
+        neighborhood: profileForm.neighborhood,
+        city: profileForm.city,
+        state: profileForm.state,
+        serviceRadiusKm: radiusKm,
+        bio: profileForm.bio,
+      });
     } catch (error: any) {
-      setWorkspaceError(error?.message || 'Não foi possível salvar o raio de atendimento.');
+      setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o perfil do prestador.'));
       return;
     }
-    setProviders((prev) =>
-      prev.map((p) => {
-        if (p.id === currentProvider.id) {
-          return {
-            ...p,
-            name: profileForm.displayName || p.name,
-            publicContact: profileForm.publicContact || p.publicContact,
-            neighborhood: profileForm.neighborhood || p.neighborhood,
-            city: profileForm.city || p.city,
-            state: profileForm.state || p.state,
-            serviceRadiusKm: radiusKm,
-            bio: profileForm.bio || p.bio,
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        return p;
-      })
-    );
+    void loadWorkspace(currentProvider.id);
     setIsEditingProfile(false);
-    alert('✓ Perfil atualizado com sucesso!');
   };
 
   return (

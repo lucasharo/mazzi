@@ -30,6 +30,10 @@ import { formatMeetingPoint } from './meeting-point';
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
 
+export function isUuid(val?: string): boolean {
+  return Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+}
+
 // Helper to safely format snake_case from database to camelCase in typescript
 export function mapUserFromDb(row: any): User | null {
   if (!row) return null;
@@ -297,6 +301,8 @@ export const dbService = {
   },
 
   async saveAvailabilityRule(rule: Omit<any, 'id'> & { id?: string }): Promise<any> {
+    const isUuid = (val?: string) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+    const isNew = !rule.id || !isUuid(rule.id);
     const row = {
       provider_id: rule.providerId,
       instructor_id: rule.instructorId || null,
@@ -307,9 +313,9 @@ export const dbService = {
       timezone: rule.timezone || 'America/Sao_Paulo',
       is_active: rule.isActive,
     };
-    const query = rule.id
-      ? sp.from('availabilities').update(row).eq('id', rule.id)
-      : sp.from('availabilities').insert(row);
+    const query = isNew
+      ? sp.from('availabilities').insert({ ...row, id: crypto.randomUUID() })
+      : sp.from('availabilities').update(row).eq('id', rule.id);
     const { data, error } = await query.select().single();
     if (error) throw error;
     return data;
@@ -321,6 +327,8 @@ export const dbService = {
   },
 
   async saveAvailabilityException(exception: Omit<any, 'id'> & { id?: string }): Promise<any> {
+    const isUuid = (val?: string) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+    const isNew = !exception.id || !isUuid(exception.id);
     const row = {
       provider_id: exception.providerId,
       instructor_id: exception.instructorId || null,
@@ -331,9 +339,9 @@ export const dbService = {
       start_at: exception.startAt,
       end_at: exception.endAt,
     };
-    const query = exception.id
-      ? sp.from('availability_exceptions').update(row).eq('id', exception.id)
-      : sp.from('availability_exceptions').insert(row);
+    const query = isNew
+      ? sp.from('availability_exceptions').insert({ ...row, id: crypto.randomUUID() })
+      : sp.from('availability_exceptions').update(row).eq('id', exception.id);
     const { data, error } = await query.select().single();
     if (error) throw error;
     return data;
@@ -584,7 +592,8 @@ export const dbService = {
   },
 
   async saveVehicle(vehicle: Partial<Vehicle>): Promise<Vehicle> {
-    const isNew = !vehicle.id;
+    const isUuid = (val?: string) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+    const isNew = !vehicle.id || !isUuid(vehicle.id);
     const dbRow = {
       provider_id: vehicle.providerId,
       brand: vehicle.brand,
@@ -633,7 +642,8 @@ export const dbService = {
   },
 
   async saveOffering(offering: Partial<ServiceOffering>): Promise<ServiceOffering> {
-    const isNew = !offering.id;
+    const isUuid = (val?: string) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+    const isNew = !offering.id || !isUuid(offering.id);
     const dbRow = {
       provider_id: offering.providerId,
       instructor_id: (offering as any).instructorId || null,
@@ -663,6 +673,53 @@ export const dbService = {
         .single();
       if (error) throw error;
       return mapOfferingFromDb(data);
+    }
+  },
+
+  async updateProviderProfile(
+    providerId: string,
+    profileData: {
+      name?: string;
+      publicContact?: string;
+      neighborhood?: string;
+      city?: string;
+      state?: string;
+      serviceRadiusKm?: number;
+      bio?: string;
+    }
+  ): Promise<void> {
+    // 1. Try RPC update_provider_profile first
+    const { error: rpcError } = await sp.rpc('update_provider_profile', {
+      p_provider_id: providerId,
+      p_name: profileData.name || null,
+      p_public_contact: profileData.publicContact || null,
+      p_neighborhood: profileData.neighborhood || null,
+      p_city: profileData.city || null,
+      p_state: profileData.state || null,
+      p_service_radius_km: profileData.serviceRadiusKm || null,
+      p_bio: profileData.bio || null,
+    });
+
+    if (!rpcError) return;
+
+    // 2. Fallback to direct table update if RPC does not exist yet in LIVE database
+    const dbRow: Record<string, any> = {};
+    if (profileData.name) dbRow.name = profileData.name.trim();
+    if (profileData.publicContact) dbRow.public_contact = profileData.publicContact.trim();
+    if (profileData.neighborhood) dbRow.neighborhood = profileData.neighborhood.trim();
+    if (profileData.city) dbRow.city = profileData.city.trim();
+    if (profileData.state) dbRow.state = profileData.state.trim();
+    if (profileData.serviceRadiusKm) dbRow.service_radius_km = profileData.serviceRadiusKm;
+    if (profileData.bio !== undefined) dbRow.bio = profileData.bio.trim();
+    dbRow.updated_at = new Date().toISOString();
+
+    const { error: tableError } = await sp
+      .from('providers')
+      .update(dbRow)
+      .eq('id', providerId);
+
+    if (tableError) {
+      throw rpcError || tableError;
     }
   },
 
