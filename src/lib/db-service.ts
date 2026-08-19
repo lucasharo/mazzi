@@ -123,6 +123,8 @@ export function mapBookingFromDb(row: any): Booking {
   const normalizedSnapshot = { ...snapshot, instructorName, providerName, vehicleName, meetingPoint };
   snapshot.vehicle_name = vehicleName;
 
+  const category = row.category || snapshot.category;
+
   return {
     id: row.id,
     studentId: row.student_id,
@@ -134,19 +136,36 @@ export function mapBookingFromDb(row: any): Booking {
     vehicleId: row.vehicle_id,
     vehicleName: vehicleName || 'Veículo',
     offeringId: row.offering_id,
+    quoteId: row.quote_id || undefined,
+    category: category || undefined,
     status: row.status,
     scheduledDate: row.scheduled_start_at ? formatDateBR(row.scheduled_start_at) : '',
     startTime: row.scheduled_start_at ? formatTimeBR(row.scheduled_start_at) : '',
     endTime: row.scheduled_end_at ? formatTimeBR(row.scheduled_end_at) : '',
     scheduledStartAt: row.scheduled_start_at,
     scheduledEndAt: row.scheduled_end_at,
+    studentCheckedIn: Boolean(row.checkin_student_at),
+    instructorCheckedIn: Boolean(row.checkin_instructor_at),
+    checkinInstructorAt: row.checkin_instructor_at || undefined,
+    lessonStartedAt: row.lesson_started_at || undefined,
+    lessonFinishedAt: row.lesson_finished_at || undefined,
+    completedAt: row.completed_at || undefined,
+    confirmedAt: row.confirmed_at || undefined,
+    updatedAt: row.updated_at || undefined,
+    holdExpiresAt: row.hold_expires_at || undefined,
+    idempotencyKey: row.idempotency_key || undefined,
+    cancelledAt: row.cancelled_at || undefined,
+    cancelledBy: row.cancelled_by || undefined,
+    cancellationReason: row.cancellation_reason || undefined,
+    refundAmountInCents: row.refund_amount_in_cents != null ? Number(row.refund_amount_in_cents) : undefined,
+    expiredAt: row.expired_at || undefined,
     priceInCents: row.price_in_cents,
     platformFeeInCents: row.platform_fee_in_cents,
     totalInCents: row.total_in_cents,
     snapshot: normalizedSnapshot,
     meetingPoint,
     createdAt: row.created_at,
-  } as any;
+  } as Booking;
 }
 
 export function mapComplianceFromDb(row: any): ComplianceDocument {
