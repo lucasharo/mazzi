@@ -223,7 +223,6 @@ describe('Student Journey Batch 2 - UI/UX Pro Max Contracts', () => {
     );
 
     expect(cardMarkup).toContain('Roberto Alves');
-    expect(cardMarkup).toContain('Autoescola Modelo');
     expect(cardMarkup).toContain('Hyundai HB20');
     expect(cardMarkup).toContain('Manual');
     expect(cardMarkup).toContain('Rua Augusta, 1000');

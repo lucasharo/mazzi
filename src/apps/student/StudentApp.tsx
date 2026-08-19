@@ -592,7 +592,25 @@ function applyStrictProviderFilters(
           {/* SEARCH TAB */}
           {activeTab === 'search' && (
             <div className="space-y-7">
-              <header className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold text-[var(--mazzi-muted)]">Olá, {user?.name?.split(' ')[0] || 'aluno'}</p><h1 className="mt-1 text-[32px] font-extrabold leading-[1.02] tracking-[-.045em]">Encontre sua<br/>próxima aula</h1></div><button type="button" aria-label="Abrir notificações" onClick={() => setIsNotificationsOpen(true)} className="mazzi-avatar grid h-12 w-12 place-items-center"><Bell className="h-5 w-5"/></button></header>
+              <header className="flex items-start justify-between gap-4 pt-0">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--mazzi-muted)]">
+                    Olá, {user?.name?.split(' ')[0] || 'aluno'}
+                  </p>
+                  <h1 className="mt-1 text-2xl sm:text-[32px] font-extrabold text-[var(--mazzi-dark)] leading-tight tracking-[-0.03em]">
+                    Encontre sua próxima aula
+                  </h1>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Abrir notificações"
+                  title="Notificações"
+                  onClick={() => setIsNotificationsOpen(true)}
+                  className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                >
+                  <Bell className="h-5 w-5 text-slate-700" aria-hidden="true" />
+                </button>
+              </header>
               {/* Search Header */}
               <SearchHeader
                 searchRequest={searchRequest}
@@ -705,11 +723,11 @@ function applyStrictProviderFilters(
           {/* BOOKINGS TAB (MINHAS AULAS) */}
           {activeTab === 'bookings' && (
             <div className="space-y-5">
-              <div className="flex items-start justify-between gap-3">
+              <header className="flex items-start justify-between gap-4 pt-0">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Sua jornada</p>
-                  <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Minhas aulas</h2>
-                  <p className="mt-1 text-sm text-slate-500">Acompanhe seus próximos horários e o histórico.</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--mazzi-muted)]">Sua jornada</p>
+                  <h1 className="mt-1 text-2xl sm:text-[32px] font-extrabold text-[var(--mazzi-dark)] leading-tight tracking-[-0.03em]">Minhas aulas</h1>
+                  <p className="mt-1 text-xs sm:text-sm text-slate-500 font-medium">Acompanhe seus próximos horários e o histórico.</p>
                 </div>
                 <button
                   type="button"
@@ -718,9 +736,9 @@ function applyStrictProviderFilters(
                   onClick={() => setBookingsRefreshKey((k) => k + 1)}
                   className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
                 >
-                  <RefreshCw className={`h-5 w-5 ${bookingsLoading ? 'animate-spin text-amber-600' : ''}`} />
+                  <RefreshCw className={`h-5 w-5 text-slate-700 ${bookingsLoading ? 'animate-spin text-amber-600' : ''}`} aria-hidden="true" />
                 </button>
-              </div>
+              </header>
 
               {/* Filter Tabs: Próximas vs Histórico */}
               <div role="tablist" aria-label="Aulas" className="grid grid-cols-2 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
@@ -813,18 +831,19 @@ function applyStrictProviderFilters(
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="space-y-5">
-              <header className="flex items-center justify-between gap-4 pt-1">
+              <header className="flex items-start justify-between gap-4 pt-0">
                 <div>
-                  <h1 className="text-2xl font-extrabold text-[var(--mazzi-dark)] tracking-tight">Meu Perfil</h1>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--mazzi-muted)]">Sua conta</p>
+                  <h1 className="mt-1 text-2xl sm:text-[32px] font-extrabold text-[var(--mazzi-dark)] leading-tight tracking-[-0.03em]">Meu Perfil</h1>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {!isEditingProfile && (
                     <button
                       type="button"
                       aria-label="Editar perfil"
                       title="Editar perfil"
                       onClick={() => setIsEditingProfile(true)}
-                      className="mazzi-avatar grid h-12 w-12 place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-2xs active:scale-95"
+                      className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
                     >
                       <Pencil className="h-5 w-5 text-slate-700" aria-hidden="true" />
                     </button>
