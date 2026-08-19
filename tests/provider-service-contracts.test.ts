@@ -441,4 +441,91 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
       expect(res[0].offering_id).toBe('off-b1');
     });
   });
+
+  describe('7. TASK-050 — providerCompleteLesson Mandatory Idempotency & Blank Guard Tests', () => {
+    it('1. rejects empty, null, undefined or whitespace-only keys locally without invoking RPC', async () => {
+      vi.clearAllMocks();
+
+      await expect(dbService.providerCompleteLesson('booking-123', '' as any)).rejects.toThrow(
+        'COMPLETION_IDEMPOTENCY_KEY_REQUIRED: A chave de idempotência é obrigatória para concluir a aula.'
+      );
+
+      await expect(dbService.providerCompleteLesson('booking-123', '   ' as any)).rejects.toThrow(
+        'COMPLETION_IDEMPOTENCY_KEY_REQUIRED'
+      );
+
+      await expect(dbService.providerCompleteLesson('booking-123', null as any)).rejects.toThrow(
+        'COMPLETION_IDEMPOTENCY_KEY_REQUIRED'
+      );
+
+      await expect(dbService.providerCompleteLesson('booking-123', undefined as any)).rejects.toThrow(
+        'COMPLETION_IDEMPOTENCY_KEY_REQUIRED'
+      );
+
+      expect(supabase.rpc).not.toHaveBeenCalled();
+    });
+
+    it('2. trims valid idempotency key and calls provider_complete_lesson RPC with correct payload', async () => {
+      vi.clearAllMocks();
+      (supabase.rpc as any).mockResolvedValue({
+        data: {
+          success: true,
+          is_idempotent: false,
+          booking_id: 'booking-123',
+          status: 'COMPLETED',
+          completed_at: '2026-08-19T19:00:00Z',
+          lesson_finished_at: '2026-08-19T19:00:00Z',
+        },
+        error: null,
+      });
+
+      const res = await dbService.providerCompleteLesson('booking-123', '  complete_btn_booking-123  ');
+
+      expect(supabase.rpc).toHaveBeenCalledWith('provider_complete_lesson', {
+        p_booking_id: 'booking-123',
+        p_idempotency_key: 'complete_btn_booking-123',
+      });
+      expect(res.status).toBe('COMPLETED');
+      expect(res.is_idempotent).toBe(false);
+    });
+
+    it('3. returns is_idempotent = true when retry uses exact same key', async () => {
+      vi.clearAllMocks();
+      (supabase.rpc as any).mockResolvedValue({
+        data: {
+          success: true,
+          is_idempotent: true,
+          booking_id: 'booking-123',
+          status: 'COMPLETED',
+          completed_at: '2026-08-19T19:00:00Z',
+          lesson_finished_at: '2026-08-19T19:00:00Z',
+          message: 'Aula já concluída.',
+        },
+        error: null,
+      });
+
+      const res = await dbService.providerCompleteLesson('booking-123', 'complete_btn_booking-123');
+
+      expect(res.is_idempotent).toBe(true);
+      expect(res.status).toBe('COMPLETED');
+    });
+
+    it('4. propagates backend error IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST when key differs', async () => {
+      vi.clearAllMocks();
+      (supabase.rpc as any).mockResolvedValue({
+        data: null,
+        error: {
+          code: '23505',
+          message: 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST: A chave de idempotência informada diverge da utilizada na conclusão deste agendamento.',
+        },
+      });
+
+      await expect(
+        dbService.providerCompleteLesson('booking-123', 'different_key_456')
+      ).rejects.toEqual({
+        code: '23505',
+        message: 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST: A chave de idempotência informada diverge da utilizada na conclusão deste agendamento.',
+      });
+    });
+  });
 });

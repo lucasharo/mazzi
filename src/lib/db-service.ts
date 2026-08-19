@@ -1222,10 +1222,14 @@ export const dbService = {
     return data;
   },
 
-  async providerCompleteLesson(bookingId: string, idempotencyKey?: string): Promise<any> {
+  async providerCompleteLesson(bookingId: string, idempotencyKey: string): Promise<any> {
+    const trimmedKey = (idempotencyKey || '').trim();
+    if (!trimmedKey) {
+      throw new Error('COMPLETION_IDEMPOTENCY_KEY_REQUIRED: A chave de idempotência é obrigatória para concluir a aula.');
+    }
     const { data, error } = await sp.rpc('provider_complete_lesson', {
       p_booking_id: bookingId,
-      p_idempotency_key: idempotencyKey || null,
+      p_idempotency_key: trimmedKey,
     });
     if (error) throw error;
     return data;
