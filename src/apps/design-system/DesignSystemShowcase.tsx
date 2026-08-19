@@ -732,13 +732,11 @@ export const DesignSystemShowcase: React.FC = () => {
                       <p>Linha 4 do conteúdo do modal ou formulário longo...</p>
                     </div>
                     <ModalActionFooter align="between">
-                      <SecondaryButton size="md" className="w-1/2 min-h-[48px] rounded-2xl flex items-center justify-center gap-2">
-                        <RotateCcw className="w-4 h-4 text-slate-500" />
-                        <span>Limpar</span>
+                      <SecondaryButton size="md" leftIcon={<RotateCcw className="w-4 h-4 text-slate-500" />} className="w-1/2 min-h-[48px] rounded-2xl">
+                        Limpar
                       </SecondaryButton>
-                      <PrimaryButton size="md" className="w-1/2 min-h-[48px] rounded-2xl flex items-center justify-center gap-2">
-                        <Check className="w-4 h-4 text-slate-950" />
-                        <span>Aplicar Filtros</span>
+                      <PrimaryButton size="md" leftIcon={<Check className="w-4 h-4 text-slate-950" />} className="w-1/2 min-h-[48px] rounded-2xl">
+                        Aplicar Filtros
                       </PrimaryButton>
                     </ModalActionFooter>
                   </div>
