@@ -592,9 +592,8 @@ export const dbService = {
   },
 
   async saveVehicle(vehicle: Partial<Vehicle>): Promise<Vehicle> {
-    const isUuid = (val?: string) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
     const isNew = !vehicle.id || !isUuid(vehicle.id);
-    const dbRow = {
+    const dbRow: Record<string, any> = {
       provider_id: vehicle.providerId,
       brand: vehicle.brand,
       model: vehicle.model,
@@ -606,11 +605,16 @@ export const dbService = {
       vehicle_type: vehicle.vehicleType,
       transmission: vehicle.transmission,
       color: vehicle.color || null,
-      has_dual_pedal: (vehicle as any).hasDualPedal || false,
-      has_dashcam: (vehicle as any).hasDashcam || false,
-      status: vehicle.status || 'ACTIVE',
+      status: vehicle.status || (isNew ? 'PENDING' : 'ACTIVE'),
       photos: vehicle.photos || [],
     };
+
+    if ((vehicle as any).hasDualPedal !== undefined) {
+      dbRow.has_dual_pedal = (vehicle as any).hasDualPedal;
+    }
+    if ((vehicle as any).hasDashcam !== undefined) {
+      dbRow.has_dashcam = (vehicle as any).hasDashcam;
+    }
 
     if (isNew) {
       const { data, error } = await sp

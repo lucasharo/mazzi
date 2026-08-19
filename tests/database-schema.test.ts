@@ -297,6 +297,18 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql46).toContain('GRANT EXECUTE ON FUNCTION public.update_provider_profile');
   });
 
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 47 fix_provider_availability_rls policies', () => {
+    const migration47Path = path.join(process.cwd(), 'supabase/migrations/20260818000047_fix_provider_availability_rls.sql');
+    expect(fs.existsSync(migration47Path)).toBe(true);
+    const sql47 = fs.readFileSync(migration47Path, 'utf8');
+
+    expect(sql47).toContain('CREATE POLICY "availabilities_owner_insert" ON public.availabilities');
+    expect(sql47).toContain('CREATE POLICY "exceptions_owner_insert" ON public.availability_exceptions');
+    expect(sql47).toContain('public.is_provider_owner(provider_id)');
+    expect(sql47).toContain('public.is_school_admin(provider_id)');
+    expect(sql47).not.toContain("auth.jwt() ->> 'role'");
+  });
+
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
     expect(fs.existsSync(seedPath)).toBe(true);
     const seedSql = fs.readFileSync(seedPath, 'utf8');
