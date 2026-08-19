@@ -15,16 +15,27 @@ describe('TASK-014: Payment FAILED Retry Flow (LIVE INTEGRATION)', () => {
   let idempotencyKeyA: string;
   let pgClient: PgClient;
 
+  // Dedicated test fixtures
+  const TEST_PROVIDER_E2E_TASK015 = 'f0000000-0000-4000-a000-000000000001';
+  const TEST_VEHICLE_E2E_TASK015 = 'f0000000-0000-4000-a000-000000000002';
+  const TEST_OFFERING_E2E_TASK015 = 'f0000000-0000-4000-a000-000000000003';
+  const TEST_INSTRUCTOR_E2E_TASK015 = 'f0000000-0000-4000-a000-000000000004'; // Assuming this uses public.users
+  const TEST_STUDENT_ID = 'f0000000-0000-4000-a000-000000000005';
+
   beforeAll(async () => {
     if (process.env.RUN_LIVE_INTEGRATION_TESTS !== 'true' || !process.env.DATABASE_URL || !process.env.VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD) {
       throw new Error('LIVE_TEST_GUARD_FAILED: Live integration tests require RUN_LIVE_INTEGRATION_TESTS=true, DATABASE_URL, and VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD.');
     }
 
     const studentPass = process.env.VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD;
-    const { data: auth } = await supabase.auth.signInWithPassword({
+    const { data: auth, error } = await supabase.auth.signInWithPassword({
       email: 'aluno01@mazzi.com.br',
       password: studentPass,
     });
+
+    if (error || !auth.user) {
+      throw new Error('LIVE_TEST_GUARD_FAILED: Could not sign in to supabase auth.');
+    }
 
     pgClient = new PgClient({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
     await pgClient.connect();
@@ -32,11 +43,37 @@ describe('TASK-014: Payment FAILED Retry Flow (LIVE INTEGRATION)', () => {
     // Limpar dados anteriores caso o teste falhou no meio
     await pgClient.query('DELETE FROM public.payments WHERE booking_id IN ($1, $2)', [bookingId, bookingId2]);
     await pgClient.query('DELETE FROM public.bookings WHERE id IN ($1, $2)', [bookingId, bookingId2]);
+    await pgClient.query('DELETE FROM public.service_offerings WHERE id = $1', [TEST_OFFERING_E2E_TASK015]);
+    await pgClient.query('DELETE FROM public.vehicles WHERE id = $1', [TEST_VEHICLE_E2E_TASK015]);
+    await pgClient.query('DELETE FROM public.providers WHERE id = $1', [TEST_PROVIDER_E2E_TASK015]);
+    // users might have foreign keys. Since we are using auth.user.id for the student, we only create fixtures for provider, vehicle, offering.
+    // For instructor, let's use the first available instructor if we can't create one. Wait! "PROIBIDO: SELECT ... LIMIT 1"
+    // Let's create an instructor user if it doesn't exist.
+    await pgClient.query('DELETE FROM public.users WHERE id = $1', [TEST_INSTRUCTOR_E2E_TASK015]);
+    
+    await pgClient.query(`
+      INSERT INTO public.users (id, email, name, role, phone)
+      VALUES ($1, 'test_instructor_t15@mazzi.com.br', 'Inst Test', 'INSTRUCTOR', '11999999999')
+      ON CONFLICT (id) DO NOTHING
+    `, [TEST_INSTRUCTOR_E2E_TASK015]);
 
-    const provId = (await pgClient.query('SELECT id FROM public.providers LIMIT 1')).rows[0]?.id;
-    const offId = (await pgClient.query('SELECT id FROM public.service_offerings LIMIT 1')).rows[0]?.id;
-    const vehId = (await pgClient.query('SELECT id FROM public.vehicles LIMIT 1')).rows[0]?.id;
-    const instId = (await pgClient.query("SELECT id FROM public.users WHERE role = 'INSTRUCTOR' LIMIT 1")).rows[0]?.id;
+    await pgClient.query(`
+      INSERT INTO public.providers (id, user_id, type, trade_name, legal_name, status, document_number, phone)
+      VALUES ($1, $2, 'DRIVING_SCHOOL', 'Test Provider T15', 'Test Provider LTDA', 'ACTIVE', '00000000000', '11999999999')
+      ON CONFLICT (id) DO NOTHING
+    `, [TEST_PROVIDER_E2E_TASK015, TEST_INSTRUCTOR_E2E_TASK015]);
+
+    await pgClient.query(`
+      INSERT INTO public.vehicles (id, provider_id, brand, model, year, license_plate, license_plate_masked, category, transmission, has_dual_pedal, has_dashcam, status, vehicle_type)
+      VALUES ($1, $2, 'TestBrand', 'TestModel', 2026, 'ABC1234', 'ABC***4', 'B', 'MANUAL', true, true, 'ACTIVE', 'CAR')
+      ON CONFLICT (id) DO NOTHING
+    `, [TEST_VEHICLE_E2E_TASK015, TEST_PROVIDER_E2E_TASK015]);
+
+    await pgClient.query(`
+      INSERT INTO public.service_offerings (id, provider_id, vehicle_id, category, transmission, duration_minutes, price_in_cents, is_active, status)
+      VALUES ($1, $2, $3, 'B', 'MANUAL', 50, 10000, true, 'ACTIVE')
+      ON CONFLICT (id) DO NOTHING
+    `, [TEST_OFFERING_E2E_TASK015, TEST_PROVIDER_E2E_TASK015, TEST_VEHICLE_E2E_TASK015]);
 
     // Injetar dois bookings PENDING_PAYMENT
     await pgClient.query(`
@@ -49,13 +86,27 @@ describe('TASK-014: Payment FAILED Retry Flow (LIVE INTEGRATION)', () => {
       ), (
         $7, $2, $3, $4, $5, $6, NOW() + INTERVAL '3 hours', NOW() + INTERVAL '4 hours', 'PENDING_PAYMENT', 10000, 1000, 11000, 0, NOW(), NOW()
       )
-    `, [bookingId, auth.user!.id, provId, instId, offId, vehId, bookingId2]);
+    `, [bookingId, auth.user!.id, TEST_PROVIDER_E2E_TASK015, TEST_INSTRUCTOR_E2E_TASK015, TEST_OFFERING_E2E_TASK015, TEST_VEHICLE_E2E_TASK015, bookingId2]);
   });
 
   afterAll(async () => {
     if (pgClient) {
       await pgClient.query('DELETE FROM public.payments WHERE booking_id IN ($1, $2)', [bookingId, bookingId2]);
       await pgClient.query('DELETE FROM public.bookings WHERE id IN ($1, $2)', [bookingId, bookingId2]);
+      await pgClient.query('DELETE FROM public.service_offerings WHERE id = $1', [TEST_OFFERING_E2E_TASK015]);
+      await pgClient.query('DELETE FROM public.vehicles WHERE id = $1', [TEST_VEHICLE_E2E_TASK015]);
+      await pgClient.query('DELETE FROM public.providers WHERE id = $1', [TEST_PROVIDER_E2E_TASK015]);
+      await pgClient.query('DELETE FROM public.users WHERE id = $1', [TEST_INSTRUCTOR_E2E_TASK015]);
+
+      // Explicit cleanup validation
+      const bCount = await pgClient.query('SELECT COUNT(*) as count FROM public.bookings WHERE id IN ($1, $2)', [bookingId, bookingId2]);
+      const pCount = await pgClient.query('SELECT COUNT(*) as count FROM public.payments WHERE booking_id IN ($1, $2)', [bookingId, bookingId2]);
+      const provCount = await pgClient.query('SELECT COUNT(*) as count FROM public.providers WHERE id = $1', [TEST_PROVIDER_E2E_TASK015]);
+      
+      expect(Number(bCount.rows[0].count)).toBe(0);
+      expect(Number(pCount.rows[0].count)).toBe(0);
+      expect(Number(provCount.rows[0].count)).toBe(0);
+
       await pgClient.end();
     }
   });

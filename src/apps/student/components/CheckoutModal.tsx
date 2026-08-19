@@ -583,7 +583,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setErrorMessage('Pagamento não aprovado. Tente outro cartão ou selecione PIX.');
       }
     } catch (err: any) {
-      setErrorMessage(friendlyCheckoutError(err, 'Não foi possível processar o pagamento simulado. Tente novamente.'));
+      if (err?.message?.includes('PAYMENT_MARK_FAILED_ERROR')) {
+        setErrorMessage('Não foi possível atualizar o status do pagamento no banco de dados. Tente novamente.');
+      } else {
+        setErrorMessage(friendlyCheckoutError(err, 'Não foi possível processar o pagamento simulado. Tente novamente.'));
+      }
     } finally {
       setIsProcessing(false);
     }

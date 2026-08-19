@@ -1,10 +1,22 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+// @vitest-environment happy-dom
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { CheckoutModal } from '../src/apps/student/components/CheckoutModal';
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
+
+vi.mock('../src/components/auth/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 's-student-1', email: 'test@mazzi.com.br' }, isAuthenticated: true })
+}));
 import { dbService } from '../src/lib/db-service';
 import { supabase } from '../src/lib/supabase';
 import { Client as PgClient } from 'pg';
 import { Booking, Payment } from '../src/types';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 const dbUrl = process.env.DATABASE_URL || '';
@@ -131,20 +143,83 @@ describe('TASK-009 Security Hotfix — Real Behavioral Spies & Security Tests', 
 
   describe('Requirement 9: Unit/Mock Tests (No Live)', () => {
     it('Component Fail-Closed Test: CheckoutModal handles markBookingPaymentFailed rejection', async () => {
-      // Simulate dbService.markBookingPaymentFailed rejecting with error
+      // 1. Mock dbService.markBookingPaymentFailed to reject
       const mockMarkFailed = vi.spyOn(dbService, 'markBookingPaymentFailed');
-      mockMarkFailed.mockRejectedValueOnce(new Error('Network Error'));
+      mockMarkFailed.mockRejectedValue(new Error('DB error'));
 
       const spyCreatePayment = vi.spyOn(dbService, 'createBookingPayment');
+      spyCreatePayment.mockResolvedValue({
+        success: true,
+        is_idempotent: false,
+        payment_id: '8f7a9b0c-1d2e-3f4a-5b6c-7d8e9f0a1b2c',
+        booking_id: 'b-resume-100',
+        status: 'PENDING',
+        amount_in_cents: 10000,
+      } as any);
+      const spyConfirmPayment = vi.spyOn(dbService, 'confirmBookingPayment');
+      const onBookingConfirmedMock = vi.fn();
 
-      // We are testing the "component / flow" behavior mocked here
-      // Expect the function to throw and createBookingPayment not to be called
-      await expect(dbService.markBookingPaymentFailed('pay-123', 'declined')).rejects.toThrow('Network Error');
+      // 3. Render CheckoutModal with valid props
+      render(
+        <CheckoutModal
+          isOpen={true}
+          onClose={() => {}}
+          provider={{ id: 'p-1', name: 'Provider 1' } as any}
+          vehicle={{ id: 'v-1', make: 'Honda', model: 'Civic' } as any}
+          offering={{ id: 'o-1', name: 'Aula', price_in_cents: 10000, duration_minutes: 50, category: 'CAR' } as any}
+          scheduledDate="2026-08-25"
+          startTime="14:00"
+          endTime="14:50"
+          onBookingConfirmed={onBookingConfirmedMock}
+          resumeBooking={{
+            id: 'b-resume-100',
+            quoteId: 'q-100',
+            studentId: 's-student-1',
+            providerId: 'p-1',
+            offeringId: 'o-1',
+            status: 'PENDING_PAYMENT',
+            totalInCents: 10000,
+            platformFeeInCents: 1000,
+            scheduledStartAt: '2026-08-25T14:00:00Z',
+            scheduledEndAt: '2026-08-25T14:50:00Z',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as any}
+        />
+      );
+
+      // Wait for PAYMENT_SELECTION step to be visible and select CREDIT_CARD
+      await waitFor(() => {
+        expect(screen.getByText(/Cartão Simulado/i)).toBeTruthy();
+      });
+      fireEvent.click(screen.getByText(/Cartão Simulado/i));
+
+      // Now the button should be visible
+      await waitFor(() => {
+        expect(screen.getByText(/Simular Pagamento Recusado/i)).toBeTruthy();
+      });
+
+      // 4. Interact: click "Simular Pagamento Recusado"
+      const declineButton = screen.getByText(/Simular Pagamento Recusado/i);
+      fireEvent.click(declineButton);
+
+      // 5. Asserts
+      await waitFor(() => {
+        expect(mockMarkFailed).toHaveBeenCalledTimes(1);
+      });
       
-      expect(spyCreatePayment).not.toHaveBeenCalled();
+      expect(spyCreatePayment).toHaveBeenCalledTimes(1); // It's called once when component mounts due to resumeBooking
+      expect(spyConfirmPayment).toHaveBeenCalledTimes(0);
+      expect(onBookingConfirmedMock).toHaveBeenCalledTimes(0);
+
+      // Error message should be in the DOM
+      await waitFor(() => {
+        expect(screen.getByText('Não foi possível atualizar o status do pagamento no banco de dados. Tente novamente.')).toBeTruthy();
+      });
 
       mockMarkFailed.mockRestore();
       spyCreatePayment.mockRestore();
+      spyConfirmPayment.mockRestore();
     });
 
     it('Flow Retry Test (Unit, No Live): Payment in FAILED -> Retry -> Confirmed', async () => {
