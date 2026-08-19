@@ -24,6 +24,7 @@ import {
   Building2,
   UserCheck,
   UserRound,
+  Bell,
   UserPen,
   ClipboardList,
   CreditCard,
@@ -420,19 +421,40 @@ export const DesignSystemShowcase: React.FC = () => {
                         <SecondaryButton size="sm" className="min-h-11" leftIcon={<UserPen className="w-4 h-4" />}>
                           Editar perfil
                         </SecondaryButton>
-                        <button
-                          type="button"
-                          className="h-11 w-11 grid place-items-center rounded-2xl bg-[#f7f5ef] border border-[#e9e6de] text-slate-700"
-                          title="Atualizar lista de aulas"
-                        >
-                          <RefreshCw className="w-4 h-4 text-amber-600" />
-                        </button>
                         <PrimaryButton size="md" isLoading={true}>
                           Carregando
                         </PrimaryButton>
                         <PrimaryButton size="md" disabled={true}>
                           Desabilitado
                         </PrimaryButton>
+                      </div>
+
+                      {/* Header Square Icon Buttons (48px x 48px) */}
+                      <div className="pt-3 border-t border-[#e9e6de]">
+                        <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Botões Ícone de Cabeçalho (48px x 48px)</h5>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                            title="Atualizar lista de aulas"
+                          >
+                            <RefreshCw className="h-5 w-5 text-amber-600" />
+                          </button>
+                          <button
+                            type="button"
+                            className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                            title="Editar perfil"
+                          >
+                            <Pencil className="h-5 w-5 text-slate-700" />
+                          </button>
+                          <button
+                            type="button"
+                            className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                            title="Notificações"
+                          >
+                            <Bell className="h-5 w-5 text-slate-700" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 

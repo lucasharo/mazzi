@@ -716,9 +716,9 @@ function applyStrictProviderFilters(
                   aria-label="Atualizar lista de aulas"
                   title="Atualizar lista de aulas"
                   onClick={() => setBookingsRefreshKey((k) => k + 1)}
-                  className="mazzi-avatar grid h-11 w-11 min-h-[44px] min-w-[44px] place-items-center bg-[var(--mazzi-surface-soft)] text-slate-700 hover:text-[var(--mazzi-dark)] border border-[var(--mazzi-border)] rounded-2xl cursor-pointer transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0"
+                  className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
                 >
-                  <RefreshCw className={`h-4 w-4 ${bookingsLoading ? 'animate-spin text-amber-600' : ''}`} />
+                  <RefreshCw className={`h-5 w-5 ${bookingsLoading ? 'animate-spin text-amber-600' : ''}`} />
                 </button>
               </div>
 
