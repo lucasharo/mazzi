@@ -699,15 +699,45 @@ describe('Sprint 08 — High Contention Concurrent Simulation (20 Concurrent Req
 });
 
 describe('Sprint 08 — Database Error Mapping & Environment Status Tracker', () => {
-  it('maps PostgreSQL exclusion constraint violation (code 23P01) to domain SLOT_NO_LONGER_AVAILABLE (HTTP 409)', () => {
+  it('maps PostgreSQL student exclusion constraint violation to domain STUDENT_ALREADY_BOOKED_FOR_SLOT (HTTP 409)', () => {
     const domainError = mapDatabaseErrorToDomainError({
       code: '23P01',
-      message: 'conflicting key value violates exclusion constraint "exclude_instructor_overlapping_bookings"',
+      message: 'conflicting key value violates exclusion constraint "exclude_student_overlapping_bookings"',
     });
 
-    expect(domainError.code).toBe('SLOT_NO_LONGER_AVAILABLE');
+    expect(domainError.code).toBe('STUDENT_ALREADY_BOOKED_FOR_SLOT');
     expect(domainError.statusCode).toBe(409);
-    expect(domainError.message).toContain('acabou de ser reservado');
+    expect(domainError.message).toContain('Você já possui uma aula agendada nesse horário');
+  });
+
+  it('maps STUDENT_ALREADY_BOOKED_FOR_SLOT exception message to domain STUDENT_ALREADY_BOOKED_FOR_SLOT (HTTP 409)', () => {
+    const domainError = mapDatabaseErrorToDomainError({
+      code: '23P01',
+      message: 'STUDENT_ALREADY_BOOKED_FOR_SLOT',
+    });
+
+    expect(domainError.code).toBe('STUDENT_ALREADY_BOOKED_FOR_SLOT');
+    expect(domainError.statusCode).toBe(409);
+  });
+
+  it('verifies that adjacent slots (10:00-10:50 and 10:50-11:40) do NOT overlap', () => {
+    const overlap = hasTimeIntervalOverlap(
+      '2026-09-01T10:00:00.000Z',
+      '2026-09-01T10:50:00.000Z',
+      '2026-09-01T10:50:00.000Z',
+      '2026-09-01T11:40:00.000Z'
+    );
+    expect(overlap).toBe(false);
+  });
+
+  it('verifies that overlapping slots (10:00-10:50 and 10:30-11:20) DO overlap', () => {
+    const overlap = hasTimeIntervalOverlap(
+      '2026-09-01T10:00:00.000Z',
+      '2026-09-01T10:50:00.000Z',
+      '2026-09-01T10:30:00.000Z',
+      '2026-09-01T11:20:00.000Z'
+    );
+    expect(overlap).toBe(true);
   });
 
   it('maps PostgreSQL unique idempotency constraint violation (code 23505) to DUPLICATE_IDEMPOTENCY_KEY (HTTP 409)', () => {

@@ -325,6 +325,21 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql47).toContain('USING (public.can_manage_provider_schedule(provider_id))');
   });
 
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 48 prevent_student_booking_overlap exclusion constraint & create_booking_hold error mapping', () => {
+    const migration48Path = path.join(process.cwd(), 'supabase/migrations/20260818000048_prevent_student_booking_overlap.sql');
+    expect(fs.existsSync(migration48Path)).toBe(true);
+    const sql48 = fs.readFileSync(migration48Path, 'utf8');
+
+    expect(sql48).toContain('exclude_student_overlapping_bookings');
+    expect(sql48).toContain('student_id WITH =');
+    expect(sql48).toContain('slot_range WITH &&');
+    expect(sql48).toContain('STUDENT_OVERLAP_EXISTING_DATA');
+    expect(sql48).toContain('STUDENT_ALREADY_BOOKED_FOR_SLOT');
+    expect(sql48).toContain('GET STACKED DIAGNOSTICS');
+    expect(sql48).toContain('v_constraint_name = CONSTRAINT_NAME');
+    expect(sql48).toContain('SLOT_NO_LONGER_AVAILABLE');
+  });
+
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
     expect(fs.existsSync(seedPath)).toBe(true);
     const seedSql = fs.readFileSync(seedPath, 'utf8');
