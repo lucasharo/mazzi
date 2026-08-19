@@ -347,7 +347,8 @@ describe('TASK-009 — Pending Payment Resume, Realtime Refresh & UI Refinements
       expect(bookingCardContent).not.toContain('rightIcon={<ChevronRight');
 
       const studentAppContent = fs.readFileSync(studentAppPath, 'utf8');
-      expect(studentAppContent).toContain('UserPen');
+      expect(studentAppContent).toContain('Pencil');
+      expect(studentAppContent).toContain('aria-label="Editar perfil"');
     });
   });
 });

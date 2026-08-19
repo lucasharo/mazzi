@@ -4,6 +4,7 @@ import {
   Calendar as CalendarIcon,
   User,
   UserPen,
+  Pencil,
   Bell,
   MessageSquare,
   Map,
@@ -812,7 +813,35 @@ function applyStrictProviderFilters(
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="space-y-5">
-              <div className="text-center">
+              <header className="flex items-center justify-between gap-4 pt-1">
+                <div>
+                  <h1 className="text-2xl font-extrabold text-[var(--mazzi-dark)] tracking-tight">Meu Perfil</h1>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isEditingProfile && (
+                    <button
+                      type="button"
+                      aria-label="Editar perfil"
+                      title="Editar perfil"
+                      onClick={() => setIsEditingProfile(true)}
+                      className="mazzi-avatar grid h-12 w-12 place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-2xs active:scale-95"
+                    >
+                      <Pencil className="h-5 w-5 text-slate-700" aria-hidden="true" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Abrir notificações"
+                    title="Notificações"
+                    onClick={() => setIsNotificationsOpen(true)}
+                    className="mazzi-avatar grid h-12 w-12 place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  >
+                    <Bell className="h-5 w-5 text-slate-700" aria-hidden="true" />
+                  </button>
+                </div>
+              </header>
+
+              <div className="text-center pt-2">
                 <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] bg-[var(--mazzi-yellow)] text-2xl font-bold shadow-[var(--mazzi-shadow)] border border-[var(--mazzi-border)]">
                   {profileAvatar ? (
                     <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" />
@@ -824,17 +853,6 @@ function applyStrictProviderFilters(
                 </div>
                 <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">{profileName || user?.name || 'Nome não informado'}</h3>
                 <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p>
-                {!isEditingProfile && (
-                  <SecondaryButton
-                    type="button"
-                    size="sm"
-                    className="mt-4 min-h-11 px-4 text-xs font-bold shadow-2xs"
-                    onClick={() => setIsEditingProfile(true)}
-                    leftIcon={<UserPen className="w-4 h-4 text-slate-700" aria-hidden="true" />}
-                  >
-                    Editar perfil
-                  </SecondaryButton>
-                )}
               </div>
 
               <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
