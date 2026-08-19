@@ -221,8 +221,9 @@ export const StudentApp: React.FC = () => {
     }
   }, [user?.name, user?.phone, user?.avatarUrl, user?.birthDate]);
 
-  // Bookings are an independent data boundary from the public search pipeline.
+  // Bookings are an independent data boundary from the public search pipeline (fetched via dbService.getBookings with RLS).
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [searchLoading, setSearchLoading] = useState(isRealSupabase);
   const [searchError, setSearchError] = useState(false);
 
@@ -233,6 +234,15 @@ export const StudentApp: React.FC = () => {
       try {
         const bookings = await dbService.getBookings();
         setConfirmedBookings(bookings);
+
+        // Batch load reviewed booking IDs to avoid N+1 queries
+        const completedIds = bookings.filter((b) => b.status === 'COMPLETED').map((b) => b.id);
+        if (completedIds.length > 0) {
+          const reviewedSet = await dbService.getReviewedBookingIds(completedIds);
+          setReviewedBookingIds(reviewedSet);
+        } else {
+          setReviewedBookingIds(new Set());
+        }
       } catch (err) {
         console.error('Failed to load student bookings:', err);
         setConfirmedBookings([]);
@@ -821,7 +831,7 @@ function applyStrictProviderFilters(
                         booking={b}
                         variant="student"
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
-                        onReview={(bookingToReview) => setSelectedBookingForReview(bookingToReview)}
+                        onReview={reviewedBookingIds.has(b.id) ? undefined : (bookingToReview) => setSelectedBookingForReview(bookingToReview)}
                       />
                     ))
                   )}
@@ -1141,6 +1151,11 @@ function applyStrictProviderFilters(
         isOpen={!!selectedBookingForReview}
         booking={selectedBookingForReview}
         onClose={() => setSelectedBookingForReview(null)}
+        onSubmitted={() => {
+          if (selectedBookingForReview) {
+            setReviewedBookingIds((prev) => new Set([...prev, selectedBookingForReview.id]));
+          }
+        }}
       />
 
       {instructorPickerProvider && (

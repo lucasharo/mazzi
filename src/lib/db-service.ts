@@ -985,6 +985,23 @@ export const dbService = {
     return mapReviewFromDb(data);
   },
 
+  async getReviewedBookingIds(bookingIds: string[]): Promise<Set<string>> {
+    if (!bookingIds || bookingIds.length === 0) return new Set<string>();
+    const { data, error } = await sp
+      .from('reviews')
+      .select('booking_id')
+      .in('booking_id', bookingIds);
+    if (error) {
+      console.warn('Error batch fetching reviewed booking IDs:', error);
+      return new Set<string>();
+    }
+    const set = new Set<string>();
+    (data || []).forEach((row: any) => {
+      if (row.booking_id) set.add(row.booking_id);
+    });
+    return set;
+  },
+
   async getProviderReviews(providerId: string): Promise<Review[]> {
     const { data, error } = await sp
       .from('reviews')

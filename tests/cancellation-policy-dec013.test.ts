@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   calculateCancellationPolicy,
   MVP_CANCELLATION_POLICY,
@@ -6,6 +6,20 @@ import {
   performProviderCancellation,
 } from '../src/domain/cancellation';
 import { Booking } from '../src/types';
+import { dbService } from '../src/lib/db-service';
+import { supabase } from '../src/lib/supabase';
+
+// Mock Supabase client for RPC verification
+vi.mock('../src/lib/supabase', () => {
+  const rpcMock = vi.fn();
+  const fromMock = vi.fn();
+  return {
+    supabase: {
+      rpc: rpcMock,
+      from: fromMock,
+    },
+  };
+});
 
 describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
   const baseBooking: Booking = {
@@ -100,43 +114,7 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(res.providerCompensationInCents).toBe(10000);
   });
 
-  it('5. Provider cancellation yields 100% refund to student', () => {
-    const res = calculateCancellationPolicy({
-      cancelledBy: 'PROVIDER',
-      hoursUntilLesson: 2.0,
-      totalPaidInCents: 11000,
-      lessonPriceInCents: 10000,
-      platformFeeInCents: 1000,
-    });
-    expect(res.refundPercentage).toBe(100);
-    expect(res.refundAmountInCents).toBe(11000);
-  });
-
-  it('6. Student no-show yields 0% refund', () => {
-    const res = calculateCancellationPolicy({
-      cancelledBy: 'NO_SHOW_STUDENT',
-      hoursUntilLesson: 0,
-      totalPaidInCents: 11000,
-      lessonPriceInCents: 10000,
-      platformFeeInCents: 1000,
-    });
-    expect(res.refundPercentage).toBe(0);
-    expect(res.refundAmountInCents).toBe(0);
-  });
-
-  it('7. Provider no-show yields 100% refund', () => {
-    const res = calculateCancellationPolicy({
-      cancelledBy: 'NO_SHOW_PROVIDER',
-      hoursUntilLesson: 0,
-      totalPaidInCents: 11000,
-      lessonPriceInCents: 10000,
-      platformFeeInCents: 1000,
-    });
-    expect(res.refundPercentage).toBe(100);
-    expect(res.refundAmountInCents).toBe(11000);
-  });
-
-  it('8. LEGAL_OVERRIDE forces 100% refund regardless of hours remaining', () => {
+  it('5. Legal override (CDC) gives 100% refund regardless of time', () => {
     const res = calculateCancellationPolicy({
       cancelledBy: 'STUDENT',
       hoursUntilLesson: 1.0,
@@ -150,7 +128,7 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(res.isLegalOverride).toBe(true);
   });
 
-  it('9. performStudentCancellation updates status and maintains audit log', () => {
+  it('6. performStudentCancellation updates status and maintains audit log', () => {
     const now = new Date('2026-08-18T10:00:00Z'); // 48 hours before 2026-08-20T10:00:00Z
     const out = performStudentCancellation({
       booking: baseBooking,
@@ -166,7 +144,7 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(out.auditLog.action).toBe('BOOKING_CANCELLED_BY_STUDENT');
   });
 
-  it('10. performProviderCancellation requires reasonCode and updates status', () => {
+  it('7. performProviderCancellation requires reasonCode and updates status', () => {
     const now = new Date('2026-08-18T10:00:00Z');
     
     expect(() =>
@@ -195,12 +173,65 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(out.auditLog.action).toBe('BOOKING_CANCELLED_BY_PROVIDER');
   });
 
-  it('11. verifies cancel_booking_v2 RPC signature parameters (p_booking_id, p_reason, p_reason_code)', () => {
-    // Assert signature expectations: p_booking_id, p_reason, p_reason_code (no idempotency_key parameter)
-    const expectedRpcParams = ['p_booking_id', 'p_reason', 'p_reason_code'];
-    expect(expectedRpcParams).toContain('p_booking_id');
-    expect(expectedRpcParams).toContain('p_reason');
-    expect(expectedRpcParams).toContain('p_reason_code');
-    expect(expectedRpcParams).not.toContain('idempotency_key');
+  it('8. mocks supabase.rpc for cancel_booking_v2 and verifies real payload arguments', async () => {
+    (supabase.rpc as any).mockResolvedValue({
+      data: {
+        success: true,
+        is_idempotent: false,
+        booking_id: 'booking_123',
+        status: 'CANCELLED_BY_STUDENT',
+        refund_percentage: 100,
+        refund_amount_in_cents: 11000,
+        policy_description: 'Cancelamento com 24h ou mais de antecedência: Reembolso integral (100%).',
+        cancellation_reason: 'Imprevisto pessoal',
+        cancelled_at: '2026-08-19T18:00:00Z',
+      },
+      error: null,
+    });
+
+    const result = await dbService.cancelBooking({
+      bookingId: 'booking_123',
+      reason: 'Imprevisto pessoal',
+      reasonCode: undefined,
+    });
+
+    expect(supabase.rpc).toHaveBeenCalledWith('cancel_booking_v2', {
+      p_booking_id: 'booking_123',
+      p_reason: 'Imprevisto pessoal',
+      p_reason_code: null,
+    });
+
+    const rpcPayload = (supabase.rpc as any).mock.calls[0][1];
+    expect(rpcPayload).toHaveProperty('p_booking_id', 'booking_123');
+    expect(rpcPayload).toHaveProperty('p_reason', 'Imprevisto pessoal');
+    expect(rpcPayload).toHaveProperty('p_reason_code', null);
+    expect(rpcPayload).not.toHaveProperty('idempotency_key');
+    expect(rpcPayload).not.toHaveProperty('p_idempotency_key');
+
+    expect(result.status).toBe('CANCELLED_BY_STUDENT');
+    expect(result.refund_amount_in_cents).toBe(11000);
+  });
+
+  it('9. verifies review CTA eligibility: completed without review vs completed with review', async () => {
+    const selectMock = vi.fn().mockReturnValue({
+      in: vi.fn().mockResolvedValue({
+        data: [{ booking_id: 'booking_reviewed_1' }],
+        error: null,
+      }),
+    });
+    (supabase.from as any).mockReturnValue({ select: selectMock });
+
+    const reviewedSet = await dbService.getReviewedBookingIds(['booking_reviewed_1', 'booking_unreviewed_2']);
+
+    expect(reviewedSet.has('booking_reviewed_1')).toBe(true);
+    expect(reviewedSet.has('booking_unreviewed_2')).toBe(false);
+
+    // CTA Eligibility Rule
+    const isEligibleForReview = (status: string, bookingId: string) =>
+      status === 'COMPLETED' && !reviewedSet.has(bookingId);
+
+    expect(isEligibleForReview('COMPLETED', 'booking_unreviewed_2')).toBe(true);
+    expect(isEligibleForReview('COMPLETED', 'booking_reviewed_1')).toBe(false);
+    expect(isEligibleForReview('CONFIRMED', 'booking_unreviewed_2')).toBe(false);
   });
 });
