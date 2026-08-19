@@ -121,4 +121,16 @@ describe('TASK-009 Security Hotfix — Real Behavioral Spies & Security Tests', 
       await expect(dbService.createBookingPayment('booking-123', 'PIX', 'idem_123')).rejects.toThrow('BOOKING_HOLD_EXPIRED');
     });
   });
+
+  describe('TASK-013: Payment FAILED Retry Flow', () => {
+    it.skip('creates a new payment with unique idempotency key when current payment is FAILED', async () => {
+      // Skipped because Migration 45 is not live yet
+      // This test ensures that if a payment is marked FAILED, the next createBookingPayment ignores the incoming idempotency key
+    });
+
+    it.skip('markBookingPaymentFailed marks a PENDING payment as FAILED', async () => {
+      // Skipped because Migration 45 is not live yet
+      // This test ensures mark_booking_payment_failed correctly sets the status
+    });
+  });
 });

@@ -131,6 +131,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [quote, setQuote] = useState<Quote | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
+  const [paymentAttemptId, setPaymentAttemptId] = useState<string | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('PIX');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -503,12 +504,35 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         const externalPaymentId = `fake_pay_appr_${Date.now()}`;
         const paidAt = new Date().toISOString();
 
-        // PERSIST IN REAL SUPABASE/POSTGRESQL INSTANCE VIA SECURE DB TRANSACTION (RPC)
+        let activePayment = payment;
         const isRealSupabase = (import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder');
+
+        // If the current payment is FAILED, we must create a new attempt before confirming
+        if (activePayment.status === 'FAILED' && isRealSupabase) {
+          const retryIdempotencyKey = paymentAttemptId 
+            ? `idem_pay_${booking.id}_${paymentAttemptId}` 
+            : `idem_pay_${booking.id}_${Date.now()}`;
+            
+          const newPayRes = await dbService.createBookingPayment(
+            booking.id,
+            paymentMethod,
+            retryIdempotencyKey
+          );
+          
+          if (!newPayRes || (!newPayRes.payment_id && !newPayRes.id)) {
+            throw new Error('PAYMENT_UUID_GENERATION_FAILED_ON_RETRY');
+          }
+          
+          const newPaymentId = newPayRes.payment_id || newPayRes.id;
+          activePayment = { ...activePayment, id: newPaymentId, status: 'PENDING', idempotencyKey: retryIdempotencyKey };
+          setPayment(activePayment);
+        }
+
+        // PERSIST IN REAL SUPABASE/POSTGRESQL INSTANCE VIA SECURE DB TRANSACTION (RPC)
         if (isRealSupabase) {
           try {
             await dbService.confirmBookingPayment(
-              payment.id,
+              activePayment.id,
               externalPaymentId,
               paidAt
             );
@@ -520,7 +544,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         // Confirm payment at domain level
         const confirmRes = await paymentService.confirmBookingPayment({
-          payment: { ...payment, method: paymentMethod },
+          payment: { ...activePayment, method: paymentMethod },
           booking,
           externalPaymentId,
         });
@@ -530,6 +554,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setStep('SUCCESS');
         onBookingConfirmed(confirmRes.booking);
       } else if (scenario === 'DECLINED') {
+        const isRealSupabase = (import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder');
+        
+        // 1. Persist FAILED no banco
+        if (isRealSupabase && payment?.id && /^[0-9a-f-]{36}$/.test(payment.id)) {
+          try {
+            await dbService.markBookingPaymentFailed(
+              payment.id,
+              'SIMULATED_DECLINED: Pagamento recusado pelo gateway de testes.'
+            );
+          } catch (failErr: any) {
+            console.warn('mark_booking_payment_failed error:', failErr);
+          }
+        }
+        
+        // 2. Gerar novo attemptId para próxima tentativa
+        setPaymentAttemptId(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `att_${Date.now()}`);
+
         const failRes = await paymentService.handlePaymentFailure({
           payment,
           booking,

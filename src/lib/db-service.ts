@@ -821,6 +821,17 @@ export const dbService = {
     return data;
   },
 
+  async markBookingPaymentFailed(paymentId: string, reason?: string): Promise<any> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(paymentId);
+    if (!isUuid) throw new Error('MARK_FAILED_INVALID_PAYMENT_UUID');
+    const { data, error } = await sp.rpc('mark_booking_payment_failed', {
+      p_payment_id: paymentId,
+      p_reason: reason || 'SIMULATED_DECLINED'
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async updateBookingStatus(id: string, status: string, extra: Record<string, any> = {}): Promise<void> {
     const { data, error } = await sp
       .from('bookings')
