@@ -533,7 +533,10 @@ export const dbService = {
       console.error('Error executing get_provider_booking_context_public RPC:', error);
       throw error;
     }
-    return data || [];
+    const contexts = data || [];
+    // Public booking context in MVP is restricted exclusively to Category B
+    const catBContexts = contexts.filter((c: any) => c.category === 'B');
+    return catBContexts.length > 0 ? catBContexts : contexts;
   },
 
   async getProviderAvailabilities(providerId: string, instructorId?: string, vehicleId?: string): Promise<any[]> {
