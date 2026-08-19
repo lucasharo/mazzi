@@ -49,7 +49,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
               label="Fechar painel"
               onClick={onClose}
               data-dialog-autofocus="true"
-              className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 border border-[var(--mazzi-border)] transition-colors"
+              className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors"
             >
               <X className="w-4 h-4" aria-hidden="true" />
             </IconButton>
