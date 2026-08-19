@@ -20,37 +20,94 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_uid UUID;
+  v_clean_name TEXT;
+  v_clean_contact TEXT;
+  v_clean_neighborhood TEXT;
+  v_clean_city TEXT;
+  v_clean_state TEXT;
+  v_clean_bio TEXT;
 BEGIN
+  -- 1. Authentication Check
   v_uid := auth.uid();
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'UNAUTHORIZED: Usuário não autenticado.' USING ERRCODE = '28000';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM public.providers p
-    WHERE p.id = p_provider_id
-      AND (p.user_id = v_uid OR EXISTS (
-        SELECT 1 FROM public.driving_school_staff s
-        WHERE s.school_id = p.id AND s.user_id = v_uid
-          AND s.is_active = true AND s.role IN ('OWNER', 'SCHOOL_ADMIN')
-      ))
+  -- 2. Authorization Check (Provider Owner OR Driving School Admin)
+  IF NOT (
+    public.is_provider_owner(p_provider_id)
+    OR public.is_school_admin(p_provider_id)
   ) THEN
     RAISE EXCEPTION 'PROVIDER_PROFILE_ACCESS_DENIED: Você não tem permissão para atualizar este perfil de prestador.' USING ERRCODE = '42501';
   END IF;
 
+  -- 3. Input Validation & Normalization
+  IF p_name IS NOT NULL THEN
+    v_clean_name := trim(p_name);
+    IF v_clean_name = '' THEN
+      RAISE EXCEPTION 'PROVIDER_NAME_INVALID: O nome do prestador não pode ser vazio.' USING ERRCODE = '22000';
+    END IF;
+  END IF;
+
+  IF p_public_contact IS NOT NULL THEN
+    v_clean_contact := trim(p_public_contact);
+    IF v_clean_contact <> '' THEN
+      IF NOT (v_clean_contact ~ '^\d{10,11}$') THEN
+        RAISE EXCEPTION 'PROVIDER_CONTACT_INVALID: O contato público deve conter 10 ou 11 dígitos numéricos.' USING ERRCODE = '22000';
+      END IF;
+    ELSE
+      v_clean_contact := NULL;
+    END IF;
+  END IF;
+
+  IF p_neighborhood IS NOT NULL THEN
+    v_clean_neighborhood := trim(p_neighborhood);
+    IF v_clean_neighborhood = '' THEN
+      v_clean_neighborhood := NULL;
+    END IF;
+  END IF;
+
+  IF p_city IS NOT NULL THEN
+    v_clean_city := trim(p_city);
+    IF v_clean_city = '' THEN
+      v_clean_city := NULL;
+    END IF;
+  END IF;
+
+  IF p_state IS NOT NULL THEN
+    v_clean_state := upper(trim(p_state));
+    IF v_clean_state <> '' THEN
+      IF NOT (v_clean_state ~ '^[A-Z]{2}$') THEN
+        RAISE EXCEPTION 'PROVIDER_STATE_INVALID: O estado (UF) deve ter exatamente 2 letras.' USING ERRCODE = '22000';
+      END IF;
+    ELSE
+      v_clean_state := NULL;
+    END IF;
+  END IF;
+
+  IF p_service_radius_km IS NOT NULL THEN
+    IF p_service_radius_km < 1 OR p_service_radius_km > 100 THEN
+      RAISE EXCEPTION 'SERVICE_RADIUS_INVALID: O raio de atendimento deve estar entre 1 e 100 km.' USING ERRCODE = '22000';
+    END IF;
+  END IF;
+
+  IF p_bio IS NOT NULL THEN
+    v_clean_bio := trim(p_bio);
+    IF v_clean_bio = '' THEN
+      v_clean_bio := NULL;
+    END IF;
+  END IF;
+
+  -- 4. Execute Update (Modifying ONLY allowed columns)
   UPDATE public.providers
   SET
-    name = COALESCE(NULLIF(trim(p_name), ''), name),
-    public_contact = COALESCE(NULLIF(trim(p_public_contact), ''), public_contact),
-    neighborhood = COALESCE(NULLIF(trim(p_neighborhood), ''), neighborhood),
-    city = COALESCE(NULLIF(trim(p_city), ''), city),
-    state = COALESCE(NULLIF(trim(p_state), ''), state),
-    service_radius_km = CASE
-      WHEN p_service_radius_km IS NOT NULL AND p_service_radius_km >= 1 AND p_service_radius_km <= 100
-      THEN p_service_radius_km
-      ELSE service_radius_km
-    END,
-    bio = COALESCE(p_bio, bio),
+    name = COALESCE(v_clean_name, name),
+    public_contact = CASE WHEN p_public_contact IS NOT NULL THEN v_clean_contact ELSE public_contact END,
+    neighborhood = CASE WHEN p_neighborhood IS NOT NULL THEN v_clean_neighborhood ELSE neighborhood END,
+    city = CASE WHEN p_city IS NOT NULL THEN v_clean_city ELSE city END,
+    state = CASE WHEN p_state IS NOT NULL THEN v_clean_state ELSE state END,
+    service_radius_km = COALESCE(p_service_radius_km, service_radius_km),
+    bio = CASE WHEN p_bio IS NOT NULL THEN v_clean_bio ELSE bio END,
     updated_at = NOW()
   WHERE id = p_provider_id;
 END;

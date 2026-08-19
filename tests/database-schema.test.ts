@@ -267,6 +267,24 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql16).not.toContain('WHERE idempotency_key = p_idempotency_key AND student_id = p_student_id');
   });
 
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 46 update_provider_profile RPC security invariants', () => {
+    const migration46Path = path.join(process.cwd(), 'supabase/migrations/20260818000046_update_provider_profile_rpc.sql');
+    expect(fs.existsSync(migration46Path)).toBe(true);
+    const sql46 = fs.readFileSync(migration46Path, 'utf8');
+
+    expect(sql46).toContain('CREATE OR REPLACE FUNCTION public.update_provider_profile');
+    expect(sql46).toContain('SECURITY DEFINER');
+    expect(sql46).toContain('SET search_path = public, pg_temp');
+    expect(sql46).toContain('auth.uid()');
+    expect(sql46).toContain('public.is_provider_owner');
+    expect(sql46).toContain('public.is_school_admin');
+    expect(sql46).not.toContain("'OWNER'");
+    expect(sql46).not.toContain('status =');
+    expect(sql46).not.toContain('document_number =');
+    expect(sql46).toContain('REVOKE ALL ON FUNCTION public.update_provider_profile');
+    expect(sql46).toContain('GRANT EXECUTE ON FUNCTION public.update_provider_profile');
+  });
+
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
     expect(fs.existsSync(seedPath)).toBe(true);
     const seedSql = fs.readFileSync(seedPath, 'utf8');
