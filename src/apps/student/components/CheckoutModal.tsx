@@ -599,12 +599,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'QUOTE_PREVIEW' && quote && (
           <div className="space-y-4">
             {/* Countdown Badge */}
-            <div className="flex items-center justify-between rounded-2xl bg-amber-50/80 border border-amber-200/80 p-3 text-amber-900" aria-live="polite">
+            <div className="flex items-center justify-between rounded-2xl bg-[#202126] border border-[#202126] p-3 text-white" aria-live="polite">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
-                <span className="text-xs font-semibold">Este valor fica reservado por mais</span>
+                <Clock className="w-4 h-4 text-[#f6c945] shrink-0" aria-hidden="true" />
+                <span className="text-xs font-semibold text-white/80">Este valor fica reservado por mais</span>
               </div>
-              <span className="font-mono text-sm font-extrabold text-amber-900">
+              <span className="font-mono text-sm font-extrabold text-[#f6c945]">
                 {formatCountdown(quoteTimeRemainingSec)}
               </span>
             </div>
@@ -809,12 +809,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'PAYMENT_SELECTION' && booking && payment && (
           <div className="space-y-4">
             {/* Hold Expiration Counter */}
-            <div className="flex items-center justify-between rounded-2xl bg-amber-50/80 border border-amber-200/80 p-3 text-amber-900" aria-live="polite">
+            <div className="flex items-center justify-between rounded-2xl bg-[#202126] border border-[#202126] p-3 text-white" aria-live="polite">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
-                <span className="text-xs font-semibold">Horário reservado temporariamente por mais</span>
+                <Clock className="w-4 h-4 text-[#f6c945] shrink-0" aria-hidden="true" />
+                <span className="text-xs font-semibold text-white/80">Horário reservado temporariamente por mais</span>
               </div>
-              <span className="font-mono text-sm font-extrabold text-amber-900">
+              <span className="font-mono text-sm font-extrabold text-[#f6c945]">
                 {formatCountdown(holdTimeRemainingSec)}
               </span>
             </div>
@@ -892,6 +892,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     disabled={isProcessing}
                     onClick={() => handleExecuteFakePayment('APPROVED')}
                     aria-label="Confirmar pagamento PIX"
+					leftIcon={<CheckCircle2 className="w-4 h-4 text-slate-950" aria-hidden="true" />}
                   >
                     Confirmar pagamento
                   </Button>
