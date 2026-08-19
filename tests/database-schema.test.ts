@@ -297,16 +297,19 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql46).toContain('GRANT EXECUTE ON FUNCTION public.update_provider_profile');
   });
 
-  it('[STATIC SCHEMA CONTRACT] verifies Migration 47 fix_provider_availability_rls policies', () => {
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 47 fix_provider_availability_rls policies & can_manage_provider_schedule RBAC', () => {
     const migration47Path = path.join(process.cwd(), 'supabase/migrations/20260818000047_fix_provider_availability_rls.sql');
     expect(fs.existsSync(migration47Path)).toBe(true);
     const sql47 = fs.readFileSync(migration47Path, 'utf8');
 
+    expect(sql47).toContain('CREATE OR REPLACE FUNCTION public.can_manage_provider_schedule');
+    expect(sql47).toContain('public.is_school_member(target_provider_id)');
     expect(sql47).toContain('CREATE POLICY "availabilities_owner_insert" ON public.availabilities');
     expect(sql47).toContain('CREATE POLICY "exceptions_owner_insert" ON public.availability_exceptions');
-    expect(sql47).toContain('public.is_provider_owner(provider_id)');
-    expect(sql47).toContain('public.is_school_admin(provider_id)');
+    expect(sql47).toContain('public.can_manage_provider_schedule(provider_id)');
     expect(sql47).not.toContain("auth.jwt() ->> 'role'");
+    expect(sql47).toContain('WITH CHECK (public.can_manage_provider_schedule(provider_id))');
+    expect(sql47).toContain('USING (public.can_manage_provider_schedule(provider_id))');
   });
 
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {

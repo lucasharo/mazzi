@@ -605,9 +605,14 @@ export const dbService = {
       vehicle_type: vehicle.vehicleType,
       transmission: vehicle.transmission,
       color: vehicle.color || null,
-      status: vehicle.status || (isNew ? 'PENDING' : 'ACTIVE'),
       photos: vehicle.photos || [],
     };
+
+    if (vehicle.status !== undefined) {
+      dbRow.status = vehicle.status;
+    } else if (isNew) {
+      dbRow.status = 'PENDING';
+    }
 
     if ((vehicle as any).hasDualPedal !== undefined) {
       dbRow.has_dual_pedal = (vehicle as any).hasDualPedal;

@@ -125,11 +125,15 @@ describe('SPRINT 03 — RBAC, Auth Guards & Multi-Tenant Authorization Engine', 
       expect(adminPerms.has('school.member.manage')).toBe(true);
       expect(adminPerms.has('school.finance.read')).toBe(true);
       expect(adminPerms.has('school.payout.request')).toBe(true);
+      expect(adminPerms.has('school.schedule.manage')).toBe(true);
 
       expect(staffPerms.has('school.member.read')).toBe(true);
       expect(staffPerms.has('school.schedule.manage')).toBe(true);
       expect(staffPerms.has('school.member.manage')).toBe(false);
       expect(staffPerms.has('school.finance.read')).toBe(false);
+
+      expect(canAccessSchoolResource(schoolStaffPaulista, 'school-paulista-uuid')).toBe(true);
+      expect(canAccessSchoolResource(schoolStaffPaulista, 'school-pinheiros-uuid')).toBe(false);
     });
 
     it('denies all permissions for BLOCKED accounts even if JWT claims roles', () => {

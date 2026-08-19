@@ -103,6 +103,72 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
       expect(eqMock).toHaveBeenCalledWith('id', '11111111-2222-3333-4444-555555555555');
       expect(result.model).toBe('Fit');
     });
+
+    it('sets status to PENDING for new vehicle when status is undefined', async () => {
+      const selectMock = vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: { id: '11111111-2222-3333-4444-555555555555', status: 'PENDING' },
+          error: null,
+        }),
+      });
+      const insertMock = vi.fn().mockReturnValue({ select: selectMock });
+      (supabase.from as any).mockReturnValue({ insert: insertMock });
+
+      await dbService.saveVehicle({
+        providerId: 'prov-123',
+        brand: 'Toyota',
+        model: 'Yaris',
+        year: 2024,
+        licensePlate: 'XYZ9876',
+        category: 'B',
+        vehicleType: 'CAR',
+        transmission: 'MANUAL',
+      });
+
+      const insertedRow = insertMock.mock.calls[0][0];
+      expect(insertedRow.status).toBe('PENDING');
+      expect(insertedRow.has_dual_pedal).toBeUndefined();
+    });
+
+    it('omits status and preserves existing status on partial update when status is undefined', async () => {
+      const selectMock = vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: { id: '11111111-2222-3333-4444-555555555555', status: 'INACTIVE', color: 'Azul' },
+          error: null,
+        }),
+      });
+      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
+      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
+      (supabase.from as any).mockReturnValue({ update: updateMock });
+
+      await dbService.saveVehicle({
+        id: '11111111-2222-3333-4444-555555555555',
+        color: 'Azul',
+      });
+
+      const updatedRow = updateMock.mock.calls[0][0];
+      expect(updatedRow.status).toBeUndefined();
+    });
+
+    it('explicitly sends has_dual_pedal false when passed as false', async () => {
+      const selectMock = vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: { id: '11111111-2222-3333-4444-555555555555', has_dual_pedal: false },
+          error: null,
+        }),
+      });
+      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
+      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
+      (supabase.from as any).mockReturnValue({ update: updateMock });
+
+      await dbService.saveVehicle({
+        id: '11111111-2222-3333-4444-555555555555',
+        hasDualPedal: false,
+      } as any);
+
+      const updatedRow = updateMock.mock.calls[0][0];
+      expect(updatedRow.has_dual_pedal).toBe(false);
+    });
   });
 
   describe('2. saveOffering Contract', () => {
