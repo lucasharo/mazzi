@@ -1,7 +1,12 @@
 -- ============================================================================
--- MAZZI PLATFORM — SPRINT 21: PROVIDER LESSON LIFECYCLE RPCS (TASK-047)
+-- MAZZI PLATFORM — SPRINT 21: PROVIDER LESSON LIFECYCLE RPCS (TASK-048 HARDENED)
 -- Migration: 20260818000052_provider_lesson_lifecycle_rpcs.sql
 -- ============================================================================
+
+-- 0. Schema enhancement for completion idempotency persistence
+ALTER TABLE public.bookings
+ADD COLUMN IF NOT EXISTS completion_idempotency_key VARCHAR NULL;
+
 
 -- 1. provider_check_in_booking(UUID)
 CREATE OR REPLACE FUNCTION public.provider_check_in_booking(
@@ -53,7 +58,7 @@ BEGIN
     RAISE EXCEPTION 'UNAUTHORIZED_PROVIDER: Acesso negado. Você não é o instrutor nem o responsável por este agendamento.' USING ERRCODE = '40302';
   END IF;
 
-  -- 4. Idempotency check
+  -- 4. Idempotency check: If check-in is ALREADY done, return success idempotently regardless of subsequent status (e.g. IN_PROGRESS/COMPLETED)
   IF v_booking.checkin_instructor_at IS NOT NULL THEN
     RETURN jsonb_build_object(
       'success', true,
@@ -65,9 +70,9 @@ BEGIN
     );
   END IF;
 
-  -- 5. Status whitelist check
-  IF v_booking.status::TEXT NOT IN ('CONFIRMED', 'IN_PROGRESS') THEN
-    RAISE EXCEPTION 'INVALID_STATUS: O agendamento precisa estar confirmado para realizar check-in.' USING ERRCODE = '42200';
+  -- 5. Status whitelist check for NEW check-in: strictly CONFIRMED
+  IF v_booking.status::TEXT <> 'CONFIRMED' THEN
+    RAISE EXCEPTION 'INVALID_STATUS: Novo check-in só é permitido para agendamentos confirmados (CONFIRMED).' USING ERRCODE = '42200';
   END IF;
 
   -- 6. Check-in time window guard (-30 min to +60 min)
@@ -227,11 +232,14 @@ DECLARE
   v_provider_user_id UUID;
   v_is_authorized BOOLEAN := FALSE;
   v_now TIMESTAMPTZ := NOW();
+  v_effective_key VARCHAR;
 BEGIN
   -- 1. Authenticate caller
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'UNAUTHENTICATED: Usuário não autenticado.' USING ERRCODE = '40100';
   END IF;
+
+  v_effective_key := NULLIF(TRIM(p_idempotency_key), '');
 
   -- 2. Lock booking for update
   SELECT * INTO v_booking FROM public.bookings WHERE id = p_booking_id FOR UPDATE;
@@ -261,8 +269,14 @@ BEGIN
     RAISE EXCEPTION 'UNAUTHORIZED_PROVIDER: Acesso negado. Você não é o instrutor nem o responsável por este agendamento.' USING ERRCODE = '40302';
   END IF;
 
-  -- 4. Idempotency check
+  -- 4. Idempotency check with Key Discrepancy Protection
   IF v_booking.status::TEXT = 'COMPLETED' THEN
+    IF v_booking.completion_idempotency_key IS NOT NULL AND v_effective_key IS NOT NULL THEN
+      IF v_booking.completion_idempotency_key <> v_effective_key THEN
+        RAISE EXCEPTION 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST: A chave de idempotência informada diverge da utilizada na conclusão deste agendamento.' USING ERRCODE = '23505';
+      END IF;
+    END IF;
+
     RETURN jsonb_build_object(
       'success', true,
       'is_idempotent', true,
@@ -279,11 +293,12 @@ BEGIN
     RAISE EXCEPTION 'INVALID_STATUS: Somente aulas em andamento (IN_PROGRESS) podem ser concluídas.' USING ERRCODE = '42200';
   END IF;
 
-  -- 6. Execute completion transition
+  -- 6. Execute completion transition and persist completion idempotency key
   UPDATE public.bookings
   SET status = 'COMPLETED',
       completed_at = COALESCE(completed_at, v_now),
       lesson_finished_at = COALESCE(lesson_finished_at, v_now),
+      completion_idempotency_key = COALESCE(completion_idempotency_key, v_effective_key),
       updated_at = v_now
   WHERE id = p_booking_id;
 
@@ -293,7 +308,7 @@ BEGIN
   ) VALUES (
     gen_random_uuid(), v_uid, 'PROVIDER_COMPLETE_LESSON', 'Booking', p_booking_id,
     jsonb_build_object('status', 'IN_PROGRESS'),
-    jsonb_build_object('status', 'COMPLETED', 'completed_at', v_now, 'lesson_finished_at', v_now),
+    jsonb_build_object('status', 'COMPLETED', 'completed_at', v_now, 'lesson_finished_at', v_now, 'completion_idempotency_key', v_effective_key),
     v_now, NULL
   );
 

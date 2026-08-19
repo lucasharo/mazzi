@@ -351,17 +351,19 @@ export const ProviderApp: React.FC = () => {
     };
   };
 
-  // Lesson Handlers — Server-Side RPCs (TASK-047)
+  // Lesson Handlers — Server-Side RPCs Strict Server Timestamps (TASK-048)
   const handleCheckIn = async (b: Booking) => {
     setBookingActionError(null);
     setBookingActionSuccess(null);
     try {
       const res = await dbService.providerCheckInBooking(b.id);
-      const checkinTime = res?.checkin_instructor_at || new Date().toISOString();
+      if (!res?.checkin_instructor_at) {
+        throw new Error('Servidor não retornou a confirmação do horário de check-in.');
+      }
       const updatedBooking: Booking = {
         ...b,
         instructorCheckedIn: true,
-        checkinInstructorAt: checkinTime,
+        checkinInstructorAt: res.checkin_instructor_at,
       };
       setBookings((prev) => prev.map((item) => (item.id === b.id ? updatedBooking : item)));
       if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
@@ -376,11 +378,13 @@ export const ProviderApp: React.FC = () => {
     setBookingActionSuccess(null);
     try {
       const res = await dbService.providerStartLesson(b.id);
-      const startedTime = res?.lesson_started_at || new Date().toISOString();
+      if (!res?.lesson_started_at) {
+        throw new Error('Servidor não retornou o horário oficial de início da aula.');
+      }
       const updatedBooking: Booking = {
         ...b,
         status: 'IN_PROGRESS',
-        lessonStartedAt: startedTime,
+        lessonStartedAt: res.lesson_started_at,
       };
       setBookings((prev) => prev.map((item) => (item.id === b.id ? updatedBooking : item)));
       if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
@@ -398,12 +402,14 @@ export const ProviderApp: React.FC = () => {
     try {
       const idempotencyKey = `complete_btn_${b.id}`;
       const res = await dbService.providerCompleteLesson(b.id, idempotencyKey);
-      const completedTime = res?.completed_at || new Date().toISOString();
+      if (!res?.completed_at) {
+        throw new Error('Servidor não retornou o horário oficial de conclusão da aula.');
+      }
       const updatedBooking: Booking = {
         ...b,
         status: 'COMPLETED',
-        completedAt: completedTime,
-        lessonFinishedAt: res?.lesson_finished_at || completedTime,
+        completedAt: res.completed_at,
+        lessonFinishedAt: res.lesson_finished_at || res.completed_at,
       };
       setBookings((prev) => prev.map((item) => (item.id === b.id ? updatedBooking : item)));
       if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);

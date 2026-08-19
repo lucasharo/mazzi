@@ -413,8 +413,10 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(fs.existsSync(migration52Path)).toBe(true);
     const sql52 = fs.readFileSync(migration52Path, 'utf8');
 
+    expect(sql52).toContain('completion_idempotency_key');
     expect(sql52).toContain('provider_check_in_booking');
     expect(sql52).toContain('checkin_instructor_at');
+    expect(sql52).toContain('Novo check-in só é permitido para agendamentos confirmados (CONFIRMED)');
     expect(sql52).toContain('CHECKIN_WINDOW_NOT_OPEN');
     expect(sql52).toContain('CHECKIN_WINDOW_EXPIRED');
 
@@ -426,6 +428,7 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql52).toContain("status = 'COMPLETED'");
     expect(sql52).toContain('completed_at');
     expect(sql52).toContain('lesson_finished_at');
+    expect(sql52).toContain('IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST');
   });
 
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
