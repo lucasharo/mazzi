@@ -332,6 +332,11 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
 
     expect(sql48).toContain('f3e4d43a-dbf2-4e76-8f22-217d655741f8');
     expect(sql48).toContain('78d44619-5f7f-46f4-b1b2-5cad8b85501a');
+    expect(sql48).toContain('REMEDIATION_PRECONDITION_FAILED');
+    expect(sql48).toContain("cancelled_by = 'SYSTEM'");
+    expect(sql48).toContain("cancellation_reason = 'SYSTEM_DOUBLE_BOOKING_OVERLAP'");
+    expect(sql48).toContain('refund_amount_in_cents = v_hist_paid_amount');
+    expect(sql48).toContain('refund_amount_in_cents = 0');
     expect(sql48).toContain('CANCELLED_BY_PROVIDER');
     expect(sql48).toContain('REFUNDED');
     expect(sql48).toContain('SYSTEM_DOUBLE_BOOKING_OVERLAP_REMEDIATION');
