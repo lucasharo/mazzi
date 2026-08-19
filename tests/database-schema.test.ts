@@ -368,17 +368,23 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql49).toContain('RAISE;\n      END IF;');
   });
 
-  it('[STATIC SCHEMA CONTRACT] verifies Migration 50 harden_public_search_category_b RPC Category B enforcement', () => {
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 50 harden_public_search_category_b exact RPC signature & Category B enforcement', () => {
     const migration50Path = path.join(process.cwd(), 'supabase/migrations/20260818000050_harden_public_search_category_b.sql');
     expect(fs.existsSync(migration50Path)).toBe(true);
     const sql50 = fs.readFileSync(migration50Path, 'utf8');
 
     expect(sql50).toContain('search_providers_public');
+    expect(sql50).toContain('p_radius_meters DOUBLE PRECISION DEFAULT 5000');
+    expect(sql50).toContain('p_category TEXT DEFAULT NULL');
+    expect(sql50).toContain('p_provider_type TEXT DEFAULT \'ALL\'');
+    expect(sql50).toContain('p_transmission TEXT DEFAULT \'ALL\'');
+    expect(sql50).toContain('p_min_rating DOUBLE PRECISION DEFAULT 0.0');
     expect(sql50).toContain('INVALID_PUBLIC_CATEGORY');
     expect(sql50).toContain("p_category IS NOT NULL AND p_category <> 'B'");
     expect(sql50).toContain("v_effective_category := 'B'");
     expect(sql50).toContain('o.category::TEXT = v_effective_category');
     expect(sql50).toContain('so_avail.category::TEXT = v_effective_category');
+    expect(sql50).toContain('GRANT EXECUTE ON FUNCTION public.search_providers_public(\n  DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, TEXT, TEXT, DOUBLE PRECISION, INT, INT, INT, DATE\n)');
   });
 
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {

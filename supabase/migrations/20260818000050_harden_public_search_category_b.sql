@@ -3,14 +3,17 @@
 -- Migration: 20260818000050_harden_public_search_category_b.sql
 -- ============================================================================
 
+-- Preserve EXACT LIVE signature to prevent function overload duplication:
+-- search_providers_public(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, TEXT, TEXT, DOUBLE PRECISION, INT, INT, INT, DATE)
+
 CREATE OR REPLACE FUNCTION public.search_providers_public(
   p_user_lat DOUBLE PRECISION,
   p_user_lng DOUBLE PRECISION,
-  p_radius_meters DOUBLE PRECISION DEFAULT 20000,
-  p_category VARCHAR DEFAULT 'B',
-  p_provider_type VARCHAR DEFAULT 'ALL',
-  p_transmission VARCHAR DEFAULT 'ALL',
-  p_min_rating NUMERIC DEFAULT 0,
+  p_radius_meters DOUBLE PRECISION DEFAULT 5000,
+  p_category TEXT DEFAULT NULL,
+  p_provider_type TEXT DEFAULT 'ALL',
+  p_transmission TEXT DEFAULT 'ALL',
+  p_min_rating DOUBLE PRECISION DEFAULT 0.0,
   p_max_price_cents INT DEFAULT NULL,
   p_limit INT DEFAULT 20,
   p_offset INT DEFAULT 0,
@@ -48,7 +51,7 @@ DECLARE
   v_radius DOUBLE PRECISION;
   v_limit INT;
   v_offset INT;
-  v_effective_category VARCHAR;
+  v_effective_category TEXT;
 BEGIN
   -- 1. Validate Coordinates
   IF p_user_lat IS NULL OR p_user_lat NOT BETWEEN -90 AND 90
@@ -67,8 +70,8 @@ BEGIN
   END IF;
 
   -- 4. HARDEN CATEGORY B ENFORCEMENT FOR PUBLIC SEARCH
-  -- p_category NULL or 'B' => 'B'. Any other category (such as 'A') => RAISE EXCEPTION
-  IF p_category IS NOT NULL AND p_category <> 'B' AND p_category <> 'ALL' THEN
+  -- NULL or 'B' => category 'B'. 'A', 'ALL' or any other value => INVALID_PUBLIC_CATEGORY
+  IF p_category IS NOT NULL AND p_category <> 'B' THEN
     RAISE EXCEPTION 'INVALID_PUBLIC_CATEGORY: Only category B is supported for public search' USING ERRCODE = '22023';
   END IF;
 
@@ -164,11 +167,11 @@ BEGIN
 END;
 $$;
 
--- Permissions
+-- Permissions with exact signature
 REVOKE ALL ON FUNCTION public.search_providers_public(
-  DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, VARCHAR, VARCHAR, VARCHAR, NUMERIC, INT, INT, INT, DATE
+  DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, TEXT, TEXT, DOUBLE PRECISION, INT, INT, INT, DATE
 ) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION public.search_providers_public(
-  DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, VARCHAR, VARCHAR, VARCHAR, NUMERIC, INT, INT, INT, DATE
+  DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, TEXT, TEXT, DOUBLE PRECISION, INT, INT, INT, DATE
 ) TO anon, authenticated, service_role;
