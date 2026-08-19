@@ -428,6 +428,8 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql52).toContain("status = 'COMPLETED'");
     expect(sql52).toContain('completed_at');
     expect(sql52).toContain('lesson_finished_at');
+    expect(sql52).toContain('COMPLETION_IDEMPOTENCY_KEY_REQUIRED');
+    expect(sql52).toContain('IS DISTINCT FROM');
     expect(sql52).toContain('IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST');
   });
 

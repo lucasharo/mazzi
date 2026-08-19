@@ -1,5 +1,5 @@
 -- ============================================================================
--- MAZZI PLATFORM — SPRINT 21: PROVIDER LESSON LIFECYCLE RPCS (TASK-048 HARDENED)
+-- MAZZI PLATFORM — SPRINT 21: PROVIDER LESSON LIFECYCLE RPCS (TASK-049 HARDENED)
 -- Migration: 20260818000052_provider_lesson_lifecycle_rpcs.sql
 -- ============================================================================
 
@@ -269,12 +269,11 @@ BEGIN
     RAISE EXCEPTION 'UNAUTHORIZED_PROVIDER: Acesso negado. Você não é o instrutor nem o responsável por este agendamento.' USING ERRCODE = '40302';
   END IF;
 
-  -- 4. Idempotency check with Key Discrepancy Protection
+  -- 4. Idempotency check for already COMPLETED booking
   IF v_booking.status::TEXT = 'COMPLETED' THEN
-    IF v_booking.completion_idempotency_key IS NOT NULL AND v_effective_key IS NOT NULL THEN
-      IF v_booking.completion_idempotency_key <> v_effective_key THEN
-        RAISE EXCEPTION 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST: A chave de idempotência informada diverge da utilizada na conclusão deste agendamento.' USING ERRCODE = '23505';
-      END IF;
+    -- Check if effective key is distinct from persisted key
+    IF v_booking.completion_idempotency_key IS DISTINCT FROM v_effective_key THEN
+      RAISE EXCEPTION 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST: A chave de idempotência informada diverge da utilizada na conclusão deste agendamento.' USING ERRCODE = '23505';
     END IF;
 
     RETURN jsonb_build_object(
@@ -288,21 +287,26 @@ BEGIN
     );
   END IF;
 
-  -- 5. Status whitelist check
+  -- 5. Status whitelist check: MUST BE IN_PROGRESS
   IF v_booking.status::TEXT <> 'IN_PROGRESS' THEN
     RAISE EXCEPTION 'INVALID_STATUS: Somente aulas em andamento (IN_PROGRESS) podem ser concluídas.' USING ERRCODE = '42200';
   END IF;
 
-  -- 6. Execute completion transition and persist completion idempotency key
+  -- 6. Mandatory Idempotency Key check for new completion
+  IF v_effective_key IS NULL THEN
+    RAISE EXCEPTION 'COMPLETION_IDEMPOTENCY_KEY_REQUIRED: A chave de idempotência é obrigatória para concluir a aula.' USING ERRCODE = '42200';
+  END IF;
+
+  -- 7. Execute completion transition and persist completion idempotency key
   UPDATE public.bookings
   SET status = 'COMPLETED',
       completed_at = COALESCE(completed_at, v_now),
       lesson_finished_at = COALESCE(lesson_finished_at, v_now),
-      completion_idempotency_key = COALESCE(completion_idempotency_key, v_effective_key),
+      completion_idempotency_key = v_effective_key,
       updated_at = v_now
   WHERE id = p_booking_id;
 
-  -- 7. Audit Log
+  -- 8. Audit Log
   INSERT INTO public.audit_logs (
     id, actor_id, action, entity_type, entity_id, previous_value, new_value, created_at, ip_address
   ) VALUES (
