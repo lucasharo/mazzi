@@ -56,6 +56,7 @@ export interface CheckoutModalProps {
   onChooseAnotherSlot?: () => void;
   existingBookings?: Booking[];
   onBookingConfirmed: (booking: Booking) => void;
+  resumeBooking?: Booking | null;
 }
 
 type CheckoutStep =
@@ -109,6 +110,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onChooseAnotherSlot,
   existingBookings = [],
   onBookingConfirmed,
+  resumeBooking,
 }) => {
   const { user, isAuthenticated } = useAuth();
 
@@ -148,6 +150,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     if (!isOpen) {
       checkoutAttemptIdRef.current = '';
+      return;
+    }
+
+    if (resumeBooking) {
+      setBooking(resumeBooking);
+      setPayment({
+        id: `pay_${resumeBooking.id}`,
+        bookingId: resumeBooking.id,
+        studentId: user?.id || resumeBooking.studentId,
+        providerId: resumeBooking.providerId,
+        offeringId: resumeBooking.offeringId,
+        amountInCents: resumeBooking.totalInCents || resumeBooking.snapshot?.totalInCents || 0,
+        currency: 'BRL',
+        status: 'PENDING',
+        method: 'PIX',
+        idempotencyKey: `idem_pay_${resumeBooking.id}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      setStep('PAYMENT_SELECTION');
       return;
     }
 
@@ -303,7 +325,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     return () => clearInterval(timer);
   }, [booking, step]);
 
-  if (!isOpen || !provider || !vehicle || !offering) return null;
+  if (!isOpen) return null;
+  if (!resumeBooking && (!provider || !vehicle || !offering)) return null;
 
   // Step 1: Create Booking Hold (Locks calendar slot temporarily)
   const handleProceedToBookingHold = async () => {
@@ -481,8 +504,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
-  const durationLabel = typeof offering.durationMinutes === 'number' && Number.isFinite(offering.durationMinutes) && offering.durationMinutes > 0
-    ? ` (${offering.durationMinutes} min)`
+  const durationMinutes = offering?.durationMinutes || resumeBooking?.snapshot?.durationMinutes;
+  const durationLabel = typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) && durationMinutes > 0
+    ? ` (${durationMinutes} min)`
     : '';
 
   return (

@@ -19,17 +19,22 @@ describe('Real Supabase RPC cancel_booking_v2 Final Security & Order Tests', () 
       pgClient = new PgClient({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
       await pgClient.connect();
 
-      // Apply Migration 37 via official PostgreSQL client
-      const migration37Path = path.resolve(process.cwd(), 'supabase/migrations/20260818000037_fix_cancellation_authorization_order.sql');
-      const sql37 = fs.readFileSync(migration37Path, 'utf8');
-      await pgClient.query(sql37);
+      // SECURITY GUARD: DDL (migrations) must NEVER run automatically during npm test.
+      // This block is intentionally disabled unless MAZZI_LIVE_DDL_TESTS=true is explicitly set.
+      // Source of schema drift identified in TASK-008 HOTFIX audit.
+      if (process.env.MAZZI_LIVE_DDL_TESTS === 'true') {
+        // Apply Migration 37 via official PostgreSQL client
+        const migration37Path = path.resolve(process.cwd(), 'supabase/migrations/20260818000037_fix_cancellation_authorization_order.sql');
+        const sql37 = fs.readFileSync(migration37Path, 'utf8');
+        await pgClient.query(sql37);
 
-      // Reconcile schema_migrations ledger
-      await pgClient.query(`
-        INSERT INTO supabase_migrations.schema_migrations (version, name)
-        VALUES ('20260818000037', 'fix_cancellation_authorization_order')
-        ON CONFLICT (version) DO NOTHING;
-      `);
+        // Reconcile schema_migrations ledger
+        await pgClient.query(`
+          INSERT INTO supabase_migrations.schema_migrations (version, name)
+          VALUES ('20260818000037', 'fix_cancellation_authorization_order')
+          ON CONFLICT (version) DO NOTHING;
+        `);
+      }
     }
   });
 

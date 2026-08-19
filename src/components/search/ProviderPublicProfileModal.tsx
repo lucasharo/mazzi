@@ -67,11 +67,11 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
             </div>
             {result.isVerified && (
               <span
-                className="absolute -bottom-1 -right-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 shadow-2xs"
+                className="absolute -bottom-1 -right-1 inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200/60 p-1 text-emerald-700 shadow-2xs"
                 title="Perfil verificado pela plataforma MAZZI"
+                aria-label="Prestador verificado"
               >
-                <ShieldCheck className="h-3 w-3 text-emerald-600" aria-hidden="true" />
-                <span>Verificado</span>
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
               </span>
             )}
           </div>

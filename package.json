@@ -8,6 +8,7 @@
     "dev:student": "vite --host=0.0.0.0 --port=3001 --mode=student",
     "dev:instructor": "vite --host=0.0.0.0 --port=3002 --mode=instructor",
     "dev:admin": "vite --host=0.0.0.0 --port=3003 --mode=admin",
+    "dev:design-system": "vite --host=0.0.0.0 --port=3004 --mode=design-system",
     "build": "vite build",
     "build:student": "vite build --mode=student",
     "build:instructor": "vite build --mode=instructor",

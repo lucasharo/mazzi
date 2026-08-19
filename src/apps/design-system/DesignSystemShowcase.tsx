@@ -23,7 +23,9 @@ import {
   Plus,
   Building2,
   UserCheck,
+  UserRound,
   CreditCard,
+  RefreshCw,
   Ban,
   Send,
   Sparkles,
@@ -401,6 +403,22 @@ export const DesignSystemShowcase: React.FC = () => {
                         <PrimaryButton size="md" leftIcon={<Check className="w-4 h-4 text-slate-950" />}>
                           Com Ícone
                         </PrimaryButton>
+                        <PrimaryButton size="md" className="min-h-[48px] px-5" leftIcon={<CreditCard className="w-4 h-4" />}>
+                          Finalizar pagamento
+                        </PrimaryButton>
+                        <SecondaryButton size="sm" className="min-h-11" leftIcon={<UserRound className="w-4 h-4" />}>
+                          Perfil
+                        </SecondaryButton>
+                        <PrimaryButton size="sm" className="min-h-11" leftIcon={<CalendarIcon className="w-4 h-4" />} rightIcon={<ChevronRight className="w-4 h-4" />}>
+                          Agenda
+                        </PrimaryButton>
+                        <button
+                          type="button"
+                          className="h-11 w-11 grid place-items-center rounded-2xl bg-[#f7f5ef] border border-[#e9e6de] text-slate-700"
+                          title="Atualizar lista de aulas"
+                        >
+                          <RefreshCw className="w-4 h-4 text-amber-600" />
+                        </button>
                         <PrimaryButton size="md" isLoading={true}>
                           Carregando
                         </PrimaryButton>

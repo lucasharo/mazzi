@@ -33,7 +33,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = ''
       case 'COMPLETED':
         return { label: 'Concluída', bg: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-800', dot: 'bg-indigo-500' };
       case 'PENDING_PAYMENT':
-        return { label: 'Aguardando Pagamento', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', dot: 'bg-amber-500' };
+        return { label: audience === 'student' ? 'Pagamento pendente' : 'Aguardando Pagamento', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', dot: 'bg-amber-500' };
       case 'CANCELLED_BY_STUDENT':
         return { label: audience === 'student' ? 'Cancelada por você' : 'Cancelada pelo Aluno', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
       case 'CANCELLED_BY_PROVIDER':

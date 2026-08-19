@@ -69,7 +69,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   };
 
   const footerContent = (
-    <div className="flex items-center gap-3 w-full">
+    <div className="flex items-center gap-3 w-full sticky bottom-0 pb-safe safe-area-inset-bottom z-[60] shrink-0">
       <SecondaryButton
         size="md"
         className="w-1/2 min-h-[48px] font-bold shadow-sm hover:shadow-md transition-all rounded-2xl border-slate-300 bg-white flex items-center justify-center gap-2 text-slate-700"

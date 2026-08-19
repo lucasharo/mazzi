@@ -278,7 +278,12 @@ REVOKE ALL ON FUNCTION public.get_available_slots_public(UUID, DATE, DATE) FROM 
 GRANT EXECUTE ON FUNCTION public.get_available_slots_public(UUID, DATE, DATE) TO anon, authenticated;
 
 
--- 3. WRITE-PATH HOUSEKEEPING IN create_quote_from_offering
+--- 3. WRITE-PATH: create_quote_from_offering
+-- ============================================================================
+-- HOTFIX (TASK-008): Corrige INSERT que omitia provider_id/instructor_id/vehicle_id
+-- Restaura idempotência atômica (ON CONFLICT DO NOTHING) da migration 38/39
+-- Preenche contrato de resposta JSON completo (14 campos)
+-- ============================================================================
 CREATE OR REPLACE FUNCTION public.create_quote_from_offering(
   p_offering_id UUID,
   p_scheduled_start_at TIMESTAMPTZ,
@@ -290,27 +295,31 @@ SECURITY DEFINER
 SET search_path TO 'public', 'pg_temp'
 AS $$
 DECLARE
-  v_uid UUID := auth.uid();
-  v_offering public.service_offerings%ROWTYPE;
-  v_provider public.providers%ROWTYPE;
+  v_uid              UUID         := auth.uid();
+  v_offering         public.service_offerings%ROWTYPE;
+  v_provider         public.providers%ROWTYPE;
+  v_existing_quote   public.quotes%ROWTYPE;
   v_scheduled_end_at TIMESTAMPTZ;
-  v_now TIMESTAMPTZ := NOW();
-  v_expires_at TIMESTAMPTZ;
-  v_ttl_minutes INT := 15;
-  v_platform_fee_cents INT := 1000;
-  v_existing_quote public.quotes%ROWTYPE;
-  v_new_quote_id UUID;
+  v_now              TIMESTAMPTZ  := NOW();
+  v_expires_at       TIMESTAMPTZ;
+  v_ttl_minutes      INT          := 15;
+  v_platform_fee_cents INT        := 1000;
+  v_new_quote_id     UUID;
 BEGIN
+  -- ── 1. Authentication ─────────────────────────────────────────────────────
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
   END IF;
 
-  -- WRITE PATH HOUSEKEEPING: Expire stale PENDING_PAYMENT holds before checking/creating quotes
+  -- ── 2. WRITE PATH HOUSEKEEPING ────────────────────────────────────────────
+  -- Expire stale PENDING_PAYMENT holds before checking/creating quotes.
+  -- This DML belongs here (VOLATILE write path), NOT in is_offering_slot_available.
   UPDATE public.bookings
   SET status = 'EXPIRED', expired_at = v_now, updated_at = v_now
   WHERE status = 'PENDING_PAYMENT' AND hold_expires_at <= v_now;
 
-  -- Check existing idempotency key for caller
+  -- ── 3. FAST PATH Idempotency Check ────────────────────────────────────────
+  -- If we already have a quote for this key, return it immediately (retries).
   IF p_idempotency_key IS NOT NULL AND TRIM(p_idempotency_key) <> '' THEN
     SELECT * INTO v_existing_quote
     FROM public.quotes
@@ -319,71 +328,174 @@ BEGIN
     LIMIT 1;
 
     IF FOUND THEN
+      -- Guard: same key must match same request parameters
+      IF v_existing_quote.offering_id <> p_offering_id
+         OR v_existing_quote.scheduled_start_at <> p_scheduled_start_at
+      THEN
+        RAISE EXCEPTION 'QUOTE_IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST'
+          USING ERRCODE = '23505';
+      END IF;
+
       IF v_existing_quote.status = 'ACTIVE' AND v_existing_quote.expires_at > v_now THEN
         RETURN jsonb_build_object(
-          'success', true,
-          'is_idempotent', true,
-          'quote_id', v_existing_quote.id,
-          'offering_id', v_existing_quote.offering_id,
-          'scheduled_start_at', v_existing_quote.scheduled_start_at,
-          'scheduled_end_at', v_existing_quote.scheduled_end_at,
-          'price_in_cents', v_existing_quote.price_in_cents,
+          'success',               true,
+          'is_idempotent',         true,
+          'quote_id',              v_existing_quote.id,
+          'student_id',            v_existing_quote.student_id,
+          'provider_id',           v_existing_quote.provider_id,
+          'instructor_id',         v_existing_quote.instructor_id,
+          'vehicle_id',            v_existing_quote.vehicle_id,
+          'offering_id',           v_existing_quote.offering_id,
+          'scheduled_start_at',    v_existing_quote.scheduled_start_at,
+          'scheduled_end_at',      v_existing_quote.scheduled_end_at,
+          'price_in_cents',        v_existing_quote.price_in_cents,
           'platform_fee_in_cents', v_existing_quote.platform_fee_in_cents,
-          'total_in_cents', v_existing_quote.total_in_cents,
-          'status', v_existing_quote.status,
-          'expires_at', v_existing_quote.expires_at
+          'total_in_cents',        v_existing_quote.total_in_cents,
+          'status',                v_existing_quote.status,
+          'expires_at',            v_existing_quote.expires_at
         );
       ELSE
+        -- Historical quote (CONSUMED or EXPIRED) — reject stale key
         RAISE EXCEPTION 'QUOTE_IDEMPOTENCY_KEY_STALE' USING ERRCODE = '22023';
       END IF;
     END IF;
   END IF;
 
+  -- ── 4. Offering Validation ─────────────────────────────────────────────────
   SELECT * INTO v_offering FROM public.service_offerings WHERE id = p_offering_id;
   IF NOT FOUND OR v_offering.status <> 'ACTIVE' OR v_offering.is_active IS NOT TRUE THEN
     RAISE EXCEPTION 'OFFERING_NOT_FOUND_OR_INACTIVE' USING ERRCODE = '22023';
   END IF;
 
+  IF v_offering.instructor_id IS NULL THEN
+    RAISE EXCEPTION 'OFFERING_INSTRUCTOR_NOT_ASSIGNED' USING ERRCODE = '22023';
+  END IF;
+
+  IF v_offering.vehicle_id IS NULL THEN
+    RAISE EXCEPTION 'OFFERING_VEHICLE_NOT_ASSIGNED' USING ERRCODE = '22023';
+  END IF;
+
+  -- ── 5. Provider Validation ─────────────────────────────────────────────────
   SELECT * INTO v_provider FROM public.providers WHERE id = v_offering.provider_id;
   IF NOT FOUND OR v_provider.status <> 'ACTIVE' THEN
     RAISE EXCEPTION 'PROVIDER_INACTIVE' USING ERRCODE = '22023';
   END IF;
 
-  IF p_scheduled_start_at <= v_now THEN
+  -- ── 6. Time Validation ────────────────────────────────────────────────────
+  IF p_scheduled_start_at IS NULL OR p_scheduled_start_at <= v_now THEN
     RAISE EXCEPTION 'SLOT_MUST_BE_IN_FUTURE' USING ERRCODE = '22023';
   END IF;
 
-  -- Validate slot availability
+  -- ── 7. Slot Availability (read-only STABLE helper) ────────────────────────
   IF NOT public.is_offering_slot_available(p_offering_id, p_scheduled_start_at) THEN
     RAISE EXCEPTION 'SELECTED_SLOT_NOT_AVAILABLE' USING ERRCODE = '22023';
   END IF;
 
+  -- ── 8. Compute Values ─────────────────────────────────────────────────────
   v_scheduled_end_at := p_scheduled_start_at + make_interval(mins => v_offering.duration_minutes);
-  v_expires_at := v_now + make_interval(mins => v_ttl_minutes);
-  v_new_quote_id := gen_random_uuid();
+  v_expires_at       := v_now + make_interval(mins => v_ttl_minutes);
+  v_new_quote_id     := gen_random_uuid();
 
+  -- ── 9. ATOMIC Idempotent INSERT (TOCTOU-safe) ─────────────────────────────
+  -- ON CONFLICT prevents duplicate quotes in high-concurrency scenarios.
+  -- The unique index uq_quotes_student_idempotency covers (student_id, idempotency_key)
+  -- WHERE idempotency_key IS NOT NULL.
   INSERT INTO public.quotes (
-    id, student_id, offering_id, scheduled_start_at, scheduled_end_at,
-    price_in_cents, platform_fee_in_cents, total_in_cents, status, expires_at,
-    created_at, idempotency_key
+    id,
+    student_id,
+    provider_id,
+    instructor_id,
+    vehicle_id,
+    offering_id,
+    scheduled_start_at,
+    scheduled_end_at,
+    price_in_cents,
+    platform_fee_in_cents,
+    total_in_cents,
+    status,
+    expires_at,
+    created_at,
+    idempotency_key
   ) VALUES (
-    v_new_quote_id, v_uid, v_offering.id, p_scheduled_start_at, v_scheduled_end_at,
-    v_offering.price_in_cents, v_platform_fee_cents, (v_offering.price_in_cents + v_platform_fee_cents),
-    'ACTIVE', v_expires_at, v_now, NULLIF(TRIM(p_idempotency_key), '')
-  );
+    v_new_quote_id,
+    v_uid,
+    v_offering.provider_id,
+    v_offering.instructor_id,
+    v_offering.vehicle_id,
+    v_offering.id,
+    p_scheduled_start_at,
+    v_scheduled_end_at,
+    v_offering.price_in_cents,
+    v_platform_fee_cents,
+    (v_offering.price_in_cents + v_platform_fee_cents),
+    'ACTIVE',
+    v_expires_at,
+    v_now,
+    NULLIF(TRIM(p_idempotency_key), '')
+  )
+  ON CONFLICT (student_id, idempotency_key)
+    WHERE idempotency_key IS NOT NULL
+  DO NOTHING
+  RETURNING * INTO v_existing_quote;
 
+  -- ── 10. Conflict Branch (concurrent race winner took the slot) ────────────
+  IF v_existing_quote.id IS NULL THEN
+    SELECT * INTO v_existing_quote
+    FROM public.quotes
+    WHERE student_id    = v_uid
+      AND idempotency_key = NULLIF(TRIM(p_idempotency_key), '');
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'QUOTE_CONCURRENT_CONFLICT_UNRESOLVABLE' USING ERRCODE = '40001';
+    END IF;
+
+    IF v_existing_quote.offering_id <> p_offering_id
+       OR v_existing_quote.scheduled_start_at <> p_scheduled_start_at
+    THEN
+      RAISE EXCEPTION 'QUOTE_IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST'
+        USING ERRCODE = '23505';
+    END IF;
+
+    IF v_existing_quote.status = 'ACTIVE' AND v_existing_quote.expires_at > v_now THEN
+      RETURN jsonb_build_object(
+        'success',               true,
+        'is_idempotent',         true,
+        'quote_id',              v_existing_quote.id,
+        'student_id',            v_existing_quote.student_id,
+        'provider_id',           v_existing_quote.provider_id,
+        'instructor_id',         v_existing_quote.instructor_id,
+        'vehicle_id',            v_existing_quote.vehicle_id,
+        'offering_id',           v_existing_quote.offering_id,
+        'scheduled_start_at',    v_existing_quote.scheduled_start_at,
+        'scheduled_end_at',      v_existing_quote.scheduled_end_at,
+        'price_in_cents',        v_existing_quote.price_in_cents,
+        'platform_fee_in_cents', v_existing_quote.platform_fee_in_cents,
+        'total_in_cents',        v_existing_quote.total_in_cents,
+        'status',                v_existing_quote.status,
+        'expires_at',            v_existing_quote.expires_at
+      );
+    ELSE
+      RAISE EXCEPTION 'QUOTE_IDEMPOTENCY_KEY_STALE' USING ERRCODE = '22023';
+    END IF;
+  END IF;
+
+  -- ── 11. New Insert Branch: Return fresh quote with all required fields ─────
   RETURN jsonb_build_object(
-    'success', true,
-    'is_idempotent', false,
-    'quote_id', v_new_quote_id,
-    'offering_id', v_offering.id,
-    'scheduled_start_at', p_scheduled_start_at,
-    'scheduled_end_at', v_scheduled_end_at,
-    'price_in_cents', v_offering.price_in_cents,
-    'platform_fee_in_cents', v_platform_fee_cents,
-    'total_in_cents', (v_offering.price_in_cents + v_platform_fee_cents),
-    'status', 'ACTIVE',
-    'expires_at', v_expires_at
+    'success',               true,
+    'is_idempotent',         false,
+    'quote_id',              v_existing_quote.id,
+    'student_id',            v_existing_quote.student_id,
+    'provider_id',           v_existing_quote.provider_id,
+    'instructor_id',         v_existing_quote.instructor_id,
+    'vehicle_id',            v_existing_quote.vehicle_id,
+    'offering_id',           v_existing_quote.offering_id,
+    'scheduled_start_at',    v_existing_quote.scheduled_start_at,
+    'scheduled_end_at',      v_existing_quote.scheduled_end_at,
+    'price_in_cents',        v_existing_quote.price_in_cents,
+    'platform_fee_in_cents', v_existing_quote.platform_fee_in_cents,
+    'total_in_cents',        v_existing_quote.total_in_cents,
+    'status',                v_existing_quote.status,
+    'expires_at',            v_existing_quote.expires_at
   );
 END;
 $$;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, ChevronRight, MapPin, ShieldCheck, Star } from 'lucide-react';
+import { Calendar, Car, ChevronRight, MapPin, ShieldCheck, Star, UserRound } from 'lucide-react';
 import { PublicSearchProviderResult } from '../../types';
 import { formatCentsToBRL } from '../../domain/money';
 import { trackSearchAnalytics } from './SearchAnalytics';
@@ -61,7 +61,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
       {/* 1. Top Section: Avatar + Identity + Rating */}
       <div className="flex items-start gap-3 sm:gap-3.5">
         {/* Avatar */}
-        <div className="mazzi-avatar h-14 w-14 sm:h-16 sm:w-16 shrink-0 text-base sm:text-lg font-bold shadow-xs ring-1 ring-black/5">
+        <div className="mazzi-avatar h-14 w-14 sm:h-16 sm:w-16 shrink-0 text-base sm:text-lg font-bold shadow-xs ring-1 ring-black/5 relative">
           {result.avatarUrl ? (
             <img
               src={result.avatarUrl}
@@ -83,9 +83,12 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
               {isCFC ? 'Autoescola / CFC' : 'Instrutor autônomo'}
             </span>
             {result.isVerified && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60">
+              <span
+                className="inline-flex items-center justify-center text-emerald-700 bg-emerald-50 p-1 rounded-full border border-emerald-200/60 shadow-2xs"
+                aria-label="Prestador verificado"
+                title="Verificado"
+              >
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
-                <span>Verificado</span>
               </span>
             )}
           </div>
@@ -158,8 +161,9 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
             <SecondaryButton
               type="button"
               size="sm"
-              className="min-h-11 px-3.5 text-xs font-bold shadow-2xs"
+              className="min-h-11 px-3.5 text-xs font-bold shadow-2xs flex items-center justify-center gap-1.5"
               onClick={() => onViewProfile(result.providerId)}
+              leftIcon={<UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />}
               aria-label={`Ver perfil detalhado de ${result.displayName}`}
             >
               Perfil
@@ -168,12 +172,13 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
           <PrimaryButton
             type="button"
             size="sm"
-            className="min-h-11 px-4 text-xs font-bold shadow-xs"
+            className="min-h-11 px-4 text-xs font-bold shadow-xs flex items-center justify-center gap-1.5"
             onClick={handleSchedule}
-            rightIcon={<ChevronRight className="h-4 w-4" aria-hidden="true" />}
+            leftIcon={<Calendar className="h-4 w-4 shrink-0" aria-hidden="true" />}
+            rightIcon={<ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />}
             aria-label={`Agendar aula com ${result.displayName}`}
           >
-            Agendar
+            Agenda
           </PrimaryButton>
         </div>
       </div>

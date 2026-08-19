@@ -8,6 +8,7 @@ import {
   Map,
   List,
   SlidersHorizontal,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Provider,
@@ -33,6 +34,7 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { SlotSelectorModal } from './components/SlotSelectorModal';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
+import { supabase } from '../../lib/supabase';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
@@ -129,6 +131,7 @@ export const StudentApp: React.FC = () => {
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
   const [chatOrigin, setChatOrigin] = useState<'details' | 'list'>('list');
+  const [resumeBooking, setResumeBooking] = useState<Booking | null>(null);
 
   const searchRequestIdRef = useRef(0);
 
@@ -138,6 +141,46 @@ export const StudentApp: React.FC = () => {
     if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   };
+
+  // Re-fetch bookings on window focus / visibilitychange
+  useEffect(() => {
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        setBookingsRefreshKey((k) => k + 1);
+      }
+    };
+    window.addEventListener('focus', handleFocusOrVisible);
+    document.addEventListener('visibilitychange', handleFocusOrVisible);
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisible);
+      document.removeEventListener('visibilitychange', handleFocusOrVisible);
+    };
+  }, []);
+
+  // Realtime subscription for current student's bookings
+  useEffect(() => {
+    if (!user?.id || !isRealSupabase) return;
+
+    const channel = supabase
+      .channel(`student_bookings_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `student_id=eq.${user.id}`,
+        },
+        () => {
+          setBookingsRefreshKey((k) => k + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id, isRealSupabase]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -615,10 +658,21 @@ function applyStrictProviderFilters(
           {/* BOOKINGS TAB (MINHAS AULAS) */}
           {activeTab === 'bookings' && (
             <div className="space-y-5">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Sua jornada</p>
-                <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Minhas aulas</h2>
-                <p className="mt-1 text-sm text-slate-500">Acompanhe seus próximos horários e o histórico.</p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Sua jornada</p>
+                  <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Minhas aulas</h2>
+                  <p className="mt-1 text-sm text-slate-500">Acompanhe seus próximos horários e o histórico.</p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Atualizar lista de aulas"
+                  title="Atualizar lista de aulas"
+                  onClick={() => setBookingsRefreshKey((k) => k + 1)}
+                  className="mazzi-avatar grid h-11 w-11 min-h-[44px] min-w-[44px] place-items-center bg-[var(--mazzi-surface-soft)] text-slate-700 hover:text-[var(--mazzi-dark)] border border-[var(--mazzi-border)] rounded-2xl cursor-pointer transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${bookingsLoading ? 'animate-spin text-amber-600' : ''}`} />
+                </button>
               </div>
 
               {/* Filter Tabs: Próximas vs Histórico */}
@@ -966,6 +1020,10 @@ function applyStrictProviderFilters(
           setBookingsRefreshKey((k) => k + 1);
           setSelectedBookingForDetails(null);
         }}
+        onContinuePayment={(bookingToResume) => {
+          setSelectedBookingForDetails(null);
+          setResumeBooking(bookingToResume);
+        }}
         onOpenChat={() => {
           if (selectedBookingForDetails) {
             setChatOrigin('details');
@@ -1059,28 +1117,46 @@ function applyStrictProviderFilters(
         />
       )}
 
-      {/* Complete Checkout Journey Modal — a real selected slot is required */}
-      {isCheckoutOpen && selectedSlot && checkoutProvider && checkoutVehicle && checkoutOffering && <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        provider={checkoutProvider}
-        vehicle={checkoutVehicle}
-        offering={checkoutOffering}
-        scheduledDate={selectedSlot.local_date}
-        startTime={selectedSlot.local_start_time.substring(0, 5)}
-        endTime={selectedSlot.local_end_time.substring(0, 5)}
-        scheduledStartAt={selectedSlot?.slot_start_at}
-        existingBookings={confirmedBookings}
-        onChooseAnotherSlot={() => {
-          setIsCheckoutOpen(false);
-          setSelectedSlot(null);
-          setIsSlotSelectorOpen(true);
-        }}
-        onBookingConfirmed={(newBooking) => {
-          setConfirmedBookings([newBooking, ...confirmedBookings]);
-        }}
-        onGoToBookings={() => setActiveTab('bookings')}
-      />}
+      {/* Complete Checkout Journey Modal */}
+      {((isCheckoutOpen && selectedSlot && checkoutProvider && checkoutVehicle && checkoutOffering) || !!resumeBooking) && (
+        <CheckoutModal
+          isOpen={isCheckoutOpen || !!resumeBooking}
+          onClose={() => {
+            setIsCheckoutOpen(false);
+            setResumeBooking(null);
+          }}
+          provider={checkoutProvider}
+          vehicle={checkoutVehicle}
+          offering={checkoutOffering}
+          scheduledDate={selectedSlot?.local_date || resumeBooking?.scheduledDate || ''}
+          startTime={selectedSlot?.local_start_time?.substring(0, 5) || resumeBooking?.startTime || ''}
+          endTime={selectedSlot?.local_end_time?.substring(0, 5) || resumeBooking?.endTime || ''}
+          scheduledStartAt={selectedSlot?.slot_start_at || resumeBooking?.scheduledStartAt}
+          existingBookings={confirmedBookings}
+          resumeBooking={resumeBooking}
+          onChooseAnotherSlot={() => {
+            setIsCheckoutOpen(false);
+            setResumeBooking(null);
+            setSelectedSlot(null);
+            setIsSlotSelectorOpen(true);
+          }}
+          onBookingConfirmed={(updatedBooking) => {
+            setConfirmedBookings((prev) => {
+              const exists = prev.some((b) => b.id === updatedBooking.id);
+              if (exists) {
+                return prev.map((b) => (b.id === updatedBooking.id ? updatedBooking : b));
+              }
+              return [updatedBooking, ...prev];
+            });
+            setBookingsRefreshKey((k) => k + 1);
+            setResumeBooking(null);
+          }}
+          onGoToBookings={() => {
+            setResumeBooking(null);
+            setActiveTab('bookings');
+          }}
+        />
+      )}
     </div>
   );
 };

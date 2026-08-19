@@ -1,0 +1,26 @@
+
+ RUN  v4.1.10 d:/mazzi_premium_ui_v2
+
+ ❯ tests/quote-null-columns-hotfix.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/quote-null-columns-hotfix.test.ts [ tests/quote-null-columns-hotfix.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/quote-null-columns-hotfix.test.ts:26:1
+     24| );
+     25|
+     26| describe('TASK-008 HOTFIX — create_quote_from_offering NULL Columns Fi…
+       | ^
+     27|
+     28|   describe('[AC01/AC16] Migration 40 file integrity', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  19:33:47
+   Duration  441ms (transform 45ms, setup 0ms, import 0ms, tests 0ms, environment 0ms)
+
+FAIL 

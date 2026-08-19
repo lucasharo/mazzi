@@ -17,6 +17,8 @@ import {
   Star,
 } from 'lucide-react';
 
+import { StatusBadge } from './StatusBadge';
+
 export type BookingPerspective = 'STUDENT' | 'INSTRUCTOR';
 
 function getInitials(name: string): string {
@@ -114,36 +116,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
 
         {/* Status Badge */}
         <div className="shrink-0">
-          {isConfirmed && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 shadow-2xs">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
-              <span>Confirmada</span>
-            </span>
-          )}
-          {isInProgress && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/60 shadow-2xs">
-              <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" aria-hidden="true" />
-              <span>Em Andamento</span>
-            </span>
-          )}
-          {isPending && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 shadow-2xs">
-              <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" aria-hidden="true" />
-              <span>Pendente</span>
-            </span>
-          )}
-          {isCompleted && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 shadow-2xs">
-              <CheckCircle2 className="h-3.5 w-3.5 text-slate-600 shrink-0" aria-hidden="true" />
-              <span>Concluída</span>
-            </span>
-          )}
-          {isCancelled && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200/60 shadow-2xs">
-              <XCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" aria-hidden="true" />
-              <span>Cancelada</span>
-            </span>
-          )}
+          <StatusBadge status={booking.status} audience={isStudent ? 'student' : 'default'} />
         </div>
       </div>
 

@@ -1,0 +1,740 @@
+
+ RUN  v4.1.10 d:/mazzi_premium_ui_v2
+
+ ❯ tests/admin-real-data-gate.test.ts (0 test)
+ ❯ tests/auth-premium-ui.test.ts (0 test)
+ ❯ tests/cancellation.test.ts (0 test)
+ ❯ tests/cancellation-policy-dec013.test.ts (0 test)
+ ❯ tests/database-schema.test.ts (0 test)
+ ❯ tests/cancellation-and-rebooking-flow.test.ts (0 test)
+ ❯ tests/availability.test.ts (0 test)
+ ❯ tests/auth-rbac.test.ts (0 test)
+ ❯ tests/auth-anti-enumeration.test.ts (0 test)
+ ❯ tests/filter-drawer-apply.test.ts (0 test)
+ ❯ tests/dev-quick-login.test.ts (0 test)
+ ❯ tests/integration-scenarios.test.ts (0 test)
+ ❯ tests/accessibility-primitives.test.tsx (0 test)
+ ❯ tests/money.test.ts (0 test)
+ ❯ tests/multi-app-architecture.test.ts (0 test)
+ ❯ tests/postgis-contract.test.ts (0 test)
+ ❯ tests/identity-validation.test.ts (0 test)
+ ❯ tests/providers-compliance.test.ts (0 test)
+ ❯ tests/quote-booking.test.ts (0 test)
+stdout | tests/quote-idempotency-race.test.ts
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+
+ ❯ tests/quote-idempotency-race.test.ts (0 test)
+ ❯ tests/quote-null-columns-hotfix.test.ts (0 test)
+ ❯ tests/rbac.test.ts (0 test)
+ ❯ tests/student-booking-context-vehicle.test.ts (0 test)
+stdout | tests/rpc-anti-enumeration-remote.test.ts
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+
+ ❯ tests/rpc-anti-enumeration-remote.test.ts (0 test)
+stdout | tests/rpc-security-and-migration-history.test.ts
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ❯ tests/rpc-security-and-migration-history.test.ts (0 test)
+ ❯ tests/student-bottom-nav.test.ts (0 test)
+stdout | tests/rpc-cancellation-v2-real.test.ts
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+ ❯ tests/rpc-cancellation-v2-real.test.ts (0 test)
+ ❯ tests/student-bookings-error-isolation.test.ts (0 test)
+ ❯ tests/quote.test.ts (0 test)
+ ❯ tests/search.test.ts (0 test)
+ ❯ tests/student-corrective-batch.test.ts (0 test)
+ ❯ tests/student-identity-and-profile.test.ts (0 test)
+ ❯ tests/student-phase2-scheduling.test.ts (0 test)
+ ❯ tests/student-phase3-bookings.test.ts (0 test)
+ ❯ tests/student-phase5-finalization.test.ts (0 test)
+ ❯ tests/student-phase4-chat.test.ts (0 test)
+ ❯ tests/student-search-layout.test.ts (0 test)
+ ❯ tests/student-phase6-qa.test.ts (0 test)
+ ❯ tests/student-search-location-strict.test.ts (0 test)
+ ❯ tests/student-search-strict-filters.test.ts (0 test)
+ ❯ tests/student-template-phase1.test.ts (0 test)
+ ❯ tests/task-008-scheduling-and-ui.test.ts (0 test)
+ ❯ tests/student-journey-batch2.test.tsx (0 test)
+ ❯ tests/student-refinements-final.test.ts (0 test)
+ ❯ tests/task-009-design-system.test.ts (0 test)
+ ❯ tests/vehicles-offerings.test.ts (0 test)
+ ❯ src/__tests__/fake-gateway.test.ts (0 test)
+ ❯ src/__tests__/provider-journey.test.ts (0 test)
+ ❯ src/__tests__/credential-resolver.test.ts (0 test)
+ ❯ src/__tests__/student-journey.test.ts (0 test)
+ ❯ src/__tests__/payments.test.ts (0 test)
+ ❯ src/__tests__/mercadopago-sandbox.test.ts (0 test)
+ ❯ src/__tests__/student-phase2.test.ts (0 test)
+ ❯ src/__tests__/student-phase1.test.ts (0 test)
+ ❯ src/__tests__/student-phase3-4.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 55 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/accessibility-primitives.test.tsx [ tests/accessibility-primitives.test.tsx ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/accessibility-primitives.test.tsx:14:1
+     12| import { Tabs, TabPanel, getTabId, getTabPanelId } from '../src/compon…
+     13|
+     14| describe('accessible UI primitives', () => {
+       | ^
+     15|   it('renders labelled modal and bottom-sheet dialogs', () => {
+     16|     const modal = renderToStaticMarkup(<Modal isOpen onClose={vi.fn()}…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/55]⎯
+
+ FAIL  tests/admin-real-data-gate.test.ts [ tests/admin-real-data-gate.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/admin-real-data-gate.test.ts:9:1
+      7| const dbServiceSource = readFileSync(join(rootDir, 'src/lib/db-service…
+      8|
+      9| describe('Sprint 12 — Admin Real Data Gate', () => {
+       | ^
+     10|   it('does not initialize Admin state from mock fixtures or local IDs'…
+     11|     expect(adminAppSource).not.toContain("from '../../data/mockData'");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/55]⎯
+
+ FAIL  tests/auth-anti-enumeration.test.ts [ tests/auth-anti-enumeration.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/auth-anti-enumeration.test.ts:6:1
+      4| import { resolve } from 'path';
+      5|
+      6| describe('TASK-003 — Auth Anti-Account Enumeration Contract (DEC-011)'…
+       | ^
+      7|   const CANONICAL_GENERIC_MESSAGE =
+      8|     'Se existir uma conta associada a este e-mail, enviaremos um códig…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/55]⎯
+
+ FAIL  tests/auth-premium-ui.test.ts [ tests/auth-premium-ui.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/auth-premium-ui.test.ts:13:1
+     11| const accessDenied = fs.readFileSync('src/components/auth/AccessDenied…
+     12|
+     13| describe('Premium auth UX & Harmonization', () => {
+       | ^
+     14|   it('keeps app-filtered quick login dev-only and backed by real signI…
+     15|     expect(login).toContain('import.meta.env.DEV');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/55]⎯
+
+ FAIL  tests/auth-rbac.test.ts [ tests/auth-rbac.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/auth-rbac.test.ts:26:1
+     24| } from '../src/lib/auth-guards';
+     25|
+     26| describe('SPRINT 03 — RBAC, Auth Guards & Multi-Tenant Authorization E…
+       | ^
+     27|   // Mock contexts
+     28|   const studentAlice: AuthContext = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/55]⎯
+
+ FAIL  tests/availability.test.ts [ tests/availability.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/availability.test.ts:23:1
+     21| } from '../src/types';
+     22|
+     23| describe('Domain: Availability & Scheduling Engine', () => {
+       | ^
+     24|   const mockProvider: Provider = {
+     25|     id: 'prov_100',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/55]⎯
+
+ FAIL  tests/cancellation-and-rebooking-flow.test.ts [ tests/cancellation-and-rebooking-flow.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/cancellation-and-rebooking-flow.test.ts:7:1
+      5| import { Booking } from '../src/types';
+      6|
+      7| describe('TASK-007 — Cancellation, Chat, Slot Release & Rebooking Test…
+       | ^
+      8|   describe('1. OTP 8-digit configuration', () => {
+      9|     it('AUTH_OTP_LENGTH is set to 8', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/55]⎯
+
+ FAIL  tests/cancellation-policy-dec013.test.ts [ tests/cancellation-policy-dec013.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/cancellation-policy-dec013.test.ts:10:1
+      8| import { Booking } from '../src/types';
+      9|
+     10| describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
+       | ^
+     11|   const baseBooking: Booking = {
+     12|     id: 'booking_dec013_test_001',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/55]⎯
+
+ FAIL  tests/cancellation.test.ts [ tests/cancellation.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/cancellation.test.ts:8:1
+      6| } from '../src/domain/cancellation';
+      7|
+      8| describe('Domain: Configurable Cancellation & Refund Policies', () => {
+       | ^
+      9|   const baseParams = {
+     10|     totalPaidInCents: 14300, // R$ 143,00 (R$ 130 lesson + R$ 13 platf…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/55]⎯
+
+ FAIL  tests/database-schema.test.ts [ tests/database-schema.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/database-schema.test.ts:16:1
+     14|  * REAL_RLS_INTEGRATION permanece classificado como RLS_DATABASE_TEST_…
+     15|  */
+     16| describe('Database Schema & Migration Compliance (Supabase / PostgreSQ…
+       | ^
+     17|   const migration01Path = path.resolve(__dirname, '../supabase/migrati…
+     18|   const migration02Path = path.resolve(__dirname, '../supabase/migrati…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/55]⎯
+
+ FAIL  tests/dev-quick-login.test.ts [ tests/dev-quick-login.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/dev-quick-login.test.ts:10:1
+      8| import { getDemoPasswordForAccount } from '../src/components/auth/dev/…
+      9|
+     10| describe('Dev Quick Login Automated Suite (TASK-005 Hardening)', () =>…
+       | ^
+     11|   afterEach(() => {
+     12|     vi.unstubAllEnvs();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/55]⎯
+
+ FAIL  tests/filter-drawer-apply.test.ts [ tests/filter-drawer-apply.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/filter-drawer-apply.test.ts:6:1
+      4| const source = readFileSync('src/components/search/FilterDrawer.tsx', …
+      5|
+      6| describe('Student filter modal apply and accessibility behavior', () =…
+       | ^
+      7|   it('stages filter choices and only updates search from the apply act…
+      8|     expect(source).toContain('const [draft, setDraft]');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/55]⎯
+
+ FAIL  tests/identity-validation.test.ts [ tests/identity-validation.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/identity-validation.test.ts:6:1
+      4| import { formatPhone, isValidPhone, normalizePhone } from '../src/util…
+      5|
+      6| describe('CPF Utilities & Mathematical Validation', () => {
+       | ^
+      7|   const validCpf1 = '52998224725';
+      8|   const validCpf2 = '11144477735';
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/55]⎯
+
+ FAIL  tests/integration-scenarios.test.ts [ tests/integration-scenarios.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/integration-scenarios.test.ts:4:1
+      2| import { hasBookingConflict, TimeSlotInterval } from '../src/domain/av…
+      3|
+      4| describe('Integration Scenarios & Negative Security Tests', () => {
+       | ^
+      5|   describe('Double Booking Concurrency Simulation', () => {
+      6|     it('guarantees that when 2 students attempt to book the same slot,…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/55]⎯
+
+ FAIL  tests/money.test.ts [ tests/money.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/money.test.ts:9:1
+      7| } from '../src/domain/money';
+      8|
+      9| describe('Domain: Money in Cents (Anti-Float Precision)', () => {
+       | ^
+     10|   it('formats cents to standard Brazilian Real currency format', () =>…
+     11|     expect(formatCentsToBRL(10000)).toBe('R$ 100,00');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/55]⎯
+
+ FAIL  tests/multi-app-architecture.test.ts [ tests/multi-app-architecture.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/multi-app-architecture.test.ts:8:1
+      6| const read = (path: string) => readFileSync(join(root, path), 'utf8');
+      7|
+      8| describe('independent MAZZI app entrypoints', () => {
+       | ^
+      9|   it('exposes the three app roots and dedicated HTML entrypoints', () …
+     10|     expect(read('index.student.html')).toContain('/src/entrypoints/stu…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/55]⎯
+
+ FAIL  tests/postgis-contract.test.ts [ tests/postgis-contract.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/postgis-contract.test.ts:5:1
+      3| import * as path from 'path';
+      4|
+      5| describe('PostGIS & Database Schema Search Contract (Sprint 07 Audit)'…
+       | ^
+      6|   const migrationPath = path.join(process.cwd(), 'supabase', 'migratio…
+      7|   const migrationSql = fs.readFileSync(migrationPath, 'utf-8');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/55]⎯
+
+ FAIL  tests/providers-compliance.test.ts [ tests/providers-compliance.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/providers-compliance.test.ts:43:1
+     41| import { ComplianceDocument, ComplianceRequirement, Provider } from '.…
+     42|
+     43| describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
+       | ^
+     44|   const studentContext: AuthContext = {
+     45|     userId: 'usr_student_123',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/55]⎯
+
+ FAIL  tests/quote-booking.test.ts [ tests/quote-booking.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/quote-booking.test.ts:77:1
+     75| const BASE_END_AT = '2026-09-01T10:50:00.000Z';
+     76|
+     77| describe('Sprint 08 — Quote Creation & Lifecycle', () => {
+       | ^
+     78|   it('creates an active Quote with frozen pricing and default 10-min e…
+     79|     const now = new Date('2026-08-15T10:00:00Z');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/55]⎯
+
+ FAIL  tests/quote-idempotency-race.test.ts [ tests/quote-idempotency-race.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/quote-idempotency-race.test.ts:13:1
+     11| const dbUrl = process.env.DATABASE_URL || '';
+     12|
+     13| describe('TASK-006: Quote Creation Idempotency & Race Condition Tests'…
+       | ^
+     14|   let pgClient: PgClient;
+     15|   let studentClient: any;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/55]⎯
+
+ FAIL  tests/quote-null-columns-hotfix.test.ts [ tests/quote-null-columns-hotfix.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/quote-null-columns-hotfix.test.ts:26:1
+     24| );
+     25|
+     26| describe('TASK-008 HOTFIX — create_quote_from_offering NULL Columns Fi…
+       | ^
+     27|
+     28|   describe('[AC01/AC16] Migration 40 file integrity', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/55]⎯
+
+ FAIL  tests/quote.test.ts [ tests/quote.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/quote.test.ts:6:1
+      4| import { dbService } from '../src/lib/db-service';
+      5|
+      6| describe('Domain: Quote Generation & Snapshots', () => {
+       | ^
+      7|   const mockProvider: Provider = {
+      8|     id: 'prov_test',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/55]⎯
+
+ FAIL  tests/rbac.test.ts [ tests/rbac.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/rbac.test.ts:5:1
+      3| import { UserRole } from '../src/types';
+      4|
+      5| describe('Domain: RBAC Permissions Matrix', () => {
+       | ^
+      6|   it('ensures STUDENT has only student permissions and cannot manage v…
+      7|     const studentRole: UserRole = 'STUDENT';
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/55]⎯
+
+ FAIL  tests/rpc-anti-enumeration-remote.test.ts [ tests/rpc-anti-enumeration-remote.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/rpc-anti-enumeration-remote.test.ts:9:1
+      7| dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+      8|
+      9| describe('TASK-003 Remote Supabase Security & Anti-Enumeration Audit',…
+       | ^
+     10|   it('RPC check_user_email_exists is absent from PostgreSQL pg_proc ca…
+     11|     const dbUrl = process.env.DATABASE_URL;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/55]⎯
+
+ FAIL  tests/rpc-cancellation-v2-real.test.ts [ tests/rpc-cancellation-v2-real.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/rpc-cancellation-v2-real.test.ts:14:1
+     12| const dbUrl = process.env.DATABASE_URL || '';
+     13|
+     14| describe('Real Supabase RPC cancel_booking_v2 Final Security & Order T…
+       | ^
+     15|   let pgClient: PgClient;
+     16|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/55]⎯
+
+ FAIL  tests/rpc-security-and-migration-history.test.ts [ tests/rpc-security-and-migration-history.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/rpc-security-and-migration-history.test.ts:14:1
+     12| const isRemoteConfigured = Boolean(serviceRoleKey && supabaseAnonKey &…
+     13|
+     14| describe('TASK-002 RPC Security & Migration History QA Validation', ()…
+       | ^
+     15|   it('A-D: Authenticated student can update name, phone, avatar, and v…
+     16|     if (!isRemoteConfigured) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/55]⎯
+
+ FAIL  tests/search.test.ts [ tests/search.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/search.test.ts:176:1
+    174| };
+    175|
+    176| describe('Sprint 07 — Search Request Validation', () => {
+       | ^
+    177|   it('validates a correct search request with default parameters', () …
+    178|     const req: SearchRequest = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/55]⎯
+
+ FAIL  tests/student-booking-context-vehicle.test.ts [ tests/student-booking-context-vehicle.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-booking-context-vehicle.test.ts:7:1
+      5| const studentAppSource = readFileSync(join(process.cwd(), 'src/apps/st…
+      6|
+      7| describe('Student booking context vehicle mapping', () => {
+       | ^
+      8|   it('preserves an ACTIVE vehicle status when mapping real booking con…
+      9|     expect(studentAppSource).toContain('dbService.getProviderBookingCo…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/55]⎯
+
+ FAIL  tests/student-bookings-error-isolation.test.ts [ tests/student-bookings-error-isolation.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-bookings-error-isolation.test.ts:7:1
+      5| const studentAppSource = readFileSync(join(process.cwd(), 'src/apps/st…
+      6|
+      7| describe('Student bookings/search error isolation', () => {
+       | ^
+      8|   it('keeps searchError exclusive to the public search pipeline', () =…
+      9|     expect(studentAppSource).toContain("setSearchError(false);");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/55]⎯
+
+ FAIL  tests/student-bottom-nav.test.ts [ tests/student-bottom-nav.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-bottom-nav.test.ts:6:1
+      4| const source = readFileSync('src/apps/student/StudentApp.tsx', 'utf8');
+      5|
+      6| describe('Student bottom navigation', () => {
+       | ^
+      7|   it('renders the active destination as a filled icon-only item in a 3…
+      8|     expect(source).toContain("aria-current={isActive ? 'page' : undefi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/55]⎯
+
+ FAIL  tests/student-corrective-batch.test.ts [ tests/student-corrective-batch.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-corrective-batch.test.ts:14:1
+     12| const storageMigration = readFileSync(join(root, 'supabase/migrations/…
+     13|
+     14| describe('Student App — Final Corrective Batch Verification', () => {
+       | ^
+     15|   describe('1. Filter Modal & Stacking Context (z-index above bottom n…
+     16|     it('Modal and BottomSheet have z-index z-[80] to sit above bottom …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/55]⎯
+
+ FAIL  tests/student-identity-and-profile.test.ts [ tests/student-identity-and-profile.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-identity-and-profile.test.ts:5:1
+      3| import { validateBirthDate, formatDateMask, formatBirthDateForDisplay,…
+      4|
+      5| describe('Student Identity & Profile Validation Rules', () => {
+       | ^
+      6|
+      7|   it('validates mathematical correctness of synthetic demo CPFs', () =…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/55]⎯
+
+ FAIL  tests/student-journey-batch2.test.tsx [ tests/student-journey-batch2.test.tsx ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-journey-batch2.test.tsx:10:1
+      8| import { PublicSearchProviderResult, Booking } from '../src/types';
+      9|
+     10| describe('Student Journey Batch 2 - UI/UX Pro Max Contracts', () => {
+       | ^
+     11|   const baseProviderResult: PublicSearchProviderResult = {
+     12|     providerId: 'prov-1',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/55]⎯
+
+ FAIL  tests/student-phase2-scheduling.test.ts [ tests/student-phase2-scheduling.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-phase2-scheduling.test.ts:11:1
+      9| const checkout = readFileSync(join(root, 'src/apps/student/components/…
+     10|
+     11| describe('Student new template phase 2 scheduling contracts', () => {
+       | ^
+     12|   it('uses public profile data with real avatar, rating, location and …
+     13|     expect(profile).toContain('result.avatarUrl');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/55]⎯
+
+ FAIL  tests/student-phase3-bookings.test.ts [ tests/student-phase3-bookings.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-phase3-bookings.test.ts:11:1
+      9| const status = readFileSync(join(root, 'src/components/ui/StatusBadge.…
+     10|
+     11| describe('Student new template phase 3 bookings contracts', () => {
+       | ^
+     12|   it('uses a student card variant without fake check-in and without ra…
+     13|     expect(card).toContain("variant?: 'default' | 'student'");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/55]⎯
+
+ FAIL  tests/student-phase4-chat.test.ts [ tests/student-phase4-chat.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-phase4-chat.test.ts:15:1
+     13| });
+     14|
+     15| describe('Student new template phase 4 chat contracts', () => {
+       | ^
+     16|   it('deduplicates and deterministically orders initial, realtime, pol…
+     17|     const result = mergeMessagesById(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/55]⎯
+
+ FAIL  tests/student-phase5-finalization.test.ts [ tests/student-phase5-finalization.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-phase5-finalization.test.ts:16:1
+     14| const chat = readFileSync(join(root, 'src/components/chat/BookingChatP…
+     15|
+     16| describe('Student new template phase 5 finalization contracts', () => {
+       | ^
+     17|   it('creates business dates safely in America/Sao_Paulo', () => {
+     18|     const now = new Date('2026-08-17T02:30:00.000Z');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/55]⎯
+
+ FAIL  tests/student-phase6-qa.test.ts [ tests/student-phase6-qa.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-phase6-qa.test.ts:10:1
+      8| const authContext = readFileSync(join(root, 'src/components/auth/AuthC…
+      9|
+     10| describe('Student release candidate phase 6 QA contracts', () => {
+       | ^
+     11|   it('updates the profile name immediately after a successful save', (…
+     12|     expect(student).toContain('profileName || user?.name');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/55]⎯
+
+ FAIL  tests/student-refinements-final.test.ts [ tests/student-refinements-final.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-refinements-final.test.ts:27:1
+     25| } from '../src/types';
+     26|
+     27| describe('Student Final Refinements: Detalhes Button, Typography & 60-…
+       | ^
+     28|   const cardSource = readFileSync('src/components/ui/BookingCard.tsx',…
+     29|   const buttonSource = readFileSync('src/components/ui/Button.tsx', 'u…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/55]⎯
+
+ FAIL  tests/student-search-layout.test.ts [ tests/student-search-layout.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-search-layout.test.ts:10:1
+      8| const drawer = readFileSync(join(root, 'src/components/search/FilterDr…
+      9|
+     10| describe('Student search layout hierarchy', () => {
+       | ^
+     11|   it('keeps filters beside the list and map controls without changing …
+     12|     expect(student).toContain('student-results-title');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/55]⎯
+
+ FAIL  tests/student-search-location-strict.test.ts [ tests/student-search-location-strict.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-search-location-strict.test.ts:97:1
+     95| };
+     96|
+     97| describe('Student Search - Location Strict & Filtering (TASK-003 / QUI…
+       | ^
+     98|   it('1. Localização ainda não resolvida (lat/lng undefined) -> busca …
+     99|     const req: SearchRequest = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/55]⎯
+
+ FAIL  tests/student-search-strict-filters.test.ts [ tests/student-search-strict-filters.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-search-strict-filters.test.ts:10:1
+      8| } from '../src/types';
+      9|
+     10| describe('Student Search Strict Filter Contract (Scenarios A through K…
+       | ^
+     11|   const baseLat = -23.5658;
+     12|   const baseLng = -46.6872;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/55]⎯
+
+ FAIL  tests/student-template-phase1.test.ts [ tests/student-template-phase1.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/student-template-phase1.test.ts:10:1
+      8| const providerCard = readFileSync(join(root, 'src/components/search/Pr…
+      9|
+     10| describe('Student new template phase 1', () => {
+       | ^
+     11|   it('uses a full-width mobile-first shell with notification bell and …
+     12|     expect(studentApp).toContain('mazzi-app');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/55]⎯
+
+ FAIL  tests/task-008-scheduling-and-ui.test.ts [ tests/task-008-scheduling-and-ui.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/task-008-scheduling-and-ui.test.ts:5:1
+      3| import path from 'path';
+      4|
+      5| describe('TASK-008 — RPC 405 Fix, Read-Only Scheduling & UX Refinement…
+       | ^
+      6|
+      7|   describe('1. Migration 40 & Backend Contract Integrity', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/55]⎯
+
+ FAIL  tests/task-009-design-system.test.ts [ tests/task-009-design-system.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/task-009-design-system.test.ts:5:1
+      3| import path from 'path';
+      4|
+      5| describe('TASK-009 — MAZZI Design System & Component Catalog Tests', (…
+       | ^
+      6|   it('ModalActionFooter component exists and uses sticky white backgro…
+      7|     const filePath = path.join(process.cwd(), 'src/components/ui/Modal…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/55]⎯
+
+ FAIL  tests/vehicles-offerings.test.ts [ tests/vehicles-offerings.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ tests/vehicles-offerings.test.ts:17:1
+     15| import { Provider, Vehicle, ServiceOffering } from '../src/types';
+     16|
+     17| describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
+       | ^
+     18|   const mockProvider: Provider = {
+     19|     id: 'prov_100',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/55]⎯
+
+ FAIL  src/__tests__/credential-resolver.test.ts [ src/__tests__/credential-resolver.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ src/__tests__/credential-resolver.test.ts:11:1
+      9| import { ProviderPaymentAccount } from '../types';
+     10|
+     11| describe('Sprint 09: Mercado Pago Credential Resolver & Split 1:1', ()…
+       | ^
+     12|   const mockGateway = new MercadoPagoPaymentGateway({
+     13|     accessToken: 'MARKETPLACE_APP_USR_TEST_TOKEN',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/55]⎯
+
+ FAIL  src/__tests__/fake-gateway.test.ts [ src/__tests__/fake-gateway.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ src/__tests__/fake-gateway.test.ts:10:1
+      8| import { CreatePaymentGatewayRequest } from '../domain/payments/gatewa…
+      9|
+     10| describe('Sprint 09: Fake Payment Gateway & Factory (MVP Strategy)', (…
+       | ^
+     11|   const fakeGateway = new FakePaymentGateway();
+     12|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[48/55]⎯
+
+ FAIL  src/__tests__/mercadopago-sandbox.test.ts [ src/__tests__/mercadopago-sandbox.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ src/__tests__/mercadopago-sandbox.test.ts:24:1
+     22| } from '../types';
+     23|
+     24| describe('SPRINT 09 — Mercado Pago Sandbox Validation Gate', () => {
+       | ^
+     25|   const TEST_WEBHOOK_SECRET = 'mp_sec_test_c4d29f8a3e1b0725a690d54f82e…
+     26|   const TEST_ACCESS_TOKEN = 'APP_USR-7891234567890123-081512-test-sand…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[49/55]⎯
+
+ FAIL  src/__tests__/payments.test.ts [ src/__tests__/payments.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ src/__tests__/payments.test.ts:22:1
+     20| } from '../domain/payments';
+     21|
+     22| describe('Sprint 09: Payment Domain & Gateway Architecture', () => {
+       | ^
+     23|   let devGateway: DevelopmentPaymentGateway;
+     24|   let mpGateway: MercadoPagoPaymentGateway;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[50/55]⎯
+
+ FAIL  src/__tests__/provider-journey.test.ts [ src/__tests__/provider-journey.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ src/__tests__/provider-journey.test.ts:23:1
+     21| import { AuthContext } from '../domain/rbac';
+     22|
+     23| describe('SPRINT 11 — PROVIDER APP JOURNEY & LESSON LIFECYCLE TESTS', …
+       | ^
+     24|   let mockBooking: Booking;
+     25|   let ledger: FinancialLedgerService;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[51/55]⎯
+
+ FAIL  src/__tests__/student-journey.test.ts [ src/__tests__/student-journey.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ src/__tests__/student-journey.test.ts:31:1
+     29| }
+     30|
+     31| describe('Sprint 10: Complete Student App Journey & Domain Rules', () …
+       | ^
+     32|   let fakeGateway: FakePaymentGateway;
+     33|   let ledger: FinancialLedgerService;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[52/55]⎯
+
+ FAIL  src/__tests__/student-phase1.test.ts [ src/__tests__/student-phase1.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ src/__tests__/student-phase1.test.ts:6:1
+      4| import { mapBookingFromDb } from '../lib/db-service';
+      5|
+      6| describe('Student Experience Phase 1 formatters', () => {
+       | ^
+      7|   it('formats date-only values without UTC day shifting', () => {
+      8|     expect(formatDateBR('2026-08-25')).toBe('25/08/2026');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[53/55]⎯
+
+ FAIL  src/__tests__/student-phase2.test.ts [ src/__tests__/student-phase2.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ src/__tests__/student-phase2.test.ts:4:1
+      2| import { countAdditionalStudentFilters, formatStudentResultCount, STUD…
+      3|
+      4| describe('Student Experience Phase 2 search UI', () => {
+       | ^
+      5|   it('uses search as the only discovery destination', () => {
+      6|     expect(STUDENT_NAV_ITEMS).toEqual(['search', 'bookings', 'messages…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[54/55]⎯
+
+ FAIL  src/__tests__/student-phase3-4.test.ts [ src/__tests__/student-phase3-4.test.ts ]
+TypeError: Cannot read properties of undefined (reading 'config')
+ ❯ src/__tests__/student-phase3-4.test.ts:4:1
+      2| import { addDays, formatDateOnly, timePeriod, INITIAL_WINDOW_DAYS, LOA…
+      3|
+      4| describe('Student Experience phases 3 and 4', () => {
+       | ^
+      5|   it('keeps date-only calendar arithmetic timezone-safe', () => {
+      6|     expect(addDays('2026-08-24', 30)).toBe('2026-09-23');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[55/55]⎯
+
+
+ Test Files  55 failed (55)
+      Tests  no tests
+   Start at  19:31:58
+   Duration  7.93s (transform 8.50s, setup 0ms, import 0ms, tests 0ms, environment 18ms)
+
+FAIL 

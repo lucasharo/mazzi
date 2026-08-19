@@ -58,9 +58,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   if (!booking) return null;
 
   const snapshot = booking.snapshot;
-  const isUpcoming = booking.status === 'CONFIRMED' || booking.status === 'PENDING_PAYMENT';
   const isPendingPayment = booking.status === 'PENDING_PAYMENT';
-  const isExpired = booking.status === 'EXPIRED';
+  const isHoldValid = isPendingPayment
+    ? booking.holdExpiresAt
+      ? new Date(booking.holdExpiresAt).getTime() > Date.now()
+      : true
+    : false;
+  const minutesLeft = isHoldValid && booking.holdExpiresAt
+    ? Math.max(1, Math.ceil((new Date(booking.holdExpiresAt).getTime() - Date.now()) / (1000 * 60)))
+    : null;
+
+  const isExpired = booking.status === 'EXPIRED' || (isPendingPayment && !isHoldValid);
+  const isUpcoming = (booking.status === 'CONFIRMED' || (isPendingPayment && isHoldValid)) && !isExpired;
   const isCancelled = booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER';
   const isCompleted = booking.status === 'COMPLETED';
 
@@ -367,37 +376,42 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           )}
 
           {/* Special notice for pending payment */}
-          {isPendingPayment && (
-            <div role="status" className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2 text-xs text-amber-900 font-semibold">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
-              <span>
-                Aguardando confirmação do pagamento. Horário retido temporariamente.
-              </span>
+          {isPendingPayment && isHoldValid && (
+            <div role="status" className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-2 text-xs text-amber-900 font-semibold">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+                <span>Aguardando confirmação do pagamento. Horário retido temporariamente.</span>
+              </div>
+              {minutesLeft !== null && (
+                <span className="text-[11px] font-extrabold bg-amber-200/80 text-amber-950 px-2 py-0.5 rounded-md shrink-0">
+                  {minutesLeft} min
+                </span>
+              )}
             </div>
           )}
 
           {isExpired && (
-            <div role="status" className="p-3.5 rounded-xl bg-slate-100 border border-slate-300 flex items-center gap-2 text-xs text-slate-700 font-medium">
+            <div role="status" className="p-3.5 rounded-2xl bg-slate-100 border border-slate-300 flex items-center gap-2 text-xs text-slate-700 font-medium">
               <AlertTriangle className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
               <span>
-                O tempo de retenção deste horário expirou. Por favor, faça um novo agendamento.
+                Tempo para pagamento expirado. O tempo de retenção deste horário expirou. Por favor, faça um novo agendamento.
               </span>
             </div>
           )}
 
           {/* Floating Actions - Side-by-side layout (LADO A LADO) for Chat and Cancel */}
           <div className="flex flex-col gap-2.5 pt-2 bg-transparent">
-            {isPendingPayment && onContinuePayment && (
+            {isPendingPayment && isHoldValid && onContinuePayment && (
               <Button
                 type="button"
                 variant="primary"
                 size="md"
-                className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
+                className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl cursor-pointer"
                 onClick={() => onContinuePayment(booking)}
                 leftIcon={<CreditCard className="w-4 h-4" aria-hidden="true" />}
-                aria-label="Concluir pagamento desta reserva pendente"
+                aria-label="Finalizar pagamento desta reserva pendente"
               >
-                Concluir Pagamento
+                Finalizar pagamento
               </Button>
             )}
 

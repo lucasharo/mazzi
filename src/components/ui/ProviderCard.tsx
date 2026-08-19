@@ -34,9 +34,12 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
                   {provider.name}
                 </h3>
                 {provider.isVerified && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full shrink-0">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" aria-hidden="true" />
-                    Verificado
+                  <span
+                    className="inline-flex items-center justify-center bg-emerald-50 text-emerald-700 p-1 rounded-full border border-emerald-200/60 shrink-0"
+                    aria-label="Prestador verificado"
+                    title="Prestador verificado"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
                   </span>
                 )}
               </div>
