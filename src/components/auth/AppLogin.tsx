@@ -587,7 +587,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
               onClick={() => goTo('signup')}
               className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition cursor-pointer py-1"
             >
-              ← Alterar e-mail ou dados
+              Alterar e-mail ou dados
             </button>
           </div>
         </form>
@@ -662,10 +662,11 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             <SecondaryButton
               type="button"
               size="md"
+              leftIcon={<ArrowLeft className="w-4 h-4" aria-hidden="true" />}
               onClick={() => goTo('forgot')}
               className="w-full cursor-pointer"
             >
-              ← Voltar
+              Voltar
             </SecondaryButton>
           </div>
         </form>
