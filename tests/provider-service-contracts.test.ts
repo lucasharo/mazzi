@@ -169,6 +169,29 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
       const updatedRow = updateMock.mock.calls[0][0];
       expect(updatedRow.has_dual_pedal).toBe(false);
     });
+
+    it('omits provider_id, photos and renavam on partial vehicle update when undefined', async () => {
+      const selectMock = vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: { id: '11111111-2222-3333-4444-555555555555', color: 'Verde' },
+          error: null,
+        }),
+      });
+      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
+      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
+      (supabase.from as any).mockReturnValue({ update: updateMock });
+
+      await dbService.saveVehicle({
+        id: '11111111-2222-3333-4444-555555555555',
+        color: 'Verde',
+      });
+
+      const updatedRow = updateMock.mock.calls[0][0];
+      expect(updatedRow.provider_id).toBeUndefined();
+      expect(updatedRow.photos).toBeUndefined();
+      expect(updatedRow.renavam).toBeUndefined();
+      expect(updatedRow.color).toBe('Verde');
+    });
   });
 
   describe('2. saveOffering Contract', () => {
@@ -209,6 +232,35 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
       expect(isUuid(insertedRow.id)).toBe(true);
       expect(insertedRow.price_in_cents).toBe(9500);
       expect(result.id).toBe('22222222-3333-4444-5555-666666666666');
+    });
+
+    it('executes TRUE PATCH update on offering without overwriting transmission or status when undefined', async () => {
+      const selectMock = vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: {
+            id: '22222222-3333-4444-5555-666666666666',
+            price_in_cents: 12000,
+          },
+          error: null,
+        }),
+      });
+
+      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
+      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
+      (supabase.from as any).mockReturnValue({ update: updateMock });
+
+      await dbService.saveOffering({
+        id: '22222222-3333-4444-5555-666666666666',
+        priceInCents: 12000,
+      });
+
+      expect(supabase.from).toHaveBeenCalledWith('service_offerings');
+      expect(updateMock).toHaveBeenCalled();
+      const updatedRow = updateMock.mock.calls[0][0];
+      expect(updatedRow.provider_id).toBeUndefined();
+      expect(updatedRow.transmission).toBeUndefined();
+      expect(updatedRow.status).toBeUndefined();
+      expect(updatedRow.price_in_cents).toBe(12000);
     });
   });
 

@@ -593,46 +593,63 @@ export const dbService = {
 
   async saveVehicle(vehicle: Partial<Vehicle>): Promise<Vehicle> {
     const isNew = !vehicle.id || !isUuid(vehicle.id);
-    const dbRow: Record<string, any> = {
-      provider_id: vehicle.providerId,
-      brand: vehicle.brand,
-      model: vehicle.model,
-      year: vehicle.year,
-      license_plate: vehicle.licensePlate,
-      license_plate_masked: vehicle.licensePlateMasked || vehicle.licensePlate,
-      renavam: (vehicle as any).renavam || null,
-      category: vehicle.category,
-      vehicle_type: vehicle.vehicleType,
-      transmission: vehicle.transmission,
-      color: vehicle.color || null,
-      photos: vehicle.photos || [],
-    };
-
-    if (vehicle.status !== undefined) {
-      dbRow.status = vehicle.status;
-    } else if (isNew) {
-      dbRow.status = 'PENDING';
-    }
-
-    if ((vehicle as any).hasDualPedal !== undefined) {
-      dbRow.has_dual_pedal = (vehicle as any).hasDualPedal;
-    }
-    if ((vehicle as any).hasDashcam !== undefined) {
-      dbRow.has_dashcam = (vehicle as any).hasDashcam;
-    }
 
     if (isNew) {
+      const insertRow: Record<string, any> = {
+        id: crypto.randomUUID(),
+        provider_id: vehicle.providerId,
+        brand: vehicle.brand,
+        model: vehicle.model,
+        year: vehicle.year,
+        license_plate: vehicle.licensePlate,
+        license_plate_masked: vehicle.licensePlateMasked || vehicle.licensePlate,
+        renavam: (vehicle as any).renavam || null,
+        category: vehicle.category,
+        vehicle_type: vehicle.vehicleType,
+        transmission: vehicle.transmission,
+        color: vehicle.color || null,
+        status: vehicle.status || 'PENDING',
+        photos: vehicle.photos || [],
+      };
+      if ((vehicle as any).hasDualPedal !== undefined) {
+        insertRow.has_dual_pedal = (vehicle as any).hasDualPedal;
+      }
+      if ((vehicle as any).hasDashcam !== undefined) {
+        insertRow.has_dashcam = (vehicle as any).hasDashcam;
+      }
+
       const { data, error } = await sp
         .from('vehicles')
-        .insert({ ...dbRow, id: crypto.randomUUID() })
+        .insert(insertRow)
         .select()
         .single();
       if (error) throw error;
       return mapVehicleFromDb(data);
     } else {
+      // TRUE PATCH UPDATE: Only include properties explicitly defined on vehicle
+      // NEVER include provider_id in update (ownership boundary is immutable)
+      const updateRow: Record<string, any> = {};
+
+      if (vehicle.brand !== undefined) updateRow.brand = vehicle.brand;
+      if (vehicle.model !== undefined) updateRow.model = vehicle.model;
+      if (vehicle.year !== undefined) updateRow.year = vehicle.year;
+      if (vehicle.licensePlate !== undefined) {
+        updateRow.license_plate = vehicle.licensePlate;
+        updateRow.license_plate_masked = vehicle.licensePlateMasked || vehicle.licensePlate;
+      }
+      if (vehicle.category !== undefined) updateRow.category = vehicle.category;
+      if (vehicle.vehicleType !== undefined) updateRow.vehicle_type = vehicle.vehicleType;
+      if (vehicle.transmission !== undefined) updateRow.transmission = vehicle.transmission;
+      if (vehicle.color !== undefined) updateRow.color = vehicle.color || null;
+      if (vehicle.status !== undefined) updateRow.status = vehicle.status;
+      if (vehicle.photos !== undefined) updateRow.photos = vehicle.photos;
+      if ((vehicle as any).renavam !== undefined) updateRow.renavam = (vehicle as any).renavam || null;
+      if ((vehicle as any).hasDualPedal !== undefined) updateRow.has_dual_pedal = (vehicle as any).hasDualPedal;
+      if ((vehicle as any).hasDashcam !== undefined) updateRow.has_dashcam = (vehicle as any).hasDashcam;
+
       const { data, error } = await sp
         .from('vehicles')
-        .update(dbRow)
+        .update(updateRow)
         .eq('id', vehicle.id!)
         .select()
         .single();
@@ -651,32 +668,51 @@ export const dbService = {
   },
 
   async saveOffering(offering: Partial<ServiceOffering>): Promise<ServiceOffering> {
-    const isUuid = (val?: string) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
     const isNew = !offering.id || !isUuid(offering.id);
-    const dbRow = {
-      provider_id: offering.providerId,
-      instructor_id: (offering as any).instructorId || null,
-      vehicle_id: offering.vehicleId,
-      category: offering.category,
-      transmission: (offering as any).transmission || 'MANUAL',
-      duration_minutes: offering.durationMinutes,
-      price_in_cents: offering.priceInCents,
-      status: (offering as any).status === 'ACTIVE' || (offering as any).isActive ? 'ACTIVE' : 'INACTIVE',
-      is_active: (offering as any).status === 'ACTIVE' || (offering as any).isActive || false,
-    };
 
     if (isNew) {
+      const activeState = (offering as any).status === 'ACTIVE' || (offering as any).isActive || false;
+      const insertRow: Record<string, any> = {
+        id: crypto.randomUUID(),
+        provider_id: offering.providerId,
+        instructor_id: (offering as any).instructorId || null,
+        vehicle_id: offering.vehicleId,
+        category: offering.category,
+        transmission: (offering as any).transmission || 'MANUAL',
+        duration_minutes: offering.durationMinutes,
+        price_in_cents: offering.priceInCents,
+        status: activeState ? 'ACTIVE' : 'INACTIVE',
+        is_active: activeState,
+      };
+
       const { data, error } = await sp
         .from('service_offerings')
-        .insert({ ...dbRow, id: crypto.randomUUID() })
+        .insert(insertRow)
         .select()
         .single();
       if (error) throw error;
       return mapOfferingFromDb(data);
     } else {
+      // TRUE PATCH UPDATE: Only include properties explicitly defined on offering
+      // NEVER include provider_id in update (ownership boundary is immutable)
+      const updateRow: Record<string, any> = {};
+
+      if ((offering as any).instructorId !== undefined) updateRow.instructor_id = (offering as any).instructorId || null;
+      if (offering.vehicleId !== undefined) updateRow.vehicle_id = offering.vehicleId;
+      if (offering.category !== undefined) updateRow.category = offering.category;
+      if ((offering as any).transmission !== undefined) updateRow.transmission = (offering as any).transmission;
+      if (offering.durationMinutes !== undefined) updateRow.duration_minutes = offering.durationMinutes;
+      if (offering.priceInCents !== undefined) updateRow.price_in_cents = offering.priceInCents;
+
+      if ((offering as any).status !== undefined || (offering as any).isActive !== undefined) {
+        const activeState = (offering as any).status === 'ACTIVE' || (offering as any).isActive;
+        updateRow.status = activeState ? 'ACTIVE' : 'INACTIVE';
+        updateRow.is_active = Boolean(activeState);
+      }
+
       const { data, error } = await sp
         .from('service_offerings')
-        .update(dbRow)
+        .update(updateRow)
         .eq('id', offering.id!)
         .select()
         .single();

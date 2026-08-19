@@ -303,7 +303,12 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     const sql47 = fs.readFileSync(migration47Path, 'utf8');
 
     expect(sql47).toContain('CREATE OR REPLACE FUNCTION public.can_manage_provider_schedule');
-    expect(sql47).toContain('public.is_school_member(target_provider_id)');
+    expect(sql47).toContain('public.is_current_user_active()');
+    expect(sql47).toContain('role_permissions');
+    expect(sql47).toContain('school.schedule.manage');
+    expect(sql47).toContain('driving_school_staff');
+    expect(sql47).toContain("p.type = 'DRIVING_SCHOOL'");
+    expect(sql47).not.toContain('is_school_member(');
     expect(sql47).toContain('CREATE POLICY "availabilities_owner_insert" ON public.availabilities');
     expect(sql47).toContain('CREATE POLICY "exceptions_owner_insert" ON public.availability_exceptions');
     expect(sql47).toContain('public.can_manage_provider_schedule(provider_id)');

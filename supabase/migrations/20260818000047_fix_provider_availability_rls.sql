@@ -4,7 +4,12 @@
 -- ============================================================================
 
 -- Helper: Determines if current authenticated user can manage schedule for target provider
--- Rules: Provider Owner OR Active School Admin OR Active School Staff OR Platform Admin
+-- Least-Privilege Rules:
+-- 1. Current user MUST be active (public.is_current_user_active())
+-- 2. AND one of:
+--    a) Provider Owner (independent instructor or driving school owner)
+--    b) Active driving school staff member whose role holds 'school.schedule.manage' in role_permissions
+--    c) Platform Admin
 CREATE OR REPLACE FUNCTION public.can_manage_provider_schedule(target_provider_id UUID)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -12,12 +17,25 @@ STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT (
-    public.is_provider_owner(target_provider_id)
-    OR public.is_school_admin(target_provider_id)
-    OR public.is_school_member(target_provider_id)
-    OR public.is_platform_admin()
-  );
+  SELECT
+    public.is_current_user_active()
+    AND (
+      public.is_provider_owner(target_provider_id)
+      OR EXISTS (
+        SELECT 1
+        FROM public.driving_school_staff dss
+        JOIN public.role_permissions rp
+          ON rp.role = dss.role
+         AND rp.permission = 'school.schedule.manage'
+        JOIN public.providers p
+          ON p.id = dss.school_id
+        WHERE dss.school_id = target_provider_id
+          AND dss.user_id = auth.uid()
+          AND dss.is_active = TRUE
+          AND p.type = 'DRIVING_SCHOOL'
+      )
+      OR public.is_platform_admin()
+    );
 $$;
 
 REVOKE ALL ON FUNCTION public.can_manage_provider_schedule(UUID) FROM PUBLIC;
