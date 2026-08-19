@@ -114,7 +114,43 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(res.providerCompensationInCents).toBe(10000);
   });
 
-  it('5. Legal override (CDC) gives 100% refund regardless of time', () => {
+  it('5. Provider cancellation yields 100% refund to student', () => {
+    const res = calculateCancellationPolicy({
+      cancelledBy: 'PROVIDER',
+      hoursUntilLesson: 2.0,
+      totalPaidInCents: 11000,
+      lessonPriceInCents: 10000,
+      platformFeeInCents: 1000,
+    });
+    expect(res.refundPercentage).toBe(100);
+    expect(res.refundAmountInCents).toBe(11000);
+  });
+
+  it('6. Student no-show yields 0% refund', () => {
+    const res = calculateCancellationPolicy({
+      cancelledBy: 'NO_SHOW_STUDENT',
+      hoursUntilLesson: 0,
+      totalPaidInCents: 11000,
+      lessonPriceInCents: 10000,
+      platformFeeInCents: 1000,
+    });
+    expect(res.refundPercentage).toBe(0);
+    expect(res.refundAmountInCents).toBe(0);
+  });
+
+  it('7. Provider no-show yields 100% refund', () => {
+    const res = calculateCancellationPolicy({
+      cancelledBy: 'NO_SHOW_PROVIDER',
+      hoursUntilLesson: 0,
+      totalPaidInCents: 11000,
+      lessonPriceInCents: 10000,
+      platformFeeInCents: 1000,
+    });
+    expect(res.refundPercentage).toBe(100);
+    expect(res.refundAmountInCents).toBe(11000);
+  });
+
+  it('8. Legal override (CDC) gives 100% refund regardless of time', () => {
     const res = calculateCancellationPolicy({
       cancelledBy: 'STUDENT',
       hoursUntilLesson: 1.0,
@@ -128,7 +164,7 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(res.isLegalOverride).toBe(true);
   });
 
-  it('6. performStudentCancellation updates status and maintains audit log', () => {
+  it('9. performStudentCancellation updates status and maintains audit log', () => {
     const now = new Date('2026-08-18T10:00:00Z'); // 48 hours before 2026-08-20T10:00:00Z
     const out = performStudentCancellation({
       booking: baseBooking,
@@ -144,9 +180,9 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(out.auditLog.action).toBe('BOOKING_CANCELLED_BY_STUDENT');
   });
 
-  it('7. performProviderCancellation requires reasonCode and updates status', () => {
+  it('10. performProviderCancellation requires reasonCode and updates status', () => {
     const now = new Date('2026-08-18T10:00:00Z');
-    
+
     expect(() =>
       performProviderCancellation({
         booking: baseBooking,
@@ -173,7 +209,7 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(out.auditLog.action).toBe('BOOKING_CANCELLED_BY_PROVIDER');
   });
 
-  it('8. mocks supabase.rpc for cancel_booking_v2 and verifies real payload arguments', async () => {
+  it('11. mocks supabase.rpc for cancel_booking_v2 and verifies real payload arguments', async () => {
     (supabase.rpc as any).mockResolvedValue({
       data: {
         success: true,
@@ -212,7 +248,7 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(result.refund_amount_in_cents).toBe(11000);
   });
 
-  it('9. verifies review CTA eligibility: completed without review vs completed with review', async () => {
+  it('12. verifies review CTA eligibility: completed without review vs completed with review', async () => {
     const selectMock = vi.fn().mockReturnValue({
       in: vi.fn().mockResolvedValue({
         data: [{ booking_id: 'booking_reviewed_1' }],
@@ -226,12 +262,32 @@ describe('DEC-013 Cancellation Policy Domain Unit Tests', () => {
     expect(reviewedSet.has('booking_reviewed_1')).toBe(true);
     expect(reviewedSet.has('booking_unreviewed_2')).toBe(false);
 
-    // CTA Eligibility Rule
-    const isEligibleForReview = (status: string, bookingId: string) =>
-      status === 'COMPLETED' && !reviewedSet.has(bookingId);
+    // CTA Eligibility Rule with SUCCESS status
+    const isEligibleForReview = (eligibilityStatus: string, bookingStatus: string, bookingId: string) =>
+      eligibilityStatus === 'SUCCESS' && bookingStatus === 'COMPLETED' && !reviewedSet.has(bookingId);
 
-    expect(isEligibleForReview('COMPLETED', 'booking_unreviewed_2')).toBe(true);
-    expect(isEligibleForReview('COMPLETED', 'booking_reviewed_1')).toBe(false);
-    expect(isEligibleForReview('CONFIRMED', 'booking_unreviewed_2')).toBe(false);
+    expect(isEligibleForReview('SUCCESS', 'COMPLETED', 'booking_unreviewed_2')).toBe(true);
+    expect(isEligibleForReview('SUCCESS', 'COMPLETED', 'booking_reviewed_1')).toBe(false);
+    expect(isEligibleForReview('SUCCESS', 'CONFIRMED', 'booking_unreviewed_2')).toBe(false);
+  });
+
+  it('13. verifies review CTA fail-closed: query error throws and hides review CTA (eligibilityStatus !== SUCCESS)', async () => {
+    const selectMock = vi.fn().mockReturnValue({
+      in: vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: 'Database connection timeout' },
+      }),
+    });
+    (supabase.from as any).mockReturnValue({ select: selectMock });
+
+    await expect(dbService.getReviewedBookingIds(['booking_unreviewed_2'])).rejects.toEqual({
+      message: 'Database connection timeout',
+    });
+
+    // Fail-closed rule: when query fails, status becomes 'ERROR', hiding CTA
+    const isEligibleForReview = (eligibilityStatus: string, bookingStatus: string, bookingId: string) =>
+      eligibilityStatus === 'SUCCESS' && bookingStatus === 'COMPLETED';
+
+    expect(isEligibleForReview('ERROR', 'COMPLETED', 'booking_unreviewed_2')).toBe(false);
   });
 });

@@ -993,7 +993,7 @@ export const dbService = {
       .in('booking_id', bookingIds);
     if (error) {
       console.warn('Error batch fetching reviewed booking IDs:', error);
-      return new Set<string>();
+      throw error;
     }
     const set = new Set<string>();
     (data || []).forEach((row: any) => {

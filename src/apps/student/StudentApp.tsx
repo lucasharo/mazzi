@@ -224,6 +224,7 @@ export const StudentApp: React.FC = () => {
   // Bookings are an independent data boundary from the public search pipeline (fetched via dbService.getBookings with RLS).
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
+  const [reviewsEligibilityStatus, setReviewsEligibilityStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [searchLoading, setSearchLoading] = useState(isRealSupabase);
   const [searchError, setSearchError] = useState(false);
 
@@ -235,13 +236,21 @@ export const StudentApp: React.FC = () => {
         const bookings = await dbService.getBookings();
         setConfirmedBookings(bookings);
 
-        // Batch load reviewed booking IDs to avoid N+1 queries
+        // Batch load reviewed booking IDs to avoid N+1 queries (fail-closed handling)
         const completedIds = bookings.filter((b) => b.status === 'COMPLETED').map((b) => b.id);
         if (completedIds.length > 0) {
-          const reviewedSet = await dbService.getReviewedBookingIds(completedIds);
-          setReviewedBookingIds(reviewedSet);
+          setReviewsEligibilityStatus('LOADING');
+          try {
+            const reviewedSet = await dbService.getReviewedBookingIds(completedIds);
+            setReviewedBookingIds(reviewedSet);
+            setReviewsEligibilityStatus('SUCCESS');
+          } catch (reviewErr) {
+            console.warn('Failed to batch load reviewed booking IDs (fail-closed):', reviewErr);
+            setReviewsEligibilityStatus('ERROR');
+          }
         } else {
           setReviewedBookingIds(new Set());
+          setReviewsEligibilityStatus('SUCCESS');
         }
       } catch (err) {
         console.error('Failed to load student bookings:', err);
@@ -831,7 +840,7 @@ function applyStrictProviderFilters(
                         booking={b}
                         variant="student"
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
-                        onReview={reviewedBookingIds.has(b.id) ? undefined : (bookingToReview) => setSelectedBookingForReview(bookingToReview)}
+                        onReview={reviewsEligibilityStatus === 'SUCCESS' && !reviewedBookingIds.has(b.id) ? (bookingToReview) => setSelectedBookingForReview(bookingToReview) : undefined}
                       />
                     ))
                   )}
