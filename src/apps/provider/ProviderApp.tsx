@@ -48,6 +48,7 @@ import {
   LessonSession,
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
+import { getTodayInSaoPaulo, isLessonEnded } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 
 import { ProviderHeader } from './components/ProviderHeader';
@@ -59,7 +60,7 @@ import { ProviderManagementTab } from './components/ProviderManagementTab';
 import { ProviderProfileTab } from './components/ProviderProfileTab';
 import { ProviderCancellationModal } from './components/ProviderCancellationModal';
 import { ProviderBookingDetailsModal } from './components/ProviderBookingDetailsModal';
-import { AlertCircle, Upload, ArrowRight, Info } from 'lucide-react';
+import { AlertCircle, Upload, ArrowRight, Info, RefreshCw, LogOut } from 'lucide-react';
 
 export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
@@ -256,21 +257,7 @@ export const ProviderApp: React.FC = () => {
     }
   }, [user?.avatarUrl]);
 
-  const currentProvider = providers.find((p) => p.id === activeProviderId) || ({
-    id: user?.providerId || 'prov-fallback',
-    name: user?.name || 'Instrutor MAZZI',
-    type: 'INSTRUCTOR',
-    status: 'ACTIVE',
-    ratingAverage: 5.0,
-    ratingCount: 1,
-    neighborhood: 'Pinheiros',
-    city: 'São Paulo',
-    state: 'SP',
-    categories: ['B'],
-    transmissions: ['MANUAL'],
-    serviceRadiusKm: 6,
-    isVerified: true,
-  } as Provider);
+  const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
 
   if (isAuthLoading || workspaceLoading) {
     return (
@@ -283,30 +270,66 @@ export const ProviderApp: React.FC = () => {
     );
   }
 
-  // Filter Bookings & Calculate Metrics
-  const nowStr = new Date().toISOString();
-  const todayStr = new Date().toISOString().split('T')[0];
+  // FAIL-CLOSED GUARD: If workspace error occurred or no authorized provider exists, render secure error screen
+  if (workspaceError || !currentProvider) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center bg-[#f7f5ef] text-[#202126] p-6 font-sans text-center">
+        <div className="max-w-md w-full p-6 rounded-3xl bg-white border border-[#e9e6de] shadow-lg space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 mx-auto flex items-center justify-center">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-black text-slate-900">Acesso ao Espaço de Trabalho Indisponível</h2>
+          <p className="text-xs text-slate-600 font-medium">
+            {workspaceError || 'Nenhum perfil de prestador credenciado foi localizado para esta conta.'}
+          </p>
+          <div className="pt-2 flex justify-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void loadWorkspace(activeProviderId || user?.providerId || '')}
+              leftIcon={<RefreshCw className="w-4 h-4" />}
+            >
+              Tentar Novamente
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={logout}
+              leftIcon={<LogOut className="w-4 h-4" />}
+            >
+              Sair da Conta
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const todayBookings = bookings.filter((b) => b.scheduledDate === todayStr);
+  // Filter Bookings & Calculate Metrics using Canonical Timezone (America/Sao_Paulo)
+  const todayStr = getTodayInSaoPaulo();
+
+  const todayBookings = bookings.filter((b) => (b.scheduledDate === todayStr || (b.scheduledStartAt && b.scheduledStartAt.startsWith(todayStr))));
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS');
   const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
   const pendingPaymentBookings = bookings.filter((b) => b.status === 'PENDING_PAYMENT');
 
   const nextBooking = bookings.find((b) => {
     if (b.status !== 'CONFIRMED' && b.status !== 'IN_PROGRESS') return false;
-    const endAt = b.scheduledEndAt || `${b.scheduledDate}T${b.endTime}:00Z`;
-    return endAt >= nowStr;
+    return !isLessonEnded(b);
   }) || null;
 
   const filteredBookings = bookings.filter((b) => {
-    const isEnded = (b.scheduledEndAt && b.scheduledEndAt <= nowStr) || (b.scheduledDate && b.endTime && `${b.scheduledDate}T${b.endTime}:00Z` <= nowStr);
-    
-    if (bookingFilterTab === 'today') return b.scheduledDate === todayStr;
+    const ended = isLessonEnded(b);
+
+    if (bookingFilterTab === 'today') {
+      return (b.scheduledDate === todayStr || (b.scheduledStartAt && b.scheduledStartAt.startsWith(todayStr)));
+    }
     if (bookingFilterTab === 'upcoming') {
-      return !isEnded && (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'PENDING_PAYMENT');
+      if (ended || b.status === 'EXPIRED') return false;
+      return b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'PENDING_PAYMENT';
     }
     if (bookingFilterTab === 'history') {
-      return isEnded || b.status === 'COMPLETED' || b.status.includes('CANCELLED') || b.status === 'EXPIRED';
+      return ended || b.status === 'COMPLETED' || b.status.includes('CANCELLED') || b.status === 'EXPIRED';
     }
     return true;
   });

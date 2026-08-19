@@ -131,9 +131,10 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
               {currentProvider.isVerified && (
                 <span
                   title={getVerificationBadgeTooltip()}
-                  className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+                  className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1"
                 >
-                  ✓ Verificado
+                  <ShieldCheck className="w-3 h-3 text-emerald-700" />
+                  Verificado
                 </span>
               )}
             </div>
@@ -185,7 +186,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
       </div>
 
       {/* NEXT LESSON OPERATIONAL WIDGET */}
-      <div className="p-5 rounded-3xl bg-[#202126] text-white space-y-4 shadow-xl">
+      <div className="p-5 rounded-3xl bg-[#202126] text-[#ffffff] space-y-4 shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-[#f6c945]" />
@@ -242,7 +243,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         <button
           type="button"
           onClick={() => onNavigateTab('schedule')}
-          className="p-4 rounded-2xl bg-white border border-[#e9e6de] hover:border-slate-400 transition text-left flex items-center justify-between group shadow-xs"
+          className="p-4 rounded-2xl bg-white border border-[#e9e6de] hover:border-slate-400 transition text-left flex items-center justify-between group shadow-xs cursor-pointer"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 text-[#202126] font-bold flex items-center justify-center">
@@ -261,7 +262,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         <button
           type="button"
           onClick={() => onNavigateTab('management')}
-          className="p-4 rounded-2xl bg-white border border-[#e9e6de] hover:border-slate-400 transition text-left flex items-center justify-between group shadow-xs"
+          className="p-4 rounded-2xl bg-white border border-[#e9e6de] hover:border-slate-400 transition text-left flex items-center justify-between group shadow-xs cursor-pointer"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#202126] font-bold flex items-center justify-center">
@@ -294,8 +295,9 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
               <button
                 type="button"
                 onClick={onOpenAddVehicleModal}
-                className="underline font-bold hover:text-amber-950"
+                className="underline font-bold hover:text-amber-950 inline-flex items-center gap-1"
               >
+                <Plus className="w-3 h-3" />
                 Cadastrar Veículo
               </button>
             </li>

@@ -17,6 +17,7 @@ import { Button } from '../../../components/ui/Button';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { formatCentsToBRL } from '../../../domain/money';
+import { calculateLessonDurationMinutes, formatTransmissionLabel } from '../../../lib/date-format';
 
 interface ProviderBookingDetailsModalProps {
   isOpen: boolean;
@@ -48,6 +49,8 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const isPendingPayment = booking.status === 'PENDING_PAYMENT';
   const isCompleted = booking.status === 'COMPLETED';
 
+  const durationMin = calculateLessonDurationMinutes(booking);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detalhes do Agendamento">
       <div className="space-y-5 text-left">
@@ -69,14 +72,15 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           </span>
           <p className="text-sm font-black text-[#202126] flex items-center gap-2">
             <Clock className="w-4 h-4 text-slate-400" />
-            {booking.scheduledDate} • {booking.startTime} - {booking.endTime} (50 min)
+            {booking.scheduledDate} • {booking.startTime} - {booking.endTime}
+            {durationMin && <span className="text-slate-500 font-normal">({durationMin} min)</span>}
           </p>
           <div className="flex items-center gap-2 pt-1">
             <span className="text-[10px] font-black px-2.5 py-0.5 rounded-md bg-[#202126] text-white">
               Categoria {booking.category}
             </span>
             <span className="text-xs text-slate-500 font-medium">
-              Transmissão: {booking.snapshot?.transmission === 'MANUAL' ? 'Manual' : 'Automática'}
+              Transmissão: {formatTransmissionLabel(booking.snapshot?.transmission)}
             </span>
           </div>
         </div>

@@ -18,6 +18,8 @@ import { Input } from '../../../components/ui/Input';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { ProfilePhotoPicker } from '../../../components/profile/ProfilePhotoPicker';
 
+import { maskBrazilianPhone } from '../../../lib/input-masks';
+
 interface ProviderProfileTabProps {
   currentProvider: Provider;
   currentRole: UserRole;
@@ -135,7 +137,7 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
                   Contato Público (WhatsApp)
                 </span>
                 <p className="font-extrabold text-slate-900 text-sm">
-                  {currentProvider.publicContact || userPhone || 'Não informado'}
+                  {maskBrazilianPhone(currentProvider.publicContact || userPhone || '') || 'Não informado'}
                 </p>
               </div>
 
@@ -169,8 +171,8 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
               <div>
                 <label className="text-xs font-extrabold text-slate-900 block mb-1">WhatsApp / Contato Público</label>
                 <Input
-                  value={profileForm.publicContact}
-                  onChange={(e) => onProfileFormChange({ ...profileForm, publicContact: e.target.value })}
+                  value={maskBrazilianPhone(profileForm.publicContact)}
+                  onChange={(e) => onProfileFormChange({ ...profileForm, publicContact: maskBrazilianPhone(e.target.value) })}
                   placeholder="(11) 90000-0000"
                 />
               </div>

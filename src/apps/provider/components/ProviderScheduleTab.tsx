@@ -145,29 +145,32 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
         <button
           type="button"
           onClick={() => onSubTabChange('rules')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
             scheduleSubTab === 'rules' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Horários Recorrentes ({availabilityRules.length})
+          <CalendarIcon className="w-3.5 h-3.5" />
+          <span>Horários Recorrentes ({availabilityRules.length})</span>
         </button>
         <button
           type="button"
           onClick={() => onSubTabChange('exceptions')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
             scheduleSubTab === 'exceptions' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Bloqueios ({availabilityExceptions.length})
+          <Ban className="w-3.5 h-3.5" />
+          <span>Bloqueios ({availabilityExceptions.length})</span>
         </button>
         <button
           type="button"
           onClick={() => onSubTabChange('simulator')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
             scheduleSubTab === 'simulator' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Simulador
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Simulador</span>
         </button>
       </div>
 

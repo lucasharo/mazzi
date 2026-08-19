@@ -72,38 +72,42 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
         <button
           type="button"
           onClick={() => onFilterTabChange('all')}
-          className={`flex-1 min-w-[70px] py-2 px-3 rounded-xl text-xs font-extrabold transition ${
+          className={`flex-1 min-w-[80px] py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
             bookingFilterTab === 'all' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Todas
+          <CalendarIcon className="w-3.5 h-3.5" />
+          <span>Todas</span>
         </button>
         <button
           type="button"
           onClick={() => onFilterTabChange('today')}
-          className={`flex-1 min-w-[70px] py-2 px-3 rounded-xl text-xs font-extrabold transition ${
+          className={`flex-1 min-w-[80px] py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
             bookingFilterTab === 'today' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Hoje
+          <Clock className="w-3.5 h-3.5" />
+          <span>Hoje</span>
         </button>
         <button
           type="button"
           onClick={() => onFilterTabChange('upcoming')}
-          className={`flex-1 min-w-[80px] py-2 px-3 rounded-xl text-xs font-extrabold transition ${
+          className={`flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
             bookingFilterTab === 'upcoming' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Próximas
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          <span>Próximas</span>
         </button>
         <button
           type="button"
           onClick={() => onFilterTabChange('history')}
-          className={`flex-1 min-w-[80px] py-2 px-3 rounded-xl text-xs font-extrabold transition ${
+          className={`flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
             bookingFilterTab === 'history' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Histórico
+          <ShieldAlert className="w-3.5 h-3.5" />
+          <span>Histórico</span>
         </button>
       </div>
 
