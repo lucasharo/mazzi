@@ -564,7 +564,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               'SIMULATED_DECLINED: Pagamento recusado pelo gateway de testes.'
             );
           } catch (failErr: any) {
-            console.warn('mark_booking_payment_failed error:', failErr);
+            console.error('mark_booking_payment_failed error:', failErr);
+            throw new Error('PAYMENT_MARK_FAILED_ERROR: Não foi possível atualizar o status do pagamento no banco de dados. Tente novamente.');
           }
         }
         

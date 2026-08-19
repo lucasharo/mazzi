@@ -2,29 +2,25 @@
 
 ## STATUS: READY_FOR_QA
 
-## Work Completed
-1. **Migration 45 (Not Live):**
-   - Created `20260818000045_fix_failed_retry_idempotency.sql`.
-   - Updated `create_booking_payment` to ignore incoming `p_idempotency_key` and force a new, unique key when replacing a `FAILED` payment.
-   - Added a new RPC `mark_booking_payment_failed` that strictly updates the payment to `FAILED` safely (locking the row, validating ownership and gateway).
-   - *Note: As per instructions, this migration was NOT applied via the PG client to the live database due to "OFFICIAL MIGRATION APPLY BLOCKED BY AUTH".*
+## 1. MIGRATION 45
+Confirmed that migration `20260818000045_fix_failed_retry_idempotency.sql` is live on Supabase.
+- `supabase_migrations.schema_migrations` contains `20260818000045`.
+- `mark_booking_payment_failed(uuid, varchar)` is present in `pg_proc`.
+- Permissions for `create_booking_payment` and `mark_booking_payment_failed` include `authenticated` and `service_role`.
 
-2. **Frontend Persistence (db-service.ts):**
-   - Added `markBookingPaymentFailed` in `db-service.ts` to expose the new RPC to the application layer.
+## 2. FIX FAIL-CLOSED NO DECLINED (CheckoutModal.tsx)
+- Updated `CheckoutModal.tsx` to throw an error (`throw new Error('PAYMENT_MARK_FAILED_ERROR: ...')`) if the call to `dbService.markBookingPaymentFailed` fails.
+- This prevents the local state from diverging from the database and prevents silently generating a new `paymentAttemptId` if the backend didn't actually record the failure.
+- A user-friendly error message is displayed when this happens.
 
-3. **Frontend Retry Flow (CheckoutModal.tsx):**
-   - Added local state `paymentAttemptId` to track current payment attempts.
-   - Updated `handleExecuteFakePayment(DECLINED)` to call `dbService.markBookingPaymentFailed` persisting the failure in the backend. It also generates a new `paymentAttemptId` for the upcoming retry.
-   - Updated `handleExecuteFakePayment(APPROVED)` to handle the retry flow: if the active payment in memory is `FAILED`, it calls `dbService.createBookingPayment` *first* with the newly generated attempt key, getting a brand new `payment_id`, before proceeding to confirm the new payment. This ensures the frontend generates entirely new rows for retry attempts and doesn't try to approve a `FAILED` payment.
+## 3. REAL INTEGRATION TESTS (rpc-payment-security.test.ts)
+- Removed `.skip()` from all tests in `TASK-013`.
+- Converted them to real database tests against the Supabase backend using `PgClient` for data injection (to bypass frontend validation complexities and RLS for bookings creation) and `dbService`/`supabase` client for testing the RPCs.
+- **Test 1**: Creates a booking, executes payment, marks as failed (`SIMULATED_DECLINED`), verifies state (`FAILED`/`PENDING_PAYMENT`), creates a new payment with retry idempotency, and confirms it.
+- **Test 2**: Spies on `markBookingPaymentFailed` to simulate a mocked DB error to ensure the fail-closed behavior.
+- **Test 3**: Injects a booking and rapidly fires `create_booking_payment` twice to verify idempotency. Confirms that only 1 `PENDING` payment exists in the database.
 
-4. **Testing:**
-   - Appended `describe('TASK-013: Payment FAILED Retry Flow')` to `tests/rpc-payment-security.test.ts`. 
-   - Marked the tests as `.skip()` so they do not break the CI while the Migration 45 is not formally deployed.
-
-5. **Quality Gates:**
-   - `npm run lint` - Passed.
-   - `npm test` - Passed (516 tests passed, 2 skipped).
-   - `npm run build:all` - Pending (Started, waiting for final result).
-
-## Issues / Deviations
-- None. Implementation followed the technical plan strictly. The database was deliberately not modified per instructions.
+## 4. QUALITY GATES
+- `npm run lint`: 0 errors.
+- `npm test tests/rpc-payment-security.test.ts`: 100% PASS (6 passed, 0 skipped/failed).
+- `npm run build:all`: Builds successful for student, instructor, and admin apps.
