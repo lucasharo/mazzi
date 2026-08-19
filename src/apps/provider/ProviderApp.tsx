@@ -351,7 +351,7 @@ export const ProviderApp: React.FC = () => {
     };
   };
 
-  // Lesson Handlers — Server-Side RPCs Strict Server Timestamps (TASK-048)
+  // Lesson Handlers — Server-Side RPCs Strict Server Timestamps & Friendly Error UX (TASK-048 / TASK-051)
   const handleCheckIn = async (b: Booking) => {
     setBookingActionError(null);
     setBookingActionSuccess(null);
@@ -369,7 +369,7 @@ export const ProviderApp: React.FC = () => {
       if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
       setBookingActionSuccess('✓ Check-in realizado com sucesso! O aluno foi notificado.');
     } catch (err: any) {
-      setBookingActionError(err.message || 'Erro ao realizar check-in.');
+      setBookingActionError(mapFriendlyErrorMessage(err, 'Não foi possível realizar o check-in.'));
     }
   };
 
@@ -390,7 +390,7 @@ export const ProviderApp: React.FC = () => {
       if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
       setBookingActionSuccess('✓ Aula iniciada! Acompanhe a execução e finalize ao término.');
     } catch (err: any) {
-      setBookingActionError(err.message || 'Erro ao iniciar aula.');
+      setBookingActionError(mapFriendlyErrorMessage(err, 'Não foi possível iniciar a aula.'));
     }
   };
 
@@ -415,7 +415,7 @@ export const ProviderApp: React.FC = () => {
       if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
       setBookingActionSuccess('✓ Aula finalizada com sucesso!');
     } catch (err: any) {
-      setBookingActionError(err.message || 'Erro ao finalizar aula.');
+      setBookingActionError(mapFriendlyErrorMessage(err, 'Não foi possível concluir a aula.'));
     } finally {
       setIsCompleting(false);
     }

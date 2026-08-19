@@ -9,17 +9,54 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
   const msg = typeof err === 'string' ? err : err.message || err.details || err.hint || '';
   const code = err.code || err.statusCode || '';
 
-  // 1. RLS / Authorization / 403 Errors
+  // 1. Provider Lesson Lifecycle Specific Errors (TASK-051)
+  if (msg.includes('IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST')) {
+    return 'Esta aula já recebeu uma solicitação de conclusão diferente. Atualize os dados antes de tentar novamente.';
+  }
+
+  if (msg.includes('COMPLETION_IDEMPOTENCY_KEY_REQUIRED')) {
+    return 'Não foi possível concluir a aula com segurança. Tente novamente.';
+  }
+
+  if (msg.includes('CHECKIN_WINDOW_NOT_OPEN')) {
+    return 'O check-in ainda não está disponível. Aguarde a abertura da janela de check-in.';
+  }
+
+  if (msg.includes('CHECKIN_WINDOW_EXPIRED')) {
+    return 'A janela de check-in desta aula já terminou.';
+  }
+
+  if (msg.includes('CHECKIN_REQUIRED')) {
+    return 'Faça o check-in antes de iniciar a aula.';
+  }
+
+  if (msg.includes('UNAUTHORIZED_PROVIDER')) {
+    return 'Você não tem permissão para realizar esta ação neste agendamento.';
+  }
+
+  if (msg.includes('UNAUTHENTICATED')) {
+    return 'Sua sessão expirou. Entre novamente para continuar.';
+  }
+
+  if (msg.includes('BOOKING_NOT_FOUND')) {
+    return 'Este agendamento não foi encontrado ou não está mais disponível.';
+  }
+
+  if (msg.includes('INVALID_STATUS')) {
+    return 'Esta ação não está disponível no estado atual da aula.';
+  }
+
+  // 2. RLS / Authorization / 403 Errors
   if (code === '42501' || msg.includes('permission denied') || msg.includes('row-level security') || msg.includes('ACCESS_DENIED') || msg.includes('UNAUTHORIZED')) {
     return 'Você não tem permissão para realizar esta ação neste perfil.';
   }
 
-  // 2. Format / UUID / Invalid Input / 400 Errors
+  // 3. Format / UUID / Invalid Input / 400 Errors
   if (code === '22P02' || msg.includes('invalid input syntax for type uuid')) {
     return 'Identificador de registro inválido ou dados corrompidos.';
   }
 
-  // 3. Domain Specific Errors
+  // 4. Domain Specific Errors
   if (msg.includes('INVALID_LICENSE_PLATE') || msg.includes('Placa do veículo inválida')) {
     return 'Informe uma placa de veículo válida (Padrão Mercosul ou Tradicional BR).';
   }
@@ -41,7 +78,7 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
   }
 
   // If already clean Portuguese message without technical dump, return it
-  if (msg && !msg.includes('PGRST') && !msg.includes('postgres') && !msg.includes('duplicate key') && !msg.includes('violates') && !msg.includes('Constraint')) {
+  if (msg && !msg.includes('PGRST') && !msg.includes('postgres') && !msg.includes('duplicate key') && !msg.includes('violates') && !msg.includes('Constraint') && !msg.includes('ERRCODE') && !msg.includes('RAISE EXCEPTION')) {
     return msg;
   }
 
