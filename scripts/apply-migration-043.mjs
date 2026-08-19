@@ -13,7 +13,11 @@ import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const DATABASE_URL = 'postgresql://postgres:lrharo151263@db.bhvpkgonhlujmxvwnxix.supabase.co:5432/postgres';
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error('❌ FATAL: DATABASE_URL environment variable is required. Set it before running this script.');
+  process.exit(1);
+}
 const MIGRATION_VERSION = '20260818000043';
 const MIGRATION_NAME = 'fix_booking_hold_gateway';
 const MIGRATION_FILE = join(__dirname, '..', 'supabase', 'migrations', `${MIGRATION_VERSION}_${MIGRATION_NAME}.sql`);
