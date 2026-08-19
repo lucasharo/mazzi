@@ -137,7 +137,7 @@ BEGIN
       AND status IN ('PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS')
       AND slot_range && tstzrange(v_quote.scheduled_start_at, v_quote.scheduled_end_at, '[)')
   ) THEN
-    RAISE EXCEPTION 'STUDENT_ALREADY_BOOKED_FOR_SLOT' USING ERRCODE = '23P01';
+    RAISE EXCEPTION 'STUDENT_ALREADY_BOOKED_FOR_SLOT' USING ERRCODE = 'P0001';
   END IF;
 
   -- 5. Revalidate provider, vehicle and offering operational eligibility.
@@ -245,8 +245,10 @@ EXCEPTION
       GET STACKED DIAGNOSTICS v_constraint_name = CONSTRAINT_NAME;
       IF v_constraint_name = 'exclude_student_overlapping_bookings' THEN
         RAISE EXCEPTION 'STUDENT_ALREADY_BOOKED_FOR_SLOT' USING ERRCODE = '23P01';
-      ELSE
+      ELSIF v_constraint_name IN ('exclude_instructor_overlapping_bookings', 'exclude_vehicle_overlapping_bookings') THEN
         RAISE EXCEPTION 'SLOT_NO_LONGER_AVAILABLE' USING ERRCODE = '23P01';
+      ELSE
+        RAISE;
       END IF;
     END;
 END;

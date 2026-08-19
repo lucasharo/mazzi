@@ -699,7 +699,18 @@ describe('Sprint 08 — High Contention Concurrent Simulation (20 Concurrent Req
 });
 
 describe('Sprint 08 — Database Error Mapping & Environment Status Tracker', () => {
-  it('maps PostgreSQL student exclusion constraint violation to domain STUDENT_ALREADY_BOOKED_FOR_SLOT (HTTP 409)', () => {
+  it('maps PostgreSQL student precheck exception (code P0001 with STUDENT_ALREADY_BOOKED_FOR_SLOT) to domain STUDENT_ALREADY_BOOKED_FOR_SLOT (HTTP 409)', () => {
+    const domainError = mapDatabaseErrorToDomainError({
+      code: 'P0001',
+      message: 'STUDENT_ALREADY_BOOKED_FOR_SLOT',
+    });
+
+    expect(domainError.code).toBe('STUDENT_ALREADY_BOOKED_FOR_SLOT');
+    expect(domainError.statusCode).toBe(409);
+    expect(domainError.message).toContain('Você já possui uma aula agendada nesse horário');
+  });
+
+  it('maps PostgreSQL student exclusion constraint violation (code 23P01) to domain STUDENT_ALREADY_BOOKED_FOR_SLOT (HTTP 409)', () => {
     const domainError = mapDatabaseErrorToDomainError({
       code: '23P01',
       message: 'conflicting key value violates exclusion constraint "exclude_student_overlapping_bookings"',
@@ -708,16 +719,6 @@ describe('Sprint 08 — Database Error Mapping & Environment Status Tracker', ()
     expect(domainError.code).toBe('STUDENT_ALREADY_BOOKED_FOR_SLOT');
     expect(domainError.statusCode).toBe(409);
     expect(domainError.message).toContain('Você já possui uma aula agendada nesse horário');
-  });
-
-  it('maps STUDENT_ALREADY_BOOKED_FOR_SLOT exception message to domain STUDENT_ALREADY_BOOKED_FOR_SLOT (HTTP 409)', () => {
-    const domainError = mapDatabaseErrorToDomainError({
-      code: '23P01',
-      message: 'STUDENT_ALREADY_BOOKED_FOR_SLOT',
-    });
-
-    expect(domainError.code).toBe('STUDENT_ALREADY_BOOKED_FOR_SLOT');
-    expect(domainError.statusCode).toBe(409);
   });
 
   it('verifies that adjacent slots (10:00-10:50 and 10:50-11:40) do NOT overlap', () => {

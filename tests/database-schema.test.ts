@@ -334,10 +334,13 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql48).toContain('student_id WITH =');
     expect(sql48).toContain('slot_range WITH &&');
     expect(sql48).toContain('STUDENT_OVERLAP_EXISTING_DATA');
-    expect(sql48).toContain('STUDENT_ALREADY_BOOKED_FOR_SLOT');
+    expect(sql48).toContain("STUDENT_ALREADY_BOOKED_FOR_SLOT' USING ERRCODE = 'P0001'");
     expect(sql48).toContain('GET STACKED DIAGNOSTICS');
     expect(sql48).toContain('v_constraint_name = CONSTRAINT_NAME');
+    expect(sql48).toContain('exclude_instructor_overlapping_bookings');
+    expect(sql48).toContain('exclude_vehicle_overlapping_bookings');
     expect(sql48).toContain('SLOT_NO_LONGER_AVAILABLE');
+    expect(sql48).toContain('RAISE;\n      END IF;');
   });
 
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
