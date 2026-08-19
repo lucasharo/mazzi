@@ -93,6 +93,15 @@ function friendlyCheckoutError(error: unknown, fallback: string): string {
   if (technicalMessage.includes('STUDENT_ALREADY_BOOKED_FOR_SLOT') || technicalMessage.includes('EXCLUDE_STUDENT_OVERLAPPING_BOOKINGS')) {
     return 'Você já possui uma aula agendada nesse horário.';
   }
+  if (technicalMessage.includes('PAYMENT_UUID_GENERATION_FAILED')) {
+    return 'Não foi possível obter um ID de pagamento válido para esta reserva. Tente novamente em instantes.';
+  }
+  if (technicalMessage.includes('CROSS_STUDENT_BOOKING_ACCESS_DENIED')) {
+    return 'Você não possui autorização para este agendamento.';
+  }
+  if (technicalMessage.includes('BOOKING_NOT_PENDING_PAYMENT') || technicalMessage.includes('BOOKING_ALREADY_PAID')) {
+    return 'Esta reserva já foi paga ou não está pendente de pagamento.';
+  }
   if (technicalMessage.includes('SELECTED_SLOT_NOT_AVAILABLE') || technicalMessage.includes('SLOT_NO_LONGER_AVAILABLE')) {
     return 'Esse horário acabou de ser reservado por outra pessoa. Escolha outro horário.';
   }
@@ -173,11 +182,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             );
             if (payRes && (payRes.payment_id || payRes.id)) {
               realPayId = payRes.payment_id || payRes.id;
+            } else {
+              throw new Error('PAYMENT_UUID_GENERATION_FAILED');
             }
+          } else {
+            realPayId = `pay_${resumeBooking.id}`;
+          }
+
+          if (!realPayId) {
+            throw new Error('PAYMENT_UUID_GENERATION_FAILED');
           }
 
           const initialPay: Payment = {
-            id: realPayId || resumeBooking.id,
+            id: realPayId,
             bookingId: resumeBooking.id,
             studentId: user?.id || resumeBooking.studentId,
             providerId: resumeBooking.providerId,

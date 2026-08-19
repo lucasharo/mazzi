@@ -10,7 +10,12 @@ const supabase = createClient(supabaseUrl, anonKey);
 async function main() {
   console.log('Logging in as Quick Dev Student...');
   const studentEmail = process.env.VITE_DEV_QUICK_LOGIN_STUDENT_EMAIL || 'aluno01@mazzi.com.br';
-  const studentPass = (process.env.VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD || '').replace(/^"|"$/g, '').trim() || 'Mazzi123!';
+  const rawPass = process.env.VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD;
+  if (!rawPass) {
+    console.error('FAIL FAST: VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD environment variable is required.');
+    process.exit(1);
+  }
+  const studentPass = rawPass.replace(/^"|"$/g, '').trim();
 
   const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
     email: studentEmail,
