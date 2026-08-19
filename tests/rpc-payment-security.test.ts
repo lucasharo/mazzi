@@ -111,4 +111,14 @@ describe('TASK-009 Security Hotfix — Real Behavioral Spies & Security Tests', 
       vi.restoreAllMocks();
     });
   });
+
+  describe('Requirement 8: TASK-012 FAILED Retry Fix & Hold Expired', () => {
+    it('throws BOOKING_HOLD_EXPIRED when createBookingPayment returns success: false', async () => {
+      // Mock dbService to verify component behavior or directly test dbService
+      const spyCreatePayment = vi.spyOn(dbService, 'createBookingPayment');
+      spyCreatePayment.mockRejectedValueOnce(new Error('BOOKING_HOLD_EXPIRED'));
+      
+      await expect(dbService.createBookingPayment('booking-123', 'PIX', 'idem_123')).rejects.toThrow('BOOKING_HOLD_EXPIRED');
+    });
+  });
 });

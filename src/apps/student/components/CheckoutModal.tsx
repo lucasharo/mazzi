@@ -215,7 +215,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         } catch (err: any) {
           if (!active) return;
           if (err?.message?.includes('BOOKING_HOLD_EXPIRED') || err?.message?.includes('EXPIRED')) {
-            setErrorMessage('Tempo para pagamento expirado.');
+            setErrorMessage('Tempo para pagamento expirado. O agendamento foi cancelado.');
             setStep('ERROR_QUOTE_EXPIRED');
           } else {
             setErrorMessage(friendlyCheckoutError(err, 'Não foi possível carregar o pagamento pendente.'));
@@ -479,6 +479,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       if (err instanceof BookingDomainError && err.code === 'SLOT_NO_LONGER_AVAILABLE') {
         setStep('ERROR_SLOT_UNAVAILABLE');
       } else if (err instanceof QuoteDomainError) {
+        setStep('ERROR_QUOTE_EXPIRED');
+      } else if (err?.message?.includes('BOOKING_HOLD_EXPIRED')) {
+        setErrorMessage('Tempo para pagamento expirado. O agendamento foi cancelado.');
         setStep('ERROR_QUOTE_EXPIRED');
       } else {
         setErrorMessage(friendlyCheckoutError(err, 'Não foi possível reservar este horário no momento. Tente novamente.'));
@@ -785,9 +788,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <Clock className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="font-black text-base text-slate-900">Esta cotação expirou</h3>
+              <h3 className="font-black text-base text-slate-900">{errorMessage ? 'Atenção' : 'Esta cotação expirou'}</h3>
               <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto">
-                O tempo de garantia de preço e retenção do horário encerrou. Por favor, selecione novamente o horário.
+                {errorMessage || 'O tempo de garantia de preço e retenção do horário encerrou. Por favor, selecione novamente o horário.'}
               </p>
             </div>
             <Button

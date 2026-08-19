@@ -797,6 +797,9 @@ export const dbService = {
       console.error('PAYMENT_CREATE_FAILED:', error);
       throw error;
     }
+    if (data && data.success === false && data.error === 'BOOKING_HOLD_EXPIRED') {
+      throw new Error('BOOKING_HOLD_EXPIRED');
+    }
     return data;
   },
 
