@@ -458,6 +458,9 @@ export interface Booking {
   refundAmountInCents?: number;
   lessonDateTime?: string;
   expiredAt?: string;
+  checkinInstructorAt?: string;
+  lessonStartedAt?: string;
+  lessonFinishedAt?: string;
 }
 
 // ==========================================

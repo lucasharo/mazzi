@@ -408,6 +408,26 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql51).toContain("INVALID_PUBLIC_CATEGORY: Only category B is supported for booking holds");
   });
 
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 52 provider_lesson_lifecycle_rpcs signatures and defenses', () => {
+    const migration52Path = path.join(process.cwd(), 'supabase/migrations/20260818000052_provider_lesson_lifecycle_rpcs.sql');
+    expect(fs.existsSync(migration52Path)).toBe(true);
+    const sql52 = fs.readFileSync(migration52Path, 'utf8');
+
+    expect(sql52).toContain('provider_check_in_booking');
+    expect(sql52).toContain('checkin_instructor_at');
+    expect(sql52).toContain('CHECKIN_WINDOW_NOT_OPEN');
+    expect(sql52).toContain('CHECKIN_WINDOW_EXPIRED');
+
+    expect(sql52).toContain('provider_start_lesson');
+    expect(sql52).toContain("status = 'IN_PROGRESS'");
+    expect(sql52).toContain('CHECKIN_REQUIRED');
+
+    expect(sql52).toContain('provider_complete_lesson');
+    expect(sql52).toContain("status = 'COMPLETED'");
+    expect(sql52).toContain('completed_at');
+    expect(sql52).toContain('lesson_finished_at');
+  });
+
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
     expect(fs.existsSync(seedPath)).toBe(true);
     const seedSql = fs.readFileSync(seedPath, 'utf8');

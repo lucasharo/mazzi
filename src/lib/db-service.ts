@@ -1204,5 +1204,30 @@ export const dbService = {
     });
     if (error) throw error;
     return data;
+  },
+
+  async providerCheckInBooking(bookingId: string): Promise<any> {
+    const { data, error } = await sp.rpc('provider_check_in_booking', {
+      p_booking_id: bookingId,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async providerStartLesson(bookingId: string): Promise<any> {
+    const { data, error } = await sp.rpc('provider_start_lesson', {
+      p_booking_id: bookingId,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async providerCompleteLesson(bookingId: string, idempotencyKey?: string): Promise<any> {
+    const { data, error } = await sp.rpc('provider_complete_lesson', {
+      p_booking_id: bookingId,
+      p_idempotency_key: idempotencyKey || null,
+    });
+    if (error) throw error;
+    return data;
   }
 };

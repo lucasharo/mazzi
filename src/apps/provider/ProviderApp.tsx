@@ -351,24 +351,20 @@ export const ProviderApp: React.FC = () => {
     };
   };
 
-  // Lesson Handlers
+  // Lesson Handlers — Server-Side RPCs (TASK-047)
   const handleCheckIn = async (b: Booking) => {
     setBookingActionError(null);
     setBookingActionSuccess(null);
     try {
-      const now = new Date();
-      const result = performProviderCheckIn({
-        booking: b,
-        providerId: currentProvider.id,
-        actorUserId: user.id,
-        actorRole: currentRole,
-        now,
-      });
-
-      await dbService.updateBookingStatus(b.id, result.booking.status, { checkin_instructor_at: now.toISOString() });
-      setLessonSessions((prev) => ({ ...prev, [b.id]: result.session }));
-      setBookings((prev) => prev.map((item) => (item.id === b.id ? result.booking : item)));
-      setSelectedBooking(result.booking);
+      const res = await dbService.providerCheckInBooking(b.id);
+      const checkinTime = res?.checkin_instructor_at || new Date().toISOString();
+      const updatedBooking: Booking = {
+        ...b,
+        instructorCheckedIn: true,
+        checkinInstructorAt: checkinTime,
+      };
+      setBookings((prev) => prev.map((item) => (item.id === b.id ? updatedBooking : item)));
+      if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
       setBookingActionSuccess('✓ Check-in realizado com sucesso! O aluno foi notificado.');
     } catch (err: any) {
       setBookingActionError(err.message || 'Erro ao realizar check-in.');
@@ -379,21 +375,15 @@ export const ProviderApp: React.FC = () => {
     setBookingActionError(null);
     setBookingActionSuccess(null);
     try {
-      const session = getOrCreateSession(b);
-      const now = new Date();
-      const result = startLesson({
-        session,
-        booking: b,
-        providerId: currentProvider.id,
-        actorUserId: user.id,
-        actorRole: currentRole,
-        now,
-      });
-
-      await dbService.updateBookingStatus(b.id, result.booking.status, { lesson_started_at: now.toISOString() });
-      setLessonSessions((prev) => ({ ...prev, [b.id]: result.session }));
-      setBookings((prev) => prev.map((item) => (item.id === b.id ? result.booking : item)));
-      setSelectedBooking(result.booking);
+      const res = await dbService.providerStartLesson(b.id);
+      const startedTime = res?.lesson_started_at || new Date().toISOString();
+      const updatedBooking: Booking = {
+        ...b,
+        status: 'IN_PROGRESS',
+        lessonStartedAt: startedTime,
+      };
+      setBookings((prev) => prev.map((item) => (item.id === b.id ? updatedBooking : item)));
+      if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
       setBookingActionSuccess('✓ Aula iniciada! Acompanhe a execução e finalize ao término.');
     } catch (err: any) {
       setBookingActionError(err.message || 'Erro ao iniciar aula.');
@@ -406,25 +396,18 @@ export const ProviderApp: React.FC = () => {
     setBookingActionError(null);
     setBookingActionSuccess(null);
     try {
-      const session = getOrCreateSession(b);
-      const now = new Date();
-      const idempotencyKey = `complete_btn_${b.id}_${now.getTime()}`;
-
-      const result = completeLesson({
-        session,
-        booking: b,
-        providerId: currentProvider.id,
-        actorUserId: user.id,
-        actorRole: currentRole,
-        idempotencyKey,
-        now,
-      });
-
-      await dbService.updateBookingStatus(b.id, result.booking.status, { completed_at: now.toISOString(), lesson_finished_at: now.toISOString() });
-      setLessonSessions((prev) => ({ ...prev, [b.id]: result.session }));
-      setBookings((prev) => prev.map((item) => (item.id === b.id ? result.booking : item)));
-      setSelectedBooking(result.booking);
-      setBookingActionSuccess('✓ Aula finalizada com sucesso! O valor foi registrado no financeiro.');
+      const idempotencyKey = `complete_btn_${b.id}`;
+      const res = await dbService.providerCompleteLesson(b.id, idempotencyKey);
+      const completedTime = res?.completed_at || new Date().toISOString();
+      const updatedBooking: Booking = {
+        ...b,
+        status: 'COMPLETED',
+        completedAt: completedTime,
+        lessonFinishedAt: res?.lesson_finished_at || completedTime,
+      };
+      setBookings((prev) => prev.map((item) => (item.id === b.id ? updatedBooking : item)));
+      if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
+      setBookingActionSuccess('✓ Aula finalizada com sucesso!');
     } catch (err: any) {
       setBookingActionError(err.message || 'Erro ao finalizar aula.');
     } finally {
