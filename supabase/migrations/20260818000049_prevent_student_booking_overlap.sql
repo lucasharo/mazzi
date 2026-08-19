@@ -1,6 +1,6 @@
 -- ============================================================================
 -- MAZZI PLATFORM — SPRINT 19: PREVENT STUDENT OVERLAPPING BOOKINGS
--- Migration: 20260818000048_prevent_student_booking_overlap.sql
+-- Migration: 20260818000049_prevent_student_booking_overlap.sql
 -- ============================================================================
 
 -- 1. Data Safety Guard: Fail migration if active blocking student overlaps exist in database
