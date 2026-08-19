@@ -175,7 +175,12 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <p className="truncate text-sm font-bold text-[var(--mazzi-dark)]">
-                            {offering.vehicleTitle || 'Veículo disponível'}
+                            {(() => {
+                              const title = offering.vehicleTitle || 'Veículo disponível';
+                              const nameParts = result.displayName.split(/\s+/).filter((p) => p.length > 2);
+                              const hasMatch = nameParts.some((part) => title.toLowerCase().includes(part.toLowerCase()));
+                              return hasMatch || title.startsWith('Instrutor') || title.startsWith('Instrutora') ? 'Veículo disponível' : title;
+                            })()}
                           </p>
                           {offering.category && (
                             <span className="shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] border border-[var(--mazzi-border)] px-2 py-0.5 rounded-md">

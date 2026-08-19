@@ -45,6 +45,17 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
 
   const providerTypeLabel = isCFC ? 'Autoescola / CFC' : 'Instrutor autônomo';
 
+  const cleanVehicleTitle = React.useMemo(() => {
+    if (!primaryOffering?.vehicleTitle) return 'Veículo disponível';
+    const title = primaryOffering.vehicleTitle;
+    const nameParts = result.displayName.split(/\s+/).filter((p) => p.length > 2);
+    const hasNameMatch = nameParts.some((part) => title.toLowerCase().includes(part.toLowerCase()));
+    if (hasNameMatch || title.startsWith('Instrutor') || title.startsWith('Instrutora')) {
+      return 'Veículo disponível';
+    }
+    return title;
+  }, [primaryOffering?.vehicleTitle, result.displayName]);
+
   const handleSchedule = () => {
     trackSearchAnalytics({ eventType: 'PROVIDER_VIEWED', providerId: result.providerId });
     onSelect(result.providerId);
@@ -126,7 +137,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
       {primaryOffering && (
         <div className="mazzi-soft-card mt-3 flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[var(--mazzi-dark)] border border-[var(--mazzi-border)]">
           <Car className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-          <span className="truncate">{primaryOffering.vehicleTitle || 'Veículo disponível'}</span>
+          <span className="truncate">{cleanVehicleTitle}</span>
           {transmission && <span className="shrink-0 text-[var(--mazzi-muted)] font-medium">· {transmission}</span>}
           {categoryLabel && (
             <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] px-2 py-0.5 rounded-md">
