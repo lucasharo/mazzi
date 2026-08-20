@@ -26,8 +26,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import { DevQuickLogin } from './dev/DevQuickLogin';
-
 export type AppLoginKind = 'student' | 'instructor' | 'admin';
 type Screen =
   | 'login'
@@ -40,8 +38,6 @@ type Screen =
   | 'expired_link';
 
 type Feedback = { tone: 'error' | 'success'; message: string };
-
-const devQuickLoginPath = '/src/components/auth/dev/DevQuickLogin.tsx';
 
 export function formatAuthError(errorMsg: string): string {
   if (!errorMsg) return 'Ocorreu um erro. Tente novamente.';
@@ -116,7 +112,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    import(/* @vite-ignore */ devQuickLoginPath)
+    import('./dev/DevQuickLogin')
       .then((module) => setDevQuickLogin(() => module.DevQuickLogin))
       .catch(() => {});
   }, []);

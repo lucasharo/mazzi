@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     ? (appTarget === 'student' ? '/mazzi-student/' : appTarget === 'instructor' ? '/mazzi-pro/' : appTarget === 'admin' ? '/mazzi-admin/' : '/')
     : '/';
 
-  const appManifest = appTarget === 'student' ? '/manifest.student.webmanifest' : appTarget === 'instructor' ? '/manifest.instructor.webmanifest' : appTarget === 'admin' ? '' : '/manifest.webmanifest';
+  const appManifest = appTarget === 'student' ? '/manifest.student.webmanifest' : appTarget === 'instructor' ? '/manifest.instructor.webmanifest' : appTarget === 'admin' ? '/manifest.admin.webmanifest' : '/manifest.webmanifest';
 
   const finalManifest = appManifest && appManifest.startsWith('/')
     ? `${base}${appManifest.slice(1)}`
