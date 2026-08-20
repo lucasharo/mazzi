@@ -33,6 +33,15 @@ async function runE2EValidation() {
     const instructorId = 'ce5cc243-f3c9-4391-8ff4-298412a3f98d'; // Carlos user ID
     const vehicleId = '68f5fa1e-fb32-4d95-9e56-09206192c62e'; // HB20
     const offeringId = '643657af-bb1c-4378-ad45-7e48f63f2ac4'; // manual class B manual
+    const fernandaId = '230cc4a0-4a82-41ff-bda9-5f8f216e5980';
+    const schoolAdminId = '34437b7c-7e90-4c96-b4ee-88fbd0e9c1c4';
+
+    const setAuthenticatedUser = async (userId) => {
+      await client.query(`
+        SELECT set_config('role', 'authenticated', true),
+               set_config('request.jwt.claims', $1, true);
+      `, [JSON.stringify({ sub: userId, role: 'authenticated' })]);
+    };
 
     // Let's check coordinates of Carlos provider to query correctly in search
     const carlosLocRes = await client.query('SELECT ST_Y(location_geography::geometry) AS lat, ST_X(location_geography::geometry) AS lng FROM public.providers WHERE id = $1;', [providerId]);
@@ -435,15 +444,12 @@ async function runE2EValidation() {
     `);
 
     // Reset student claims to call review RPC
-    const callReviewAs = async (callerId, rating, comment) => {
-      await client.query(`
-        SELECT set_config('role', 'authenticated', true),
-               set_config('request.jwt.claims', $1, true);
-      `, [JSON.stringify({ sub: callerId, role: 'authenticated' })]);
+    const callReviewAs = async (callerId, rating, comment, targetBookingId = bookingId) => {
+      await setAuthenticatedUser(callerId);
 
       return await client.query(`
         SELECT to_jsonb(public.create_review_for_booking($1::uuid, $2::integer, $3::text)) AS result;
-      `, [bookingId, rating, comment]);
+      `, [targetBookingId, rating, comment]);
     };
 
     // 14.1 Score 0 (Invalid rating value block)
@@ -482,11 +488,53 @@ async function runE2EValidation() {
       if (!err.message.includes('UNAUTHORIZED_STUDENT') && !err.message.includes('FORBIDDEN')) throw err;
     }
 
-    // 14.4 Titular student creates valid review (Score 5)
-    console.log('Test 14.4: Titular student creates valid review...');
+    for (const [label, callerId, savepoint] of [
+      ['instructor', instructorId, 'sp_rev_instructor'],
+      ['school admin', schoolAdminId, 'sp_rev_school_admin'],
+    ]) {
+      console.log(`Test 14.${label === 'instructor' ? '4' : '5'}: Review by ${label} blocked...`);
+      await client.query(`SAVEPOINT ${savepoint};`);
+      try {
+        await callReviewAs(callerId, 5, `${label} review attempt`);
+        throw new Error(`Security Breach: ${label} created a review!`);
+      } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint};`);
+        if (!err.message.includes('FORBIDDEN')) throw err;
+      }
+    }
+
+    const incompleteBookingId = '77777777-7777-4777-8777-777777777777';
+    await client.query(`SELECT set_config('role', 'postgres', true), set_config('request.jwt.claims', null, true);`);
+    await client.query(`
+      INSERT INTO public.bookings (
+        id, student_id, provider_id, instructor_id, vehicle_id, offering_id,
+        scheduled_start_at, scheduled_end_at, status, meeting_point,
+        price_in_cents, platform_fee_in_cents, total_in_cents, snapshot_data
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '48 hours', NOW() + INTERVAL '49 hours',
+        'CONFIRMED', '{"type":"PROVIDER_ADDRESS"}'::jsonb, 12000, 1000, 13000, '{}'::jsonb);
+    `, [incompleteBookingId, studentId, providerId, instructorId, vehicleId, offeringId]);
+    await client.query('SAVEPOINT sp_rev_incomplete;');
+    try {
+      await callReviewAs(studentId, 5, 'Too early', incompleteBookingId);
+      throw new Error('Security Breach: review created for incomplete booking!');
+    } catch (err) {
+      await client.query('ROLLBACK TO SAVEPOINT sp_rev_incomplete;');
+      if (!err.message.includes('REVIEW_REQUIRES_COMPLETED_BOOKING')) throw err;
+    }
+
+    // 14.6 Titular student creates valid review (Score 5)
+    console.log('Test 14.6: Titular student creates valid review...');
+    await client.query(`SELECT set_config('role', 'postgres', true), set_config('request.jwt.claims', null, true);`);
+    const ratingBefore = (await client.query(`
+      SELECT p.rating_average, p.rating_count,
+             (SELECT COUNT(*) FROM public.reviews r WHERE r.provider_id = p.id) AS review_count
+      FROM public.providers p WHERE p.id = $1;
+    `, [providerId])).rows[0];
     const rev1 = await callReviewAs(studentId, 5, 'Super class, Carlos is amazing!');
     console.log('Created Review:', rev1.rows[0].result);
-    if (!rev1.rows[0].result.id) {
+    if (!rev1.rows[0].result.id || rev1.rows[0].result.booking_id !== bookingId ||
+        rev1.rows[0].result.student_id !== studentId || rev1.rows[0].result.provider_id !== providerId ||
+        rev1.rows[0].result.instructor_id !== instructorId || rev1.rows[0].result.rating_overall !== 5) {
       throw new Error('create_review_for_booking failed!');
     }
 
@@ -507,8 +555,17 @@ async function runE2EValidation() {
       SELECT set_config('role', 'postgres', true),
              set_config('request.jwt.claims', null, true);
     `);
-    const provRating = (await client.query('SELECT rating_average, rating_count FROM public.providers WHERE id = $1;', [providerId])).rows[0];
+    const provRating = (await client.query(`
+      SELECT p.rating_average, p.rating_count,
+             (SELECT COUNT(*) FROM public.reviews r WHERE r.provider_id = p.id) AS review_count
+      FROM public.providers p WHERE p.id = $1;
+    `, [providerId])).rows[0];
     console.log(`Updated Provider Rating stats: Avg=${provRating.rating_average}, Count=${provRating.rating_count}`);
+    if (Number(provRating.review_count) !== Number(ratingBefore.review_count) + 1 ||
+        Number(provRating.rating_count) < Number(provRating.review_count) ||
+        provRating.rating_average === null) {
+      throw new Error('Provider rating metrics did not reflect the new review.');
+    }
 
     // -------------------------------------------------------------
     // Requirement 15: CANCELLATION SCENARIOS
@@ -523,7 +580,7 @@ async function runE2EValidation() {
         scheduled_start_at, scheduled_end_at, status, meeting_point,
         price_in_cents, platform_fee_in_cents, total_in_cents, snapshot_data
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, NOW() + INTERVAL '24 hours', NOW() + INTERVAL '25 hours', 'CONFIRMED', '{"type": "PROVIDER_ADDRESS"}'::jsonb,
+        $1, $2, $3, $4, $5, $6, NOW() + INTERVAL '25 hours', NOW() + INTERVAL '26 hours', 'CONFIRMED', '{"type": "PROVIDER_ADDRESS"}'::jsonb,
         12000, 1000, 13000, '{}'::jsonb
       );
     `, [cancelBookingId, studentId, providerId, instructorId, vehicleId, offeringId]);
@@ -538,7 +595,7 @@ async function runE2EValidation() {
       SELECT public.cancel_booking_v2($1, 'Desisti da aula') AS result;
     `, [cancelBookingId]);
     console.log('Cancellation result:', cancelRes.rows[0].result);
-    if (!cancelRes.rows[0].result.success) {
+    if (!cancelRes.rows[0].result.success || cancelRes.rows[0].result.refund_percentage !== 100 || cancelRes.rows[0].result.refund_amount_in_cents !== 13000) {
       throw new Error('cancel_booking_v2 failed!');
     }
 
@@ -560,21 +617,29 @@ async function runE2EValidation() {
     // -------------------------------------------------------------
     console.log('\n--- 16 & 17. ANALYTICS ISOLATION & SECURITY SMOKE ---');
 
-    // Confirm Carlos context
-      // Set JWT for Carlos and switch to service_role
-      await client.query(`
-        SELECT set_config('role','service_role',true),
-               set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111102","role":"authenticated"}', true);
-      `);
-      console.log('Auth UID after set_config:', await client.query("SELECT auth.uid();"));
-      console.log('Is active check:', await client.query("SELECT public.is_current_user_active();"));
-    const carlosSum = (await client.query(`
+    const analyticsFor = async (label, userId, expectedContexts) => {
+      await setAuthenticatedUser(userId);
+      const authUid = (await client.query('SELECT auth.uid() AS uid;')).rows[0].uid;
+      const active = (await client.query('SELECT public.is_current_user_active() AS active;')).rows[0].active;
+      console.log(`${label} auth.uid: ${authUid}; active: ${active}`);
+      if (authUid !== userId || active !== true) throw new Error(`${label} auth context validation failed.`);
+      const summary = (await client.query(`
       SELECT public.get_provider_analytics_summary(
         '2026-08-01T00:00:00-03:00'::TIMESTAMPTZ,
         '2026-08-31T23:59:59-03:00'::TIMESTAMPTZ
       ) AS summary;
-    `)).rows[0].summary;
-    console.log('Carlos Analytics contexts:', carlosSum.provider_contexts);
+      `)).rows[0].summary;
+      if (Number(summary.provider_contexts) !== expectedContexts) throw new Error(`${label} analytics context mismatch.`);
+      return summary;
+    };
+    const carlosSum = await analyticsFor('Carlos', instructorId, 1);
+    const fernandaSum = await analyticsFor('Fernanda', fernandaId, 1);
+    const schoolSum = await analyticsFor('School Admin', schoolAdminId, 1);
+    const studentSum = await analyticsFor('Student', studentId, 0);
+    if (studentSum.financial_dev.payments_paid !== 0 || studentSum.financial_dev.paid_volume_cents !== 0 ||
+        studentSum.financial_dev.platform_fee_volume_cents !== 0 || studentSum.supply.active_vehicles !== 0 ||
+        studentSum.supply.active_offerings !== 0) throw new Error('Student analytics exposed provider metrics.');
+    console.log('Analytics PASS:', { carlos: carlosSum.provider_contexts, fernanda: fernandaSum.provider_contexts, school: schoolSum.provider_contexts, student: studentSum.provider_contexts });
 
     // Rollback the transaction to restore Supabase LIVE completely untouched!
     await client.query('ROLLBACK');
