@@ -31,6 +31,7 @@ interface ProviderBookingsTabProps {
   onCompleteLesson: (booking: Booking) => void;
   onCancelBooking: (booking: Booking) => void;
   isCompleting: boolean;
+  canCancelBooking?: (booking: Booking) => boolean;
 }
 
 export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
@@ -46,6 +47,7 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
   onCompleteLesson,
   onCancelBooking,
   isCompleting,
+  canCancelBooking,
 }) => {
   return (
     <div className="space-y-6 text-left">
@@ -237,7 +239,7 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
                       </Button>
                     )}
 
-                    {(isConfirmed || isPendingPayment) && (
+                    {(canCancelBooking ? canCancelBooking(b) : (isConfirmed || isPendingPayment) && !b.instructorCheckedIn) && (
                       <Button
                         variant="ghost"
                         size="sm"

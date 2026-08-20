@@ -64,6 +64,10 @@ interface ProviderScheduleTabProps {
   onSimOfferingIdChange: (id: string) => void;
   simDate: string;
   onSimDateChange: (date: string) => void;
+  instructorGlobalBlocks?: any[];
+  onSaveGlobalBlock?: (startAt: string, endAt: string, reason?: string, blockId?: string) => Promise<void>;
+  onDeleteGlobalBlock?: (blockId: string) => Promise<void>;
+  isInstructorUser?: boolean;
 }
 
 const DAY_OPTIONS: { value: DayOfWeek; label: string }[] = [
@@ -103,6 +107,10 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   onSimOfferingIdChange,
   simDate,
   onSimDateChange,
+  instructorGlobalBlocks,
+  onSaveGlobalBlock,
+  onDeleteGlobalBlock,
+  isInstructorUser,
 }) => {
   // Simulator calculation
   const selectedSimOffering = offerings.find((o) => o.id === simOfferingId);
@@ -233,6 +241,67 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       {/* EXCEPTIONS & BLOCKS SUBTAB */}
       {scheduleSubTab === 'exceptions' && (
         <div className="space-y-4">
+          {/* INSTRUCTOR GLOBAL PERSONAL BLOCKS SECTION */}
+          {isInstructorUser && (
+            <div className="p-5 rounded-3xl bg-amber-50/60 border border-amber-200/80 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-extrabold text-amber-950 flex items-center gap-2">
+                    <Ban className="w-4 h-4 text-amber-600" />
+                    Bloqueios Pessoais Globais
+                  </h3>
+                  <p className="text-xs text-amber-900/80 mt-0.5">
+                    Indisponividades pessoais valem para aulas particulares e para todas as autoescolas em que você estiver escalado.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onOpenAddExceptionModal}
+                  leftIcon={<Plus className="w-3.5 h-3.5" />}
+                >
+                  Novo Bloqueio Pessoal
+                </Button>
+              </div>
+
+              {instructorGlobalBlocks && instructorGlobalBlocks.length > 0 ? (
+                <div className="space-y-2 pt-2">
+                  {instructorGlobalBlocks.map((gb) => (
+                    <div
+                      key={gb.id}
+                      className="p-3.5 rounded-2xl bg-white border border-amber-200 shadow-xs flex items-center justify-between gap-3"
+                    >
+                      <div>
+                        <p className="text-xs font-black text-slate-900">
+                          {new Date(gb.start_at).toLocaleDateString('pt-BR')} {new Date(gb.start_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} até {new Date(gb.end_at).toLocaleDateString('pt-BR')} {new Date(gb.end_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        {gb.reason && (
+                          <p className="text-xs text-slate-600 font-medium mt-0.5">
+                            Motivo: {gb.reason}
+                          </p>
+                        )}
+                      </div>
+                      {onDeleteGlobalBlock && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-rose-600 hover:bg-rose-50"
+                          onClick={() => onDeleteGlobalBlock(gb.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs font-extrabold text-amber-900/70 italic pt-1">
+                  Nenhum bloqueio pessoal global cadastrado.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-700 flex items-start gap-2.5">
             <Ban className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
             <p>

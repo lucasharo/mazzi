@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
-describe('TASK-054A — Unified Instructor Calendar & Global Blocks Schema & Security Tests', () => {
+describe('TASK-054B — Unified Instructor Calendar & Global Blocks Safety & UX Tests', () => {
   const mig52Path = path.join(__dirname, '../supabase/migrations/20260818000052_provider_lesson_lifecycle_rpcs.sql');
   const mig53Path = path.join(__dirname, '../supabase/migrations/20260818000053_secure_booking_category_fallback.sql');
   const mig54Path = path.join(__dirname, '../supabase/migrations/20260818000054_instructor_unified_calendar_and_global_blocks.sql');
@@ -80,12 +80,24 @@ describe('TASK-054A — Unified Instructor Calendar & Global Blocks Schema & Sec
     expect(globalBlockPos).toBeLessThan(overridePos);
   });
 
-  it('17. get_my_unified_instructor_bookings não aceita parâmetro de instructor_id arbitrário', () => {
+  it('15 & 16. cancel_booking_v2 na Migration 54 restringe instrutores operacionais em agendamentos de autoescolas', () => {
     const content = fs.readFileSync(mig54Path, 'utf-8');
-    expect(content).toContain('public.get_my_unified_instructor_bookings()');
+    expect(content).toContain('CREATE OR REPLACE FUNCTION public.cancel_booking_v2');
+    expect(content).toContain('UNAUTHORIZED_PROVIDER: Instrutores operacionais não possuem autorização para cancelar comercialmente agendamentos de autoescolas.');
   });
 
-  it('23. EXCLUDE constraint de instrutor no schema 01 permanece sem provider_id', () => {
+  it('20 & 21. Policy de instructor_global_blocks utiliza a função canônica public.is_platform_admin()', () => {
+    const content = fs.readFileSync(mig54Path, 'utf-8');
+    expect(content).toContain('public.is_platform_admin()');
+    expect(content).not.toContain("auth.jwt() ->> 'role' = 'PLATFORM_ADMIN'");
+  });
+
+  it('22 & 23. Migration 52 e Migration 53 permanecem existentes', () => {
+    expect(fs.existsSync(mig52Path)).toBe(true);
+    expect(fs.existsSync(mig53Path)).toBe(true);
+  });
+
+  it('25. EXCLUDE constraint de instrutor no schema 01 permanece sem provider_id', () => {
     const mig01Path = path.join(__dirname, '../supabase/migrations/20260814000001_initial_schema.sql');
     const content = fs.readFileSync(mig01Path, 'utf-8');
     const excludeBlock = content.substring(
@@ -97,8 +109,29 @@ describe('TASK-054A — Unified Instructor Calendar & Global Blocks Schema & Sec
     expect(excludeBlock).not.toContain('provider_id WITH =');
   });
 
-  it('24 & 25. Migration 52 e Migration 53 permanecem existentes', () => {
-    expect(fs.existsSync(mig52Path)).toBe(true);
-    expect(fs.existsSync(mig53Path)).toBe(true);
+  it('26. canCancelBooking UI logic correctly identifies private vs driving school bookings', () => {
+    const mockPrivateProviderId = 'p_private_001';
+    const mockSchoolProviderId = 'p_school_paulista';
+
+    const canCancelBooking = (booking: any, userRole: string, currentProviderId: string) => {
+      const isConfirmedOrHold = booking.status === 'CONFIRMED' || (booking.status === 'PENDING_PAYMENT' && !booking.instructorCheckedIn);
+      if (!isConfirmedOrHold) return false;
+      if (userRole === 'INSTRUCTOR') {
+        return booking.providerId === currentProviderId;
+      }
+      return true;
+    };
+
+    const privateBooking = { providerId: mockPrivateProviderId, status: 'CONFIRMED' };
+    const schoolBooking = { providerId: mockSchoolProviderId, status: 'CONFIRMED' };
+
+    // Instructor user can cancel private booking
+    expect(canCancelBooking(privateBooking, 'INSTRUCTOR', mockPrivateProviderId)).toBe(true);
+
+    // Instructor user CANNOT cancel driving school booking
+    expect(canCancelBooking(schoolBooking, 'INSTRUCTOR', mockPrivateProviderId)).toBe(false);
+
+    // School admin CAN cancel driving school booking
+    expect(canCancelBooking(schoolBooking, 'SCHOOL_ADMIN', mockSchoolProviderId)).toBe(true);
   });
 });

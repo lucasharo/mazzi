@@ -766,6 +766,16 @@ export const ProviderApp: React.FC = () => {
           </div>
         )}
 
+        {/* Unified Calendar Error Banner */}
+        {unifiedCalendarError && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-extrabold text-amber-900 flex items-center justify-between">
+            <span>{unifiedCalendarError}</span>
+            <Button variant="ghost" size="sm" onClick={() => void loadWorkspace(activeProviderId)}>
+              Tentar Novamente
+            </Button>
+          </div>
+        )}
+
         {/* TAB 1: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <ProviderDashboardTab
@@ -812,6 +822,17 @@ export const ProviderApp: React.FC = () => {
             onSimOfferingIdChange={setSimOfferingId}
             simDate={simDate}
             onSimDateChange={setSimDate}
+            instructorGlobalBlocks={instructorGlobalBlocks}
+            onSaveGlobalBlock={async (startAt, endAt, reason, blockId) => {
+              await dbService.saveInstructorGlobalBlock(startAt, endAt, reason, blockId);
+              const updated = await dbService.getMyInstructorGlobalBlocks();
+              setInstructorGlobalBlocks(updated || []);
+            }}
+            onDeleteGlobalBlock={async (blockId) => {
+              await dbService.deleteInstructorGlobalBlock(blockId);
+              setInstructorGlobalBlocks((prev) => prev.filter((b) => b.id !== blockId));
+            }}
+            isInstructorUser={user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'))}
           />
         )}
 
@@ -830,6 +851,15 @@ export const ProviderApp: React.FC = () => {
             onCompleteLesson={handleCompleteLesson}
             onCancelBooking={(b) => setSelectedBookingForCancel(b)}
             isCompleting={isCompleting}
+            canCancelBooking={(b) => {
+              const isConfirmedOrHold = b.status === 'CONFIRMED' || (b.status === 'PENDING_PAYMENT' && !b.instructorCheckedIn);
+              if (!isConfirmedOrHold) return false;
+              const isInstructorUser = user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'));
+              if (isInstructorUser) {
+                return b.providerId === currentProvider.id;
+              }
+              return true;
+            }}
           />
         )}
 
