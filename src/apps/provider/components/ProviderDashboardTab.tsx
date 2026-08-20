@@ -6,10 +6,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Star,
-  CheckCircle2,
   Calendar,
   SlidersHorizontal,
-  Car,
   Plus,
 } from 'lucide-react';
 import { Provider, Booking, ComplianceDocument, Vehicle } from '../../../types';
@@ -45,7 +43,6 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   onSelectBooking,
   onNavigateTab,
   onOpenAddVehicleModal,
-  onOpenAddOfferingModal,
   calendarLoadError,
 }) => {
   return (
@@ -57,14 +54,16 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
       </div>
 
       {calendarLoadError ? (
-        <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 text-left space-y-2">
-          <h3 className="text-sm font-extrabold text-amber-950 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-            Agenda unificada indisponível
-          </h3>
-          <p className="text-xs text-amber-900/80">
-            Não foi possível conectar ao servidor de agenda unificada. Os indicadores operacionais e o próximo compromisso estão temporariamente ocultos para evitar a exibição de dados incorretos.
-          </p>
+        <div className="space-y-4">
+          <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 text-left space-y-2">
+            <h3 className="text-sm font-extrabold text-amber-950 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              Agenda unificada indisponível
+            </h3>
+            <p className="text-xs text-amber-900/80">
+              Não foi possível conectar ao servidor de agenda unificada. Os indicadores operacionais e o próximo compromisso estão temporariamente ocultos para evitar a exibição de dados incorretos.
+            </p>
+          </div>
         </div>
       ) : (
         /* Hero Banner (MAZZI Hero split gradient) */
@@ -165,97 +164,113 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         <StatusBadge status={currentProvider.status} />
       </div>
 
-      {/* Operational Metrics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-            Aulas Hoje
-          </span>
-          <p className="text-2xl font-black text-slate-900 mt-1">{todayBookings.length}</p>
-        </div>
+      {!calendarLoadError && (
+        <>
+          {/* Operational Metrics Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                Aulas Hoje
+              </span>
+              <p className="text-2xl font-black text-slate-900 mt-1">{todayBookings.length}</p>
+            </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-            Confirmadas
-          </span>
-          <p className="text-2xl font-black text-emerald-600 mt-1">{confirmedBookings.length}</p>
-        </div>
+            <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                Confirmadas
+              </span>
+              <p className="text-2xl font-black text-emerald-600 mt-1">{confirmedBookings.length}</p>
+            </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-            Concluídas
-          </span>
-          <p className="text-2xl font-black text-slate-900 mt-1">{completedBookings.length}</p>
-        </div>
+            <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                Concluídas
+              </span>
+              <p className="text-2xl font-black text-slate-900 mt-1">{completedBookings.length}</p>
+            </div>
 
-        <div className="p-4 rounded-2xl bg-[#202126] text-white shadow-xs">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#f6c945] block">
-            Avaliação
+            <div className="p-4 rounded-2xl bg-[#202126] text-white shadow-xs">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#f6c945] block">
+                Avaliação
+              </span>
+              <p className="text-xl font-black text-white mt-1 flex items-center gap-1">
+                <Star className="w-4 h-4 fill-[#f6c945] text-[#f6c945]" />
+                {currentProvider.ratingAverage?.toFixed(1) || '5.0'}
+              </p>
+            </div>
+          </div>
+
+          {/* NEXT LESSON OPERATIONAL WIDGET */}
+          <div className="p-5 rounded-3xl bg-[#202126] text-[#ffffff] space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-[#f6c945]" />
+                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
+                  Próxima Aula Agendada
+                </h3>
+              </div>
+              <Badge variant="warning">Próxima Aula</Badge>
+            </div>
+
+            {nextBooking ? (
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-base font-black text-white">{nextBooking.studentName}</p>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#f6c945]/20 text-[#f6c945] border border-[#f6c945]/40">
+                        Cat. {nextBooking.category}
+                      </span>
+                      {(nextBooking.snapshot?.providerName || nextBooking.providerName) && (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                          {nextBooking.snapshot?.providerName || nextBooking.providerName}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#f6c945] font-extrabold">
+                      {nextBooking.scheduledDate} • {nextBooking.startTime} - {nextBooking.endTime}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Veículo: <span className="text-white font-semibold">{nextBooking.snapshot.vehicleName}</span>
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Encontro: <span className="text-white font-semibold">{formatMeetingPoint(nextBooking.meetingPoint)}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:items-end gap-2 shrink-0">
+                    <StatusBadge status={nextBooking.status} />
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => onSelectBooking(nextBooking)}
+                      rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                    >
+                      Abrir Detalhes & Check-in
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 text-center text-slate-400 text-xs font-semibold">
+                Nenhuma aula confirmada agendada para os próximos horários.
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {calendarLoadError && (
+        <div className="p-4 rounded-2xl bg-[#202126] text-white shadow-xs inline-flex items-center gap-3">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#f6c945]">
+            Avaliação do Perfil:
           </span>
-          <p className="text-xl font-black text-white mt-1 flex items-center gap-1">
+          <p className="text-lg font-black text-white flex items-center gap-1">
             <Star className="w-4 h-4 fill-[#f6c945] text-[#f6c945]" />
             {currentProvider.ratingAverage?.toFixed(1) || '5.0'}
           </p>
         </div>
-      </div>
-
-      {/* NEXT LESSON OPERATIONAL WIDGET */}
-      <div className="p-5 rounded-3xl bg-[#202126] text-[#ffffff] space-y-4 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#f6c945]" />
-            <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
-              Próxima Aula Agendada
-            </h3>
-          </div>
-          <Badge variant="warning">Próxima Aula</Badge>
-        </div>
-
-        {nextBooking ? (
-          <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-base font-black text-white">{nextBooking.studentName}</p>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#f6c945]/20 text-[#f6c945] border border-[#f6c945]/40">
-                    Cat. {nextBooking.category}
-                  </span>
-                  {(nextBooking.snapshot?.providerName || nextBooking.providerName) && (
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                      {nextBooking.snapshot?.providerName || nextBooking.providerName}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-[#f6c945] font-extrabold">
-                  {nextBooking.scheduledDate} • {nextBooking.startTime} - {nextBooking.endTime}
-                </p>
-                <p className="text-xs text-slate-400">
-                  Veículo: <span className="text-white font-semibold">{nextBooking.snapshot.vehicleName}</span>
-                </p>
-                <p className="text-xs text-slate-400">
-                  Encontro: <span className="text-white font-semibold">{formatMeetingPoint(nextBooking.meetingPoint)}</span>
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:items-end gap-2 shrink-0">
-                <StatusBadge status={nextBooking.status} />
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => onSelectBooking(nextBooking)}
-                  rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                >
-                  Abrir Detalhes & Check-in
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="p-6 text-center text-slate-400 text-xs font-semibold">
-            Nenhuma aula confirmada agendada para os próximos horários.
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Quick Action Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

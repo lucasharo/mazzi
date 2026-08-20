@@ -126,6 +126,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     reason: '',
   });
   const [globalBlockError, setGlobalBlockError] = React.useState<string | null>(null);
+  const [globalBlockActionError, setGlobalBlockActionError] = React.useState<string | null>(null);
   const [isSavingGlobalBlock, setIsSavingGlobalBlock] = React.useState(false);
   const [deletingGlobalBlockId, setDeletingGlobalBlockId] = React.useState<string | null>(null);
 
@@ -195,10 +196,10 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     if (!onDeleteGlobalBlock) return;
     try {
       setDeletingGlobalBlockId(blockId);
-      setGlobalBlockError(null);
+      setGlobalBlockActionError(null);
       await onDeleteGlobalBlock(blockId);
     } catch (err: any) {
-      setGlobalBlockError(mapFriendlyErrorMessage(err, 'Erro ao excluir bloqueio pessoal global.'));
+      setGlobalBlockActionError(mapFriendlyErrorMessage(err, 'Não foi possível excluir o bloqueio pessoal. Tente novamente.'));
     } finally {
       setDeletingGlobalBlockId(null);
     }
@@ -355,6 +356,19 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                   Novo Bloqueio Pessoal
                 </Button>
               </div>
+
+              {globalBlockActionError && (
+                <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-extrabold text-rose-950 flex items-center justify-between gap-3">
+                  <span>{globalBlockActionError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setGlobalBlockActionError(null)}
+                    className="text-rose-600 hover:text-rose-900 font-bold cursor-pointer"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
 
               {instructorGlobalBlocks && instructorGlobalBlocks.length > 0 ? (
                 <div className="space-y-2 pt-2">

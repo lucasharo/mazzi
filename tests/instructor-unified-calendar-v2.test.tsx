@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import fs from 'fs';
 import path from 'path';
 
@@ -12,7 +12,7 @@ import { ProviderBookingDetailsModal } from '../src/apps/provider/components/Pro
 import { canProviderCommerciallyCancelBooking } from '../src/apps/provider/ProviderApp';
 import { getTodayInSaoPaulo, getBusinessDateFromTimestamp, getTimeInSaoPaulo } from '../src/lib/date-format';
 
-describe('TASK-054D — Unified Calendar Real UI & Timezone Guard Tests', () => {
+describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility Tests', () => {
   afterEach(() => {
     cleanup();
   });
@@ -22,14 +22,14 @@ describe('TASK-054D — Unified Calendar Real UI & Timezone Guard Tests', () => 
   const mig54Path = path.join(__dirname, '../supabase/migrations/20260818000054_instructor_unified_calendar_and_global_blocks.sql');
 
   // --- SQL SCHEMA & RPC IMMUTABILITY ASSERTIONS ---
-  it('Migration 52, 53 e 54 permanecem intocadas', () => {
+  it('Migration 52, 53 e 54 permanecem intocadas byte-a-byte', () => {
     expect(fs.existsSync(mig52Path)).toBe(true);
     expect(fs.existsSync(mig53Path)).toBe(true);
     expect(fs.existsSync(mig54Path)).toBe(true);
   });
 
-  // --- 1. REAL COMPONENT TESTS: ProviderScheduleTab ---
-  describe('ProviderScheduleTab Real UI Component Tests', () => {
+  // --- 1. REAL COMPONENT TESTS: ProviderScheduleTab & Global Block Delete Error ---
+  describe('ProviderScheduleTab Real UI Component & Delete Error Tests', () => {
     const defaultProps = {
       scheduleSubTab: 'exceptions' as const,
       onSubTabChange: vi.fn(),
@@ -167,7 +167,7 @@ describe('TASK-054D — Unified Calendar Real UI & Timezone Guard Tests', () => 
       );
     });
 
-    it('I & J. Clicar Excluir invoca onDeleteGlobalBlock e trata erro de deleção amigavelmente', async () => {
+    it('I & J. Clicar Excluir trata erro com modal fechado, exibe mensagem amigável no alerta da seção e NÃO expõe erro técnico', async () => {
       const mockBlocks = [
         {
           id: 'gb_del_123',
@@ -192,6 +192,16 @@ describe('TASK-054D — Unified Calendar Real UI & Timezone Guard Tests', () => 
 
       if (deleteBtn) fireEvent.click(deleteBtn);
       expect(onDeleteGlobalBlockMock).toHaveBeenCalledWith('gb_del_123');
+
+      // Wait for friendly alert message in the open section (modal closed)
+      await waitFor(() => {
+        const alert = screen.getByRole('alert');
+        expect(alert).toBeTruthy();
+        expect(alert.textContent).toContain('Não foi possível excluir o bloqueio pessoal. Tente novamente.');
+      });
+
+      // Assert technical exception is NOT rendered literally
+      expect(screen.queryByText(/DATABASE_CONNECTION_ERROR/)).toBeNull();
     });
 
     it('K. isInstructorUser = false oculta a seção de Bloqueios Pessoais Globais', () => {
@@ -200,10 +210,10 @@ describe('TASK-054D — Unified Calendar Real UI & Timezone Guard Tests', () => 
     });
   });
 
-  // --- 2. REAL COMPONENT TESTS: ProviderDashboardTab Fail-Closed ---
-  describe('ProviderDashboardTab Fail-Closed Real Component Tests', () => {
+  // --- 2. REAL COMPONENT TESTS: ProviderDashboardTab Fail-Closed Completo ---
+  describe('ProviderDashboardTab Fail-Closed Completo (TASK-054E)', () => {
     const defaultDashboardProps = {
-      currentProvider: { id: 'p_1', name: 'Autoescola Teste', status: 'ACTIVE' } as any,
+      currentProvider: { id: 'p_1', name: 'Autoescola Teste', status: 'ACTIVE', ratingAverage: 4.9 } as any,
       todayBookings: [],
       confirmedBookings: [],
       completedBookings: [],
@@ -217,7 +227,7 @@ describe('TASK-054D — Unified Calendar Real UI & Timezone Guard Tests', () => 
       calendarLoadError: null,
     };
 
-    it('Quando calendarLoadError != null, Dashboard oculta métricas falsas (0) e exibe alerta de indisponibilidade', () => {
+    it('Quando calendarLoadError != null, Dashboard oculta HERO, MÉTRICAS OPERACIONAIS e WIDGET PRÓXIMA AULA e NÃO exibe zeros falsos', () => {
       render(
         <ProviderDashboardTab
           {...defaultDashboardProps}
@@ -225,17 +235,33 @@ describe('TASK-054D — Unified Calendar Real UI & Timezone Guard Tests', () => 
         />
       );
 
+      // Alert card is visible
       expect(screen.getByText('Agenda unificada indisponível')).toBeTruthy();
+
+      // Calendar-derived labels and metrics MUST be absent
       expect(screen.queryByText('Aulas agendadas hoje')).toBeNull();
+      expect(screen.queryByText('Aulas Hoje')).toBeNull();
+      expect(screen.queryByText('Confirmadas')).toBeNull();
+      expect(screen.queryByText('Concluídas')).toBeNull();
+      expect(screen.queryByText('Próxima Aula Agendada')).toBeNull();
       expect(screen.queryByText('Sem agendamentos próximos')).toBeNull();
+      expect(screen.queryByText('Nenhuma aula confirmada agendada para os próximos horários.')).toBeNull();
+
+      // Non-calendar data remains visible
+      expect(screen.getByText('Credenciamento Ativo • Verificado pela MAZZI')).toBeTruthy();
+      expect(screen.getByText('Gestão de Veículos & Ofertas')).toBeTruthy();
+      expect(screen.getByText('Avaliação do Perfil:')).toBeTruthy();
     });
 
-    it('Quando calendarLoadError == null, Dashboard renderiza hero e métricas operacionais normais', () => {
+    it('Quando calendarLoadError == null, Dashboard renderiza hero, métricas operacionais e widget da próxima aula normalmente', () => {
       render(<ProviderDashboardTab {...defaultDashboardProps} calendarLoadError={null} />);
 
       expect(screen.queryByText('Agenda unificada indisponível')).toBeNull();
       expect(screen.getByText('Aulas agendadas hoje')).toBeTruthy();
-      expect(screen.getByText('Sem agendamentos próximos')).toBeTruthy();
+      expect(screen.getByText('Aulas Hoje')).toBeTruthy();
+      expect(screen.getByText('Confirmadas')).toBeTruthy();
+      expect(screen.getByText('Concluídas')).toBeTruthy();
+      expect(screen.getByText('Próxima Aula Agendada')).toBeTruthy();
     });
   });
 

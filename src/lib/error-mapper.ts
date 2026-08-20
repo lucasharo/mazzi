@@ -77,12 +77,40 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'O raio de atendimento deve ser um valor entre 1 e 100 km.';
   }
 
-  if (msg.includes('BOOKING_HOLD_EXPIRED')) {
-    return 'Tempo para pagamento expirado. O agendamento foi cancelado.';
+  // 5. Global Block Specific Errors (TASK-054E)
+  if (msg.includes('GLOBAL_BLOCK_NOT_FOUND_OR_UNAUTHORIZED')) {
+    return 'Bloqueio pessoal não localizado ou sem permissão.';
+  }
+  if (msg.includes('UNAUTHORIZED_ROLE')) {
+    return 'Você não possui permissão de instrutor para realizar esta ação.';
+  }
+  if (msg.includes('USER_INACTIVE')) {
+    return 'Seu usuário está inativo no sistema.';
+  }
+  if (msg.includes('AUTHENTICATION_REQUIRED')) {
+    return 'Sua sessão expirou. Entre novamente para continuar.';
+  }
+  if (msg.includes('INVALID_TIME_RANGE')) {
+    return 'A data e hora final devem ser posteriores à data e hora inicial.';
   }
 
-  // If already clean Portuguese message without technical dump, return it
-  if (msg && !msg.includes('PGRST') && !msg.includes('postgres') && !msg.includes('duplicate key') && !msg.includes('violates') && !msg.includes('Constraint') && !msg.includes('ERRCODE') && !msg.includes('RAISE EXCEPTION')) {
+  // 6. Technical Error Check & Fallback Guard
+  const isTechnicalMsg =
+    /^[A-Z0-9_]+$/.test(msg.trim()) ||
+    msg.includes('PGRST') ||
+    msg.includes('postgres') ||
+    msg.includes('duplicate key') ||
+    msg.includes('violates') ||
+    msg.includes('Constraint') ||
+    msg.includes('ERRCODE') ||
+    msg.includes('RAISE EXCEPTION') ||
+    msg.includes('DATABASE') ||
+    msg.includes('CONNECTION') ||
+    msg.includes('TIMEOUT') ||
+    msg.includes('NETWORK') ||
+    msg.includes('FETCH_ERROR');
+
+  if (!isTechnicalMsg && msg && !msg.includes('{') && !msg.includes('}')) {
     return msg;
   }
 
