@@ -433,6 +433,44 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql52).toContain('IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST');
   });
 
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 53 secure booking category fallback signatures and RLS safety', () => {
+    const migration53Path = path.join(process.cwd(), 'supabase/migrations/20260818000053_secure_booking_category_fallback.sql');
+    expect(fs.existsSync(migration53Path)).toBe(true);
+    const sql53 = fs.readFileSync(migration53Path, 'utf8');
+
+    expect(sql53).toContain('get_my_booking_categories');
+    expect(sql53).toContain('p_booking_ids UUID[]');
+    expect(sql53).toContain('SECURITY DEFINER');
+    expect(sql53).toContain('SET search_path = public, pg_temp');
+    expect(sql53).toContain('is_booking_participant');
+  });
+
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 54 instructor unified calendar, global blocks and cancellation guards', () => {
+    const migration54Path = path.join(process.cwd(), 'supabase/migrations/20260818000054_instructor_unified_calendar_and_global_blocks.sql');
+    expect(fs.existsSync(migration54Path)).toBe(true);
+    const sql54 = fs.readFileSync(migration54Path, 'utf8');
+
+    expect(sql54).toContain('CREATE TABLE IF NOT EXISTS public.instructor_global_blocks');
+    expect(sql54).toContain('get_my_unified_instructor_bookings');
+    expect(sql54).toContain('get_my_instructor_global_blocks');
+    expect(sql54).toContain('save_instructor_global_block');
+    expect(sql54).toContain('delete_instructor_global_block');
+    expect(sql54).toContain('cancel_booking_v2');
+    expect(sql54).toContain('v_provider_type');
+    expect(sql54).toContain('UNAUTHORIZED_PROVIDER');
+  });
+
+  it('[STATIC SCHEMA CONTRACT] verifies Migration 55 regression fix for SQLSTATE 42702 ambiguity in get_my_instructor_global_blocks', () => {
+    const migration55Path = path.join(process.cwd(), 'supabase/migrations/20260820000055_fix_global_blocks_list_rpc_ambiguity.sql');
+    expect(fs.existsSync(migration55Path)).toBe(true);
+    const sql55 = fs.readFileSync(migration55Path, 'utf8');
+
+    expect(sql55).toContain('get_my_instructor_global_blocks');
+    expect(sql55).toContain('FROM public.users AS u');
+    expect(sql55).toContain('WHERE u.id = v_uid');
+    expect(sql55).not.toMatch(/FROM\s+public\.users\s+WHERE\s+id\s*=\s*v_uid/i);
+  });
+
   it('[SCHEMA TEST] verifies that development seed contains realistic non-production mock records', () => {
     expect(fs.existsSync(seedPath)).toBe(true);
     const seedSql = fs.readFileSync(seedPath, 'utf8');

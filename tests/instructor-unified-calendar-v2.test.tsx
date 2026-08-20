@@ -20,12 +20,19 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
   const mig52Path = path.join(__dirname, '../supabase/migrations/20260818000052_provider_lesson_lifecycle_rpcs.sql');
   const mig53Path = path.join(__dirname, '../supabase/migrations/20260818000053_secure_booking_category_fallback.sql');
   const mig54Path = path.join(__dirname, '../supabase/migrations/20260818000054_instructor_unified_calendar_and_global_blocks.sql');
+  const mig55Path = path.join(__dirname, '../supabase/migrations/20260820000055_fix_global_blocks_list_rpc_ambiguity.sql');
 
   // --- SQL SCHEMA & RPC IMMUTABILITY ASSERTIONS ---
-  it('Migration 52, 53 e 54 permanecem intocadas byte-a-byte', () => {
+  it('Migration 52, 53, 54 e 55 permanecem intocadas e com integridade de qualificação DDL', () => {
     expect(fs.existsSync(mig52Path)).toBe(true);
     expect(fs.existsSync(mig53Path)).toBe(true);
     expect(fs.existsSync(mig54Path)).toBe(true);
+    expect(fs.existsSync(mig55Path)).toBe(true);
+
+    const sql55 = fs.readFileSync(mig55Path, 'utf8');
+    expect(sql55).toContain('FROM public.users AS u');
+    expect(sql55).toContain('WHERE u.id = v_uid');
+    expect(sql55).not.toMatch(/FROM\s+public\.users\s+WHERE\s+id\s*=\s*v_uid/i);
   });
 
   // --- 1. REAL COMPONENT TESTS: ProviderScheduleTab & Global Block Delete Error ---
