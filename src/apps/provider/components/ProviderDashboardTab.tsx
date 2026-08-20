@@ -56,50 +56,56 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         <h2 className="mazzi-title">Sua rotina operacional</h2>
       </div>
 
-      {calendarLoadError && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-extrabold text-amber-950 flex items-center justify-between gap-3">
-          <span>Agenda unificada indisponível no momento: os indicadores da agenda estão ocultos.</span>
+      {calendarLoadError ? (
+        <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 text-left space-y-2">
+          <h3 className="text-sm font-extrabold text-amber-950 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            Agenda unificada indisponível
+          </h3>
+          <p className="text-xs text-amber-900/80">
+            Não foi possível conectar ao servidor de agenda unificada. Os indicadores operacionais e o próximo compromisso estão temporariamente ocultos para evitar a exibição de dados incorretos.
+          </p>
         </div>
+      ) : (
+        /* Hero Banner (MAZZI Hero split gradient) */
+        <section className="mazzi-hero">
+          <div className="p-5 flex flex-col justify-between">
+            <div>
+              <p className="text-[38px] font-black leading-none text-[#202126]">
+                {todayBookings.length}
+              </p>
+              <p className="mt-1.5 text-xs font-extrabold uppercase tracking-wider text-[#202126]/80">
+                {todayBookings.length === 1 ? 'Aula agendada hoje' : 'Aulas agendadas hoje'}
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-[#202126]/10 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-[#202126]/70">Confirmadas: {confirmedBookings.length}</span>
+              <span className="text-[11px] font-bold text-[#202126]/70">Concluídas: {completedBookings.length}</span>
+            </div>
+          </div>
+
+          <div className="p-5 flex flex-col justify-between">
+            <div>
+              <p className="text-[28px] font-black leading-none text-white">
+                {nextBooking?.startTime || '—'}
+              </p>
+              <p className="mt-1.5 text-xs font-bold text-white/70">
+                {nextBooking ? 'Próximo compromisso' : 'Sem agendamentos próximos'}
+              </p>
+            </div>
+            {nextBooking && (
+              <button
+                type="button"
+                onClick={() => onSelectBooking(nextBooking)}
+                className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#f6c945] hover:underline"
+              >
+                <span>Ver detalhes</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </section>
       )}
-
-      {/* Hero Banner (MAZZI Hero split gradient) */}
-      <section className="mazzi-hero">
-        <div className="p-5 flex flex-col justify-between">
-          <div>
-            <p className="text-[38px] font-black leading-none text-[#202126]">
-              {todayBookings.length}
-            </p>
-            <p className="mt-1.5 text-xs font-extrabold uppercase tracking-wider text-[#202126]/80">
-              {todayBookings.length === 1 ? 'Aula agendada hoje' : 'Aulas agendadas hoje'}
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-[#202126]/10 flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#202126]/70">Confirmadas: {confirmedBookings.length}</span>
-            <span className="text-[11px] font-bold text-[#202126]/70">Concluídas: {completedBookings.length}</span>
-          </div>
-        </div>
-
-        <div className="p-5 flex flex-col justify-between">
-          <div>
-            <p className="text-[28px] font-black leading-none text-white">
-              {nextBooking?.startTime || '—'}
-            </p>
-            <p className="mt-1.5 text-xs font-bold text-white/70">
-              {nextBooking ? 'Próximo compromisso' : 'Sem agendamentos próximos'}
-            </p>
-          </div>
-          {nextBooking && (
-            <button
-              type="button"
-              onClick={() => onSelectBooking(nextBooking)}
-              className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#f6c945] hover:underline"
-            >
-              <span>Ver detalhes</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </section>
 
       {/* Compliance / Status Banner */}
       <div

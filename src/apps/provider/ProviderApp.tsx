@@ -64,6 +64,32 @@ import { ProviderCancellationModal } from './components/ProviderCancellationModa
 import { ProviderBookingDetailsModal } from './components/ProviderBookingDetailsModal';
 import { AlertCircle, Upload, ArrowRight, Info, RefreshCw, LogOut } from 'lucide-react';
 
+export function canProviderCommerciallyCancelBooking(
+  booking: { status: string; providerId: string },
+  userRole: string | undefined,
+  currentProvider: { id: string; type?: string }
+): boolean {
+  if (booking.status !== 'CONFIRMED') return false;
+
+  if (userRole === 'INSTRUCTOR') {
+    return booking.providerId === currentProvider.id && currentProvider.type === 'INSTRUCTOR';
+  }
+
+  if (userRole === 'SCHOOL_ADMIN' || userRole === 'DRIVING_SCHOOL') {
+    return booking.providerId === currentProvider.id;
+  }
+
+  if (userRole === 'PLATFORM_ADMIN') {
+    return true;
+  }
+
+  if (userRole === 'SCHOOL_STAFF' || userRole === 'SUPPORT' || userRole === 'STUDENT') {
+    return false;
+  }
+
+  return false;
+}
+
 export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
@@ -853,14 +879,7 @@ export const ProviderApp: React.FC = () => {
             onCompleteLesson={handleCompleteLesson}
             onCancelBooking={(b) => setSelectedBookingForCancel(b)}
             isCompleting={isCompleting}
-            canCancelBooking={(b) => {
-              if (b.status !== 'CONFIRMED') return false;
-              const isInstructorUser = user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'));
-              if (isInstructorUser) {
-                return b.providerId === currentProvider.id;
-              }
-              return true;
-            }}
+            canCancelBooking={(b) => canProviderCommerciallyCancelBooking(b, user?.role || currentRole, currentProvider)}
             calendarLoadError={unifiedCalendarError}
             onRetryCalendarLoad={() => void loadWorkspace(activeProviderId)}
           />
@@ -956,14 +975,7 @@ export const ProviderApp: React.FC = () => {
           setSelectedBookingForCancel(b);
         }}
         isCompleting={isCompleting}
-        canCancelBooking={(b) => {
-          if (b.status !== 'CONFIRMED') return false;
-          const isInstructorUser = user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'));
-          if (isInstructorUser) {
-            return b.providerId === currentProvider.id;
-          }
-          return true;
-        }}
+        canCancelBooking={(b) => canProviderCommerciallyCancelBooking(b, user?.role || currentRole, currentProvider)}
       />
 
       {/* Provider Cancellation Modal (DEC-013) */}

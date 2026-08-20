@@ -13,6 +13,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
+import { getTodayInSaoPaulo, getBusinessDateFromTimestamp, getTimeInSaoPaulo, formatDateTimeBR } from '../../../lib/date-format';
 import {
   AvailabilityRule,
   AvailabilityException,
@@ -126,14 +127,15 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   });
   const [globalBlockError, setGlobalBlockError] = React.useState<string | null>(null);
   const [isSavingGlobalBlock, setIsSavingGlobalBlock] = React.useState(false);
+  const [deletingGlobalBlockId, setDeletingGlobalBlockId] = React.useState<string | null>(null);
 
   const handleOpenCreateGlobalBlock = () => {
     setEditingGlobalBlockId(null);
-    const today = new Date().toISOString().split('T')[0];
+    const todaySp = getTodayInSaoPaulo();
     setGlobalBlockForm({
-      startDate: today,
+      startDate: todaySp,
       startTime: '08:00',
-      endDate: today,
+      endDate: todaySp,
       endTime: '18:00',
       reason: '',
     });
@@ -143,14 +145,10 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
 
   const handleOpenEditGlobalBlock = (gb: any) => {
     setEditingGlobalBlockId(gb.id);
-    const startDt = new Date(gb.start_at);
-    const endDt = new Date(gb.end_at);
-
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const startDateStr = `${startDt.getFullYear()}-${pad(startDt.getMonth() + 1)}-${pad(startDt.getDate())}`;
-    const startTimeStr = `${pad(startDt.getHours())}:${pad(startDt.getMinutes())}`;
-    const endDateStr = `${endDt.getFullYear()}-${pad(endDt.getMonth() + 1)}-${pad(endDt.getDate())}`;
-    const endTimeStr = `${pad(endDt.getHours())}:${pad(endDt.getMinutes())}`;
+    const startDateStr = getBusinessDateFromTimestamp(gb.start_at);
+    const startTimeStr = getTimeInSaoPaulo(gb.start_at);
+    const endDateStr = getBusinessDateFromTimestamp(gb.end_at);
+    const endTimeStr = getTimeInSaoPaulo(gb.end_at);
 
     setGlobalBlockForm({
       startDate: startDateStr,
@@ -190,6 +188,19 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       } finally {
         setIsSavingGlobalBlock(false);
       }
+    }
+  };
+
+  const handleDeleteGlobalBlockClick = async (blockId: string) => {
+    if (!onDeleteGlobalBlock) return;
+    try {
+      setDeletingGlobalBlockId(blockId);
+      setGlobalBlockError(null);
+      await onDeleteGlobalBlock(blockId);
+    } catch (err: any) {
+      setGlobalBlockError(mapFriendlyErrorMessage(err, 'Erro ao excluir bloqueio pessoal global.'));
+    } finally {
+      setDeletingGlobalBlockId(null);
     }
   };
 
@@ -354,7 +365,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                     >
                       <div>
                         <p className="text-xs font-black text-slate-900">
-                          {new Date(gb.start_at).toLocaleDateString('pt-BR')} {new Date(gb.start_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} até {new Date(gb.end_at).toLocaleDateString('pt-BR')} {new Date(gb.end_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {formatDateTimeBR(gb.start_at)} até {formatDateTimeBR(gb.end_at)}
                         </p>
                         {gb.reason && (
                           <p className="text-xs text-slate-600 font-medium mt-0.5">
@@ -376,7 +387,9 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                             variant="ghost"
                             size="sm"
                             className="text-rose-600 hover:bg-rose-50"
-                            onClick={() => onDeleteGlobalBlock(gb.id)}
+                            disabled={deletingGlobalBlockId === gb.id}
+                            isLoading={deletingGlobalBlockId === gb.id}
+                            onClick={() => handleDeleteGlobalBlockClick(gb.id)}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>

@@ -84,6 +84,20 @@ export function getBusinessDateFromTimestamp(timestamp: string | Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Canonical helper: Returns HH:mm in America/Sao_Paulo timezone */
+export function getTimeInSaoPaulo(timestamp: string | Date): string {
+  const date = parseDate(timestamp);
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: BRAZIL_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const hour = parts.find((p) => p.type === 'hour')?.value || '00';
+  const minute = parts.find((p) => p.type === 'minute')?.value || '00';
+  return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+}
+
 /** Canonical helper: Checks if a booking belongs to today in America/Sao_Paulo timezone */
 export function isBookingTodayInSaoPaulo(
   booking: { scheduledDate?: string | null; scheduledStartAt?: string | null },
