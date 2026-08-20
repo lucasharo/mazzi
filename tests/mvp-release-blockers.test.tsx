@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 
 vi.mock('../src/components/auth/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'st_123', email: 'student@mazzi.com.br' }, isAuthenticated: true })
+  useAuth: () => ({ user: { id: 'st_123', email: 'student@mazzi.com.br', name: 'Aluno Teste', fullName: 'Aluno Teste' }, isAuthenticated: true })
 }));
 
 import { canUseMockValidationPayment, isMockValidationPaymentAllowed } from '../src/lib/runtime-env';
@@ -14,11 +14,12 @@ import { PaymentGatewayFactory } from '../src/domain/payments/gateway-factory';
 import { BookingDetailsModal } from '../src/apps/student/components/BookingDetailsModal';
 import { ProviderAnalyticsPanel } from '../src/components/analytics/AnalyticsPanels';
 import { CheckoutModal } from '../src/apps/student/components/CheckoutModal';
+import { studentCheckInAndRehydrateBooking } from '../src/lib/student-booking-actions';
 import { mapFriendlyErrorMessage } from '../src/lib/error-mapper';
 import { dbService } from '../src/lib/db-service';
 import { Booking, Provider, Vehicle, ServiceOffering } from '../src/types';
 
-describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Release Guards', () => {
+describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Deploy', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
@@ -32,15 +33,15 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
 
   // --- 1. MIGRATION IMMUTABILITY & CONTRACT DDL ASSERTIONS ---
   describe('Migration Immutability & Structural DDL Assertions', () => {
-    it('Migrations 52, 53, 54 e 55 permanecem intocadas byte-a-byte', () => {
+    it('Migrations 52, 53, 54, 55 e 56 permanecem intocadas byte-a-byte', () => {
       expect(fs.existsSync(mig52Path)).toBe(true);
       expect(fs.existsSync(mig53Path)).toBe(true);
       expect(fs.existsSync(mig54Path)).toBe(true);
       expect(fs.existsSync(mig55Path)).toBe(true);
+      expect(fs.existsSync(mig56Path)).toBe(true);
     });
 
     it('Migration 56 preserva o contrato JSON canônico e mantém isolamento RLS seguro de analytics', () => {
-      expect(fs.existsSync(mig56Path)).toBe(true);
       const sql56 = fs.readFileSync(mig56Path, 'utf8');
 
       // Security: NO b.instructor_id = auth.uid()
@@ -124,14 +125,14 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
     });
   });
 
-  // --- 4. STUDENT CHECK-IN AUTHORITATIVE REFRESH TEST ---
-  describe('Student Check-In Authoritative Refresh Flow', () => {
-    it('Provoca a sequência: studentCheckInBooking -> getBookings reidratado (sem relógio local sintetizado)', async () => {
+  // --- 4. ORCHESTRATION HELPER & AUTHORITATIVE REFRESH TESTS ---
+  describe('Student Check-In Orchestration Helper (studentCheckInAndRehydrateBooking)', () => {
+    it('Chama studentCheckInBooking em 1º e getBookings em 2º, retornando a reserva reidratada', async () => {
       const callOrder: string[] = [];
 
-      const mockBookingAfterServerCheckIn: Booking = {
-        id: 'bk_seq_1',
-        studentId: 'st_1',
+      const mockServerBooking: Booking = {
+        id: 'bk_orch_100',
+        studentId: 'st_123',
         providerId: 'pr_1',
         providerName: 'Autoescola Paulista',
         instructorId: 'inst_1',
@@ -147,7 +148,7 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
         scheduledEndAt: '2026-08-20T11:00:00-03:00',
         status: 'CONFIRMED',
         studentCheckedIn: true,
-        checkinStudentAt: '2026-08-20T09:40:00-03:00', // Server authoritative timestamp
+        checkinStudentAt: '2026-08-20T09:40:00-03:00',
         instructorCheckedIn: false,
         meetingPoint: 'Ponto Teste',
         priceInCents: 12000,
@@ -157,24 +158,42 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
         createdAt: '2026-08-20T08:00:00-03:00',
       };
 
-      vi.spyOn(dbService, 'studentCheckInBooking').mockImplementation(async () => {
-        callOrder.push('studentCheckInBooking');
-        return { success: true, checkin_student_at: '2026-08-20T09:40:00-03:00' };
-      });
+      const mockService = {
+        studentCheckInBooking: vi.fn().mockImplementation(async () => {
+          callOrder.push('studentCheckInBooking');
+          return { success: true };
+        }),
+        getBookings: vi.fn().mockImplementation(async () => {
+          callOrder.push('getBookings');
+          return [mockServerBooking];
+        }),
+      };
 
-      vi.spyOn(dbService, 'getBookings').mockImplementation(async () => {
-        callOrder.push('getBookings');
-        return [mockBookingAfterServerCheckIn];
-      });
-
-      // Execute flow as expected in StudentApp
-      await dbService.studentCheckInBooking('bk_seq_1');
-      const rehydratedBookings = await dbService.getBookings();
-      const updated = rehydratedBookings.find((b) => b.id === 'bk_seq_1');
+      const result = await studentCheckInAndRehydrateBooking('bk_orch_100', mockService as any);
 
       expect(callOrder).toEqual(['studentCheckInBooking', 'getBookings']);
-      expect(updated?.studentCheckedIn).toBe(true);
-      expect(updated?.checkinStudentAt).toBe('2026-08-20T09:40:00-03:00');
+      expect(result.updatedBooking.id).toBe('bk_orch_100');
+      expect(result.updatedBooking.studentCheckedIn).toBe(true);
+      expect(result.updatedBooking.checkinStudentAt).toBe('2026-08-20T09:40:00-03:00');
+    });
+
+    it('Lança BOOKING_NOT_FOUND_AFTER_CHECKIN se a reserva sumir na reidratação', async () => {
+      const mockService = {
+        studentCheckInBooking: vi.fn().mockResolvedValue({ success: true }),
+        getBookings: vi.fn().mockResolvedValue([]), // Empty bookings list
+      };
+
+      await expect(
+        studentCheckInAndRehydrateBooking('bk_missing', mockService as any)
+      ).rejects.toThrow(/BOOKING_NOT_FOUND_AFTER_CHECKIN/);
+    });
+
+    it('Garante que StudentApp utiliza o helper de orquestração no código-fonte', () => {
+      const studentAppPath = path.join(__dirname, '../src/apps/student/StudentApp.tsx');
+      const content = fs.readFileSync(studentAppPath, 'utf8');
+
+      expect(content).toContain('studentCheckInAndRehydrateBooking');
+      expect(content).not.toContain('await loadMyBookings();');
     });
   });
 
@@ -218,7 +237,7 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
       );
 
       expect(screen.getByRole('button', { name: /Fazer check-in na aula/i })).toBeTruthy();
-      expect(screen.getByText('Aguardando check-in')).toBeTruthy(); // Instructor pending state
+      expect(screen.getByText('Aguardando check-in')).toBeTruthy();
     });
 
     it('B. Student checked -> botão some e checkinStudentAt renderiza', () => {
@@ -313,10 +332,10 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
     });
   });
 
-  // --- 6. CHECKOUT MODAL REAL COMPONENT TEST ---
-  describe('CheckoutModal Real Component Test', () => {
+  // --- 7. CHECKOUT MODAL REAL SUCCESS FLOW TEST ---
+  describe('CheckoutModal Real Component Success Flow Test', () => {
     const mockProvider: Provider = {
-      id: 'p_1',
+      id: '10000000-0000-4000-8000-000000000001',
       name: 'Autoescola Paulista',
       type: 'DRIVING_SCHOOL',
       status: 'ACTIVE',
@@ -331,8 +350,8 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
     };
 
     const mockVehicle: Vehicle = {
-      id: 'v_1',
-      providerId: 'p_1',
+      id: '10000000-0000-4000-8000-000000000002',
+      providerId: '10000000-0000-4000-8000-000000000001',
       vehicleType: 'CAR',
       brand: 'VW',
       model: 'Gol',
@@ -347,9 +366,9 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
     };
 
     const mockOffering: ServiceOffering = {
-      id: 'off_1',
-      providerId: 'p_1',
-      vehicleId: 'v_1',
+      id: '10000000-0000-4000-8000-000000000003',
+      providerId: '10000000-0000-4000-8000-000000000001',
+      vehicleId: '10000000-0000-4000-8000-000000000002',
       category: 'B',
       transmission: 'MANUAL',
       durationMinutes: 50,
@@ -359,7 +378,81 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
       updatedAt: new Date().toISOString(),
     };
 
-    it('Asserts "Pagamento simulado — nenhum valor será cobrado." no banner de checkout', () => {
+    it('Executa o fluxo completo do CheckoutModal REAL do QUOTE_PREVIEW até a tela SUCCESS sem requisições HTTP externas', async () => {
+      // 1. Install global fetch spy to guarantee ZERO financial HTTP calls
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const mockCreatedQuote = {
+        id: '10000000-0000-4000-8000-000000000004',
+        quote_id: '10000000-0000-4000-8000-000000000004',
+        studentId: 'st_123',
+        student_id: 'st_123',
+        providerId: mockProvider.id,
+        provider_id: mockProvider.id,
+        offeringId: mockOffering.id,
+        offering_id: mockOffering.id,
+        instructorId: '10000000-0000-4000-8000-000000000001',
+        instructor_id: '10000000-0000-4000-8000-000000000001',
+        vehicleId: mockVehicle.id,
+        vehicle_id: mockVehicle.id,
+        scheduledStartAt: '2026-08-20T10:00:00-03:00',
+        scheduled_start_at: '2026-08-20T10:00:00-03:00',
+        scheduledEndAt: '2026-08-20T10:50:00-03:00',
+        scheduled_end_at: '2026-08-20T10:50:00-03:00',
+        priceInCents: 12000,
+        price_in_cents: 12000,
+        platformFeeInCents: 1000,
+        platform_fee_in_cents: 1000,
+        totalInCents: 13000,
+        total_in_cents: 13000,
+        status: 'ACTIVE',
+        expiresAt: new Date(Date.now() + 600000).toISOString(),
+        expires_at: new Date(Date.now() + 600000).toISOString(),
+      };
+
+      const mockHoldResult = {
+        success: true,
+        booking_id: 'bk_10000000-0000-4000-8000-000000000005',
+        payment_id: 'pay_10000000-0000-4000-8000-000000000006',
+        hold_expires_at: new Date(Date.now() + 600000).toISOString(),
+      };
+
+      const mockConfirmedBooking: Booking = {
+        id: 'bk_10000000-0000-4000-8000-000000000005',
+        studentId: 'st_123',
+        providerId: mockProvider.id,
+        providerName: mockProvider.name,
+        instructorId: 'inst_1',
+        instructorName: 'Carlos Instrutor',
+        vehicleId: mockVehicle.id,
+        vehicleName: `${mockVehicle.brand} ${mockVehicle.model}`,
+        offeringId: mockOffering.id,
+        category: 'B',
+        scheduledDate: '2026-08-20',
+        startTime: '10:00',
+        endTime: '10:50',
+        scheduledStartAt: '2026-08-20T10:00:00-03:00',
+        scheduledEndAt: '2026-08-20T10:50:00-03:00',
+        status: 'CONFIRMED',
+        meetingPoint: 'Autoescola / Local',
+        priceInCents: 12000,
+        platformFeeInCents: 1000,
+        totalInCents: 13000,
+        snapshot: {} as any,
+        createdAt: new Date().toISOString(),
+      };
+
+      vi.spyOn(dbService, 'createQuoteFromOffering').mockResolvedValue(mockCreatedQuote as any);
+      vi.spyOn(dbService, 'createBookingHoldAtMeetingPoint').mockResolvedValue(mockHoldResult as any);
+      vi.spyOn(dbService, 'createBookingPayment').mockResolvedValue({
+        success: true,
+        payment_id: 'pay_10000000-0000-4000-8000-000000000006',
+        booking_id: 'bk_10000000-0000-4000-8000-000000000005',
+      } as any);
+      vi.spyOn(dbService, 'confirmBookingPayment').mockResolvedValue({ success: true } as any);
+
+      const onBookingConfirmedMock = vi.fn();
+
       render(
         <CheckoutModal
           isOpen={true}
@@ -369,11 +462,43 @@ describe('TASK-058A — Preserve Provider Analytics Contract & Complete MVP Rele
           offering={mockOffering}
           scheduledDate="2026-08-20"
           startTime="10:00"
-          endTime="11:00"
+          endTime="10:50"
+          scheduledStartAt="2026-08-20T10:00:00-03:00"
+          onBookingConfirmed={onBookingConfirmedMock}
         />
       );
 
-      expect(screen.getByText('Pagamento simulado — nenhum valor será cobrado.')).toBeTruthy();
+      // STEP 1: Quote carregada
+      await waitFor(() => {
+        expect(screen.getByText('Pagamento simulado — nenhum valor será cobrado.')).toBeTruthy();
+        expect(screen.getByRole('button', { name: /Continuar para pagamento/i })).toBeTruthy();
+      });
+
+      // STEP 2: Avançar para booking hold
+      fireEvent.click(screen.getByRole('button', { name: /Continuar para pagamento/i }));
+
+      // STEP 3: Na tela de pagamento PIX simulado
+      await waitFor(() => {
+        expect(screen.getByText('Pagamento simulado — nenhum valor será cobrado.')).toBeTruthy();
+        expect(screen.getByRole('button', { name: /Confirmar pagamento/i })).toBeTruthy();
+      });
+
+      // STEP 4: Confirmar pagamento PIX
+      fireEvent.click(screen.getByRole('button', { name: /Confirmar pagamento/i }));
+
+      // STEP 5: Tela SUCCESS
+      await waitFor(() => {
+        expect(screen.getByText('Aula Agendada com Sucesso!')).toBeTruthy();
+        expect(screen.getByText('Reserva confirmada em ambiente de validação.')).toBeTruthy();
+        expect(onBookingConfirmedMock).toHaveBeenCalled();
+      });
+
+      // Assert ZERO financial HTTP calls to Mercado Pago or payment gateway APIs
+      const financialCalls = fetchSpy.mock.calls.filter(([url]) => {
+        const urlStr = String(url);
+        return urlStr.includes('mercadopago') || urlStr.includes('api.stripe.com') || urlStr.includes('pagar.me');
+      });
+      expect(financialCalls.length).toBe(0);
     });
   });
 });

@@ -37,6 +37,7 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { SlotSelectorModal } from './components/SlotSelectorModal';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
+import { studentCheckInAndRehydrateBooking } from '../../lib/student-booking-actions';
 import { supabase } from '../../lib/supabase';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
@@ -1129,15 +1130,10 @@ function applyStrictProviderFilters(
           }
         }}
         onStudentCheckIn={async (bookingId) => {
-          await dbService.studentCheckInBooking(bookingId);
-          const rehydratedBookings = await dbService.getBookings();
-          setConfirmedBookings(rehydratedBookings);
-          const updatedBooking = rehydratedBookings.find((b) => b.id === bookingId);
-          if (updatedBooking) {
-            setSelectedBookingForDetails(updatedBooking);
-            return updatedBooking;
-          }
-          throw new Error('BOOKING_NOT_FOUND_AFTER_CHECKIN');
+          const { bookings, updatedBooking } = await studentCheckInAndRehydrateBooking(bookingId);
+          setConfirmedBookings(bookings);
+          setSelectedBookingForDetails(updatedBooking);
+          return updatedBooking;
         }}
       />
 
