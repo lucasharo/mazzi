@@ -918,6 +918,48 @@ export const dbService = {
       });
   },
 
+  async getMyUnifiedInstructorBookings(): Promise<Booking[]> {
+    const { data, error } = await sp.rpc('get_my_unified_instructor_bookings');
+    if (error) throw error;
+    const rows = data || [];
+    if (rows.length === 0) return [];
+
+    const bookingIds = rows.map((row: any) => row.id).filter(Boolean);
+    let bookingCategoryMap = new Map<string, string>();
+    if (bookingIds.length > 0) {
+      const { data: categoriesData } = await sp.rpc('get_my_booking_categories', {
+        p_booking_ids: bookingIds,
+      });
+      if (categoriesData) {
+        bookingCategoryMap = new Map((categoriesData || []).map((c: any) => [c.booking_id, c.category]));
+      }
+    }
+
+    return rows
+      .map((row: any) => mapBookingFromDb(row, bookingCategoryMap.get(row.id)))
+      .sort((a: Booking, b: Booking) => {
+        const aTime = new Date(a.scheduledStartAt || 0).getTime();
+        const bTime = new Date(b.scheduledStartAt || 0).getTime();
+        return aTime - bTime;
+      });
+  },
+
+  async saveInstructorGlobalBlock(
+    startAt: string,
+    endAt: string,
+    reason?: string,
+    exceptionId?: string
+  ): Promise<any> {
+    const { data, error } = await sp.rpc('save_instructor_global_block', {
+      p_start_at: startAt,
+      p_end_at: endAt,
+      p_reason: reason || null,
+      p_exception_id: exceptionId || null,
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async createBookingHold(quoteId: string, studentId: string): Promise<any> {
     // Validate UUID format defensively before calling PostgreSQL
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quoteId);

@@ -206,7 +206,18 @@ export const ProviderApp: React.FC = () => {
       setProviders([workspace.provider]);
       setVehicles(workspace.vehicles);
       setOfferings(workspace.offerings);
-      setBookings(workspace.bookings);
+      let loadedBookings = workspace.bookings;
+      if (user?.role === 'INSTRUCTOR' || currentRole === 'INSTRUCTOR') {
+        try {
+          const unified = await dbService.getMyUnifiedInstructorBookings();
+          if (unified && unified.length > 0) {
+            loadedBookings = unified;
+          }
+        } catch (e) {
+          console.warn('Unified instructor bookings load fallback to provider workspace:', e);
+        }
+      }
+      setBookings(loadedBookings);
       setComplianceDocs(workspace.complianceDocuments);
       setAvailabilityRules(workspace.availabilityRules.map((rule: any) => ({
         id: rule.id,
