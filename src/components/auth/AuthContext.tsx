@@ -3,7 +3,7 @@
 // File: src/components/auth/AuthContext.tsx
 // ============================================================================
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { UserRole } from '../../types';
 import { AppPermission, resolveUserPermissions } from '../../domain/rbac';
 import { AuthSessionState } from '../../lib/auth-service';
@@ -14,6 +14,8 @@ interface AuthContextType extends AuthSessionState {
   signIn: (email: string, password: string) => Promise<void>;
   signUpStudent: (params: SignUpParams) => ReturnType<typeof signUpStudentService>;
   logout: () => Promise<void>;
+  beginPasswordRecovery: () => void;
+  completePasswordRecovery: () => Promise<void>;
   hasPerm: (permission: AppPermission) => boolean;
 }
 
@@ -24,16 +26,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user: null,
     permissions: [],
     isAuthenticated: false,
+    recoveryInProgress: false,
     isLoading: true,
     error: null,
   });
 
+  const recoveryInProgressRef = useRef(false);
+
+  const beginPasswordRecovery = () => {
+    recoveryInProgressRef.current = true;
+    setAuthState(prev => ({
+      ...prev,
+      user: null,
+      permissions: [],
+      isAuthenticated: false,
+      recoveryInProgress: true,
+      isLoading: false,
+      error: null,
+    }));
+  };
+
+  const completePasswordRecovery = async () => {
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    recoveryInProgressRef.current = false;
+    setAuthState({
+      user: null,
+      permissions: [],
+      isAuthenticated: false,
+      recoveryInProgress: false,
+      isLoading: false,
+      error: null,
+    });
+  };
+
   const handleSession = async (session: any) => {
+    if (recoveryInProgressRef.current) {
+      setAuthState(prev => ({
+        ...prev,
+        user: null,
+        permissions: [],
+        isAuthenticated: false,
+        recoveryInProgress: true,
+        isLoading: false,
+        error: null,
+      }));
+      return;
+    }
+
     if (!session?.user) {
       setAuthState({
         user: null,
         permissions: [],
         isAuthenticated: false,
+        recoveryInProgress: false,
         isLoading: false,
         error: null,
       });
@@ -60,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           user: null,
           permissions: [],
           isAuthenticated: false,
+          recoveryInProgress: false,
           isLoading: false,
           error: 'Sua sessão expirou. Entre novamente.',
         });
@@ -205,6 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user: mappedUser,
         permissions,
         isAuthenticated: true,
+        recoveryInProgress: false,
         isLoading: false,
         error: null,
       });
@@ -214,6 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user: null,
         permissions: [],
         isAuthenticated: false,
+        recoveryInProgress: false,
         isLoading: false,
         error: err.message || 'Erro ao carregar sessão',
       });
@@ -227,7 +275,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // 2. Listen for auth state transitions
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        beginPasswordRecovery();
+      }
       handleSession(session);
     });
 
@@ -278,6 +329,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signIn,
         signUpStudent,
         logout,
+        beginPasswordRecovery,
+        completePasswordRecovery,
         hasPerm,
       }}
     >

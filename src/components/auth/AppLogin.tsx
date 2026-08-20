@@ -83,7 +83,14 @@ export function formatAuthError(errorMsg: string): string {
 }
 
 export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
-  const { signIn, signUpStudent, error: contextError, isLoading: isContextLoading } = useAuth();
+  const {
+    signIn,
+    signUpStudent,
+    beginPasswordRecovery,
+    completePasswordRecovery,
+    error: contextError,
+    isLoading: isContextLoading,
+  } = useAuth();
   const [screen, setScreen] = useState<Screen>('login');
 
   // Form Fields
@@ -130,6 +137,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
+        beginPasswordRecovery();
         setFeedback(null);
         setErrors({});
         setScreen('reset_password');
@@ -140,6 +148,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       const hash = window.location.hash || '';
       const params = new URLSearchParams(window.location.search || '');
       if (hash.includes('type=recovery') || params.get('type') === 'recovery') {
+        beginPasswordRecovery();
         setScreen('reset_password');
       }
     }
@@ -426,9 +435,12 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
     setIsSubmitting(true);
     try {
+      // Mark recovery before verifyOtp emits the temporary authenticated session.
+      beginPasswordRecovery();
       await verifyRecoveryOtp({ email: otpEmail, token: otp.trim() });
       goTo('reset_password');
     } catch (caught: any) {
+      await completePasswordRecovery();
       setFeedback({
         tone: 'error',
         message: formatAuthError(caught instanceof Error ? caught.message : 'Código de recuperação inválido.'),
@@ -465,6 +477,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     setIsSubmitting(true);
     try {
       await updatePassword(password);
+      await completePasswordRecovery();
       setPassword('');
       setConfirmPassword('');
       if (typeof window !== 'undefined' && window.history) {

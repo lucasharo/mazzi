@@ -23,6 +23,7 @@ export interface AuthSessionState {
   } | null;
   permissions: AppPermission[];
   isAuthenticated: boolean;
+  recoveryInProgress: boolean;
   isLoading: boolean;
   error: string | null;
 }

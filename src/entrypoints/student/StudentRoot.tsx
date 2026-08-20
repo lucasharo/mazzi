@@ -8,6 +8,7 @@ import { LoadingScreen } from '../../components/ui/LoadingScreen';
 const StudentGate: React.FC = () => {
   const auth = useAuth();
   if (auth.isLoading) return <LoadingScreen />;
+  if (auth.recoveryInProgress) return <AppLogin kind="student" />;
   if (!auth.isAuthenticated) return <AppLogin kind="student" />;
   return auth.user?.roles.includes('STUDENT') ? <StudentApp /> : <AccessDenied />;
 };
