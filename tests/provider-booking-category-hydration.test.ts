@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { mapBookingFromDb } from '../src/lib/db-service';
 import { mapFriendlyErrorMessage } from '../src/lib/error-mapper';
+import fs from 'fs';
+import path from 'path';
 
-describe('TASK-053 — Booking Category Integrity & Legacy Snapshot Recovery Tests', () => {
+describe('TASK-053 & TASK-053A — RLS-Safe Legacy Booking Category Recovery Tests', () => {
   const baseDbRow = {
     id: 'booking_cat_001',
     student_id: 'student_001',
@@ -94,7 +96,7 @@ describe('TASK-053 — Booking Category Integrity & Legacy Snapshot Recovery Tes
     }
   });
 
-  it('CASO 6 — Workspace lookup: multiple bookings and offerings map strictly by offering_id', () => {
+  it('CASO 6 — Workspace lookup: multiple bookings and offerings map strictly by offering_id / booking_id', () => {
     const offeringCategoryMap = new Map<string, string>([
       ['offering_001', 'A'],
       ['offering_002', 'B'],
@@ -165,5 +167,56 @@ describe('TASK-053 — Booking Category Integrity & Legacy Snapshot Recovery Tes
     const b = mapBookingFromDb(baseDbRow, 'B');
     expect(typeof b.category).toBe('string');
     expect(b.category).toBe('B');
+  });
+
+  it('CASO N — Structural assertion: db-service.ts contains NO direct client SELECT on service_offerings for category fallback in getBookings', () => {
+    const dbServiceContent = fs.readFileSync(path.join(__dirname, '../src/lib/db-service.ts'), 'utf-8');
+    
+    // Ensure getBookings uses get_my_booking_categories RPC and NOT direct service_offerings SELECT
+    const getBookingsBlock = dbServiceContent.substring(
+      dbServiceContent.indexOf('async getBookings()'),
+      dbServiceContent.indexOf('async createBookingHold(')
+    );
+
+    expect(getBookingsBlock).toContain("sp.rpc('get_my_booking_categories'");
+    expect(getBookingsBlock).not.toContain(".from('service_offerings')");
+    expect(getBookingsBlock).not.toContain(".from(\"service_offerings\")");
+  });
+
+  it('CASO M — Precedence Order Verification: row.category > snapshot.category > RPC fallback', () => {
+    // 1. row.category wins
+    const rowWithAll = {
+      ...baseDbRow,
+      category: 'A',
+      snapshot_data: { ...baseDbRow.snapshot_data, category: 'B' },
+    };
+    expect(mapBookingFromDb(rowWithAll, 'B').category).toBe('A');
+
+    // 2. snapshot.category wins over RPC fallback
+    const rowWithSnapshotAndFallback = {
+      ...baseDbRow,
+      snapshot_data: { ...baseDbRow.snapshot_data, category: 'B' },
+    };
+    expect(mapBookingFromDb(rowWithSnapshotAndFallback, 'A').category).toBe('B');
+
+    // 3. RPC fallback wins when row and snapshot are missing
+    const rowLegacy = {
+      ...baseDbRow,
+      snapshot_data: { ...baseDbRow.snapshot_data },
+    };
+    expect(mapBookingFromDb(rowLegacy, 'A').category).toBe('A');
+  });
+
+  it('CASO G-K — Migration 53 DDL file validation: verifies RPC get_my_booking_categories security definitions', () => {
+    const migrationFile = path.join(__dirname, '../supabase/migrations/20260818000053_secure_booking_category_fallback.sql');
+    expect(fs.existsSync(migrationFile)).toBe(true);
+
+    const migrationContent = fs.readFileSync(migrationFile, 'utf-8');
+    expect(migrationContent).toContain('CREATE OR REPLACE FUNCTION public.get_my_booking_categories');
+    expect(migrationContent).toContain('SECURITY DEFINER');
+    expect(migrationContent).toContain("SET search_path = public, pg_temp");
+    expect(migrationContent).toContain('public.is_booking_participant(b.id)');
+    expect(migrationContent).toContain('REVOKE ALL ON FUNCTION public.get_my_booking_categories(UUID[]) FROM PUBLIC;');
+    expect(migrationContent).toContain('GRANT EXECUTE ON FUNCTION public.get_my_booking_categories(UUID[]) TO authenticated, service_role;');
   });
 });

@@ -315,6 +315,20 @@ export const dbService = {
       if (result.error) throw result.error;
     }
 
+    const rawBookings = bookingsResult.data || [];
+    let bookingCategoryMap = new Map<string, string>();
+    if (rawBookings.length > 0) {
+      const bookingIds = rawBookings.map((b: any) => b.id).filter(Boolean);
+      if (bookingIds.length > 0) {
+        const { data: categoriesData } = await sp.rpc('get_my_booking_categories', {
+          p_booking_ids: bookingIds,
+        });
+        if (categoriesData) {
+          bookingCategoryMap = new Map((categoriesData || []).map((c: any) => [c.booking_id, c.category]));
+        }
+      }
+    }
+
     const offeringCategoryMap = new Map<string, string>(
       (offeringsResult.data || []).map((o: any) => [o.id, o.category])
     );
@@ -323,8 +337,11 @@ export const dbService = {
       provider: providerResult.data ? mapProviderFromDb(providerResult.data) : null,
       vehicles: (vehiclesResult.data || []).map(mapVehicleFromDb),
       offerings: (offeringsResult.data || []).map(mapOfferingFromDb),
-      bookings: (bookingsResult.data || []).map((row: any) =>
-        mapBookingFromDb(row, offeringCategoryMap.get(row.offering_id))
+      bookings: rawBookings.map((row: any) =>
+        mapBookingFromDb(
+          row,
+          bookingCategoryMap.get(row.id) || offeringCategoryMap.get(row.offering_id)
+        )
       ),
       complianceDocuments: (documentsResult.data || []).map(mapComplianceFromDb),
       availabilityRules: rulesResult.data || [],
@@ -878,22 +895,21 @@ export const dbService = {
     if (namesError) throw namesError;
     const namesByBooking = new Map<string, any>((names || []).map((item: any) => [item.booking_id, item]));
 
-    const offeringIds = Array.from(new Set(rows.map((row: any) => row.offering_id).filter(Boolean)));
-    let offeringCategoryMap = new Map<string, string>();
-    if (offeringIds.length > 0) {
-      const { data: offeringsData } = await sp
-        .from('service_offerings')
-        .select('id, category')
-        .in('id', offeringIds);
-      if (offeringsData) {
-        offeringCategoryMap = new Map(offeringsData.map((o: any) => [o.id, o.category]));
+    const bookingIds = rows.map((row: any) => row.id).filter(Boolean);
+    let bookingCategoryMap = new Map<string, string>();
+    if (bookingIds.length > 0) {
+      const { data: categoriesData } = await sp.rpc('get_my_booking_categories', {
+        p_booking_ids: bookingIds,
+      });
+      if (categoriesData) {
+        bookingCategoryMap = new Map((categoriesData || []).map((c: any) => [c.booking_id, c.category]));
       }
     }
 
     return rows
       .map((row: any) => mapBookingFromDb(
         { ...row, ...(namesByBooking.get(row.id) || {}) },
-        offeringCategoryMap.get(row.offering_id)
+        bookingCategoryMap.get(row.id)
       ))
       .sort((a: Booking, b: Booking) => {
         const aTime = new Date(a.scheduledStartAt || 0).getTime();
