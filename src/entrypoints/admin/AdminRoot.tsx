@@ -8,6 +8,7 @@ import { LoadingScreen } from '../../components/ui/LoadingScreen';
 const AdminGate: React.FC = () => {
   const auth = useAuth();
   if (auth.isLoading) return <LoadingScreen />;
+  if (auth.recoveryInProgress) return <AppLogin kind="admin" />;
   if (!auth.isAuthenticated) return <AppLogin kind="admin" />;
   return auth.user?.roles.some((role) =>
     ['PLATFORM_ADMIN', 'SUPPORT'].includes(role)
