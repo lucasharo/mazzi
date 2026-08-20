@@ -2,10 +2,12 @@
 -- MAZZI PLATFORM — MIGRATION 56: CLOSE MVP RELEASE BLOCKERS
 -- File: supabase/migrations/20260820000056_mvp_release_blockers_analytics_student_checkin.sql
 -- ============================================================================
--- 1. HARDEN PROVIDER ANALYTICS ISOLATION (P0)
---    Removes booking assignment from finance authorization. Operational instructors
---    of driving school bookings NO LONGER receive financial/commercial analytics
---    for the school.
+-- 1. HARDEN PROVIDER ANALYTICS ISOLATION (P0) & PRESERVE CANONICAL JSON CONTRACT
+--    Removes booking assignment from finance authorization.
+--    Operational instructors of driving school bookings NO LONGER receive financial/commercial
+--    analytics for the school.
+--    Preserves the exact canonical JSON contract (period, provider_contexts, bookings,
+--    financial_dev, quality, supply).
 
 CREATE OR REPLACE FUNCTION public.get_provider_analytics_summary(
   p_date_from TIMESTAMPTZ,
@@ -84,28 +86,54 @@ BEGIN
     WHERE b.provider_id IN (SELECT id FROM authorized_providers)
       AND p.created_at >= p_date_from
       AND p.created_at < p_date_to
+  ),
+  review_metrics AS (
+    SELECT
+      COUNT(*) AS reviews_count,
+      ROUND(AVG(rating_overall)::NUMERIC, 2) AS rating_average
+    FROM public.reviews
+    WHERE provider_id IN (SELECT id FROM authorized_providers)
+  ),
+  supply_metrics AS (
+    SELECT
+      (SELECT COUNT(*) FROM authorized_providers) AS provider_contexts,
+      COUNT(DISTINCT v.id) FILTER (WHERE v.status::TEXT = 'ACTIVE' AND v.deleted_at IS NULL) AS active_vehicles,
+      COUNT(DISTINCT so.id) FILTER (WHERE so.status::TEXT = 'ACTIVE' AND so.is_active IS TRUE) AS active_offerings
+    FROM authorized_providers ap
+    LEFT JOIN public.vehicles v ON v.provider_id = ap.id
+    LEFT JOIN public.service_offerings so ON so.provider_id = ap.id
   )
   SELECT JSONB_BUILD_OBJECT(
-    'period', JSONB_BUILD_OBJECT('from', p_date_from, 'to', p_date_to),
-    'authorized_providers_count', (SELECT COUNT(*) FROM authorized_providers),
-    'bookings', JSONB_BUILD_OBJECT(
-      'created', COALESCE((SELECT bookings_created FROM booking_metrics), 0),
-      'confirmed', COALESCE((SELECT bookings_confirmed FROM booking_metrics), 0),
-      'completed', COALESCE((SELECT bookings_completed FROM booking_metrics), 0),
-      'cancelled', COALESCE((SELECT bookings_cancelled FROM booking_metrics), 0),
-      'no_show', COALESCE((SELECT bookings_no_show FROM booking_metrics), 0),
-      'upcoming', COALESCE((SELECT upcoming_bookings FROM booking_metrics), 0)
+    'period', JSONB_BUILD_OBJECT(
+      'from', p_date_from,
+      'to', p_date_to,
+      'timezone', 'America/Sao_Paulo'
     ),
-    'financial', JSONB_BUILD_OBJECT(
-      'payments_paid', COALESCE((SELECT payments_paid FROM payment_metrics), 0),
-      'paid_volume_cents', COALESCE((SELECT paid_volume_cents FROM payment_metrics), 0),
-      'platform_fee_volume_cents', COALESCE((SELECT platform_fee_volume_cents FROM payment_metrics), 0),
-      'net_provider_volume_cents', COALESCE(
-        (SELECT paid_volume_cents FROM payment_metrics) - (SELECT platform_fee_volume_cents FROM payment_metrics),
-        0
-      )
+    'provider_contexts', COALESCE(s.provider_contexts, 0),
+    'bookings', JSONB_BUILD_OBJECT(
+      'created', COALESCE(b.bookings_created, 0),
+      'confirmed', COALESCE(b.bookings_confirmed, 0),
+      'completed', COALESCE(b.bookings_completed, 0),
+      'cancelled', COALESCE(b.bookings_cancelled, 0),
+      'no_show', COALESCE(b.bookings_no_show, 0),
+      'upcoming', COALESCE(b.upcoming_bookings, 0)
+    ),
+    'financial_dev', JSONB_BUILD_OBJECT(
+      'payments_paid', COALESCE(pm.payments_paid, 0),
+      'paid_volume_cents', COALESCE(pm.paid_volume_cents, 0),
+      'platform_fee_volume_cents', COALESCE(pm.platform_fee_volume_cents, 0),
+      'label', 'Ambiente de validação — pagamentos simulados'
+    ),
+    'quality', JSONB_BUILD_OBJECT(
+      'reviews_count', COALESCE(r.reviews_count, 0),
+      'rating_average', r.rating_average
+    ),
+    'supply', JSONB_BUILD_OBJECT(
+      'active_vehicles', COALESCE(s.active_vehicles, 0),
+      'active_offerings', COALESCE(s.active_offerings, 0)
     )
-  ) INTO v_result;
+  ) INTO v_result
+  FROM booking_metrics b, payment_metrics pm, review_metrics r, supply_metrics s;
 
   RETURN v_result;
 END;

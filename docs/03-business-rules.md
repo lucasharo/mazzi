@@ -12,8 +12,17 @@
 - *Nota de Conformidade:* Validações em TypeScript ou testes em memória são meramente preparatórias; a validação definitiva ocorrerá na Sprint de Booking/Disponibilidade com transações e travas atômicas no PostgreSQL.
 
 ## 3. Confirmação de Pagamento
-- O frontend jamais dita o status `CONFIRMED`.
-- O webhook assinado do Gateway recebido no backend é a única autoridade para transicionar o booking de `PENDING_PAYMENT` para `CONFIRMED`.
+
+### FASE ATUAL — MOCK_VALIDATION (Ambiente de Validação do MVP)
+- **Zero Cobrança Real**: Nenhum dinheiro real é transacionado, debitado ou enviado para gateways bancários externos.
+- **Provedor Simulado**: Utiliza exclusivamente `fake_payment_gateway`.
+- **Confirmação em Validação**: A confirmação simulada via RPC transacional no banco PostgreSQL (`confirm_booking_payment`) é autorizada exclusivamente para testes e validação do fluxo do marketplace no ambiente `MOCK_VALIDATION`.
+- **Natureza Semântica**: O pagamento simulado não representa liquidação financeira real nem emissão de títulos de crédito.
+
+### FUTURO — PAGAMENTO FINANCEIRO REAL
+- O frontend **jamais** dita ou confirma o status `CONFIRMED` de pagamento real.
+- O webhook criptograficamente assinado do Gateway recebido e verificado no backend (trusted backend) é a única autoridade para transicionar um booking real de `PENDING_PAYMENT` para `CONFIRMED`.
+- A integração financeira com gateway real (ex: Mercado Pago) permanece postergada para fases pós-MVP.
 
 ## 4. Retenção e Repasse (Payout)
 - O valor pago pelo aluno não é repassado imediatamente.

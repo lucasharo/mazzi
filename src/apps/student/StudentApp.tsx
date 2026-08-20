@@ -1129,9 +1129,15 @@ function applyStrictProviderFilters(
           }
         }}
         onStudentCheckIn={async (bookingId) => {
-          const result = await dbService.studentCheckInBooking(bookingId);
-          setBookingsRefreshKey((k) => k + 1);
-          return result;
+          await dbService.studentCheckInBooking(bookingId);
+          const rehydratedBookings = await dbService.getBookings();
+          setConfirmedBookings(rehydratedBookings);
+          const updatedBooking = rehydratedBookings.find((b) => b.id === bookingId);
+          if (updatedBooking) {
+            setSelectedBookingForDetails(updatedBooking);
+            return updatedBooking;
+          }
+          throw new Error('BOOKING_NOT_FOUND_AFTER_CHECKIN');
         }}
       />
 

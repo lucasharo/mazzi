@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   KeyRound,
   MapPin,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Provider,
@@ -644,6 +645,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </div>
         )}
 
+        {/* Persistent Mock Validation Banner */}
+        {step !== 'SUCCESS' && (
+          <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 font-bold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
+            <span>Pagamento simulado — nenhum valor será cobrado.</span>
+          </div>
+        )}
+
         {/* STEP 1: QUOTE PREVIEW */}
         {step === 'QUOTE_PREVIEW' && quote && (
           <div className="space-y-4">
@@ -1002,6 +1011,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto">
                 Sua reserva está confirmada. Você pode acompanhar todos os detalhes na aba de Aulas.
               </p>
+              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100/90 border border-amber-300 text-amber-950 text-xs font-bold">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" aria-hidden="true" />
+                <span>Reserva confirmada em ambiente de validação.</span>
+              </div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1.5">

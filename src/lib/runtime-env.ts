@@ -35,22 +35,24 @@ export function isDevelopmentRuntime(): boolean {
   return viteEnv.DEV === true || getRuntimeEnvValue('NODE_ENV') === 'development';
 }
 
-export function isMockValidationPaymentAllowed(): boolean {
-  const mode = (
-    getRuntimeEnvValue('VITE_PAYMENT_MODE') ||
-    getRuntimeEnvValue('PAYMENT_MODE') ||
-    ''
-  ).trim().toUpperCase();
+export interface CanUseMockValidationPaymentOptions {
+  isProduction: boolean;
+  paymentMode?: string;
+}
 
-  if (mode === 'MOCK_VALIDATION') {
+export function canUseMockValidationPayment(options: CanUseMockValidationPaymentOptions): boolean {
+  if (!options.isProduction) {
     return true;
   }
+  const mode = (options.paymentMode || '').trim().toUpperCase();
+  return mode === 'MOCK_VALIDATION';
+}
 
-  if (isProductionRuntime()) {
-    return false;
-  }
-
-  return true;
+export function isMockValidationPaymentAllowed(): boolean {
+  return canUseMockValidationPayment({
+    isProduction: isProductionRuntime(),
+    paymentMode: getRuntimeEnvValue('VITE_PAYMENT_MODE') || getRuntimeEnvValue('PAYMENT_MODE'),
+  });
 }
 
 export function assertFrontendSafeSupabaseEnv(): void {

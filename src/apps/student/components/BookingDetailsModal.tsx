@@ -29,11 +29,11 @@ export interface BookingDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: Booking | null;
-  onCheckIn?: (booking: Booking) => void;
-  onOpenChat?: (booking: Booking) => void;
   onContinuePayment?: (booking: Booking) => void;
+  onOpenChat?: (booking: Booking) => void;
+  onCancelBooking?: (params: { bookingId: string; reason?: string; reasonCode?: string }) => Promise<any>;
   onBookingUpdated?: (updatedBooking: Booking) => void;
-  onStudentCheckIn?: (bookingId: string) => Promise<any>;
+  onStudentCheckIn?: (bookingId: string) => Promise<Booking>;
 }
 
 const CANCEL_REASON_CHIPS = [
@@ -68,13 +68,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     setIsCheckingIn(true);
     setCheckInError(null);
     try {
-      const res = await onStudentCheckIn(booking.id);
-      if (res && onBookingUpdated) {
-        onBookingUpdated({
-          ...booking,
-          studentCheckedIn: true,
-          checkinStudentAt: res.checkin_student_at || new Date().toISOString(),
-        });
+      const updatedBooking = await onStudentCheckIn(booking.id);
+      if (updatedBooking && onBookingUpdated) {
+        onBookingUpdated(updatedBooking);
       }
     } catch (err: any) {
       setCheckInError(mapFriendlyErrorMessage(err, 'Não foi possível realizar o check-in. Tente novamente.'));
@@ -327,13 +323,20 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             )}
           </div>
 
-          {/* Student Check-In Card */}
+          {/* Presence & Check-In Card */}
           {booking.status === 'CONFIRMED' && (
-            <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-2 shadow-xs">
-              <div className="flex items-center justify-between gap-2">
+            <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-3 shadow-xs">
+              <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
+                Status de Presença na Aula
+              </h4>
+
+              {/* Student Check-In Row */}
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                 <div>
-                  <span className="text-xs font-bold text-slate-800 block">Check-in do Aluno</span>
-                  <span className="text-[11px] text-slate-500 block">Confirme sua presença na aula</span>
+                  <span className="text-xs font-bold text-slate-800 block">Seu Check-in (Aluno)</span>
+                  <span className="text-[11px] text-slate-500 block">
+                    {booking.studentCheckedIn ? 'Presença confirmada' : 'Confirme sua presença no ponto de encontro'}
+                  </span>
                 </div>
                 {booking.studentCheckedIn ? (
                   <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1 shrink-0">
@@ -353,6 +356,24 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   >
                     Fazer check-in
                   </Button>
+                )}
+              </div>
+
+              {/* Instructor Check-In Row */}
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">Check-in do Instrutor</span>
+                  <span className="text-[11px] text-slate-500 block">Status de presença do profissional</span>
+                </div>
+                {booking.instructorCheckedIn ? (
+                  <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1 shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Realizado {booking.checkinInstructorAt ? `às ${formatTimeBR(booking.checkinInstructorAt)}` : ''}
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full shrink-0">
+                    Aguardando check-in
+                  </span>
                 )}
               </div>
 
