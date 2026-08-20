@@ -10,7 +10,9 @@ import {
   Sliders,
   Sparkles,
   Info,
+  Pencil,
 } from 'lucide-react';
+import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import {
   AvailabilityRule,
   AvailabilityException,
@@ -112,6 +114,85 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   onDeleteGlobalBlock,
   isInstructorUser,
 }) => {
+  // Dedicated state for Global Personal Blocks
+  const [isAddGlobalBlockModalOpen, setIsAddGlobalBlockModalOpen] = React.useState(false);
+  const [editingGlobalBlockId, setEditingGlobalBlockId] = React.useState<string | null>(null);
+  const [globalBlockForm, setGlobalBlockForm] = React.useState({
+    startDate: '',
+    startTime: '08:00',
+    endDate: '',
+    endTime: '18:00',
+    reason: '',
+  });
+  const [globalBlockError, setGlobalBlockError] = React.useState<string | null>(null);
+  const [isSavingGlobalBlock, setIsSavingGlobalBlock] = React.useState(false);
+
+  const handleOpenCreateGlobalBlock = () => {
+    setEditingGlobalBlockId(null);
+    const today = new Date().toISOString().split('T')[0];
+    setGlobalBlockForm({
+      startDate: today,
+      startTime: '08:00',
+      endDate: today,
+      endTime: '18:00',
+      reason: '',
+    });
+    setGlobalBlockError(null);
+    setIsAddGlobalBlockModalOpen(true);
+  };
+
+  const handleOpenEditGlobalBlock = (gb: any) => {
+    setEditingGlobalBlockId(gb.id);
+    const startDt = new Date(gb.start_at);
+    const endDt = new Date(gb.end_at);
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const startDateStr = `${startDt.getFullYear()}-${pad(startDt.getMonth() + 1)}-${pad(startDt.getDate())}`;
+    const startTimeStr = `${pad(startDt.getHours())}:${pad(startDt.getMinutes())}`;
+    const endDateStr = `${endDt.getFullYear()}-${pad(endDt.getMonth() + 1)}-${pad(endDt.getDate())}`;
+    const endTimeStr = `${pad(endDt.getHours())}:${pad(endDt.getMinutes())}`;
+
+    setGlobalBlockForm({
+      startDate: startDateStr,
+      startTime: startTimeStr,
+      endDate: endDateStr,
+      endTime: endTimeStr,
+      reason: gb.reason || '',
+    });
+    setGlobalBlockError(null);
+    setIsAddGlobalBlockModalOpen(true);
+  };
+
+  const handleSaveGlobalBlockSubmit = async () => {
+    setGlobalBlockError(null);
+    if (!globalBlockForm.startDate || !globalBlockForm.startTime || !globalBlockForm.endDate || !globalBlockForm.endTime) {
+      setGlobalBlockError('Data inicial, hora inicial, data final e hora final são obrigatórias.');
+      return;
+    }
+
+    const startIso = `${globalBlockForm.startDate}T${globalBlockForm.startTime}:00.000-03:00`;
+    const endIso = `${globalBlockForm.endDate}T${globalBlockForm.endTime}:00.000-03:00`;
+
+    if (new Date(endIso) <= new Date(startIso)) {
+      setGlobalBlockError('A data e hora final devem ser posteriores à data e hora inicial.');
+      return;
+    }
+
+    if (onSaveGlobalBlock) {
+      try {
+        setIsSavingGlobalBlock(true);
+        await onSaveGlobalBlock(startIso, endIso, globalBlockForm.reason.trim() || undefined, editingGlobalBlockId || undefined);
+        setIsAddGlobalBlockModalOpen(false);
+        setEditingGlobalBlockId(null);
+        setGlobalBlockForm({ startDate: '', startTime: '08:00', endDate: '', endTime: '18:00', reason: '' });
+      } catch (err: any) {
+        setGlobalBlockError(mapFriendlyErrorMessage(err, 'Erro ao salvar bloqueio pessoal global.'));
+      } finally {
+        setIsSavingGlobalBlock(false);
+      }
+    }
+  };
+
   // Simulator calculation
   const selectedSimOffering = offerings.find((o) => o.id === simOfferingId);
   const simulatedSlots = selectedSimOffering && simDate ? generateAvailableSlots({
@@ -257,7 +338,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                 <Button
                   variant="primary"
                   size="sm"
-                  onClick={onOpenAddExceptionModal}
+                  onClick={handleOpenCreateGlobalBlock}
                   leftIcon={<Plus className="w-3.5 h-3.5" />}
                 >
                   Novo Bloqueio Pessoal
@@ -281,16 +362,26 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                           </p>
                         )}
                       </div>
-                      {onDeleteGlobalBlock && (
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-rose-600 hover:bg-rose-50"
-                          onClick={() => onDeleteGlobalBlock(gb.id)}
+                          className="text-slate-600 hover:bg-slate-100"
+                          onClick={() => handleOpenEditGlobalBlock(gb)}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </Button>
-                      )}
+                        {onDeleteGlobalBlock && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-rose-600 hover:bg-rose-50"
+                            onClick={() => onDeleteGlobalBlock(gb.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -501,6 +592,101 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             </Button>
             <Button variant="primary" size="sm" onClick={onSaveException}>
               Salvar Bloqueio
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* DEDICATED INSTRUCTOR GLOBAL PERSONAL BLOCK MODAL */}
+      <Modal
+        isOpen={isAddGlobalBlockModalOpen}
+        onClose={() => {
+          if (!isSavingGlobalBlock) {
+            setIsAddGlobalBlockModalOpen(false);
+            setEditingGlobalBlockId(null);
+          }
+        }}
+        title={editingGlobalBlockId ? 'Editar Bloqueio Pessoal Global' : 'Cadastrar Bloqueio Pessoal Global'}
+      >
+        <div className="space-y-4 text-left">
+          {globalBlockError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{globalBlockError}</span>
+            </div>
+          )}
+
+          <p className="text-xs text-slate-600">
+            Este bloqueio ficará ativo para a sua identidade física como instrutor e impedirá agendamentos particulares e de qualquer autoescola.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-extrabold text-slate-900 block mb-1">Data Início *</label>
+              <Input
+                type="date"
+                value={globalBlockForm.startDate}
+                onChange={(e) => setGlobalBlockForm({ ...globalBlockForm, startDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-extrabold text-slate-900 block mb-1">Hora Início *</label>
+              <Input
+                type="time"
+                value={globalBlockForm.startTime}
+                onChange={(e) => setGlobalBlockForm({ ...globalBlockForm, startTime: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-extrabold text-slate-900 block mb-1">Data Fim *</label>
+              <Input
+                type="date"
+                value={globalBlockForm.endDate}
+                onChange={(e) => setGlobalBlockForm({ ...globalBlockForm, endDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-extrabold text-slate-900 block mb-1">Hora Fim *</label>
+              <Input
+                type="time"
+                value={globalBlockForm.endTime}
+                onChange={(e) => setGlobalBlockForm({ ...globalBlockForm, endTime: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-extrabold text-slate-900 block mb-1">Motivo (Opcional)</label>
+            <Input
+              value={globalBlockForm.reason}
+              onChange={(e) => setGlobalBlockForm({ ...globalBlockForm, reason: e.target.value })}
+              placeholder="Ex: Férias, Compromisso pessoal, Exame médico"
+            />
+          </div>
+
+          <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={isSavingGlobalBlock}
+              onClick={() => {
+                setIsAddGlobalBlockModalOpen(false);
+                setEditingGlobalBlockId(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              isLoading={isSavingGlobalBlock}
+              disabled={isSavingGlobalBlock}
+              onClick={handleSaveGlobalBlockSubmit}
+            >
+              {editingGlobalBlockId ? 'Atualizar Bloqueio' : 'Salvar Bloqueio Pessoal'}
             </Button>
           </div>
         </div>

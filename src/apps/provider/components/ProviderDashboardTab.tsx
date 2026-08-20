@@ -31,6 +31,7 @@ interface ProviderDashboardTabProps {
   onNavigateTab: (tabId: 'dashboard' | 'schedule' | 'bookings' | 'management' | 'profile') => void;
   onOpenAddVehicleModal: () => void;
   onOpenAddOfferingModal: () => void;
+  calendarLoadError?: string | null;
 }
 
 export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
@@ -45,6 +46,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   onNavigateTab,
   onOpenAddVehicleModal,
   onOpenAddOfferingModal,
+  calendarLoadError,
 }) => {
   return (
     <div className="space-y-6 text-left">
@@ -53,6 +55,12 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         <p className="mazzi-eyebrow mb-1">Hoje</p>
         <h2 className="mazzi-title">Sua rotina operacional</h2>
       </div>
+
+      {calendarLoadError && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-extrabold text-amber-950 flex items-center justify-between gap-3">
+          <span>Agenda unificada indisponível no momento: os indicadores da agenda estão ocultos.</span>
+        </div>
+      )}
 
       {/* Hero Banner (MAZZI Hero split gradient) */}
       <section className="mazzi-hero">

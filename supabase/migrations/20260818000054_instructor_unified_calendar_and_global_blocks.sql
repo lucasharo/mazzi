@@ -42,6 +42,7 @@ REVOKE INSERT, UPDATE, DELETE ON public.instructor_global_blocks FROM authentica
 
 -- 2. RPC: get_my_instructor_global_blocks()
 -- Returns active global personal blocks for the authenticated instructor.
+-- Enforces INSTRUCTOR role via public.user_roles and requires active user status.
 CREATE OR REPLACE FUNCTION public.get_my_instructor_global_blocks()
 RETURNS TABLE (
   id UUID,
@@ -59,9 +60,24 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_uid UUID := auth.uid();
+  v_is_active BOOLEAN := FALSE;
+  v_has_role BOOLEAN := FALSE;
 BEGIN
   IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED: Usuário não autenticado.' USING ERRCODE = '40100';
+  END IF;
+
+  SELECT (status = 'ACTIVE') INTO v_is_active FROM public.users WHERE id = v_uid;
+  IF v_is_active IS NOT TRUE THEN
+    RAISE EXCEPTION 'USER_INACTIVE: Usuário não está ativo no sistema.' USING ERRCODE = '40300';
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles WHERE user_id = v_uid AND role = 'INSTRUCTOR'
+  ) INTO v_has_role;
+
+  IF NOT v_has_role THEN
+    RAISE EXCEPTION 'UNAUTHORIZED_ROLE: Apenas instrutores credenciados podem gerenciar bloqueios pessoais globais.' USING ERRCODE = '40300';
   END IF;
 
   RETURN QUERY
@@ -86,6 +102,7 @@ GRANT EXECUTE ON FUNCTION public.get_my_instructor_global_blocks() TO authentica
 
 -- 3. RPC: save_instructor_global_block()
 -- Creates or updates a global personal block owned strictly by auth.uid().
+-- Enforces INSTRUCTOR role via public.user_roles and active status.
 CREATE OR REPLACE FUNCTION public.save_instructor_global_block(
   p_start_at TIMESTAMPTZ,
   p_end_at TIMESTAMPTZ,
@@ -99,15 +116,30 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_uid UUID := auth.uid();
+  v_is_active BOOLEAN := FALSE;
+  v_has_role BOOLEAN := FALSE;
   v_id UUID;
   v_now TIMESTAMPTZ := NOW();
 BEGIN
   IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED: Usuário não autenticado.' USING ERRCODE = '40100';
+  END IF;
+
+  SELECT (status = 'ACTIVE') INTO v_is_active FROM public.users WHERE id = v_uid;
+  IF v_is_active IS NOT TRUE THEN
+    RAISE EXCEPTION 'USER_INACTIVE: Usuário não está ativo no sistema.' USING ERRCODE = '40300';
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles WHERE user_id = v_uid AND role = 'INSTRUCTOR'
+  ) INTO v_has_role;
+
+  IF NOT v_has_role THEN
+    RAISE EXCEPTION 'UNAUTHORIZED_ROLE: Apenas instrutores credenciados podem gerenciar bloqueios pessoais globais.' USING ERRCODE = '40300';
   END IF;
 
   IF p_start_at IS NULL OR p_end_at IS NULL OR p_end_at <= p_start_at THEN
-    RAISE EXCEPTION 'INVALID_TIME_RANGE' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'INVALID_TIME_RANGE: A data e hora final devem ser posteriores à data e hora inicial.' USING ERRCODE = '22023';
   END IF;
 
   IF p_block_id IS NOT NULL THEN
@@ -115,7 +147,7 @@ BEGIN
     WHERE id = p_block_id AND instructor_id = v_uid;
 
     IF NOT FOUND THEN
-      RAISE EXCEPTION 'GLOBAL_BLOCK_NOT_FOUND_OR_UNAUTHORIZED' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'GLOBAL_BLOCK_NOT_FOUND_OR_UNAUTHORIZED: Bloqueio pessoal não encontrado ou você não tem permissão.' USING ERRCODE = '40300';
     END IF;
 
     UPDATE public.instructor_global_blocks
@@ -151,6 +183,7 @@ GRANT EXECUTE ON FUNCTION public.save_instructor_global_block(TIMESTAMPTZ, TIMES
 
 -- 4. RPC: delete_instructor_global_block()
 -- Deletes a global personal block owned strictly by auth.uid().
+-- Enforces INSTRUCTOR role via public.user_roles and active status.
 CREATE OR REPLACE FUNCTION public.delete_instructor_global_block(
   p_block_id UUID
 )
@@ -161,10 +194,25 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_uid UUID := auth.uid();
+  v_is_active BOOLEAN := FALSE;
+  v_has_role BOOLEAN := FALSE;
   v_deleted_count INT;
 BEGIN
   IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED: Usuário não autenticado.' USING ERRCODE = '40100';
+  END IF;
+
+  SELECT (status = 'ACTIVE') INTO v_is_active FROM public.users WHERE id = v_uid;
+  IF v_is_active IS NOT TRUE THEN
+    RAISE EXCEPTION 'USER_INACTIVE: Usuário não está ativo no sistema.' USING ERRCODE = '40300';
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles WHERE user_id = v_uid AND role = 'INSTRUCTOR'
+  ) INTO v_has_role;
+
+  IF NOT v_has_role THEN
+    RAISE EXCEPTION 'UNAUTHORIZED_ROLE: Apenas instrutores credenciados podem gerenciar bloqueios pessoais globais.' USING ERRCODE = '40300';
   END IF;
 
   DELETE FROM public.instructor_global_blocks
@@ -173,7 +221,7 @@ BEGIN
   GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
 
   IF v_deleted_count = 0 THEN
-    RAISE EXCEPTION 'GLOBAL_BLOCK_NOT_FOUND_OR_UNAUTHORIZED' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'GLOBAL_BLOCK_NOT_FOUND_OR_UNAUTHORIZED: Bloqueio pessoal não encontrado ou você não tem permissão.' USING ERRCODE = '40300';
   END IF;
 
   RETURN jsonb_build_object('success', true, 'id', p_block_id);
@@ -448,9 +496,9 @@ REVOKE ALL ON FUNCTION public.is_offering_slot_available(UUID, TIMESTAMPTZ) FROM
 GRANT EXECUTE ON FUNCTION public.is_offering_slot_available(UUID, TIMESTAMPTZ) TO anon, authenticated, service_role;
 
 
--- 7. RPC: cancel_booking_v2() - Hardened Instructor Authorization
+-- 7. RPC: cancel_booking_v2() - Hardened Instructor Authorization & Provider Type Check
 -- Prevents operational instructors from performing commercial cancellations on driving school sales.
--- An INSTRUCTOR can ONLY cancel as provider if the booking belongs to their OWN autonomous provider account.
+-- An INSTRUCTOR can ONLY cancel as provider if the booking belongs to their OWN autonomous provider account (provider.user_id = v_actor_id AND provider.type = 'INSTRUCTOR').
 CREATE OR REPLACE FUNCTION public.cancel_booking_v2(
   p_booking_id UUID,
   p_reason TEXT DEFAULT NULL,
@@ -466,6 +514,7 @@ DECLARE
   v_user_role TEXT;
   v_booking RECORD;
   v_provider_user_id UUID;
+  v_provider_type TEXT;
   v_is_authorized_school_admin BOOLEAN := FALSE;
   v_hours_until NUMERIC;
   v_refund_pct INT := 0;
@@ -500,9 +549,11 @@ BEGIN
 
   ELSIF v_user_role = 'INSTRUCTOR' THEN
     -- Operational instructors assigned to a driving school booking CANNOT perform commercial cancellation!
-    -- An INSTRUCTOR can ONLY cancel as provider if the booking belongs to their OWN autonomous provider account (provider.user_id = v_actor_id).
-    SELECT user_id INTO v_provider_user_id FROM public.providers WHERE id = v_booking.provider_id;
-    IF v_provider_user_id IS DISTINCT FROM v_actor_id THEN
+    -- An INSTRUCTOR can ONLY cancel as provider if the booking belongs to their OWN autonomous provider account (provider.user_id = v_actor_id AND provider.type = 'INSTRUCTOR').
+    SELECT user_id, type::TEXT INTO v_provider_user_id, v_provider_type
+    FROM public.providers WHERE id = v_booking.provider_id;
+
+    IF v_provider_user_id IS DISTINCT FROM v_actor_id OR v_provider_type IS DISTINCT FROM 'INSTRUCTOR' THEN
       RAISE EXCEPTION 'UNAUTHORIZED_PROVIDER: Instrutores operacionais não possuem autorização para cancelar comercialmente agendamentos de autoescolas.' USING ERRCODE = '40302';
     END IF;
 

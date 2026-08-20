@@ -29,6 +29,7 @@ interface ProviderBookingDetailsModalProps {
   onCompleteLesson: (booking: Booking) => void;
   onCancelBooking: (booking: Booking) => void;
   isCompleting: boolean;
+  canCancelBooking?: (booking: Booking) => boolean;
 }
 
 export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalProps> = ({
@@ -41,6 +42,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   onCompleteLesson,
   onCancelBooking,
   isCompleting,
+  canCancelBooking,
 }) => {
   if (!booking) return null;
 
@@ -182,7 +184,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               </Button>
             )}
 
-            {(isConfirmed || isPendingPayment) && (
+            {(canCancelBooking ? canCancelBooking(booking) : isConfirmed && !booking.instructorCheckedIn) && (
               <Button
                 variant="ghost"
                 size="sm"

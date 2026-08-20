@@ -790,6 +790,7 @@ export const ProviderApp: React.FC = () => {
             onNavigateTab={setActiveTab}
             onOpenAddVehicleModal={() => setIsAddVehicleModalOpen(true)}
             onOpenAddOfferingModal={() => setIsAddOfferingModalOpen(true)}
+            calendarLoadError={unifiedCalendarError}
           />
         )}
 
@@ -830,7 +831,8 @@ export const ProviderApp: React.FC = () => {
             }}
             onDeleteGlobalBlock={async (blockId) => {
               await dbService.deleteInstructorGlobalBlock(blockId);
-              setInstructorGlobalBlocks((prev) => prev.filter((b) => b.id !== blockId));
+              const updated = await dbService.getMyInstructorGlobalBlocks();
+              setInstructorGlobalBlocks(updated || []);
             }}
             isInstructorUser={user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'))}
           />
@@ -852,14 +854,15 @@ export const ProviderApp: React.FC = () => {
             onCancelBooking={(b) => setSelectedBookingForCancel(b)}
             isCompleting={isCompleting}
             canCancelBooking={(b) => {
-              const isConfirmedOrHold = b.status === 'CONFIRMED' || (b.status === 'PENDING_PAYMENT' && !b.instructorCheckedIn);
-              if (!isConfirmedOrHold) return false;
+              if (b.status !== 'CONFIRMED') return false;
               const isInstructorUser = user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'));
               if (isInstructorUser) {
                 return b.providerId === currentProvider.id;
               }
               return true;
             }}
+            calendarLoadError={unifiedCalendarError}
+            onRetryCalendarLoad={() => void loadWorkspace(activeProviderId)}
           />
         )}
 
@@ -953,6 +956,14 @@ export const ProviderApp: React.FC = () => {
           setSelectedBookingForCancel(b);
         }}
         isCompleting={isCompleting}
+        canCancelBooking={(b) => {
+          if (b.status !== 'CONFIRMED') return false;
+          const isInstructorUser = user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'));
+          if (isInstructorUser) {
+            return b.providerId === currentProvider.id;
+          }
+          return true;
+        }}
       />
 
       {/* Provider Cancellation Modal (DEC-013) */}

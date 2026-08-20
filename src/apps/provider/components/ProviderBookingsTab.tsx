@@ -32,6 +32,8 @@ interface ProviderBookingsTabProps {
   onCancelBooking: (booking: Booking) => void;
   isCompleting: boolean;
   canCancelBooking?: (booking: Booking) => boolean;
+  calendarLoadError?: string | null;
+  onRetryCalendarLoad?: () => void;
 }
 
 export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
@@ -48,6 +50,8 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
   onCancelBooking,
   isCompleting,
   canCancelBooking,
+  calendarLoadError,
+  onRetryCalendarLoad,
 }) => {
   return (
     <div className="space-y-6 text-left">
@@ -113,10 +117,24 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
         </button>
       </div>
 
-      {/* Lessons List */}
-      {filteredBookings.length === 0 ? (
+      {/* Bookings List or States */}
+      {calendarLoadError ? (
+        <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 text-center space-y-3">
+          <p className="text-sm font-extrabold text-amber-950">
+            Não foi possível carregar sua agenda completa.
+          </p>
+          <p className="text-xs text-amber-800">
+            {calendarLoadError}
+          </p>
+          {onRetryCalendarLoad && (
+            <Button variant="secondary" size="sm" onClick={onRetryCalendarLoad}>
+              Tentar Novamente
+            </Button>
+          )}
+        </div>
+      ) : filteredBookings.length === 0 ? (
         <EmptyState
-          icon={<Clock className="w-8 h-8 text-slate-400" />}
+          icon={<CalendarIcon className="w-8 h-8 text-slate-400" />}
           title="Nenhum agendamento encontrado"
           description="Você não possui aulas no filtro selecionado no momento."
         />
