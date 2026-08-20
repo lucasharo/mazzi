@@ -944,17 +944,31 @@ export const dbService = {
       });
   },
 
+  async getMyInstructorGlobalBlocks(): Promise<any[]> {
+    const { data, error } = await sp.rpc('get_my_instructor_global_blocks');
+    if (error) throw error;
+    return data || [];
+  },
+
   async saveInstructorGlobalBlock(
     startAt: string,
     endAt: string,
     reason?: string,
-    exceptionId?: string
+    blockId?: string
   ): Promise<any> {
     const { data, error } = await sp.rpc('save_instructor_global_block', {
       p_start_at: startAt,
       p_end_at: endAt,
       p_reason: reason || null,
-      p_exception_id: exceptionId || null,
+      p_block_id: blockId || null,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteInstructorGlobalBlock(blockId: string): Promise<any> {
+    const { data, error } = await sp.rpc('delete_instructor_global_block', {
+      p_block_id: blockId,
     });
     if (error) throw error;
     return data;

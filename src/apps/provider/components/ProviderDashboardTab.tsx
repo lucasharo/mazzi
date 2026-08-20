@@ -201,11 +201,16 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-base font-black text-white">{nextBooking.studentName}</p>
                   <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#f6c945]/20 text-[#f6c945] border border-[#f6c945]/40">
                     Cat. {nextBooking.category}
                   </span>
+                  {(nextBooking.snapshot?.providerName || nextBooking.providerName) && (
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                      {nextBooking.snapshot?.providerName || nextBooking.providerName}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-[#f6c945] font-extrabold">
                   {nextBooking.scheduledDate} • {nextBooking.startTime} - {nextBooking.endTime}

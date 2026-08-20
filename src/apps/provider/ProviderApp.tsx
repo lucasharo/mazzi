@@ -188,6 +188,9 @@ export const ProviderApp: React.FC = () => {
   });
   const [offeringError, setOfferingError] = useState<string | null>(null);
 
+  const [unifiedCalendarError, setUnifiedCalendarError] = useState<string | null>(null);
+  const [instructorGlobalBlocks, setInstructorGlobalBlocks] = useState<any[]>([]);
+
   // Sync active user role and load real workspace data
   useEffect(() => {
     if (user?.roles && user.roles.length > 0) {
@@ -198,6 +201,7 @@ export const ProviderApp: React.FC = () => {
   const loadWorkspace = async (providerId: string) => {
     setWorkspaceLoading(true);
     setWorkspaceError(null);
+    setUnifiedCalendarError(null);
     try {
       const workspace = await dbService.getProviderWorkspace(providerId);
       if (!workspace.provider) {
@@ -206,18 +210,26 @@ export const ProviderApp: React.FC = () => {
       setProviders([workspace.provider]);
       setVehicles(workspace.vehicles);
       setOfferings(workspace.offerings);
-      let loadedBookings = workspace.bookings;
-      if (user?.role === 'INSTRUCTOR' || currentRole === 'INSTRUCTOR') {
+
+      const isInstructorUser = user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'));
+      if (isInstructorUser) {
         try {
           const unified = await dbService.getMyUnifiedInstructorBookings();
-          if (unified && unified.length > 0) {
-            loadedBookings = unified;
-          }
-        } catch (e) {
-          console.warn('Unified instructor bookings load fallback to provider workspace:', e);
+          setBookings(unified || []);
+        } catch (e: any) {
+          console.error('Unified instructor bookings load failed:', e);
+          setUnifiedCalendarError('Não foi possível carregar a agenda unificada do instrutor. Tente novamente.');
+          setBookings([]);
         }
+        try {
+          const globalBlocks = await dbService.getMyInstructorGlobalBlocks();
+          setInstructorGlobalBlocks(globalBlocks || []);
+        } catch (e) {
+          console.warn('Failed to load instructor global blocks:', e);
+        }
+      } else {
+        setBookings(workspace.bookings);
       }
-      setBookings(loadedBookings);
       setComplianceDocs(workspace.complianceDocuments);
       setAvailabilityRules(workspace.availabilityRules.map((rule: any) => ({
         id: rule.id,

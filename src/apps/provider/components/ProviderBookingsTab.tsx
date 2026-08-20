@@ -134,13 +134,18 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
               >
                 {/* Header Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
                       Reserva #{b.id.slice(0, 8)}
                     </span>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#202126] text-white">
                       Cat. {b.category}
                     </span>
+                    {(b.snapshot?.providerName || b.providerName) && (
+                      <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-900 border border-blue-200">
+                        {b.snapshot?.providerName || b.providerName}
+                      </span>
+                    )}
                     {isPendingPayment && (
                       <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
                         Aguardando Pagamento do Aluno

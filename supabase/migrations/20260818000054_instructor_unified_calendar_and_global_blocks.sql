@@ -1,24 +1,191 @@
 -- ============================================================================
--- MAZZI PLATFORM — MIGRATION 54: Unified Instructor Calendar & Global Blocks
+-- MAZZI PLATFORM — MIGRATION 54: Unified Instructor Calendar & Dedicated Global Personal Blocks
 -- File: supabase/migrations/20260818000054_instructor_unified_calendar_and_global_blocks.sql
 -- ============================================================================
 
--- 1. Schema DDL: Add scope to availability_exceptions
-ALTER TABLE public.availability_exceptions
-  ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'PROVIDER';
+-- 1. DEDICATED TABLE FOR INSTRUCTOR GLOBAL PERSONAL BLOCKS
+-- Personal blocks belong to the instructor's physical identity (auth.uid() = instructor_id).
+-- They DO NOT have a provider_id because they block the instructor globally across all providers.
+CREATE TABLE IF NOT EXISTS public.instructor_global_blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  instructor_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  start_at TIMESTAMPTZ NOT NULL,
+  end_at TIMESTAMPTZ NOT NULL,
+  reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT chk_instructor_global_blocks_dates CHECK (end_at > start_at)
+);
 
-DO $$
+CREATE INDEX IF NOT EXISTS idx_instructor_global_blocks_search
+  ON public.instructor_global_blocks (instructor_id, start_at, end_at);
+
+-- RLS & SECURITY ON INSTRUCTOR_GLOBAL_BLOCKS
+ALTER TABLE public.instructor_global_blocks ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON public.instructor_global_blocks FROM PUBLIC;
+REVOKE ALL ON public.instructor_global_blocks FROM anon;
+
+DROP POLICY IF EXISTS instructor_global_blocks_owner_select ON public.instructor_global_blocks;
+CREATE POLICY instructor_global_blocks_owner_select ON public.instructor_global_blocks
+  FOR SELECT
+  USING (
+    instructor_id = auth.uid()
+    OR (auth.jwt() ->> 'role') = 'PLATFORM_ADMIN'
+  );
+
+-- Block direct INSERT/UPDATE/DELETE from browser; force mutation via SECURITY DEFINER RPCs below.
+REVOKE INSERT, UPDATE, DELETE ON public.instructor_global_blocks FROM authenticated;
+
+
+-- 2. RPC: get_my_instructor_global_blocks()
+-- Returns active global personal blocks for the authenticated instructor.
+CREATE OR REPLACE FUNCTION public.get_my_instructor_global_blocks()
+RETURNS TABLE (
+  id UUID,
+  instructor_id UUID,
+  start_at TIMESTAMPTZ,
+  end_at TIMESTAMPTZ,
+  reason TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_uid UUID := auth.uid();
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'chk_availability_exceptions_scope'
-  ) THEN
-    ALTER TABLE public.availability_exceptions
-      ADD CONSTRAINT chk_availability_exceptions_scope CHECK (scope IN ('PROVIDER', 'INSTRUCTOR_GLOBAL'));
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
   END IF;
-END $$;
 
--- 2. RPC: get_my_unified_instructor_bookings()
--- Anti-IDOR: Uses auth.uid() exclusively as the instructor identity.
+  RETURN QUERY
+  SELECT
+    igb.id,
+    igb.instructor_id,
+    igb.start_at,
+    igb.end_at,
+    igb.reason,
+    igb.created_at,
+    igb.updated_at
+  FROM public.instructor_global_blocks igb
+  WHERE igb.instructor_id = v_uid
+  ORDER BY igb.start_at ASC;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_my_instructor_global_blocks() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_my_instructor_global_blocks() FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_my_instructor_global_blocks() TO authenticated, service_role;
+
+
+-- 3. RPC: save_instructor_global_block()
+-- Creates or updates a global personal block owned strictly by auth.uid().
+CREATE OR REPLACE FUNCTION public.save_instructor_global_block(
+  p_start_at TIMESTAMPTZ,
+  p_end_at TIMESTAMPTZ,
+  p_reason TEXT DEFAULT NULL,
+  p_block_id UUID DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_uid UUID := auth.uid();
+  v_id UUID;
+  v_now TIMESTAMPTZ := NOW();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
+  END IF;
+
+  IF p_start_at IS NULL OR p_end_at IS NULL OR p_end_at <= p_start_at THEN
+    RAISE EXCEPTION 'INVALID_TIME_RANGE' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_block_id IS NOT NULL THEN
+    SELECT id INTO v_id FROM public.instructor_global_blocks
+    WHERE id = p_block_id AND instructor_id = v_uid;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'GLOBAL_BLOCK_NOT_FOUND_OR_UNAUTHORIZED' USING ERRCODE = '42501';
+    END IF;
+
+    UPDATE public.instructor_global_blocks
+    SET start_at = p_start_at,
+        end_at = p_end_at,
+        reason = p_reason,
+        updated_at = v_now
+    WHERE id = v_id;
+  ELSE
+    v_id := gen_random_uuid();
+    INSERT INTO public.instructor_global_blocks (
+      id, instructor_id, start_at, end_at, reason, created_at, updated_at
+    ) VALUES (
+      v_id, v_uid, p_start_at, p_end_at, p_reason, v_now, v_now
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'id', v_id,
+    'instructor_id', v_uid,
+    'start_at', p_start_at,
+    'end_at', p_end_at,
+    'reason', p_reason
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.save_instructor_global_block(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.save_instructor_global_block(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, UUID) FROM anon;
+GRANT EXECUTE ON FUNCTION public.save_instructor_global_block(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, UUID) TO authenticated, service_role;
+
+
+-- 4. RPC: delete_instructor_global_block()
+-- Deletes a global personal block owned strictly by auth.uid().
+CREATE OR REPLACE FUNCTION public.delete_instructor_global_block(
+  p_block_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_uid UUID := auth.uid();
+  v_deleted_count INT;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
+  END IF;
+
+  DELETE FROM public.instructor_global_blocks
+  WHERE id = p_block_id AND instructor_id = v_uid;
+
+  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+
+  IF v_deleted_count = 0 THEN
+    RAISE EXCEPTION 'GLOBAL_BLOCK_NOT_FOUND_OR_UNAUTHORIZED' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN jsonb_build_object('success', true, 'id', p_block_id);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_instructor_global_block(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.delete_instructor_global_block(UUID) FROM anon;
+GRANT EXECUTE ON FUNCTION public.delete_instructor_global_block(UUID) TO authenticated, service_role;
+
+
+-- 5. RPC: get_my_unified_instructor_bookings()
+-- Returns all bookings assigned to auth.uid() as the instructor across ALL provider contexts.
+-- Exact schema alignment: refund_amount_in_cents BIGINT, cancelled_by TEXT.
 CREATE OR REPLACE FUNCTION public.get_my_unified_instructor_bookings()
 RETURNS TABLE (
   id UUID,
@@ -31,7 +198,6 @@ RETURNS TABLE (
   vehicle_name TEXT,
   offering_id UUID,
   quote_id UUID,
-  category TEXT,
   status public.booking_status,
   scheduled_start_at TIMESTAMPTZ,
   scheduled_end_at TIMESTAMPTZ,
@@ -45,9 +211,9 @@ RETURNS TABLE (
   hold_expires_at TIMESTAMPTZ,
   idempotency_key VARCHAR,
   cancelled_at TIMESTAMPTZ,
-  cancelled_by VARCHAR,
+  cancelled_by TEXT,
   cancellation_reason TEXT,
-  refund_amount_in_cents INT,
+  refund_amount_in_cents BIGINT,
   expired_at TIMESTAMPTZ,
   price_in_cents INT,
   platform_fee_in_cents INT,
@@ -73,14 +239,13 @@ BEGIN
     b.id,
     b.student_id,
     b.provider_id,
-    COALESCE(b.snapshot_data->>'providerName', p.trade_name, 'Autoescola')::TEXT AS provider_name,
+    COALESCE(b.snapshot_data->>'providerName', p.trade_name, p.legal_name, '')::TEXT AS provider_name,
     b.instructor_id,
-    COALESCE(b.snapshot_data->>'instructorName', iu.name, 'Instrutor')::TEXT AS instructor_name,
+    COALESCE(b.snapshot_data->>'instructorName', iu.name, '')::TEXT AS instructor_name,
     b.vehicle_id,
-    COALESCE(b.snapshot_data->>'vehicleName', (v.brand || ' ' || v.model), 'Veículo')::TEXT AS vehicle_name,
+    COALESCE(b.snapshot_data->>'vehicleName', (v.brand || ' ' || v.model), '')::TEXT AS vehicle_name,
     b.offering_id,
     b.quote_id,
-    COALESCE(b.category::TEXT, b.snapshot_data->>'category', so.category::TEXT, 'B')::TEXT AS category,
     b.status,
     b.scheduled_start_at,
     b.scheduled_end_at,
@@ -108,7 +273,6 @@ BEGIN
   LEFT JOIN public.providers p ON p.id = b.provider_id
   LEFT JOIN public.users iu ON iu.id = b.instructor_id
   LEFT JOIN public.vehicles v ON v.id = b.vehicle_id
-  LEFT JOIN public.service_offerings so ON so.id = b.offering_id
   WHERE b.instructor_id = v_uid
   ORDER BY b.scheduled_start_at ASC;
 END;
@@ -119,7 +283,8 @@ REVOKE ALL ON FUNCTION public.get_my_unified_instructor_bookings() FROM anon;
 GRANT EXECUTE ON FUNCTION public.get_my_unified_instructor_bookings() TO authenticated, service_role;
 
 
--- 3. Update is_offering_slot_available to enforce INSTRUCTOR_GLOBAL BLOCK precedence
+-- 6. RPC: is_offering_slot_available()
+-- Checks slot availability enforcing global blocks, provider blocks, overrides, base availability and booking overlaps
 CREATE OR REPLACE FUNCTION public.is_offering_slot_available(
   p_offering_id UUID,
   p_scheduled_start_at TIMESTAMPTZ
@@ -187,24 +352,21 @@ BEGIN
   LIMIT 1;
   v_interval_minutes := GREATEST(COALESCE(v_interval_minutes, 60), 1);
 
-  -- F1) INSTRUCTOR_GLOBAL BLOCK Exception Check (Beats EVERYTHING including AVAILABLE_OVERRIDE)
+  -- F1) INSTRUCTOR GLOBAL PERSONAL BLOCK Exception Check (Beats EVERYTHING including provider overrides)
   IF EXISTS (
-    SELECT 1 FROM public.availability_exceptions e
-    WHERE e.type = 'BLOCK'
-      AND e.scope = 'INSTRUCTOR_GLOBAL'
-      AND (e.instructor_id = v_offering.instructor_id OR e.user_id = v_offering.instructor_id)
-      AND e.start_at < v_scheduled_end_at
-      AND e.end_at > p_scheduled_start_at
+    SELECT 1 FROM public.instructor_global_blocks igb
+    WHERE igb.instructor_id = v_offering.instructor_id
+      AND igb.start_at < v_scheduled_end_at
+      AND igb.end_at > p_scheduled_start_at
   ) THEN
     RETURN FALSE;
   END IF;
 
-  -- F2) PROVIDER-SPECIFIC BLOCK Exceptions Check
+  -- F2) PROVIDER-SPECIFIC BLOCK Exceptions Check (availability_exceptions)
   IF EXISTS (
     SELECT 1 FROM public.availability_exceptions e
     WHERE e.provider_id = v_offering.provider_id
       AND e.type = 'BLOCK'
-      AND COALESCE(e.scope, 'PROVIDER') = 'PROVIDER'
       AND (e.instructor_id IS NULL OR e.instructor_id = v_offering.instructor_id)
       AND (e.vehicle_id IS NULL OR e.vehicle_id = v_offering.vehicle_id)
       AND e.start_at < v_scheduled_end_at
@@ -218,7 +380,6 @@ BEGIN
     SELECT 1 FROM public.availability_exceptions e
     WHERE e.provider_id = v_offering.provider_id
       AND e.type = 'AVAILABLE_OVERRIDE'
-      AND COALESCE(e.scope, 'PROVIDER') = 'PROVIDER'
       AND (e.instructor_id IS NULL OR e.instructor_id = v_offering.instructor_id)
       AND (e.vehicle_id IS NULL OR e.vehicle_id = v_offering.vehicle_id)
       AND e.start_at <= p_scheduled_start_at
@@ -283,69 +444,3 @@ $$;
 
 REVOKE ALL ON FUNCTION public.is_offering_slot_available(UUID, TIMESTAMPTZ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_offering_slot_available(UUID, TIMESTAMPTZ) TO anon, authenticated, service_role;
-
-
--- 4. RPC: save_instructor_global_block
--- Anti-IDOR: Only the instructor themselves (auth.uid() = instructor_id) or platform admin can create/update global blocks.
-CREATE OR REPLACE FUNCTION public.save_instructor_global_block(
-  p_start_at TIMESTAMPTZ,
-  p_end_at TIMESTAMPTZ,
-  p_reason TEXT DEFAULT NULL,
-  p_exception_id UUID DEFAULT NULL
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
-  v_uid UUID := auth.uid();
-  v_id UUID;
-  v_now TIMESTAMPTZ := NOW();
-BEGIN
-  IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
-  END IF;
-
-  IF p_start_at IS NULL OR p_end_at IS NULL OR p_end_at <= p_start_at THEN
-    RAISE EXCEPTION 'INVALID_TIME_RANGE' USING ERRCODE = '22023';
-  END IF;
-
-  IF p_exception_id IS NOT NULL THEN
-    SELECT id INTO v_id FROM public.availability_exceptions
-    WHERE id = p_exception_id
-      AND (instructor_id = v_uid OR user_id = v_uid)
-      AND scope = 'INSTRUCTOR_GLOBAL';
-
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'GLOBAL_BLOCK_NOT_FOUND_OR_UNAUTHORIZED' USING ERRCODE = '42501';
-    END IF;
-
-    UPDATE public.availability_exceptions
-    SET start_at = p_start_at,
-        end_at = p_end_at,
-        reason = COALESCE(p_reason, reason),
-        updated_at = v_now
-    WHERE id = v_id;
-  ELSE
-    v_id := gen_random_uuid();
-    INSERT INTO public.availability_exceptions (
-      id, provider_id, instructor_id, user_id, type, scope, start_at, end_at, reason, created_at, updated_at
-    ) VALUES (
-      v_id, NULL, v_uid, v_uid, 'BLOCK', 'INSTRUCTOR_GLOBAL', p_start_at, p_end_at, p_reason, v_now, v_now
-    );
-  END IF;
-
-  RETURN jsonb_build_object(
-    'success', true,
-    'id', v_id,
-    'scope', 'INSTRUCTOR_GLOBAL',
-    'start_at', p_start_at,
-    'end_at', p_end_at
-  );
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.save_instructor_global_block(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, UUID) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.save_instructor_global_block(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, UUID) FROM anon;
-GRANT EXECUTE ON FUNCTION public.save_instructor_global_block(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, UUID) TO authenticated, service_role;
