@@ -30,7 +30,7 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'Faça o check-in antes de iniciar a aula.';
   }
 
-  if (msg.includes('UNAUTHORIZED_PROVIDER')) {
+  if (msg.includes('UNAUTHORIZED_PROVIDER') || msg.includes('UNAUTHORIZED_STUDENT')) {
     return 'Você não tem permissão para realizar esta ação neste agendamento.';
   }
 

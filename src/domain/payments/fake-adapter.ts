@@ -17,13 +17,13 @@ import {
   SettlementStatusResult,
 } from './gateway-interface';
 import { PaymentGatewayType, Provider, MazziPaymentStatus } from '../../types';
-import { isProductionRuntime } from '../../lib/runtime-env';
+import { isMockValidationPaymentAllowed } from '../../lib/runtime-env';
 
 const FAKE_GATEWAY_PRODUCTION_ERROR =
-  'FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: O gateway de pagamento simulado está bloqueado em produção.';
+  'FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: O gateway de pagamento simulado está bloqueado em produção a menos que VITE_PAYMENT_MODE=MOCK_VALIDATION esteja explicitamente configurado.';
 
 /**
- * FakePaymentGateway for MAZZI MVP Development Environment.
+ * FakePaymentGateway for MAZZI MVP Development & Validation Environment.
  * Explicitly identified as simulated/development gateway.
  * DOES NOT process real financial transactions, real PIX, or real cards.
  */
@@ -35,7 +35,7 @@ export class FakePaymentGateway implements PaymentGateway {
   private refundsStore = new Map<string, RefundGatewayDetails>();
 
   private assertNotProduction(): void {
-    if (isProductionRuntime()) {
+    if (!isMockValidationPaymentAllowed()) {
       throw new Error(FAKE_GATEWAY_PRODUCTION_ERROR);
     }
   }

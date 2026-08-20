@@ -35,6 +35,24 @@ export function isDevelopmentRuntime(): boolean {
   return viteEnv.DEV === true || getRuntimeEnvValue('NODE_ENV') === 'development';
 }
 
+export function isMockValidationPaymentAllowed(): boolean {
+  const mode = (
+    getRuntimeEnvValue('VITE_PAYMENT_MODE') ||
+    getRuntimeEnvValue('PAYMENT_MODE') ||
+    ''
+  ).trim().toUpperCase();
+
+  if (mode === 'MOCK_VALIDATION') {
+    return true;
+  }
+
+  if (isProductionRuntime()) {
+    return false;
+  }
+
+  return true;
+}
+
 export function assertFrontendSafeSupabaseEnv(): void {
   const env = getImportMetaEnv();
   const hasBrowserServiceRole =

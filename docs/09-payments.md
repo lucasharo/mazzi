@@ -1,4 +1,9 @@
-# 09 — Pagamentos, Comissões e Repasses (Payouts)
+## FASE ATUAL DO PROJETO (MVP VALIDATION MODE)
+- **Modo de Pagamento**: `MOCK_VALIDATION` (Fake Payment Gateway).
+- **Dinheiro Real**: NÃO (Nenhum valor financeiro real é cobrado ou enviado para rede externa).
+- **Mercado Pago Real**: POSTERGADO para fase pós-MVP.
+- **Segurança & Idempotência**: O fluxo usa `fake_payment_gateway` com chave de idempotência `idem_pay_<booking_id>` e verificação transacional no banco PostgreSQL (`confirm_booking_payment` RPC).
+- **Produção Futura (Pagamentos Reais)**: O gateway real Mercado Pago utilizará exclusivamente webhooks e assinaturas criptográficas do backend confiável (trusted backend) como única fonte de verdade.
 
 ## Interface Abstrata: `PaymentGateway`
 O domínio MAZZI é completamente desacoplado de provedores específicos (como Asaas, Pagar.me, Stripe ou Mercado Pago).

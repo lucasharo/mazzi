@@ -12,6 +12,7 @@ import {
   XCircle,
   AlertCircle,
   ArrowLeft,
+  CheckCircle2,
 } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
@@ -22,6 +23,7 @@ import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { dbService } from '../../../lib/db-service';
 import { calculateCancellationPolicy } from '../../../domain/cancellation';
+import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 
 export interface BookingDetailsModalProps {
   isOpen: boolean;
@@ -31,6 +33,7 @@ export interface BookingDetailsModalProps {
   onOpenChat?: (booking: Booking) => void;
   onContinuePayment?: (booking: Booking) => void;
   onBookingUpdated?: (updatedBooking: Booking) => void;
+  onStudentCheckIn?: (bookingId: string) => Promise<any>;
 }
 
 const CANCEL_REASON_CHIPS = [
@@ -48,14 +51,37 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onOpenChat,
   onContinuePayment,
   onBookingUpdated,
+  onStudentCheckIn,
 }) => {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [selectedReasonChip, setSelectedReasonChip] = useState<string>('');
   const [customReason, setCustomReason] = useState<string>('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [checkInError, setCheckInError] = useState<string | null>(null);
 
   if (!booking) return null;
+
+  const handleStudentCheckInAction = async () => {
+    if (!onStudentCheckIn || !booking) return;
+    setIsCheckingIn(true);
+    setCheckInError(null);
+    try {
+      const res = await onStudentCheckIn(booking.id);
+      if (res && onBookingUpdated) {
+        onBookingUpdated({
+          ...booking,
+          studentCheckedIn: true,
+          checkinStudentAt: res.checkin_student_at || new Date().toISOString(),
+        });
+      }
+    } catch (err: any) {
+      setCheckInError(mapFriendlyErrorMessage(err, 'Não foi possível realizar o check-in. Tente novamente.'));
+    } finally {
+      setIsCheckingIn(false);
+    }
+  };
 
   const snapshot = booking.snapshot;
   const isPendingPayment = booking.status === 'PENDING_PAYMENT';
@@ -300,6 +326,44 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Student Check-In Card */}
+          {booking.status === 'CONFIRMED' && (
+            <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-2 shadow-xs">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">Check-in do Aluno</span>
+                  <span className="text-[11px] text-slate-500 block">Confirme sua presença na aula</span>
+                </div>
+                {booking.studentCheckedIn ? (
+                  <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1 shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Realizado {booking.checkinStudentAt ? `às ${formatTimeBR(booking.checkinStudentAt)}` : ''}
+                  </span>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    isLoading={isCheckingIn}
+                    disabled={isCheckingIn || !onStudentCheckIn}
+                    onClick={handleStudentCheckInAction}
+                    leftIcon={<UserCheck className="w-3.5 h-3.5" aria-hidden="true" />}
+                    aria-label="Fazer check-in na aula"
+                  >
+                    Fazer check-in
+                  </Button>
+                )}
+              </div>
+
+              {checkInError && (
+                <div role="alert" className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{checkInError}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Frozen Historical Snapshot Details */}
           <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-3 shadow-xs">

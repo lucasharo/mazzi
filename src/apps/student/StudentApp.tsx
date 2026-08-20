@@ -1115,7 +1115,7 @@ function applyStrictProviderFilters(
         onBookingUpdated={(updated) => {
           setConfirmedBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
           setBookingsRefreshKey((k) => k + 1);
-          setSelectedBookingForDetails(null);
+          setSelectedBookingForDetails(updated);
         }}
         onContinuePayment={(bookingToResume) => {
           setSelectedBookingForDetails(null);
@@ -1127,6 +1127,11 @@ function applyStrictProviderFilters(
             setSelectedBookingForChat(selectedBookingForDetails);
             setSelectedBookingForDetails(null);
           }
+        }}
+        onStudentCheckIn={async (bookingId) => {
+          const result = await dbService.studentCheckInBooking(bookingId);
+          setBookingsRefreshKey((k) => k + 1);
+          return result;
         }}
       />
 

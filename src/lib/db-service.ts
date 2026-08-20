@@ -153,6 +153,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     scheduledEndAt: row.scheduled_end_at,
     studentCheckedIn: Boolean(row.checkin_student_at),
     instructorCheckedIn: Boolean(row.checkin_instructor_at),
+    checkinStudentAt: row.checkin_student_at || undefined,
     checkinInstructorAt: row.checkin_instructor_at || undefined,
     lessonStartedAt: row.lesson_started_at || undefined,
     lessonFinishedAt: row.lesson_finished_at || undefined,
@@ -1321,6 +1322,14 @@ export const dbService = {
       p_booking_id: params.bookingId,
       p_reason: params.reason || null,
       p_reason_code: params.reasonCode || null,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async studentCheckInBooking(bookingId: string): Promise<any> {
+    const { data, error } = await sp.rpc('student_check_in_booking', {
+      p_booking_id: bookingId,
     });
     if (error) throw error;
     return data;

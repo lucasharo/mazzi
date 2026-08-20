@@ -5,7 +5,7 @@
 import { PaymentGateway } from './gateway-interface';
 import { FakePaymentGateway } from './fake-adapter';
 import { MercadoPagoPaymentGateway, MercadoPagoConfig } from './mercadopago-adapter';
-import { getRuntimeEnvValue, isProductionRuntime } from '../../lib/runtime-env';
+import { getRuntimeEnvValue, isMockValidationPaymentAllowed } from '../../lib/runtime-env';
 
 export type PaymentGatewayProvider = 'fake' | 'mercadopago';
 
@@ -17,7 +17,7 @@ export interface PaymentGatewayFactoryOptions {
 export class PaymentGatewayFactory {
   /**
    * Resolves the PaymentGateway instance based on environment configuration.
-   * Default for MVP development is 'fake' (FakePaymentGateway).
+   * Default for MVP development & validation mode is 'fake' (FakePaymentGateway).
    */
   static createGateway(options?: PaymentGatewayFactoryOptions): PaymentGateway {
     const configuredProvider =
@@ -31,22 +31,17 @@ export class PaymentGatewayFactory {
       throw new Error(`PAYMENT_GATEWAY_PROVIDER_UNSUPPORTED: ${provider}`);
     }
 
-    // Safety guard against accidental fake gateway activation in production.
-    if (isProductionRuntime() && provider === 'fake') {
-      throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: configure PAYMENT_GATEWAY_PROVIDER=mercadopago before production payment flows.');
+    if (provider === 'fake') {
+      if (!isMockValidationPaymentAllowed()) {
+        throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: O gateway de pagamento simulado está bloqueado em produção a menos que VITE_PAYMENT_MODE=MOCK_VALIDATION esteja explicitamente configurado.');
+      }
+      return new FakePaymentGateway();
     }
 
     if (provider === 'mercadopago') {
-      const config: MercadoPagoConfig = options?.mercadoPagoConfig || {
-        accessToken: getRuntimeEnvValue('MERCADOPAGO_ACCESS_TOKEN') || '',
-        clientId: getRuntimeEnvValue('MERCADOPAGO_CLIENT_ID') || '',
-        clientSecret: getRuntimeEnvValue('MERCADOPAGO_CLIENT_SECRET') || '',
-        useLiveHttp: getRuntimeEnvValue('MERCADOPAGO_LIVE_HTTP') === 'true',
-      };
-      return new MercadoPagoPaymentGateway(config);
+      throw new Error('REAL_PAYMENT_GATEWAY_NOT_ENABLED: O gateway de pagamento real Mercado Pago está desabilitado na fase de validação do MVP.');
     }
 
-    // Default to FakePaymentGateway for development
     return new FakePaymentGateway();
   }
 }
