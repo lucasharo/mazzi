@@ -15,7 +15,7 @@
 | **Estilização** | Tailwind CSS v4 | CSS Tokens customizados (`--mazzi-*`) |
 | **Ícones e Animações** | Lucide React + Motion | Ícones acessíveis e micro-interações |
 | **Backend & DB** | PostgreSQL + PostGIS | Supabase gerenciado, RLS, Triggers e Índices Espaciais |
-| **Autenticação** | Supabase Auth (GoTrue) | OTP de 6 dígitos, JWT, Session Hydration |
+| **Autenticação** | Supabase Auth (GoTrue) | OTP de 8 dígitos, JWT, Session Hydration |
 | **Testes** | Vitest | Testes unitários de domínio, RLS, schemas e UI |
 
 ---

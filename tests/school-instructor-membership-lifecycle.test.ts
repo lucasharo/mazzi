@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const migration = fs.readFileSync(path.join(__dirname, '../supabase/migrations/20260821200000_school_instructor_membership_lifecycle.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(__dirname, '../supabase/migrations/20260821211805_school_instructor_membership_lifecycle.sql'), 'utf8');
 const historicalStaffPolicy = fs.readFileSync(path.join(__dirname, '../supabase/migrations/20260814000003_auth_security_hardening.sql'), 'utf8');
 
 describe('School-instructor invitation and membership security migration', () => {

@@ -45,8 +45,8 @@
 ## 3. Identidade, Autenticação e Cadastro
 
 1. **Mecanismo de Autenticação**: Exclusivamente Supabase Auth nativo.
-2. **Confirmação de E-mail**: Realizada via **código OTP de 6 dígitos** enviado por e-mail (`{{ .Token }}`).
-3. **Recuperação de Senha**: Realizada via **código OTP de 6 dígitos** com expiração e redefinição segura.
+2. **Confirmação de E-mail**: Realizada via **código OTP de 8 dígitos** enviado por e-mail (`{{ .Token }}`).
+3. **Recuperação de Senha**: Realizada via **código OTP de 8 dígitos** com expiração e redefinição segura.
 4. **Campos Obrigatórios no Cadastro do Aluno**:
    - `Nome completo`: Mínimo de 3 caracteres;
    - `E-mail`: Válido e único;
@@ -98,5 +98,5 @@
    - Botão Secundário: `SecondaryButton` (branco com borda suave, min-h-[44px]);
    - Entradas de Texto: `Input`;
    - Senha: `PasswordInput` com alternância `Eye`/`EyeOff`;
-   - OTP: `OtpInput` (6 dígitos, teclado numérico).
+   - OTP: `OtpInput` (8 dígitos, teclado numérico).
 3. **Acessibilidade e Estados**: Todo componente interativo deve ter suporte completo a `LOADING`, `EMPTY`, `ERROR`, `SUCCESS` e `DISABLED`, com atributos ARIA e touch targets mínimos de 44px.

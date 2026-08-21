@@ -6,11 +6,11 @@
 
 ---
 
-## DEC-001: Confirmação de Cadastro e Recuperação por OTP de 6 Dígitos
+## DEC-001: Confirmação de Cadastro e Recuperação por OTP de 8 Dígitos
 - **Data**: 2026-08-17
 - **Status**: `APROVADA & IMPLEMENTADA`
 - **Tema**: Autenticação & Experiência do Usuário (Auth)
-- **Decisão**: Substituir links longos de e-mail por códigos numéricos OTP de 6 dígitos (`{{ .Token }}`) para confirmação de cadastro e recuperação de senha.
+- **Decisão**: Substituir links longos de e-mail por códigos numéricos OTP de 8 dígitos (`{{ .Token }}`) para confirmação de cadastro e recuperação de senha.
 - **Motivo**: Reduz atrito no mobile, evita problemas com clientes de e-mail corporativos que desarmam links e acelera o onboarding.
 - **Impacto**: Criação do componente `OtpInput`, novos endpoints no `auth-service.ts` e suporte a cooldown de 45 segundos para reenvio.
 - **Relacionado a**: [`MVP_RULES.md`](./MVP_RULES.md), `AppLogin.tsx`.
@@ -153,7 +153,6 @@
 - **Motivo**: Definir regras comerciais claras e justas para alunos e prestadores credenciados, eliminando pendências e garantindo previsibilidade de cancelamento no MVP.
 - **Impacto**: Domínio `src/domain/cancellation.ts`, constante `MVP_CANCELLATION_POLICY`, RPC `cancel_booking_v2`, modal de cancelamento em `BookingDetailsModal.tsx` e portal do prestador.
 - **Relacionado a**: [`MVP_RULES.md`](./MVP_RULES.md), [`03-business-rules.md`](../03-business-rules.md), `cancellation.ts`.
-
 
 
 

@@ -37,7 +37,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 |---|---|---|---|---|
 | Autenticação | Autenticação Supabase (Email/Senha) | `IMPLEMENTADO` | [`src/lib/auth-service.ts`](../src/lib/auth-service.ts), [`src/components/auth/AppLogin.tsx`](../src/components/auth/AppLogin.tsx) | Login com e-mail e senha via Supabase Auth GoTrue |
 | Onboarding | Cadastro público de Alunos | `IMPLEMENTADO` | [`src/components/auth/AppLogin.tsx`](../src/components/auth/AppLogin.tsx) | Criação de perfil `STUDENT` com validação de campos |
-| Verificação | Código OTP por e-mail | `IMPLEMENTADO` | [`src/components/ui/OtpInput.tsx`](../src/components/ui/OtpInput.tsx) | Confirmação de conta e redefinição via código de 6 dígitos |
+| Verificação | Código OTP por e-mail | `IMPLEMENTADO` | [`src/lib/auth-constants.ts`](../src/lib/auth-constants.ts), [`src/components/ui/OtpInput.tsx`](../src/components/ui/OtpInput.tsx) | Confirmação de conta e redefinição via código de 8 dígitos (`/^\d{8}$/`) |
 | Recuperação | Reset de senha anti-enumeração | `IMPLEMENTADO` | [`src/components/auth/AppLogin.tsx`](../src/components/auth/AppLogin.tsx), `supabase/migrations/20260818000033_disable_email_account_enumeration.sql` | Exibe mensagem canônica genérica para qualquer e-mail válido sem pre-check ou vazamento de existência (`DEC-011`) |
 | Identidade | CPF do Aluno (Validação e Imutabilidade) | `IMPLEMENTADO` | [`src/utils/cpf.ts`](../src/utils/cpf.ts), `supabase/migrations/20260818000031_student_identity_mandatory_and_editable_birth_date.sql` | Obrigatório para `STUDENT`, validado via Módulo 11 no banco/UI, único e estritamente imutável |
 | Identidade | Data de Nascimento (Idade >= 18 anos) | `IMPLEMENTADO` | [`src/utils/age.ts`](../src/utils/age.ts), `supabase/migrations/20260818000031_student_identity_mandatory_and_editable_birth_date.sql` | Obrigatória para `STUDENT`, idade civil >= 18 anos validada no banco e editável no Perfil via RPC |
@@ -61,7 +61,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Prestador | Perfil Público do Prestador | `IMPLEMENTADO` | [`src/components/search/ProviderPublicProfileModal.tsx`](../src/components/search/ProviderPublicProfileModal.tsx) | Exibe detalhes, foto, avaliações e frota do profissional |
 | Agenda | Seleção de Horários (Horizonte 60 Dias) | `IMPLEMENTADO` | [`src/domain/availability.ts`](../src/domain/availability.ts), [`src/apps/student/components/SlotSelectorModal.tsx`](../src/apps/student/components/SlotSelectorModal.tsx) | `STUDENT_BOOKING_HORIZON_DAYS = 60` (carregamento progressivo 30+30 dias) |
 | Pagamentos | Gateway Ativo Atual | `MOCK/DEV` | [`src/domain/payments/fake-adapter.ts`](../src/domain/payments/fake-adapter.ts), [`src/apps/student/components/CheckoutModal.tsx`](../src/apps/student/components/CheckoutModal.tsx) | `FakePaymentGateway` ativo no checkout para pagamentos simulados (PIX e Cartão), sem movimentação financeira real (`DEC-010`) |
-| Pagamentos | Integração Mercado Pago | `FUTURO` / `PREPARADA TECNICAMENTE` | [`src/domain/payments/mercadopago-adapter.ts`](../src/domain/payments/mercadopago-adapter.ts), [`src/domain/payments/gateway-factory.ts`](../src/domain/payments/gateway-factory.ts) | Adaptadores e fábrica preparados no código-fonte; integração HTTP real ao vivo adiada (`DEC-010`) |
+| Pagamentos | Integração Mercado Pago | `FUTURO` | [`src/domain/payments/mercadopago-adapter.ts`](../src/domain/payments/mercadopago-adapter.ts), [`src/domain/payments/gateway-factory.ts`](../src/domain/payments/gateway-factory.ts) | Desabilitada; o gateway real só poderá ser ativado mediante solicitação explícita futura. O checkout atual usa `FakePaymentGateway` / `MOCK_VALIDATION`. |
 | Minhas Aulas | Gestão de Aulas Agendadas e Histórico | `IMPLEMENTADO` | [`src/apps/student/components/BookingDetailsModal.tsx`](../src/apps/student/StudentApp.tsx) | Exibe aulas ativas, concluídas e detalhes da reserva |
 | Cancelamento | Fluxo Comercial de Cancelamento | `IMPLEMENTADO` | [`src/domain/cancellation.ts`](../src/domain/cancellation.ts), `supabase/migrations/20260818000034_cancellation_flow_and_rpc.sql` | Tabela canônica DEC-013 (100% >=24h, 50% 6-24h, 0% <6h), RPC `cancel_booking_v2`, modal no App Aluno e modo Read-Only no Chat |
 | Comunicação | Chat Contextual por Aula | `IMPLEMENTADO` | [`src/components/chat/BookingChatPanel.tsx`](../src/components/chat/BookingChatPanel.tsx), `supabase/migrations/20260817000019_student_realtime_chat.sql` | Mensageria associada à reserva confirmada com Supabase Realtime |
@@ -77,7 +77,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Prestador | Portal do Prestador (`src/apps/provider/`) | `IMPLEMENTADO` | [`src/apps/provider/`](../src/apps/provider/) | Gestão de perfil, horários de disponibilidade, veículos e ofertas |
 | Compliance | Gestão de Documentação Regulatória | `IMPLEMENTADO` | [`src/domain/compliance.ts`](../src/domain/compliance.ts) | Upload e moderação de CNH, CRLV, alvarás e inspeções |
 | Frota | Cadastro de Veículos e Transmissões | `IMPLEMENTADO` | [`src/domain/vehicles-offerings.ts`](../src/domain/vehicles-offerings.ts) | Homologação de veículos com pedal duplo e categoria |
-| Admin | Painel Administrativo (`src/apps/admin/`) | `IMPLEMENTADO` | [`src/apps/admin/`](../src/apps/admin/) | Credenciamento de profissionais, aprovação de documentos e analytics |
+| Admin | Painel Administrativo (`src/apps/admin/`) | `PARCIAL` | [`src/apps/admin/`](../src/apps/admin/) | Base de UI e leituras administrativas existentes; o painel completo end-to-end não é declarado concluído nesta etapa. |
 | Auditoria | Registro Estruturado de Logs (`AuditLog`) | `IMPLEMENTADO` | `supabase/migrations/20260814000015_sprint15_security_hardening.sql` | Tabela `audit_logs` registrando ações críticas de sistema |
 
 ### 3.4. Premium UI V2 e Design System
@@ -90,11 +90,11 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Design System | Catálogo executável alinhado aos entrypoints Aluno/PRO | `IMPLEMENTADO` | [`src/apps/design-system/DesignSystemShowcase.tsx`](../src/apps/design-system/DesignSystemShowcase.tsx), [`docs/DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) | Inventário de 21 componentes públicos, referência do Aluno, abas reais e fluxo real de dias/horários com dados isolados |
 | Agendamento visual | Calendário e seleção de horários no catálogo | `IMPLEMENTADO` | [`src/apps/student/components/SlotSelectorModal.tsx`](../src/apps/student/components/SlotSelectorModal.tsx) | O modo de preview é opcional e não substitui a consulta real ao backend no produto |
 
-| Autoescola ↔ Instrutor | Convites, vínculo, compliance por escopo, elegibilidade e recontratação | `IMPLEMENTADO` | Migrations `20260821211805`–`20260821212857`; RPCs seguras e painel mínimo no MAZZI Pro | Backend LIVE aplicado; pagamentos continuam `FAKE / MOCK_VALIDATION` |
+| Autoescola ↔ Instrutor | Convites, vínculo, compliance por escopo, elegibilidade e recontratação | `IMPLEMENTADO` | Migrations `20260821211805`, `20260821211815`, `20260821212128`, `20260821212131`, `20260821212134`, `20260821212313`, `20260821212317`, `20260821212518`, `20260821212857`, `20260821213335`, `20260821213422`, `20260821213516`; RPCs seguras e painel mínimo no MAZZI Pro | Backend LIVE aplicado; pagamentos continuam `FAKE / MOCK_VALIDATION` |
 
 ---
 
 ## 4. Próximos Passos Recomendados
 
-1. **Definição da Política Comercial de Cancelamento (`Product`)**: Formalizar taxas e prazos de reembolso em `PRODUCT_DECISIONS.md` para transicionar a funcionalidade de Cancelamento de `PARCIAL / DECISÃO PENDENTE` para `IMPLEMENTADO`.
-2. **Homologação Final do Gateway de Pagamento (`Dev`)**: Substituir o adaptador Sandbox Mock pelo ambiente de staging real do Mercado Pago.
+1. **Operação e observabilidade (`Dev`):** acompanhar a execução do fluxo já implementado de cancelamento DEC-013 e do ciclo Autoescola ↔ Instrutor.
+2. **Gateway de pagamento (`Product/Dev`):** permanece `FAKE / MOCK_VALIDATION`; nenhuma homologação ou ativação de gateway real deve ocorrer sem solicitação explícita futura.

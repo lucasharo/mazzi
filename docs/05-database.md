@@ -92,5 +92,5 @@ A migration `20260814000001_initial_schema.sql` cria **exatamente 21 tabelas dis
 
 - `driving_school_membership_events` registra transições e recontratações sem apagar vínculos.
 - `booking_selection_mode` em quotes/bookings preserva `SPECIFIC_INSTRUCTOR` ou `ANY_AVAILABLE_INSTRUCTOR`.
-- `compliance_documents` suporta escopos `USER_GLOBAL` e `SCHOOL_MEMBERSHIP`.
-- As migrations `20260821211805` até `20260821212857` foram aplicadas no LIVE de forma forward-only.
+- `compliance_documents` suporta os escopos técnicos `USER_GLOBAL`, `PROVIDER`, `MEMBERSHIP` e `VEHICLE`.
+- A cadeia LIVE aplicada inclui `20260821211805`, `20260821211815`, `20260821212128`, `20260821212131`, `20260821212134`, `20260821212313`, `20260821212317`, `20260821212518`, `20260821212857`, `20260821213335`, `20260821213422` e `20260821213516`.

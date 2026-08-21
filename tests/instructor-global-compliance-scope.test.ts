@@ -4,8 +4,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const root = process.cwd();
-const migrationPath = path.join(root, 'supabase/migrations/20260821210000_instructor_global_compliance_scope.sql');
-const lifecyclePath = path.join(root, 'supabase/migrations/20260821200000_school_instructor_membership_lifecycle.sql');
+const migrationPath = path.join(root, 'supabase/migrations/20260821211815_instructor_global_compliance_scope.sql');
+const lifecyclePath = path.join(root, 'supabase/migrations/20260821211805_school_instructor_membership_lifecycle.sql');
 const lifecycleTestPath = path.join(root, 'tests/school-instructor-membership-lifecycle.test.ts');
 
 const read = (filePath: string) => fs.readFileSync(filePath, 'utf8');
@@ -90,6 +90,6 @@ describe('TASK-072 — instructor global compliance scope', () => {
     expect(crypto.createHash('sha256').update(read(lifecyclePath)).digest('hex').toUpperCase())
       .toBe('425C9340BEC400FE20CDE2A51BEE08F858943C9241295CCC6644CD700BD1676D');
     expect(crypto.createHash('sha256').update(read(lifecycleTestPath)).digest('hex').toUpperCase())
-      .toBe('C940AB473F84EC5353627D2D1F517A6724FD9D1A1324BF752D3EA1E8924E7BCE');
+      .toBe('EE904B1357E53EDD0B3E17C1DB8F14BD736E9F98B79F5B0D14A4999EB2D3A848');
   });
 });

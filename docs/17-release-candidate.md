@@ -13,7 +13,7 @@ A Sprint 16 prepara o MAZZI para validação de release candidate sem adicionar 
 ## Decisões mantidas
 
 - O produto segue como marketplace MVP para aulas práticas categoria B em São Paulo.
-- `Supabase + OpenStreetMap/Leaflet + Mercado Pago` continuam como direção técnica.
+- `Supabase + OpenStreetMap/Leaflet` são a direção técnica atual; Mercado Pago permanece futuro e desabilitado.
 - Dinheiro real continua desabilitado.
 - O gateway fake existe somente para desenvolvimento/testes.
 - “Minha jornada para a CNH”, pacotes, WhatsApp/SMS/e-mail transacional, IA e gamificação continuam fora do MVP.
@@ -24,7 +24,7 @@ O `FakePaymentGateway` é permitido apenas em desenvolvimento/testes. Em produç
 
 O build pode existir como release candidate, mas cobrança real só pode ser habilitada depois de:
 
-- Mercado Pago configurado com credenciais reais;
+- Mercado Pago real não está habilitado; credenciais reais não fazem parte deste release;
 - split/repasse/estorno validados;
 - webhook real validado;
 - reconciliação financeira validada;
@@ -56,7 +56,7 @@ Nunca criar `VITE_SUPABASE_SERVICE_ROLE_KEY`. A service role é exclusivamente s
 - [ ] Rodar Supabase Security Advisor e documentar apenas warnings aceitos.
 - [ ] Ativar leaked password protection no Supabase Auth.
 - [ ] Confirmar que nenhuma credencial real aparece em `dist/`.
-- [ ] Configurar Mercado Pago real.
+- [ ] Mercado Pago real permanece bloqueado até solicitação explícita futura do Product/User.
 - [ ] Validar webhook real com assinatura.
 - [ ] Validar split, repasse, chargeback e estorno.
 - [ ] Validar termos de uso, política de privacidade/LGPD e consentimentos.

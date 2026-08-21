@@ -4,6 +4,8 @@
 
 O compliance global do instrutor é separado do compliance do vínculo com uma autoescola. A ativação exige ambos os escopos válidos; documentos permanecem em storage privado. Instrutores autônomos legados sem documentos existentes têm compatibilidade transitória, enquanto novos cadastros e vínculos seguem a exigência objetiva.
 
+**Compatibilidade legada:** a policy `Providers can insert own compliance documents` continua permitindo inserção direta apenas para o próprio usuário/provedor ativo e com status `PENDING`. Ela não permite aprovação, não altera elegibilidade e não cria privilégio; por isso foi classificada como `SAFE_LEGACY_COMPATIBILITY`.
+
 > **REGULATORY SNAPSHOT METADATA**:  
 > `REGULATORY_BASELINE_DATE = 2026-08-14`  
 > *A data representa a última auditoria e validação das fontes normativas federais, resoluções do CONTRAN e regulamentos do DETRAN-SP, não constituindo garantia de validade perpétua da norma.*

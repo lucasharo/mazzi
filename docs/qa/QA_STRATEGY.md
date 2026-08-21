@@ -28,9 +28,9 @@
 - [ ] Cadastro de aluno exige nome, e-mail, celular, CPF válido e data de nascimento (>= 18 anos);
 - [ ] Bloqueio matemático para CPFs com dígitos inválidos ou sequências repetidas;
 - [ ] Bloqueio determinístico para menores de 18 anos (incluindo cálculo civil e 29 de fevereiro);
-- [ ] Envio e validação de código OTP de 6 dígitos para confirmação de e-mail;
+- [ ] Envio e validação de código OTP de 8 dígitos para confirmação de e-mail;
 - [ ] Cooldown de 45 segundos ativo e funcional no botão de reenvio de OTP;
-- [ ] Recuperação de senha baseada em OTP de 6 dígitos sem enumeração de e-mail;
+- [ ] Recuperação de senha baseada em OTP de 8 dígitos sem enumeração de e-mail;
 - [ ] Limpeza de tokens na URL após troca de senha;
 - [ ] Sessão hidratada corretamente sem criação duplicada de perfil em `public.users`.
 
