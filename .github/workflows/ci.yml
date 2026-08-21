@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
-      - premium_ui_v2
+      - 'feature/**'
   pull_request:
     branches:
       - main
-      - premium_ui_v2
+      - 'feature/**'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
