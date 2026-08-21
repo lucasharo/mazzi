@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, } from 'lucide-react';
 import {
   Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, } from '../../types';
 import { BookingCard } from '../../components/ui/BookingCard';
@@ -10,6 +10,7 @@ import { AppHomeHeader } from '../../components/ui/AppHomeHeader';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
+
 import { getBookingEndTimestamp, isBookingEnded } from '../../domain/booking';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { SearchHeader } from '../../components/search/SearchHeader';
@@ -94,6 +95,17 @@ function bookingTimestamp(booking: Booking): number {
   const value = booking.scheduledStartAt || `${booking.scheduledDate || ''}T${booking.startTime || '00:00'}`;
   const timestamp = new Date(value).getTime();
   return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+export function groupBookingContextsByInstructor(bookingContexts: any[]): any[] {
+  const contextsByInstructor = new Map<string, any>();
+  for (const context of bookingContexts) {
+    const instructorId = context.instructor_id || context.instructorId;
+    if (instructorId && !contextsByInstructor.has(instructorId)) {
+      contextsByInstructor.set(instructorId, context);
+    }
+  }
+  return Array.from(contextsByInstructor.values());
 }
 
 export const StudentApp: React.FC = () => {
@@ -479,14 +491,7 @@ function applyStrictProviderFilters(
 
         // A school can publish several vehicle/duration offerings for the same
         // instructor. The first choice must represent people, not offerings.
-        const contextsByInstructor = new Map<string, any>();
-        for (const context of bookingContexts) {
-          const instructorId = context.instructor_id || context.instructorId;
-          if (instructorId && !contextsByInstructor.has(instructorId)) {
-            contextsByInstructor.set(instructorId, context);
-          }
-        }
-        const distinctInstructorContexts = Array.from(contextsByInstructor.values());
+        const distinctInstructorContexts = groupBookingContextsByInstructor(bookingContexts);
         const ctx = distinctInstructorContexts[0] || bookingContexts[0];
         matchingOffering = offeringFromBookingContext(ctx);
         matchingVehicle = vehicleFromBookingContext(ctx);
@@ -632,7 +637,7 @@ function applyStrictProviderFilters(
               />
 
               <section aria-labelledby="student-results-title" className="mt-8">
-                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><ButtonBase type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</ButtonBase><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><ButtonBase type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></ButtonBase><ButtonBase type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><Map className="h-4 w-4"/></ButtonBase></div></div></div>
+                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><ButtonBase type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</ButtonBase><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><ButtonBase type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></ButtonBase><ButtonBase type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><MapIcon className="h-4 w-4"/></ButtonBase></div></div></div>
               </section>
 
               {searchError && (
