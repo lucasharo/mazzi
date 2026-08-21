@@ -856,9 +856,9 @@ export const DesignSystemShowcase: React.FC = () => {
                     </p>
                   </div>
                   <div className="grid gap-5 lg:grid-cols-2">
-                    <div className="space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Aluno — Minhas aulas</h3>
-                      <div className="max-w-[430px]">
+                      <div className="w-full min-w-0 max-w-[430px]">
                         <div role="tablist" aria-label="Aulas" className="grid grid-cols-2 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
                           {([
                             ['today', 'Hoje', Clock],
@@ -884,9 +884,9 @@ export const DesignSystemShowcase: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">PRO — Minhas aulas</h3>
-                      <div className="max-w-[430px]">
+                      <div className="w-full min-w-0 max-w-[430px]">
                         <div role="tablist" aria-label="Filtros de aulas" className="mazzi-segmented overflow-x-auto">
                           {([
                             ['all', 'Todas', CalendarRange, 'min-w-[72px]'],
