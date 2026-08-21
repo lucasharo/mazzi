@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, Bike, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, } from 'lucide-react';
+import { Car, Bike, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, } from 'lucide-react';
 import {
   Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -20,8 +20,8 @@ import { SchoolMembershipPanel } from './SchoolMembershipPanel';
 interface ProviderManagementTabProps {
   onRefresh: () => void;
   isRefreshing?: boolean;
-  managementSubTab: 'vehicles' | 'offerings' | 'compliance';
-  onSubTabChange: (tab: 'vehicles' | 'offerings' | 'compliance') => void;
+  managementSubTab: 'vehicles' | 'offerings' | 'compliance' | 'memberships';
+  onSubTabChange: (tab: 'vehicles' | 'offerings' | 'compliance' | 'memberships') => void;
   vehicles: Vehicle[];
   offerings: ServiceOffering[];
   complianceDocs: ComplianceDocument[];
@@ -97,11 +97,6 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         action={<ButtonBase type="button" className="mazzi-icon-button" onClick={onRefresh} disabled={isRefreshing} aria-label="Atualizar gestão" title="Atualizar gestão"><RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden="true" /></ButtonBase>}
       />
 
-      <SchoolMembershipPanel
-        provider={currentProvider}
-        isInstructor={currentProvider.type === 'INSTRUCTOR'}
-      />
-
       {/* Subtabs Switcher */}
       <div className="mazzi-segmented overflow-x-auto">
         <ButtonBase
@@ -134,6 +129,16 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Compliance</span>
         </ButtonBase>
+        <ButtonBase
+          type="button"
+          onClick={() => onSubTabChange('memberships')}
+          aria-selected={managementSubTab === 'memberships'}
+          data-active={managementSubTab === 'memberships'}
+          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Instrutores</span>
+        </ButtonBase>
       </div>
 
       <div className="flex justify-end">
@@ -148,6 +153,13 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           </Button>
         )}
       </div>
+
+      {managementSubTab === 'memberships' && (
+        <SchoolMembershipPanel
+          provider={currentProvider}
+          isInstructor={currentProvider.type === 'INSTRUCTOR'}
+        />
+      )}
 
       {/* VEHICLES SUBTAB */}
       {managementSubTab === 'vehicles' && (

@@ -193,6 +193,52 @@ export function mapComplianceFromDb(row: any): ComplianceDocument {
   };
 }
 
+export interface SchoolMembership {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  membershipStatus: string;
+  isActive: boolean;
+  acceptedAt?: string;
+}
+
+export interface SchoolInstructorComplianceSummary {
+  membershipId: string;
+  instructorId?: string;
+  instructorName?: string;
+  membershipStatus: string;
+  globalComplianceValid: boolean;
+  membershipComplianceValid: boolean;
+  eligible: boolean;
+  validUntil?: string;
+}
+
+export function mapSchoolMembershipFromDb(row: any): SchoolMembership {
+  return {
+    id: row.membership_id,
+    userId: row.user_id,
+    name: row.instructor_name || '',
+    email: row.instructor_email || '',
+    membershipStatus: row.membership_status,
+    isActive: Boolean(row.is_active),
+    acceptedAt: row.accepted_at || undefined,
+  };
+}
+
+export function mapSchoolInstructorComplianceSummaryFromDb(row: any): SchoolInstructorComplianceSummary {
+  return {
+    membershipId: row.membership_id,
+    instructorId: row.instructor_id || undefined,
+    instructorName: row.instructor_name || undefined,
+    membershipStatus: row.membership_status,
+    globalComplianceValid: Boolean(row.global_compliance_valid),
+    membershipComplianceValid: Boolean(row.membership_compliance_valid),
+    eligible: Boolean(row.overall_eligible),
+    validUntil: row.valid_until || undefined,
+  };
+}
+
 export function mapAuditLogFromDb(row: any): AuditLog {
   return {
     id: row.id,
@@ -1269,10 +1315,10 @@ export const dbService = {
     return mapComplianceFromDb(data);
   },
 
-  async getSchoolInstructorComplianceSummary(schoolId: string): Promise<any[]> {
+  async getSchoolInstructorComplianceSummary(schoolId: string): Promise<SchoolInstructorComplianceSummary[]> {
     const { data, error } = await sp.rpc('get_school_instructor_compliance_summary', { p_school_id: schoolId });
     if (error) throw error;
-    return data || [];
+    return (data || []).map(mapSchoolInstructorComplianceSummaryFromDb);
   },
 
   async createSchoolInstructorInvitation(schoolId: string, email: string, name?: string, phone?: string): Promise<any> {
@@ -1298,10 +1344,10 @@ export const dbService = {
     return data || [];
   },
 
-  async listSchoolMemberships(schoolId: string): Promise<any[]> {
+  async listSchoolMemberships(schoolId: string): Promise<SchoolMembership[]> {
     const { data, error } = await sp.rpc('list_school_memberships', { p_school_id: schoolId });
     if (error) throw error;
-    return data || [];
+    return (data || []).map(mapSchoolMembershipFromDb);
   },
 
   async acceptSchoolInstructorInvitation(invitationId: string): Promise<any> {

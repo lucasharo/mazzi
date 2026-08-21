@@ -95,7 +95,7 @@ export const ProviderApp: React.FC = () => {
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
   const [activeTab, setActiveTab] = useState<ProviderTabId>('dashboard');
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
-  const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance'>('vehicles');
+  const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance' | 'memberships'>('vehicles');
   const [bookingFilterTab, setBookingFilterTab] = useState<'all' | 'today' | 'upcoming' | 'history'>('all');
   const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions' | 'simulator'>('rules');
 
