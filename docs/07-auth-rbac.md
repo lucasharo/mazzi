@@ -155,3 +155,5 @@ Para evitar exposição de dados sensíveis de prestadores e alunos no marketpla
 - **STATIC_RLS_VALIDATION:** **APROVADO** (Sintaxe SQL, políticas de exclusão e triggers validados).
 - **UNIT_RBAC_VALIDATION:** **APROVADO** (14 cenários e suíte completa em `tests/auth-rbac.test.ts`).
 - **REAL_RLS_INTEGRATION:** **RLS_DATABASE_TEST_PENDING** *(Gate obrigatório mantido para execução contra contêiner live de PostgreSQL/Supabase antes da Sprint 08)*.
+
+As RPCs do ciclo Autoescola ↔ Instrutor validam autenticação, papel/permissão e tenant no banco. Convites, vínculos, compliance e ativação não dependem de escrita direta confiável pelo frontend.

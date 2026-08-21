@@ -17,3 +17,5 @@ Os itens a seguir foram deliberadamente isolados para fases posteriores à valid
    - Relatórios automáticos de evolução de direção gerados por IA com base no feedback dos instrutores.
 6. **Integrações Oficiais com DETRAN/SENATRAN:**
    - Registro de aulas diretamente em sistemas governamentais quando houver APIs e convênios oficiais estabelecidos.
+
+O ciclo operacional de convite, vínculo, compliance e recontratação de instrutores foi entregue no MVP; integrações comerciais e pagamentos reais continuam fora do escopo.

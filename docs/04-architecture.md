@@ -45,3 +45,7 @@ Para o MVP, adota-se um **Monolito Modular** bem desacoplado, com domínios bem 
    - **Backend (Domínio & Fonte da Verdade):** `PostgreSQL 16 + PostGIS`. Todas as operações geoespaciais críticas (cálculo de distâncias em metros com `ST_DWithin`, polígonos de raio e ordenação por proximidade) pertencem e são calculadas pelo backend.
 5. **[DECISÃO ARQUITETURAL]: Concorrência & Double Booking:**
    - A garantia de inviolabilidade da agenda é implementada no nível de persistência transacional (`EXCLUDE USING gist`) e bloqueio pessimista (`FOR UPDATE`), não em checagens voláteis de memória.
+
+## Runtime de elegibilidade
+
+O predicado canônico `is_provider_instructor_eligible` é usado pelas RPCs e triggers do PostgreSQL. O React exibe o estado e chama RPCs autenticadas; não decide ativação, disponibilidade ou início de aula.

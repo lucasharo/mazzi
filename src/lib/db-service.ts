@@ -1243,6 +1243,91 @@ export const dbService = {
     }
   },
 
+  async listMyGlobalCompliance(): Promise<ComplianceDocument[]> {
+    const { data, error } = await sp.rpc('list_my_global_compliance');
+    if (error) throw error;
+    return (data || []).map(mapComplianceFromDb);
+  },
+
+  async submitMyGlobalComplianceDocument(documentType: string, storagePath: string, expiresAt?: string): Promise<ComplianceDocument> {
+    const { data, error } = await sp.rpc('submit_my_global_compliance_document', {
+      p_document_type: documentType,
+      p_storage_path: storagePath,
+      p_expires_at: expiresAt || null,
+    });
+    if (error) throw error;
+    return mapComplianceFromDb(data);
+  },
+
+  async reviewComplianceDocument(documentId: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string): Promise<ComplianceDocument> {
+    const { data, error } = await sp.rpc('review_compliance_document', {
+      p_document_id: documentId,
+      p_status: status,
+      p_rejection_reason: rejectionReason || null,
+    });
+    if (error) throw error;
+    return mapComplianceFromDb(data);
+  },
+
+  async getSchoolInstructorComplianceSummary(schoolId: string): Promise<any[]> {
+    const { data, error } = await sp.rpc('get_school_instructor_compliance_summary', { p_school_id: schoolId });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async createSchoolInstructorInvitation(schoolId: string, email: string, name?: string, phone?: string): Promise<any> {
+    const { data, error } = await sp.rpc('create_school_instructor_invitation', {
+      p_school_id: schoolId,
+      p_invited_email: email,
+      p_invited_name: name || null,
+      p_invited_phone: phone || null,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async listMySchoolInvitations(): Promise<any[]> {
+    const { data, error } = await sp.rpc('list_my_school_invitations');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async listSchoolInstructorInvitations(schoolId: string): Promise<any[]> {
+    const { data, error } = await sp.rpc('list_school_instructor_invitations', { p_school_id: schoolId });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async listSchoolMemberships(schoolId: string): Promise<any[]> {
+    const { data, error } = await sp.rpc('list_school_memberships', { p_school_id: schoolId });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async acceptSchoolInstructorInvitation(invitationId: string): Promise<any> {
+    const { data, error } = await sp.rpc('accept_school_instructor_invitation', { p_invitation_id: invitationId });
+    if (error) throw error;
+    return data;
+  },
+
+  async declineSchoolInstructorInvitation(invitationId: string): Promise<any> {
+    const { data, error } = await sp.rpc('decline_school_instructor_invitation', { p_invitation_id: invitationId });
+    if (error) throw error;
+    return data;
+  },
+
+  async cancelSchoolInstructorInvitation(invitationId: string): Promise<any> {
+    const { data, error } = await sp.rpc('cancel_school_instructor_invitation', { p_invitation_id: invitationId });
+    if (error) throw error;
+    return data;
+  },
+
+  async tryActivateSchoolInstructorMembership(membershipId: string): Promise<any> {
+    const { data, error } = await sp.rpc('try_activate_school_instructor_membership', { p_membership_id: membershipId });
+    if (error) throw error;
+    return data;
+  },
+
   // 6. PLATFORM CONFIGURATION
   async getPlatformConfigs(): Promise<any[]> {
     const { data, error } = await sp.rpc('get_admin_platform_configurations');

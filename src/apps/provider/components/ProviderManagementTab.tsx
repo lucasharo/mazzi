@@ -15,6 +15,7 @@ import { DEFAULT_COMPLIANCE_REQUIREMENTS } from '../../../domain/compliance';
 import { formatTransmissionLabel } from '../../../lib/date-format';
 import { maskVehiclePlate, normalizeVehiclePlate, maskBRLInput } from '../../../lib/input-masks';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
+import { SchoolMembershipPanel } from './SchoolMembershipPanel';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
@@ -94,6 +95,11 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         title="Gestão"
         subtitle="Organize veículos, ofertas e compliance."
         action={<ButtonBase type="button" className="mazzi-icon-button" onClick={onRefresh} disabled={isRefreshing} aria-label="Atualizar gestão" title="Atualizar gestão"><RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden="true" /></ButtonBase>}
+      />
+
+      <SchoolMembershipPanel
+        provider={currentProvider}
+        isInstructor={currentProvider.type === 'INSTRUCTOR'}
       />
 
       {/* Subtabs Switcher */}

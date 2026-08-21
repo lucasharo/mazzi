@@ -87,3 +87,10 @@ A migration `20260814000001_initial_schema.sql` cria **exatamente 21 tabelas dis
 2. **Catálogo Público Seguro:** Políticas restritas para visualização apenas de entidades ativas (`providers` status `ACTIVE`, `vehicles` status `ACTIVE`, `service_offerings` ativas e `reviews`).
 3. **Isolamento de Segredos:** Dados sensíveis (`renavam`, `license_plate` sem máscara, documentos de compliance e pagamentos) não possuem políticas públicas de leitura.
 4. **Chave de Acesso Admin:** `SUPABASE_SERVICE_ROLE_KEY` é estritamente de uso server-side (Node/Express API), jamais exportada com prefixo `VITE_`.
+
+## Estruturas Autoescola ↔ Instrutor
+
+- `driving_school_membership_events` registra transições e recontratações sem apagar vínculos.
+- `booking_selection_mode` em quotes/bookings preserva `SPECIFIC_INSTRUCTOR` ou `ANY_AVAILABLE_INSTRUCTOR`.
+- `compliance_documents` suporta escopos `USER_GLOBAL` e `SCHOOL_MEMBERSHIP`.
+- As migrations `20260821211805` até `20260821212857` foram aplicadas no LIVE de forma forward-only.

@@ -34,3 +34,7 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 - Visão por Instrutor ou por Veículo.
 - Bloqueio de horários (férias, almoço, manutenção do carro).
 - Criação de ofertas associando Veículo + Categoria + Duração + Preço em centavos.
+
+### Ciclo Autoescola ↔ Instrutor
+
+Administradores podem enviar convites, acompanhar vínculos, consultar compliance e solicitar ativação. Instrutores visualizam convites pendentes e podem aceitar ou recusar. O backend permanece a fonte da verdade para as transições.

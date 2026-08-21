@@ -49,3 +49,9 @@
 ## 7. Mapas e Geolocalização
 - **[DECISÃO]:** OpenStreetMap + Leaflet é o provider inicial de mapas do MVP para o frontend.
 - **[DECISÃO]:** PostgreSQL + PostGIS continuará como único responsável pelas operações geoespaciais de domínio (cálculo de distâncias, ordenação, raios de atendimento e busca).
+
+## 8. Autoescola e instrutor — implementação atual
+
+- Convites usam `target_user_id` ou e-mail normalizado; CPF/documento não participa do fluxo.
+- Vínculos passam por `PENDING_COMPLIANCE`, `ACTIVE`, `SUSPENDED` e `ENDED`; encerramento preserva histórico e recontratação reutiliza o vínculo encerrado.
+- Contratação e início/check-in exigem vínculo, compliance global e compliance do contexto válidos.

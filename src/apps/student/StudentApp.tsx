@@ -477,11 +477,21 @@ function applyStrictProviderFilters(
         const bookingContexts = await dbService.getProviderBookingContextPublic(providerId);
         if (!bookingContexts || bookingContexts.length === 0) return;
 
-        const ctx = bookingContexts[0];
+        // A school can publish several vehicle/duration offerings for the same
+        // instructor. The first choice must represent people, not offerings.
+        const contextsByInstructor = new Map<string, any>();
+        for (const context of bookingContexts) {
+          const instructorId = context.instructor_id || context.instructorId;
+          if (instructorId && !contextsByInstructor.has(instructorId)) {
+            contextsByInstructor.set(instructorId, context);
+          }
+        }
+        const distinctInstructorContexts = Array.from(contextsByInstructor.values());
+        const ctx = distinctInstructorContexts[0] || bookingContexts[0];
         matchingOffering = offeringFromBookingContext(ctx);
         matchingVehicle = vehicleFromBookingContext(ctx);
-        if (rawProv?.type === 'DRIVING_SCHOOL' && bookingContexts.length > 1) {
-          setInstructorChoices(bookingContexts);
+        if (rawProv?.type === 'DRIVING_SCHOOL' && distinctInstructorContexts.length > 1) {
+          setInstructorChoices(distinctInstructorContexts);
           setInstructorPickerProvider(rawProv);
           return;
         }

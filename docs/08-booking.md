@@ -116,3 +116,7 @@ O procedimento SQL executado atomicamente em transação realiza as seguintes et
 | Business Check | `QUOTE_ALREADY_CONSUMED` | `409 Conflict` | Proposta comercial já utilizada anteriormente. |
 | Business Check | `PROVIDER_NOT_ACTIVE` | `422 Unprocessable` | Prestador inativo na plataforma. |
 | Business Check | `VEHICLE_NOT_ACTIVE` | `422 Unprocessable` | Veículo desativado ou expirado. |
+
+## Elegibilidade no runtime
+
+Ofertas e slots públicos filtram instrutores inelegíveis. Quotes e novos bookings falham fechados quando o instrutor não está elegível. Atualizações administrativas comuns continuam permitidas; a elegibilidade é revalidada especificamente no check-in e no início da aula. O snapshot mantém `selectionMode`.

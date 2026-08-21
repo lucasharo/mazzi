@@ -16,6 +16,8 @@ O Admin usa os mesmos tokens, botões, formulários, estados vazios e tipografia
 - **Gestão de Usuários e Fornecedores:** Busca, bloqueio preventivo, alteração de status.
 - **Fila de Compliance:** Análise de CNH, CRLV, alvarás com visualizador seguro e aprovação/rejeição com justificativa obrigatória.
 - **Gestão de Reservas (Bookings):** Resolução de disputas, cancelamento administrativo, visualização de logs de presença e chat moderado.
+
+O fluxo de revisão também atende documentos globais do instrutor e documentos vinculados ao contexto da autoescola por RPC segura, sem expor caminhos de storage ou dados sensíveis na UI.
 - **Financeiro & Payouts:** Visualização de pagamentos, comissões retidas, liberação ou bloqueio de repasses a fornecedores.
 
 ### 3. Configurações & Auditoria

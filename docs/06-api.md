@@ -51,4 +51,8 @@
 - `GET /api/v1/admin/marketplace-metrics`
 - `GET /api/v1/admin/compliance/pending`
 - `POST /api/v1/admin/compliance/documents/:id/review`
+
+## RPCs de Autoescola e compliance
+
+O cliente usa RPCs `SECURITY DEFINER` autenticadas para compliance, convites, vínculos e ativação. `try_activate_school_instructor_membership` só promove o vínculo quando os critérios objetivos de elegibilidade passam.
 - `GET /api/v1/admin/audit-logs`
