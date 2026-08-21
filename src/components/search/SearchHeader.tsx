@@ -1,3 +1,4 @@
+import { ButtonBase } from '../ui/Button';
 import React, { useEffect, useRef, useState } from 'react';
 import { Navigation, Search } from 'lucide-react';
 import { SearchRequest } from '../../types';
@@ -80,7 +81,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
     <section className="space-y-4" aria-label="Buscar aulas">
       <form onSubmit={handleAddressSubmit} className="mazzi-card p-3 sm:p-4 focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)] focus-within:ring-offset-2 transition-all">
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 sm:gap-3">
-          <button
+          <ButtonBase
             type="button"
             onClick={handleUseMyLocation}
             disabled={isLocating}
@@ -89,7 +90,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] transition hover:brightness-95 active:scale-95 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
           >
             <Navigation className={`h-5 w-5 ${isLocating ? 'animate-spin' : ''}`} aria-hidden="true" />
-          </button>
+          </ButtonBase>
           <label className="min-w-0 flex-1 cursor-text">
             <span className="block text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--mazzi-muted)]">
               Localização
@@ -103,14 +104,14 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
               className="mt-0.5 sm:mt-1 w-full min-h-[32px] bg-transparent text-sm font-extrabold text-[var(--mazzi-dark)] outline-none placeholder:text-slate-400 focus:outline-none"
             />
           </label>
-          <button
+          <ButtonBase
             type="submit"
             aria-label="Buscar endereço"
             title="Buscar endereço"
             className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-dark)] text-white transition hover:bg-[#34353a] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
           >
             <Search className="h-5 w-5" aria-hidden="true" />
-          </button>
+          </ButtonBase>
         </div>
       </form>
     </section>

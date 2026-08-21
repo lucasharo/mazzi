@@ -3,6 +3,17 @@
 ## Conceito Unificado com RBAC
 Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoescola/CFC, adaptando o layout e permissões dinamicamente de acordo com o papel do usuário logado (`INSTRUCTOR`, `SCHOOL_ADMIN`, `SCHOOL_STAFF`).
 
+## Padrão visual Premium UI V2
+
+- Navegação inferior global com **Início**, **Agenda**, **Aulas**, **Gestão** e **Perfil**.
+- `AppHomeHeader` apenas em Início; telas internas usam `AppPageHeader`.
+- Atualização no canto superior direito somente nas telas com recarga de dados; Perfil e Agenda não exibem esse controle.
+- Em “Minhas aulas”, as abas são **Todas**, **Hoje**, **Próximas** e **Histórico**, com ícones e rolagem horizontal segura no mobile.
+- Botões de ações de conteúdo ficam abaixo das abas, fora do header.
+- Perfil segue a composição do Aluno: avatar central, identificação, card de dados e edição no topo direito.
+- Listas vazias e ausência de próxima aula usam os componentes globais de estado vazio.
+- Formulários, botões, fontes, cores e bordas usam os mesmos componentes e tokens dos demais apps.
+
 ## Visões e Funcionalidades
 
 ### 1. Dashboard do Instrutor Autônomo

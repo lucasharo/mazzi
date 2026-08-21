@@ -1,36 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { ShieldCheck, CreditCard, QrCode, Clock, AlertCircle, CheckCircle2, XCircle, Copy, Check, Building2, Car, UserCheck, Calendar, Lock, Sparkles, ArrowLeft, KeyRound, MapPin, AlertTriangle, } from 'lucide-react';
 import {
-  ShieldCheck,
-  CreditCard,
-  QrCode,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  XCircle,
-  Copy,
-  Check,
-  Building2,
-  Car,
-  UserCheck,
-  Calendar,
-  Lock,
-  Sparkles,
-  ArrowLeft,
-  KeyRound,
-  MapPin,
-  AlertTriangle,
-} from 'lucide-react';
-import {
-  Provider,
-  Vehicle,
-  ServiceOffering,
-  Quote,
-  Booking,
-  Payment,
-  PaymentMethodType,
-} from '../../../types';
+  Provider, Vehicle, ServiceOffering, Quote, Booking, Payment, PaymentMethodType, } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
-import { Button } from '../../../components/ui/Button';
+import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { formatCentsToBRL } from '../../../domain/money';
 import { isQuoteExpired, QuoteDomainError } from '../../../domain/quote';
@@ -725,7 +698,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="rounded-2xl border border-[#e9e6de] bg-white p-4 space-y-3">
               <p className="text-xs font-bold text-slate-900">Ponto de encontro</p>
               <div className="grid grid-cols-2 gap-2">
-                <button
+                <ButtonBase
                   type="button"
                   aria-pressed={meetingPointType === 'PROVIDER'}
                   onClick={() => setMeetingPointType('PROVIDER')}
@@ -737,8 +710,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 >
                   <Building2 className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
                   <span>Autoescola / Local</span>
-                </button>
-                <button
+                </ButtonBase>
+                <ButtonBase
                   type="button"
                   aria-pressed={meetingPointType === 'STUDENT'}
                   onClick={() => setMeetingPointType('STUDENT')}
@@ -750,7 +723,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 >
                   <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
                   <span>Meu endereço</span>
-                </button>
+                </ButtonBase>
               </div>
               {meetingPointType === 'STUDENT' && (
                 <div>
@@ -772,8 +745,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <Button
               type="button"
               variant="primary"
-              size="md"
-              className="w-full min-h-[48px] text-sm font-bold shadow-xs"
+              size="sm"
+              className="w-full font-bold shadow-xs"
               isLoading={isProcessing}
               onClick={handleProceedToBookingHold}
               aria-label="Continuar para pagamento da aula"
@@ -802,7 +775,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <Button
                 type="button"
                 variant="primary"
-                size="md"
+                size="sm"
                 className="w-full min-h-11 font-extrabold"
                 onClick={onClose}
               >
@@ -827,7 +800,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <Button
               type="button"
               variant="primary"
-              size="md"
+              size="sm"
               className="w-full min-h-11 font-extrabold"
               onClick={() => { onClose(); onChooseAnotherSlot?.(); }}
             >
@@ -851,7 +824,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <Button
               type="button"
               variant="primary"
-              size="md"
+              size="sm"
               className="w-full min-h-11 font-extrabold"
               onClick={() => {
                 onClose();
@@ -885,7 +858,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {/* Payment Method Selector */}
             <div className="grid grid-cols-2 gap-2">
-              <button
+              <ButtonBase
                 type="button"
                 aria-pressed={paymentMethod === 'PIX'}
                 onClick={() => setPaymentMethod('PIX')}
@@ -900,9 +873,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <span className="font-extrabold text-xs text-slate-900 block truncate">PIX Simulado</span>
                   <span className="text-[10px] text-slate-500 font-medium block truncate">Aprovação instantânea</span>
                 </div>
-              </button>
+              </ButtonBase>
 
-              <button
+              <ButtonBase
                 type="button"
                 aria-pressed={paymentMethod === 'CREDIT_CARD'}
                 onClick={() => setPaymentMethod('CREDIT_CARD')}
@@ -917,7 +890,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <span className="font-extrabold text-xs text-slate-900 block truncate">Cartão Simulado</span>
                   <span className="text-[10px] text-slate-500 font-medium block truncate">Testar cenários</span>
                 </div>
-              </button>
+              </ButtonBase>
             </div>
 
             {/* PIX Fake View */}
@@ -944,8 +917,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <Button
                     type="button"
                     variant="primary"
-                    size="md"
-                    className="w-full min-h-[48px] text-sm font-bold shadow-xs"
+                    size="sm"
+                    className="w-full font-bold shadow-xs"
                     isLoading={isProcessing}
                     disabled={isProcessing}
                     onClick={() => handleExecuteFakePayment('APPROVED')}
@@ -969,8 +942,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <Button
                     type="button"
                     variant="primary"
-                    size="md"
-                    className="w-full min-h-[48px] text-sm font-bold shadow-xs"
+                    size="sm"
+                    className="w-full font-bold shadow-xs"
                     isLoading={isProcessing}
                     disabled={isProcessing}
                     onClick={() => handleExecuteFakePayment('APPROVED')}
@@ -983,7 +956,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <Button
                     type="button"
                     variant="outline"
-                    size="md"
+                    size="sm"
                     className="w-full min-h-[44px] font-bold text-rose-700 border-rose-200 hover:bg-rose-50"
                     isLoading={isProcessing}
                     disabled={isProcessing}
@@ -1030,7 +1003,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <Button
               type="button"
               variant="secondary"
-              size="md"
+              size="sm"
               className="w-full min-h-11 font-extrabold"
               onClick={() => {
                 onClose();

@@ -1,3 +1,4 @@
+import { ButtonBase } from '../ui/Button';
 // ============================================================================
 // MAZZI PLATFORM — SEARCH MAP VIEW COMPONENT
 // Integrates Leaflet map view with public approximate provider coordinates,
@@ -88,7 +89,7 @@ export const MapView: React.FC<MapViewProps> = ({
           </span>
         </div>
 
-        <button
+        <ButtonBase
           type="button"
           onClick={() => setShowRadius(!showRadius)}
           className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition cursor-pointer flex items-center gap-1 ${
@@ -99,7 +100,7 @@ export const MapView: React.FC<MapViewProps> = ({
         >
           <Radio className="w-2.5 h-2.5" />
           <span>{showRadius ? 'Ocultar Raio' : 'Ver Raio (2.2km)'}</span>
-        </button>
+        </ButtonBase>
       </div>
 
       {/* Universal Leaflet Map Container */}

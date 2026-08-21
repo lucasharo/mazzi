@@ -32,6 +32,10 @@ body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+.mazzi-list-empty-state {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
 #root {
   min-height: 100dvh;
 }
@@ -41,6 +45,10 @@ body {
 .mazzi-eyebrow { font-size: 11px; line-height: 1; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #9a7611; }
 .mazzi-title { font-size: clamp(28px, 8vw, 38px); line-height: 1.02; letter-spacing: -.045em; font-weight: 800; }
 .mazzi-section-title { font-size: 18px; line-height: 1.2; letter-spacing: -.025em; font-weight: 800; }
+.mazzi-segmented { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--mazzi-border); border-radius: 16px; background: var(--mazzi-surface-soft); }
+.mazzi-segmented > button { min-height: 44px; flex: 1 1 0%; border-radius: 12px; padding: 10px 12px; color: var(--mazzi-muted); font-size: 12px; font-weight: 700; transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease; }
+.mazzi-segmented > button:hover { color: var(--mazzi-dark); background: rgba(255,255,255,.55); }
+.mazzi-segmented > button[aria-selected="true"], .mazzi-segmented > button[data-active="true"] { background: var(--mazzi-yellow); color: var(--mazzi-dark); box-shadow: 0 2px 8px rgba(32,33,38,.08); }
 .mazzi-card { border-radius: 22px; background: var(--mazzi-surface); border: 1px solid var(--mazzi-border); box-shadow: var(--mazzi-shadow); }
 .mazzi-soft-card { border-radius: 18px; background: var(--mazzi-surface-soft); border: 1px solid var(--mazzi-border); }
 .mazzi-hero { display: grid; grid-template-columns: 1.08fr .92fr; overflow: hidden; border-radius: 28px; box-shadow: var(--mazzi-shadow); }
@@ -48,16 +56,18 @@ body {
 .mazzi-hero > :last-child { background: linear-gradient(145deg, #303138, var(--mazzi-dark)); color: white; }
 .mazzi-bottom-nav { position: fixed; z-index: 50; left: 16px; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom)); display: grid; align-items: center; border-radius: 24px; background: rgba(255,255,255,.96); border: 1px solid var(--mazzi-border); padding: 8px 10px; box-shadow: var(--mazzi-shadow-float); backdrop-filter: blur(18px); }
 .mazzi-avatar { overflow: hidden; border-radius: 18px; background: linear-gradient(145deg, #fff1b8, var(--mazzi-yellow)); color: var(--mazzi-dark); }
+.mazzi-icon-button { position: relative; display: grid; min-height: 48px; min-width: 48px; place-items: center; border: 1px solid var(--mazzi-border); border-radius: 16px; background: white; color: var(--mazzi-dark); box-shadow: 0 2px 8px rgba(32,33,38,.06); transition: color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
+.mazzi-icon-button:hover { color: #111216; box-shadow: 0 5px 14px rgba(32,33,38,.1); }
+.mazzi-icon-button:active { transform: scale(.95); }
+.mazzi-icon-button:focus-visible { outline: 2px solid var(--mazzi-dark); outline-offset: 2px; box-shadow: 0 0 0 4px var(--mazzi-focus-glow); }
+.mazzi-icon-button[data-notification="true"]::after { position: absolute; top: 10px; right: 10px; width: 7px; height: 7px; border: 2px solid white; border-radius: 999px; background: var(--mazzi-yellow); content: ""; }
 .mazzi-status { border-radius: 9px; padding: 5px 8px; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
 .mazzi-input { width: 100%; border: 0; border-radius: 16px; background: white; padding: 14px 16px; box-shadow: inset 0 0 0 1px var(--mazzi-border); outline: none; }
-.mazzi-input:focus, .mazzi-input:focus-visible { box-shadow: inset 0 0 0 1.5px var(--mazzi-dark), 0 0 0 4px var(--mazzi-focus-glow); outline: none; }
+.mazzi-input:focus, .mazzi-input:focus-visible { box-shadow: inset 0 0 0 1.5px var(--mazzi-yellow), 0 0 0 4px var(--mazzi-focus-glow); outline: none; }
 .mazzi-focus-ring:focus-visible { outline: 2px solid var(--mazzi-dark); outline-offset: 2px; box-shadow: 0 0 0 4px var(--mazzi-focus-glow); }
 .mazzi-primary { border-radius: 16px; background: var(--mazzi-dark); color: white; min-height: 50px; font-weight: 800; }
 .mazzi-primary:hover { background: #34353a; }
 .mazzi-yellow-button { border-radius: 14px; background: linear-gradient(135deg, var(--mazzi-yellow-soft), var(--mazzi-yellow)); color: var(--mazzi-dark); font-weight: 800; box-shadow: 0 8px 20px rgba(246,201,69,.24); }
-.mazzi-admin main section, .mazzi-admin main article { border-color: transparent; }
-.mazzi-admin main table { overflow: hidden; border-radius: 18px; background: white; }
-
 @media (min-width: 720px) {
   .mazzi-mobile { max-width: 680px; margin-inline: auto; padding-inline: 28px; }
   .mazzi-bottom-nav { left: 50%; right: auto; width: min(640px, calc(100% - 32px)); transform: translateX(-50%); }

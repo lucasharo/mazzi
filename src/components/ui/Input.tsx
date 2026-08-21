@@ -1,3 +1,4 @@
+import { ButtonBase } from './Button';
 import React, { useId, useState } from 'react';
 import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 
@@ -55,7 +56,7 @@ export const Input: React.FC<InputProps> = ({
           } ${rightAction ? 'pr-11' : rightIcon || error ? 'pr-10' : ''} ${
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-200'
-              : 'border-[var(--mazzi-border)] focus:border-[var(--mazzi-dark)] focus:ring-[var(--mazzi-focus-glow)]'
+              : 'border-[var(--mazzi-border)] focus:border-[var(--mazzi-yellow)] focus:ring-[var(--mazzi-focus-glow)]'
           } ${className}`}
           {...props}
         />
@@ -103,7 +104,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
       disabled={disabled}
       rightAction={
         showToggle ? (
-          <button
+          <ButtonBase
             type="button"
             disabled={disabled}
             onClick={() => setShowPassword((prev) => !prev)}
@@ -115,7 +116,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
             ) : (
               <Eye className="w-4 h-4" aria-hidden="true" />
             )}
-          </button>
+          </ButtonBase>
         ) : undefined
       }
       {...props}

@@ -1,15 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import {
-  requestPasswordReset,
-  resendSignupOtp,
-  updatePassword,
-  verifyEmailOtp,
-  verifyRecoveryOtp,
-} from '../../lib/auth-service';
+  requestPasswordReset, resendSignupOtp, updatePassword, verifyEmailOtp, verifyRecoveryOtp, } from '../../lib/auth-service';
 import { supabase } from '../../lib/supabase';
 import { Input, PasswordInput } from '../ui/Input';
-import { PrimaryButton, SecondaryButton } from '../ui/Button';
+import { PrimaryButton, SecondaryButton, ButtonBase } from '../ui/Button';
 import { OtpInput } from '../ui/OtpInput';
 import { AUTH_OTP_LENGTH } from '../../lib/auth-constants';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../utils/cpf';
@@ -24,6 +19,10 @@ import {
   ShieldAlert,
   Clock,
   Sparkles,
+  LogIn,
+  Pencil,
+  RefreshCw,
+  UserPlus,
 } from 'lucide-react';
 
 export type AppLoginKind = 'student' | 'instructor' | 'admin';
@@ -573,8 +572,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
           <PrimaryButton
             type="submit"
-            size="lg"
-            className="w-full min-h-[48px] font-bold shadow-xs cursor-pointer"
+            size="sm"
+            className="w-full font-bold shadow-xs cursor-pointer"
             disabled={isLoading || otp.length !== AUTH_OTP_LENGTH}
             loading={isLoading}
           >
@@ -582,22 +581,24 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
           </PrimaryButton>
 
           <div className="pt-2 flex flex-col gap-3 items-center">
-            <button
+            <ButtonBase
               type="button"
               onClick={handleResendSignupOtp}
               disabled={resendCooldown > 0 || isLoading}
-              className="text-xs font-bold text-amber-700 hover:text-amber-800 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer transition py-1"
+              className="inline-flex items-center gap-1.5 py-1 text-xs font-bold text-amber-700 transition hover:text-amber-800 disabled:cursor-not-allowed disabled:text-slate-400 cursor-pointer"
             >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
               {resendCooldown > 0 ? `Reenviar código em ${resendCooldown}s` : 'Reenviar código por e-mail'}
-            </button>
+            </ButtonBase>
 
-            <button
+            <ButtonBase
               type="button"
               onClick={() => goTo('signup')}
-              className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition cursor-pointer py-1"
+              className="inline-flex cursor-pointer items-center gap-1.5 py-1 text-xs font-semibold text-slate-500 transition hover:text-slate-800"
             >
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
               Alterar e-mail ou dados
-            </button>
+            </ButtonBase>
           </div>
         </form>
       </div>
@@ -659,8 +660,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
           <PrimaryButton
             type="submit"
-            size="lg"
-            className="w-full min-h-[48px] font-bold shadow-xs cursor-pointer"
+            size="sm"
+            className="w-full font-bold shadow-xs cursor-pointer"
             disabled={isLoading || otp.length !== AUTH_OTP_LENGTH}
             loading={isLoading}
           >
@@ -670,7 +671,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
           <div className="pt-2">
             <SecondaryButton
               type="button"
-              size="md"
+              size="sm"
               leftIcon={<ArrowLeft className="w-4 h-4" aria-hidden="true" />}
               onClick={() => goTo('forgot')}
               className="w-full cursor-pointer"
@@ -752,8 +753,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
           <PrimaryButton
             type="submit"
-            size="lg"
-            className="w-full min-h-[48px] font-bold shadow-xs cursor-pointer mt-2"
+            size="sm"
+            className="w-full font-bold shadow-xs cursor-pointer mt-2"
             disabled={isLoading}
             loading={isLoading}
           >
@@ -762,7 +763,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
           <SecondaryButton
             type="button"
-            size="md"
+            size="sm"
             onClick={() => goTo('login')}
             className="w-full cursor-pointer mt-2"
           >
@@ -779,14 +780,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   if (screen === 'forgot') {
     return shell(
       <div className="space-y-6">
-        <button
+        <ButtonBase
           type="button"
           onClick={() => goTo('login')}
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[var(--mazzi-dark)] transition cursor-pointer rounded-lg p-1 -ml-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           <span>Voltar para o login</span>
-        </button>
+        </ButtonBase>
 
         <div className="space-y-2">
           <p className="mazzi-eyebrow">{brandTag}</p>
@@ -834,8 +835,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
           <PrimaryButton
             type="submit"
-            size="lg"
-            className="w-full min-h-[48px] font-bold shadow-xs cursor-pointer mt-2"
+            size="sm"
+            className="w-full font-bold shadow-xs cursor-pointer mt-2"
             disabled={isLoading}
             isLoading={isLoading}
           >
@@ -845,7 +846,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
           {feedback?.tone === 'error' && feedback.message.includes('não está cadastrado') && (
             <SecondaryButton
               type="button"
-              size="lg"
+              size="sm"
               onClick={() => goTo('signup')}
               className="w-full min-h-[48px] font-bold cursor-pointer mt-2"
             >
@@ -863,14 +864,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   if (screen === 'signup') {
     return shell(
       <div className="space-y-6">
-        <button
+        <ButtonBase
           type="button"
           onClick={() => goTo('login')}
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[var(--mazzi-dark)] transition cursor-pointer rounded-lg p-1 -ml-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           <span>Voltar para o login</span>
-        </button>
+        </ButtonBase>
 
         <div className="space-y-2">
           <p className="mazzi-eyebrow">{brandTag}</p>
@@ -1004,8 +1005,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
           <PrimaryButton
             type="submit"
-            size="lg"
-            className="w-full min-h-[48px] font-bold shadow-xs cursor-pointer mt-2"
+            size="sm"
+            className="w-full font-bold shadow-xs cursor-pointer mt-2"
             disabled={isLoading}
             loading={isLoading}
           >
@@ -1014,13 +1015,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
           <p className="text-center text-xs text-slate-500 pt-2">
             Já tem uma conta?{' '}
-            <button
+            <ButtonBase
               type="button"
               onClick={() => goTo('login')}
-              className="font-bold text-amber-700 hover:text-amber-800 cursor-pointer underline underline-offset-2"
+              className="inline-flex cursor-pointer items-center gap-1.5 font-bold text-amber-700 underline underline-offset-2 hover:text-amber-800"
             >
+              <LogIn className="h-4 w-4" aria-hidden="true" />
               Fazer login
-            </button>
+            </ButtonBase>
           </p>
         </form>
       </div>
@@ -1099,20 +1101,21 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
           autoComplete="current-password"
           disabled={isLoading}
           rightAction={
-            <button
+            <ButtonBase
               type="button"
               onClick={() => goTo('forgot')}
-              className="text-xs font-bold text-amber-700 hover:text-amber-800 cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-bold text-amber-700 hover:text-amber-800"
             >
+              <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
               Esqueceu sua senha?
-            </button>
+            </ButtonBase>
           }
         />
 
         <PrimaryButton
           type="submit"
-          size="lg"
-          className="w-full min-h-[48px] font-bold shadow-xs cursor-pointer mt-2"
+          size="sm"
+          className="w-full font-bold shadow-xs cursor-pointer mt-2"
           disabled={isLoading}
           loading={isLoading}
         >
@@ -1122,13 +1125,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         {kind === 'student' && (
           <p className="text-center text-xs text-slate-600 pt-2">
             Ainda não tem conta?{' '}
-            <button
+            <ButtonBase
               type="button"
               onClick={() => goTo('signup')}
-              className="font-bold text-amber-700 hover:text-amber-800 cursor-pointer underline underline-offset-2"
+              className="inline-flex cursor-pointer items-center gap-1.5 font-bold text-amber-700 underline underline-offset-2 hover:text-amber-800"
             >
+              <UserPlus className="h-4 w-4" aria-hidden="true" />
               Criar conta
-            </button>
+            </ButtonBase>
           </p>
         )}
       </form>

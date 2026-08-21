@@ -67,7 +67,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
           <Button
             variant="primary"
-            size="md"
+            size="sm"
             className="w-full"
             onClick={() => window.location.reload()}
             leftIcon={<RefreshCw className="w-4 h-4" />}

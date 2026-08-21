@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'flat' | 'outline' | 'interactive';
@@ -13,7 +13,8 @@ export const Card: React.FC<CardProps> = ({
   id,
   ...props
 }) => {
-  const generatedId = id || `card-${Math.random().toString(36).substring(2, 8)}`;
+  const reactId = useId();
+  const generatedId = id || `card-${reactId.replaceAll(':', '')}`;
 
   const paddingStyles = {
     none: 'p-0',
@@ -33,7 +34,7 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div
       id={generatedId}
-      className={`${variantStyles[variant]} ${paddingStyles[padding]} ${className}`}
+      className={`min-w-0 max-w-full ${variantStyles[variant]} ${paddingStyles[padding]} ${className}`}
       {...props}
     >
       {children}

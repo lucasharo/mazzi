@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, ChevronRight, Clock, MapPin, ShieldCheck, Star } from 'lucide-react';
+import { CalendarPlus, Car, Clock, MapPin, ShieldCheck, Star } from 'lucide-react';
 import { PublicSearchProviderResult, TransmissionType } from '../../types';
 import { formatCentsToBRL } from '../../domain/money';
 import { Modal } from '../ui/Modal';
@@ -211,13 +211,13 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
         {/* CTA Action */}
         <PrimaryButton
           type="button"
-          size="lg"
-          className="w-full min-h-[50px] text-sm font-bold shadow-xs"
+          size="sm"
+          className="w-full font-bold shadow-xs"
           onClick={() => {
             onClose();
             onSelectSlotToBook?.(result.providerId);
           }}
-          rightIcon={<ChevronRight className="h-4 w-4" aria-hidden="true" />}
+          leftIcon={<CalendarPlus className="h-4 w-4 shrink-0" aria-hidden="true" />}
           aria-label={`Agendar aula com ${result.displayName}`}
         >
           Agendar aula

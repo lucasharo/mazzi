@@ -1,35 +1,17 @@
 import React from 'react';
-import {
-  Calendar as CalendarIcon,
-  Plus,
-  Trash2,
-  Clock,
-  Ban,
-  CheckCircle2,
-  AlertCircle,
-  Sliders,
-  Sparkles,
-  Info,
-  Pencil,
-} from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Clock, Ban, CheckCircle2, AlertCircle, Sliders, Sparkles, Info, Pencil, X, } from 'lucide-react';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getTodayInSaoPaulo, getBusinessDateFromTimestamp, getTimeInSaoPaulo, formatDateTimeBR } from '../../../lib/date-format';
 import {
-  AvailabilityRule,
-  AvailabilityException,
-  ServiceOffering,
-  Vehicle,
-  DayOfWeek,
-  ExceptionType,
-  ExceptionReasonCategory,
-} from '../../../types';
-import { Button } from '../../../components/ui/Button';
+  AvailabilityRule, AvailabilityException, ServiceOffering, Vehicle, DayOfWeek, ExceptionType, ExceptionReasonCategory, } from '../../../types';
+import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Badge } from '../../../components/ui/Badge';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { DAY_OF_WEEK_LABELS_PT, generateAvailableSlots } from '../../../domain/availability';
+import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 
 interface ProviderScheduleTabProps {
   scheduleSubTab: 'rules' | 'exceptions' | 'simulator';
@@ -221,60 +203,53 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   return (
     <div className="space-y-6 text-left">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <p className="mazzi-eyebrow mb-1">Disponibilidade</p>
-          <h2 className="mazzi-title">Agenda & Horários</h2>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {scheduleSubTab === 'rules' && (
-            <Button variant="primary" size="sm" onClick={onOpenAddRuleModal} leftIcon={<Plus className="w-4 h-4" />}>
-              Nova Regra Semanal
-            </Button>
-          )}
-          {scheduleSubTab === 'exceptions' && (
-            <Button variant="primary" size="sm" onClick={onOpenAddExceptionModal} leftIcon={<Plus className="w-4 h-4" />}>
-              Novo Bloqueio / Exceção
-            </Button>
-          )}
-        </div>
-      </div>
+      <AppPageHeader eyebrow="Sua jornada" title="Agenda & Horários" subtitle="Organize seus horários e disponibilidade." />
 
       {/* Subtabs Switcher */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
-        <button
+      <div className="mazzi-segmented overflow-x-auto">
+        <ButtonBase
           type="button"
           onClick={() => onSubTabChange('rules')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            scheduleSubTab === 'rules' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={scheduleSubTab === 'rules'}
+          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
+          data-active={scheduleSubTab === 'rules'}
         >
-          <CalendarIcon className="w-3.5 h-3.5" />
-          <span>Horários Recorrentes ({availabilityRules.length})</span>
-        </button>
-        <button
+          <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>Horários</span>
+        </ButtonBase>
+        <ButtonBase
           type="button"
           onClick={() => onSubTabChange('exceptions')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            scheduleSubTab === 'exceptions' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={scheduleSubTab === 'exceptions'}
+          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
+          data-active={scheduleSubTab === 'exceptions'}
         >
           <Ban className="w-3.5 h-3.5" />
-          <span>Bloqueios ({availabilityExceptions.length})</span>
-        </button>
-        <button
+          <span>Bloqueios</span>
+        </ButtonBase>
+        <ButtonBase
           type="button"
           onClick={() => onSubTabChange('simulator')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            scheduleSubTab === 'simulator' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={scheduleSubTab === 'simulator'}
+          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
+          data-active={scheduleSubTab === 'simulator'}
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>Simulador</span>
-        </button>
+        </ButtonBase>
       </div>
-
+      <div className="flex justify-end">
+        {scheduleSubTab === 'rules' && (
+          <Button variant="primary" size="sm" onClick={onOpenAddRuleModal} leftIcon={<Plus className="w-4 h-4" />}>
+            Nova Regra Semanal
+          </Button>
+        )}
+        {scheduleSubTab === 'exceptions' && (
+          <Button variant="primary" size="sm" onClick={onOpenAddExceptionModal} leftIcon={<Plus className="w-4 h-4" />}>
+            Novo Bloqueio / Exceção
+          </Button>
+        )}
+      </div>
       {/* RECURRING RULES SUBTAB */}
       {scheduleSubTab === 'rules' && (
         <div className="space-y-4">
@@ -302,14 +277,14 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-900 text-sm">
+                    <span className="text-sm font-bold text-slate-900">
                         {DAY_OF_WEEK_LABELS_PT[rule.dayOfWeek]}
                       </span>
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                         Ativa
                       </span>
                     </div>
-                    <p className="text-xs font-extrabold text-[#202126] flex items-center gap-1.5">
+                    <p className="flex items-center gap-1.5 text-xs font-bold text-[var(--mazzi-dark)]">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />
                       {rule.startTime} até {rule.endTime} (América/São Paulo)
                     </p>
@@ -339,7 +314,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             <div className="p-5 rounded-3xl bg-amber-50/60 border border-amber-200/80 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-extrabold text-amber-950 flex items-center gap-2">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-amber-950">
                     <Ban className="w-4 h-4 text-amber-600" />
                     Bloqueios Pessoais Globais
                   </h3>
@@ -360,13 +335,13 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               {globalBlockActionError && (
                 <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-extrabold text-rose-950 flex items-center justify-between gap-3">
                   <span>{globalBlockActionError}</span>
-                  <button
+                  <ButtonBase
                     type="button"
                     onClick={() => setGlobalBlockActionError(null)}
                     className="text-rose-600 hover:text-rose-900 font-bold cursor-pointer"
                   >
-                    &times;
-                  </button>
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </ButtonBase>
                 </div>
               )}
 
@@ -378,7 +353,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                       className="p-3.5 rounded-2xl bg-white border border-amber-200 shadow-xs flex items-center justify-between gap-3"
                     >
                       <div>
-                        <p className="text-xs font-black text-slate-900">
+                      <p className="text-xs font-bold text-slate-900">
                           {formatDateTimeBR(gb.start_at)} até {formatDateTimeBR(gb.end_at)}
                         </p>
                         {gb.reason && (
@@ -447,7 +422,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                       <Badge variant={exc.type === 'BLOCK' ? 'danger' : 'success'}>
                         {exc.type === 'BLOCK' ? 'Bloqueio Total' : 'Exceção Aberta'}
                       </Badge>
-                      <span className="text-xs font-extrabold text-slate-900">{exc.reason}</span>
+                    <span className="text-xs font-bold text-slate-900">{exc.reason}</span>
                     </div>
                     <p className="text-xs text-slate-500 font-medium">
                       De: {new Date(exc.startAt).toLocaleString('pt-BR')} até {new Date(exc.endAt).toLocaleString('pt-BR')}
@@ -472,7 +447,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       {/* SIMULATOR SUBTAB */}
       {scheduleSubTab === 'simulator' && (
         <div className="p-5 rounded-3xl bg-white border border-[#e9e6de] shadow-xs space-y-4">
-          <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
             <Sparkles className="w-4 h-4 text-[#f6c945]" />
             <span>Simulador do Gerador de Vagas</span>
           </div>
@@ -565,7 +540,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           </div>
 
           <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
-            <Button variant="secondary" size="sm" onClick={onCloseAddRuleModal}>
+            <Button variant="dangerSoft" size="sm" onClick={onCloseAddRuleModal}>
               Cancelar
             </Button>
             <Button variant="primary" size="sm" onClick={onSaveRule}>
@@ -614,7 +589,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           </div>
 
           <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
-            <Button variant="secondary" size="sm" onClick={onCloseAddExceptionModal}>
+            <Button variant="dangerSoft" size="sm" onClick={onCloseAddExceptionModal}>
               Cancelar
             </Button>
             <Button variant="primary" size="sm" onClick={onSaveException}>
@@ -696,7 +671,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
 
           <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
             <Button
-              variant="secondary"
+              variant="dangerSoft"
               size="sm"
               disabled={isSavingGlobalBlock}
               onClick={() => {

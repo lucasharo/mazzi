@@ -4,46 +4,10 @@
 // ============================================================================
 
 import React, { useState } from 'react';
+import { ShieldAlert, FileCheck2, CalendarCheck, TrendingUp, History, CheckCircle2, XCircle, Eye, EyeOff, Search, Filter, UserCheck, AlertTriangle, FileText, ShieldCheck, Ban, Settings, DollarSign, Users, Lock, ArrowRightLeft, Info, Calendar, Layers, MapPin, RefreshCw, Car, ArrowRight, } from 'lucide-react';
 import {
-  ShieldAlert,
-  FileCheck2,
-  CalendarCheck,
-  TrendingUp,
-  History,
-  CheckCircle2,
-  XCircle,
-  Eye,
-  EyeOff,
-  Search,
-  Filter,
-  UserCheck,
-  AlertTriangle,
-  FileText,
-  ShieldCheck,
-  Ban,
-  Settings,
-  DollarSign,
-  Users,
-  Lock,
-  ArrowRightLeft,
-  Info,
-  Calendar,
-  Layers,
-  MapPin,
-  RefreshCw,
-  Car,
-} from 'lucide-react';
-import {
-  Provider,
-  ComplianceDocument,
-  Vehicle,
-  Booking,
-  AuditLog,
-  User,
-  UserRole,
-  BookingStatus,
-} from '../../types';
-import { Button } from '../../components/ui/Button';
+  Provider, ComplianceDocument, Vehicle, Booking, AuditLog, User, UserRole, BookingStatus, } from '../../types';
+import { Button, ButtonBase } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
@@ -181,9 +145,9 @@ export const DashboardTab: React.FC<{
             <p className="text-3xl font-black text-slate-900">{pendingReviewProviders}</p>
             <p className="text-[10px] text-slate-500 font-medium">Prestadores Aguardando Análise</p>
           </div>
-          <button onClick={() => onNavigate('providers')} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold text-left">
-            Verificar fila →
-          </button>
+          <ButtonBase onClick={() => onNavigate('providers')} className="inline-flex items-center gap-1.5 text-left text-xs font-bold text-indigo-600 hover:text-indigo-800">
+            Verificar fila <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </ButtonBase>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
@@ -195,9 +159,9 @@ export const DashboardTab: React.FC<{
             <p className="text-3xl font-black text-slate-900">{vehiclesUnderReview}</p>
             <p className="text-[10px] text-slate-500 font-medium">Veículos Sob Análise</p>
           </div>
-          <button onClick={() => onNavigate('vehicles')} className="text-xs text-indigo-600 hover:text-indigo-800 font-bold text-left">
-            Homologar veículos →
-          </button>
+          <ButtonBase onClick={() => onNavigate('vehicles')} className="inline-flex items-center gap-1.5 text-left text-xs font-bold text-indigo-600 hover:text-indigo-800">
+            Homologar veículos <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </ButtonBase>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
@@ -254,7 +218,7 @@ export const DashboardTab: React.FC<{
                 </div>
                 <Button
                   variant="outline"
-                  size="xs"
+                  size="sm"
                   className={`${
                     a.type === 'error'
                       ? 'border-rose-300 hover:bg-rose-100 text-rose-900'
@@ -474,7 +438,7 @@ export const ProvidersTab: React.FC<{
                 <div className="flex flex-col gap-2 shrink-0">
                   <Button
                     variant="ghost"
-                    size="xs"
+                    size="sm"
                     className="text-amber-400 hover:text-amber-300 border border-amber-500/20 self-start sm:self-auto"
                     leftIcon={showSensitive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     onClick={() => {
@@ -691,7 +655,7 @@ export const ProvidersTab: React.FC<{
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" size="sm" onClick={() => setActionType(null)}>Cancelar</Button>
+              <Button variant="dangerSoft" size="sm" onClick={() => setActionType(null)}>Cancelar</Button>
               <Button
                 variant="primary"
                 size="sm"
@@ -887,10 +851,10 @@ export const ComplianceTab: React.FC<{
                       />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="primary" size="xs" className="bg-rose-600 hover:bg-rose-700" onClick={handleReject} disabled={!rejectionReason.trim()}>
+                  <Button variant="primary" size="sm" className="bg-rose-600 hover:bg-rose-700" onClick={handleReject} disabled={!rejectionReason.trim()}>
                         Confirmar Rejeição
                       </Button>
-                      <Button variant="ghost" size="xs" onClick={() => { setIsRejecting(false); setRejectionReason(''); }}>
+                  <Button variant="dangerSoft" size="sm" onClick={() => { setIsRejecting(false); setRejectionReason(''); }}>
                         Cancelar
                       </Button>
                     </div>
@@ -1046,7 +1010,7 @@ export const VehiclesTab: React.FC<{
                 </span>
                 <Button
                   variant="outline"
-                  size="xs"
+                  size="sm"
                   onClick={() => setShowFullPlate(!showFullPlate)}
                 >
                   {showFullPlate ? 'Ocultar' : 'Exibir'}
@@ -1130,7 +1094,7 @@ export const VehiclesTab: React.FC<{
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setActionType(null)}>Cancelar</Button>
+              <Button variant="dangerSoft" size="sm" onClick={() => setActionType(null)}>Cancelar</Button>
               <Button variant="primary" size="sm" className="bg-rose-600 hover:bg-rose-700 text-white" onClick={handleConfirmAction} disabled={!reason.trim()}>Confirmar</Button>
             </div>
           </div>
@@ -1370,18 +1334,20 @@ export const FinancialTab: React.FC<{
         
         {/* Toggle interno */}
         <div className="flex bg-slate-100 p-1 rounded-xl self-start sm:self-auto text-xs font-bold border border-slate-200">
-          <button
+          <ButtonBase
             onClick={() => setActiveSubTab('ledger')}
-            className={`px-3 py-1.5 rounded-lg transition ${activeSubTab === 'ledger' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${activeSubTab === 'ledger' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
           >
+            <History className="h-4 w-4" aria-hidden="true" />
             Ledger de Transações
-          </button>
-          <button
+          </ButtonBase>
+          <ButtonBase
             onClick={() => setActiveSubTab('payouts')}
-            className={`px-3 py-1.5 rounded-lg transition ${activeSubTab === 'payouts' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${activeSubTab === 'payouts' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
           >
+            <DollarSign className="h-4 w-4" aria-hidden="true" />
             Repasses (Payouts)
-          </button>
+          </ButtonBase>
         </div>
       </div>
 
@@ -1627,18 +1593,19 @@ export const UsersTab: React.FC<{
                     {(['STUDENT', 'INSTRUCTOR', 'SCHOOL_ADMIN', 'SUPPORT', 'PLATFORM_ADMIN'] as UserRole[]).map((roleOption) => {
                       const isCurrent = selectedUser.role === roleOption;
                       return (
-                        <button
+                        <ButtonBase
                           key={roleOption}
                           disabled={isCurrent}
                           onClick={() => handleRoleChange(selectedUser.id, roleOption)}
-                          className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition border ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition border ${
                             isCurrent
                               ? 'bg-indigo-600 text-white border-indigo-600 cursor-default'
                               : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
                           }`}
-                        >
-                          {roleOption}
-                        </button>
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                      {roleOption}
+                        </ButtonBase>
                       );
                     })}
                   </div>

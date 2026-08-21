@@ -1,20 +1,10 @@
 import React from 'react';
-import {
-  Clock,
-  CheckCircle2,
-  Play,
-  CheckCircle,
-  XCircle,
-  MessageSquare,
-  Eye,
-  Info,
-  Calendar as CalendarIcon,
-  ShieldAlert,
-} from 'lucide-react';
+import { Clock, CheckCircle2, Play, CheckCircle, XCircle, MessageSquare, Eye, CalendarClock, CalendarRange, History, RefreshCw, } from 'lucide-react';
 import { Booking } from '../../../types';
-import { Button } from '../../../components/ui/Button';
+import { Button, ButtonBase } from '../../../components/ui/Button';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
-import { EmptyState } from '../../../components/ui/EmptyState';
+import { EmptyState, ErrorState } from '../../../components/ui/EmptyState';
+import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { formatCentsToBRL } from '../../../domain/money';
 
@@ -33,6 +23,7 @@ interface ProviderBookingsTabProps {
   isCompleting: boolean;
   canCancelBooking?: (booking: Booking) => boolean;
   calendarLoadError?: string | null;
+  isRefreshing?: boolean;
   onRetryCalendarLoad?: () => void;
 }
 
@@ -51,90 +42,88 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
   isCompleting,
   canCancelBooking,
   calendarLoadError,
+  isRefreshing,
   onRetryCalendarLoad,
 }) => {
   return (
     <div className="space-y-6 text-left">
       {/* Header */}
-      <div>
-        <p className="mazzi-eyebrow mb-1">Gestão de Aulas</p>
-        <h2 className="mazzi-title">Sua agenda de aulas</h2>
-      </div>
+      <AppPageHeader
+        eyebrow="Sua jornada"
+        title="Minhas aulas"
+        subtitle="Acompanhe seus próximos horários e o histórico."
+        action={onRetryCalendarLoad ? <ButtonBase type="button" className="mazzi-icon-button" onClick={onRetryCalendarLoad} disabled={isRefreshing} aria-label="Atualizar aulas" title="Atualizar aulas"><RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden="true" /></ButtonBase> : undefined}
+      />
 
       {/* Action Messages */}
       {actionSuccessMessage && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-extrabold text-emerald-900 flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-bold text-emerald-900">
           <span>{actionSuccessMessage}</span>
         </div>
       )}
       {actionErrorMessage && (
-        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-extrabold text-rose-900 flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-bold text-rose-900">
           <span>{actionErrorMessage}</span>
         </div>
       )}
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-[#e9e6de] shadow-xs overflow-x-auto">
-        <button
+      <div role="tablist" aria-label="Filtros de aulas" className="mazzi-segmented overflow-x-auto">
+        <ButtonBase
           type="button"
+          role="tab"
           onClick={() => onFilterTabChange('all')}
-          className={`flex-1 min-w-[80px] py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            bookingFilterTab === 'all' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={bookingFilterTab === 'all'}
+          data-active={bookingFilterTab === 'all'}
+          className="flex min-w-[72px] items-center justify-center gap-1.5 whitespace-nowrap !px-1.5"
         >
-          <CalendarIcon className="w-3.5 h-3.5" />
+          <CalendarRange className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Todas</span>
-        </button>
-        <button
+        </ButtonBase>
+        <ButtonBase
           type="button"
+          role="tab"
           onClick={() => onFilterTabChange('today')}
-          className={`flex-1 min-w-[80px] py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            bookingFilterTab === 'today' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={bookingFilterTab === 'today'}
+          data-active={bookingFilterTab === 'today'}
+          className="flex min-w-[64px] items-center justify-center gap-1.5 whitespace-nowrap !px-1.5"
         >
-          <Clock className="w-3.5 h-3.5" />
+          <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Hoje</span>
-        </button>
-        <button
+        </ButtonBase>
+        <ButtonBase
           type="button"
+          role="tab"
           onClick={() => onFilterTabChange('upcoming')}
-          className={`flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            bookingFilterTab === 'upcoming' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={bookingFilterTab === 'upcoming'}
+          data-active={bookingFilterTab === 'upcoming'}
+          className="flex min-w-[84px] items-center justify-center gap-1.5 whitespace-nowrap !px-1.5"
         >
-          <CheckCircle2 className="w-3.5 h-3.5" />
+          <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Próximas</span>
-        </button>
-        <button
+        </ButtonBase>
+        <ButtonBase
           type="button"
+          role="tab"
           onClick={() => onFilterTabChange('history')}
-          className={`flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            bookingFilterTab === 'history' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={bookingFilterTab === 'history'}
+          data-active={bookingFilterTab === 'history'}
+          className="flex min-w-[88px] items-center justify-center gap-1.5 whitespace-nowrap !px-1.5"
         >
-          <ShieldAlert className="w-3.5 h-3.5" />
+          <History className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Histórico</span>
-        </button>
+        </ButtonBase>
       </div>
 
       {/* Bookings List or States */}
       {calendarLoadError ? (
-        <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 text-center space-y-3">
-          <p className="text-sm font-extrabold text-amber-950">
-            Não foi possível carregar sua agenda completa.
-          </p>
-          <p className="text-xs text-amber-800">
-            {calendarLoadError}
-          </p>
-          {onRetryCalendarLoad && (
-            <Button variant="secondary" size="sm" onClick={onRetryCalendarLoad}>
-              Tentar Novamente
-            </Button>
-          )}
-        </div>
+        <ErrorState
+          title="Não foi possível carregar sua agenda completa."
+          message={calendarLoadError}
+          onRetry={onRetryCalendarLoad}
+        />
       ) : filteredBookings.length === 0 ? (
         <EmptyState
-          icon={<CalendarIcon className="w-8 h-8 text-slate-400" />}
           title="Nenhum agendamento encontrado"
           description="Você não possui aulas no filtro selecionado no momento."
         />
@@ -155,7 +144,7 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
                 {/* Header Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                       Reserva #{b.id.slice(0, 8)}
                     </span>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#202126] text-white">
@@ -179,8 +168,8 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Aluno(a)</p>
-                    <p className="text-base font-black text-slate-900">{b.studentName}</p>
-                    <p className="text-xs font-extrabold text-[#202126] flex items-center gap-1.5 pt-1">
+                    <p className="text-base font-bold text-slate-900">{b.studentName}</p>
+                    <p className="flex items-center gap-1.5 pt-1 text-xs font-bold text-[var(--mazzi-dark)]">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />
                       {b.scheduledDate} • {b.startTime} - {b.endTime}
                     </p>
@@ -188,7 +177,7 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
 
                   <div className="space-y-1 text-left sm:text-right">
                     <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Valor Líquido</p>
-                    <p className="text-base font-black text-slate-900">
+                    <p className="text-base font-bold text-slate-900">
                       {formatCentsToBRL(b.priceInCents || b.totalInCents || 0)}
                     </p>
                     <p className="text-xs text-slate-500 truncate">
@@ -259,10 +248,9 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
 
                     {(canCancelBooking ? canCancelBooking(b) : (isConfirmed || isPendingPayment) && !b.instructorCheckedIn) && (
                       <Button
-                        variant="ghost"
+                        variant="dangerSoft"
                         size="sm"
                         onClick={() => onCancelBooking(b)}
-                        className="text-rose-600 hover:bg-rose-50"
                         leftIcon={<XCircle className="w-3.5 h-3.5" />}
                       >
                         Cancelar

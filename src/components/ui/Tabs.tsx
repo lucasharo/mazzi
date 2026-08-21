@@ -1,4 +1,6 @@
+import { ButtonBase } from './Button';
 import React, { useId, useRef } from 'react';
+import { PanelsTopLeft } from 'lucide-react';
 
 export interface TabItem {
   id: string;
@@ -85,7 +87,7 @@ export const Tabs: React.FC<TabsProps> = ({
       {tabs.map((tab, index) => {
         const isActive = activeTab === tab.id;
         return (
-          <button
+          <ButtonBase
             key={tab.id}
             ref={(element) => { tabRefs.current[index] = element; }}
             id={getTabId(tabListId, tab.id)}
@@ -106,7 +108,9 @@ export const Tabs: React.FC<TabsProps> = ({
                 : 'text-slate-500 hover:text-slate-800 rounded-none pb-2.5'
             }`}
           >
-            {tab.icon && <span aria-hidden="true" className="flex-shrink-0">{tab.icon}</span>}
+            <span aria-hidden="true" className="flex-shrink-0">
+              {tab.icon || <PanelsTopLeft className="h-4 w-4" />}
+            </span>
             <span>{tab.label}</span>
             {tab.count !== undefined && (
               <span
@@ -119,7 +123,7 @@ export const Tabs: React.FC<TabsProps> = ({
                 {tab.count}
               </span>
             )}
-          </button>
+          </ButtonBase>
         );
       })}
     </div>

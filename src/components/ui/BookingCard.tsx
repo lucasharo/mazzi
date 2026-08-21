@@ -95,7 +95,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
     <article
       id={`booking-card-${booking.id}`}
       aria-label={`Aula com ${mainDisplayName}, ${formatDateBR(booking.scheduledDate)}`}
-      className="mazzi-card p-4 sm:p-5 transition-all duration-200 text-left space-y-3.5 hover:shadow-md"
+      className="mazzi-card min-w-0 max-w-full w-full overflow-hidden p-4 sm:p-5 transition-all duration-200 text-left space-y-3.5 hover:shadow-md"
     >
       {/* 1. HERO: Prominent Date, Time & Status in Evidence */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--mazzi-border)]">

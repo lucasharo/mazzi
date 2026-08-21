@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, RefreshCw, SendHorizontal, Calendar, Clock, Car, Radio, ArrowLeft } from 'lucide-react';
 import { Booking, Conversation, Message } from '../../types';
 import { useAuth } from '../auth/AuthContext';
-import { Button } from '../ui/Button';
+import { Button, ButtonBase } from '../ui/Button';
 import { dbService, mapMessageFromDb } from '../../lib/db-service';
 import { supabase } from '../../lib/supabase';
 import { formatDateBR, formatTimeBR } from '../../lib/date-format';
@@ -142,7 +142,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
     <div className="space-y-4 text-left">
       <div className="mazzi-card p-4 border border-[var(--mazzi-border)]">
         {onBack && (
-          <button
+          <ButtonBase
             type="button"
             onClick={onBack}
             className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-700 hover:text-slate-950 transition-colors py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 cursor-pointer mb-3 shadow-2xs active:scale-95"
@@ -150,7 +150,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
           >
             <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Voltar</span>
-          </button>
+          </ButtonBase>
         )}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -280,7 +280,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
               }
             }}
           />
-          <button
+          <ButtonBase
             type="button"
             onClick={handleSend}
             disabled={!conversation || loading || sending || !draft.trim() || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
@@ -293,7 +293,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             ) : (
               <SendHorizontal className="h-4 w-4 text-current" aria-hidden="true" />
             )}
-          </button>
+          </ButtonBase>
         </div>
         <p className="px-1 text-[10px] text-slate-400 font-medium">Pressione Enter para enviar, Shift+Enter para quebrar linha.</p>
       </div>

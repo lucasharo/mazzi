@@ -1,6 +1,6 @@
 # MAZZI — Current Implementation Status
 
-**Última revisão**: 2026-08-18  
+**Última revisão**: 2026-08-21
 *Nota: Este documento deve ser atualizado sempre que uma TASK alterar o estado de uma feature relevante.*
 
 ---
@@ -79,6 +79,16 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Frota | Cadastro de Veículos e Transmissões | `IMPLEMENTADO` | [`src/domain/vehicles-offerings.ts`](../src/domain/vehicles-offerings.ts) | Homologação de veículos com pedal duplo e categoria |
 | Admin | Painel Administrativo (`src/apps/admin/`) | `IMPLEMENTADO` | [`src/apps/admin/`](../src/apps/admin/) | Credenciamento de profissionais, aprovação de documentos e analytics |
 | Auditoria | Registro Estruturado de Logs (`AuditLog`) | `IMPLEMENTADO` | `supabase/migrations/20260814000015_sprint15_security_hardening.sql` | Tabela `audit_logs` registrando ações críticas de sistema |
+
+### 3.4. Premium UI V2 e Design System
+
+| Área | Feature | Status | Evidência | Observações |
+|---|---|---|---|---|
+| Componentes globais | Headers, navegação, botões e estados compartilhados | `IMPLEMENTADO` | [`src/components/ui/`](../src/components/ui/), [`src/index.css`](../src/index.css) | Aluno, PRO e Admin compartilham tokens e componentes sem overrides tipográficos específicos por app |
+| Botões | Small buttons, ícones e variantes de cancelamento | `IMPLEMENTADO` | [`src/components/ui/Button.tsx`](../src/components/ui/Button.tsx), [`src/components/ui/ButtonActionIcon.tsx`](../src/components/ui/ButtonActionIcon.tsx) | `sm` é o padrão; cancelamento intermediário usa Danger Soft e confirmação final usa Danger Solid com `XCircle` |
+| Feedback | Estados vazios globais para lista e objeto | `IMPLEMENTADO` | [`src/components/ui/ListEmptyState.tsx`](../src/components/ui/ListEmptyState.tsx), [`src/components/ui/ObjectEmptyState.tsx`](../src/components/ui/ObjectEmptyState.tsx) | Mesmo markup e tipografia em todos os apps |
+| Design System | Catálogo executável alinhado aos entrypoints Aluno/PRO | `IMPLEMENTADO` | [`src/apps/design-system/DesignSystemShowcase.tsx`](../src/apps/design-system/DesignSystemShowcase.tsx), [`docs/DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) | Inventário de 21 componentes públicos, referência do Aluno, abas reais e fluxo real de dias/horários com dados isolados |
+| Agendamento visual | Calendário e seleção de horários no catálogo | `IMPLEMENTADO` | [`src/apps/student/components/SlotSelectorModal.tsx`](../src/apps/student/components/SlotSelectorModal.tsx) | O modo de preview é opcional e não substitui a consulta real ao backend no produto |
 
 ---
 

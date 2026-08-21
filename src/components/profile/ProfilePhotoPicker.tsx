@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, ImagePlus, Loader2 } from 'lucide-react';
+import { Camera, ImagePlus, Loader2, Trash2, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { Button, ButtonBase } from '../ui/Button';
 
 interface ProfilePhotoPickerProps {
   value?: string;
@@ -220,34 +221,37 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
       <div className="space-y-1">
         <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFile} disabled={disabled || isUploading} className="hidden" />
         <div className="flex flex-wrap items-center gap-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => void openCamera()}
             disabled={disabled || isUploading}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2 text-xs font-extrabold text-[var(--mazzi-dark)] hover:bg-slate-50 transition cursor-pointer disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
+            leftIcon={<Camera className="h-4 w-4 text-amber-500" aria-hidden="true" />}
           >
-            <Camera className="h-4 w-4 text-amber-500" aria-hidden="true" />
             Tirar foto
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => galleryInputRef.current?.click()}
             disabled={disabled || isUploading}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2 text-xs font-extrabold text-[var(--mazzi-dark)] hover:bg-slate-50 transition cursor-pointer disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
+            leftIcon={<ImagePlus className="h-4 w-4 text-amber-500" aria-hidden="true" />}
           >
-            <ImagePlus className="h-4 w-4 text-amber-500" aria-hidden="true" />
             Galeria
-          </button>
+          </Button>
         </div>
         {value && !isUploading && (
-          <button
+          <ButtonBase
             type="button"
             onClick={() => onChange(undefined)}
             disabled={disabled}
-            className="block text-[11px] font-bold text-rose-600 hover:text-rose-700 transition cursor-pointer mt-1"
+            className="mt-1 inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-bold text-rose-600 transition hover:text-rose-700"
           >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             Remover foto
-          </button>
+          </ButtonBase>
         )}
         {error && <p role="alert" className="text-[11px] font-semibold text-rose-600">{error}</p>}
       </div>
@@ -258,20 +262,26 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
             <h3 className="text-base font-extrabold text-[var(--mazzi-dark)]">Tirar foto do perfil</h3>
             <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-2xl bg-slate-950 object-cover" />
             <div className="flex gap-2">
-              <button
+              <Button
                 type="button"
+                variant="dangerSoft"
+                size="sm"
                 onClick={stopCamera}
-                className="flex-1 min-h-11 rounded-xl border border-[var(--mazzi-border)] px-3 py-2 text-xs font-bold text-[var(--mazzi-dark)] hover:bg-slate-50 transition cursor-pointer"
+                className="flex-1"
+                leftIcon={<XCircle className="h-4 w-4" aria-hidden="true" />}
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={() => void capturePhoto()}
-                className="flex-1 min-h-11 rounded-xl bg-[var(--mazzi-yellow)] px-3 py-2 text-xs font-extrabold text-[var(--mazzi-dark)] shadow-sm hover:brightness-95 transition cursor-pointer"
+                className="flex-1"
+                leftIcon={<Camera className="h-4 w-4" aria-hidden="true" />}
               >
                 Capturar foto
-              </button>
+              </Button>
             </div>
           </div>
         </div>

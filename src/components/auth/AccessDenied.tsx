@@ -32,8 +32,8 @@ export const AccessDenied: React.FC = () => {
 
         <div className="pt-2">
           <SecondaryButton
-            size="md"
-            className="w-full min-h-[48px] font-bold shadow-2xs"
+            size="sm"
+            className="w-full font-bold shadow-2xs"
             onClick={() => void logout()}
             leftIcon={<LogOut className="w-4 h-4 text-slate-600" aria-hidden="true" />}
           >

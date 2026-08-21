@@ -1,3 +1,4 @@
+import { ButtonBase } from '../ui/Button';
 import React, { useState } from 'react';
 import { LeafletMap } from './LeafletMap';
 import { MapProviderComponent, MapProviderProps } from './MapProvider';
@@ -33,7 +34,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
+          <ButtonBase
             type="button"
             onClick={() => setShowRadius(!showRadius)}
             className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition cursor-pointer flex items-center gap-1 shadow-2xs ${
@@ -44,7 +45,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
           >
             <Radio className="w-2.5 h-2.5" />
             <span>{showRadius ? 'Ocultar Raio (2.2km)' : 'Ver Raio (2.2km)'}</span>
-          </button>
+          </ButtonBase>
         </div>
       </div>
 

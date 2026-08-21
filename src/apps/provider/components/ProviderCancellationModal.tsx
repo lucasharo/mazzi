@@ -1,8 +1,8 @@
 import React from 'react';
-import { AlertTriangle, XCircle, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, XCircle, Info } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
-import { Button } from '../../../components/ui/Button';
+import { Button, ButtonBase } from '../../../components/ui/Button';
 import { ProviderCancellationReasonCode } from '../../../domain/cancellation';
 
 const PROVIDER_CANCEL_REASON_OPTIONS: { code: ProviderCancellationReasonCode; label: string }[] = [
@@ -87,7 +87,7 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
             {PROVIDER_CANCEL_REASON_OPTIONS.map((opt) => {
               const isSelected = reasonCode === opt.code;
               return (
-                <button
+                <ButtonBase
                   type="button"
                   key={opt.code}
                   onClick={() => onReasonCodeChange(opt.code)}
@@ -97,15 +97,9 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
                       : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <span
-                    className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      isSelected ? 'border-[#f6c945] bg-[#f6c945]' : 'border-slate-300'
-                    }`}
-                  >
-                    {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-[#202126]" />}
-                  </span>
+                  {isSelected ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#f6c945]" aria-hidden="true" /> : <Circle className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />}
                   <span>{opt.label}</span>
-                </button>
+                </ButtonBase>
               );
             })}
           </div>

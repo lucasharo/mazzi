@@ -1,23 +1,9 @@
 import React, { useState } from 'react';
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Car,
-  UserCheck,
-  Building2,
-  CreditCard,
-  MessageSquare,
-  AlertTriangle,
-  XCircle,
-  AlertCircle,
-  ArrowLeft,
-  CheckCircle2,
-} from 'lucide-react';
+import { Calendar, Clock, MapPin, Car, UserCheck, Building2, CreditCard, MessageSquare, AlertTriangle, XCircle, AlertCircle, ArrowLeft, CheckCircle2, Circle, } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
-import { Button } from '../../../components/ui/Button';
+import { Button, ButtonBase } from '../../../components/ui/Button';
 import { formatCentsToBRL } from '../../../domain/money';
 import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
@@ -232,18 +218,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </label>
             <div className="flex flex-wrap gap-1.5">
               {CANCEL_REASON_CHIPS.map((chip) => (
-                <button
+                <ButtonBase
                   key={chip}
                   type="button"
                   onClick={() => setSelectedReasonChip(selectedReasonChip === chip ? '' : chip)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                     selectedReasonChip === chip
                       ? 'bg-amber-500 text-slate-950 font-extrabold shadow-2xs'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
+                  {selectedReasonChip === chip ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : <Circle className="h-3.5 w-3.5" aria-hidden="true" />}
                   {chip}
-                </button>
+                </ButtonBase>
               ))}
             </div>
             <textarea
@@ -252,7 +239,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               placeholder="Observações adicionais (opcional)..."
               rows={2}
               maxLength={300}
-              className="w-full rounded-2xl border border-slate-200 p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] resize-none"
+              className="w-full rounded-2xl border border-[var(--mazzi-border)] p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] resize-none"
             />
           </div>
 
@@ -268,7 +255,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <Button
               type="button"
               variant="outline"
-              size="md"
+              size="sm"
               leftIcon={<ArrowLeft className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />}
               className="w-1/2 min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-sm text-xs"
               disabled={isCancelling}
@@ -279,9 +266,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <Button
               type="button"
               variant="danger"
-              size="md"
+              size="sm"
               leftIcon={<XCircle className="w-4 h-4 text-white shrink-0" aria-hidden="true" />}
-              className="w-1/2 min-h-[48px] font-extrabold bg-rose-600 hover:bg-rose-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer text-xs"
+              className="w-1/2"
               isLoading={isCancelling}
               onClick={handleConfirmCancel}
             >
@@ -496,8 +483,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <Button
                 type="button"
                 variant="primary"
-                size="md"
-                className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl cursor-pointer"
+                size="sm"
+                className="w-full font-bold shadow-md hover:shadow-lg transition-all rounded-2xl cursor-pointer"
                 onClick={() => onContinuePayment(booking)}
                 leftIcon={<CreditCard className="w-4 h-4" aria-hidden="true" />}
                 aria-label="Finalizar pagamento desta reserva pendente"
@@ -511,7 +498,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  size="md"
+                  size="sm"
                   className={`${isUpcoming ? 'w-1/2' : 'w-full'} min-h-[44px] font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 text-xs`}
                   onClick={() => onOpenChat(booking)}
                   leftIcon={<MessageSquare className="w-4 h-4 text-slate-600" aria-hidden="true" />}
@@ -523,15 +510,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
               {/* Soft Danger Cancel Trigger Button */}
               {isUpcoming && (
-                <button
+                <Button
                   type="button"
+                  variant="dangerSoft"
+                  size="sm"
                   onClick={() => setIsConfirmingCancel(true)}
-                  className={`${onOpenChat ? 'w-1/2' : 'w-full'} min-h-[44px] bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 text-rose-700 font-bold rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 text-xs shadow-2xs hover:shadow-xs active:scale-[0.98]`}
+                  className={onOpenChat ? 'w-1/2' : 'w-full'}
                   aria-label="Cancelar esta aula"
+                  leftIcon={<XCircle className="w-4 h-4 text-rose-600 shrink-0" aria-hidden="true" />}
                 >
-                  <XCircle className="w-4 h-4 text-rose-600 shrink-0" aria-hidden="true" />
-                  <span className="font-bold">Cancelar aula</span>
-                </button>
+                  Cancelar aula
+                </Button>
               )}
             </div>
           </div>

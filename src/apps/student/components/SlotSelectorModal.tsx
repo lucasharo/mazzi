@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, RefreshCw, Check } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Clock, RefreshCw, Check } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
-import { Button, PrimaryButton } from '../../../components/ui/Button';
+import { Button, PrimaryButton, ButtonBase } from '../../../components/ui/Button';
 import { supabase } from '../../../lib/supabase';
 import { dbService } from '../../../lib/db-service';
 import { formatCentsToBRL } from '../../../domain/money';
@@ -13,7 +13,7 @@ export const MAX_HORIZON_DAYS = STUDENT_BOOKING_HORIZON_DAYS;
 export const INITIAL_WINDOW_DAYS = 30; // Progressive initial window (batch 1)
 export const LOAD_MORE_DAYS = 30;      // Progressive load more batch (batch 2 to reach 60)
 
-type PublicSlot = {
+export type PublicSlot = {
   local_date: string;
   local_start_time: string;
   local_end_time: string;
@@ -63,6 +63,8 @@ export interface SlotSelectorModalProps {
   durationMinutes?: number;
   priceInCents?: number;
   transmission?: string;
+  /** Static slots for isolated visual previews. Production omits this and loads from the backend. */
+  previewSlots?: PublicSlot[];
 }
 
 export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
@@ -75,6 +77,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
   durationMinutes,
   priceInCents,
   transmission,
+  previewSlots,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,12 +152,24 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
   }, [offeringId, fromDate]);
 
   useEffect(() => {
+    if (isOpen && previewSlots) {
+      const grouped = groupSlots(previewSlots);
+      const firstAvailable = Object.keys(grouped).sort()[0] || null;
+      setWindowDays(INITIAL_WINDOW_DAYS);
+      setSlotsByDate(grouped);
+      setSelectedDate(firstAvailable);
+      setSelectedSlot(null);
+      setVisibleMonth((firstAvailable || fromDate).slice(0, 7));
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
     if (isOpen && offeringId) {
       setWindowDays(INITIAL_WINDOW_DAYS);
       setVisibleMonth(fromDate.slice(0, 7));
       void fetchSlots(INITIAL_WINDOW_DAYS, true);
     }
-  }, [isOpen, offeringId, fromDate, fetchSlots]);
+  }, [isOpen, offeringId, fromDate, fetchSlots, previewSlots]);
 
   const dates = useMemo(() => Array.from({ length: windowDays }, (_, index) => addDays(fromDate, index)), [fromDate, windowDays]);
   const datesByMonth = useMemo(() => dates.reduce<Record<string, string[]>>((groups, date) => {
@@ -171,9 +186,9 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
 
   const footerContent = (
     <PrimaryButton
-      size="md"
+      size="sm"
       disabled={!selectedSlot || isLoading}
-      className="w-full min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
+      className="w-full font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
       leftIcon={<Check className="w-4 h-4 text-slate-950" aria-hidden="true" />}
       onClick={() => {
         if (selectedSlot) {
@@ -205,9 +220,9 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           {error && (
             <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-3">
               <span>{error}</span>
-              <button type="button" onClick={() => void fetchSlots(windowDays, true)} className="underline flex items-center gap-1 cursor-pointer font-bold">
+              <ButtonBase type="button" onClick={() => void fetchSlots(windowDays, true)} className="underline flex items-center gap-1 cursor-pointer font-bold">
                 <RefreshCw className="w-3.5 h-3.5" /> Tentar novamente
-              </button>
+              </ButtonBase>
             </div>
           )}
 
@@ -229,7 +244,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
             {(Object.entries(datesByMonth) as [string, string[]][]).filter(([month]) => month === visibleMonth).map(([month, monthDates]) => (
               <section key={month}>
                 <div className="mb-3 flex items-center justify-between">
-                  <button
+                  <ButtonBase
                     type="button"
                     aria-label="Mês anterior"
                     disabled={Object.keys(datesByMonth).indexOf(month) <= 0}
@@ -240,11 +255,11 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                     className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                  </button>
+                  </ButtonBase>
                   <h4 className="text-sm font-bold capitalize text-[var(--mazzi-dark)]">
                     {formatDateOnly(`${month}-01`, { month: 'long', year: 'numeric' })}
                   </h4>
-                  <button
+                  <ButtonBase
                     type="button"
                     aria-label="Mês seguinte"
                     disabled={Object.keys(datesByMonth).indexOf(month) >= Object.keys(datesByMonth).length - 1}
@@ -255,7 +270,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                     className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
                   >
                     <ChevronRight className="h-4 w-4" />
-                  </button>
+                  </ButtonBase>
                 </div>
 
                 <div className="grid grid-cols-7 gap-1 text-center">
@@ -271,7 +286,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                     const available = (slotsByDate[date] || []).length > 0;
                     const isSelected = selectedDate === date;
                     return (
-                      <button
+                      <ButtonBase
                         key={date}
                         type="button"
                         disabled={!available}
@@ -289,7 +304,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                         }`}
                       >
                         <span className="text-sm font-bold leading-none">{formatDateOnly(date, { day: '2-digit' })}</span>
-                      </button>
+                      </ButtonBase>
                     );
                   })}
                 </div>
@@ -298,7 +313,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           </div>
 
           {windowDays < MAX_HORIZON_DAYS && (
-            <button
+            <ButtonBase
               type="button"
               disabled={isLoading}
               onClick={() => {
@@ -306,10 +321,11 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                 setWindowDays(next);
                 void fetchSlots(next, false);
               }}
-              className="w-full py-2.5 text-xs font-bold text-[var(--mazzi-muted)] hover:text-[var(--mazzi-dark)] transition cursor-pointer"
+              className="flex w-full cursor-pointer items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[var(--mazzi-muted)] transition hover:text-[var(--mazzi-dark)]"
             >
+              <ChevronDown className="h-4 w-4" aria-hidden="true" />
               Carregar meses seguintes
-            </button>
+            </ButtonBase>
           )}
 
           {/* Time Slots Section */}
@@ -331,7 +347,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                           {groupedPeriods[period].map((slot) => {
                             const isSelected = selectedSlot?.slot_start_at === slot.slot_start_at;
                             return (
-                              <button
+                              <ButtonBase
                                 key={slot.slot_start_at}
                                 type="button"
                                 aria-pressed={isSelected}
@@ -344,7 +360,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                               >
                                 <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                                 <span>{slot.local_start_time.substring(0, 5)}</span>
-                              </button>
+                              </ButtonBase>
                             );
                           })}
                         </div>

@@ -1,75 +1,33 @@
 import React, { useState } from 'react';
-import {
-  Car,
-  Bike,
-  ShieldCheck,
-  Star,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  MapPin,
-  Calendar as CalendarIcon,
-  ChevronRight,
-  Info,
-  MessageSquare,
-  XCircle,
-  RotateCcw,
-  Check,
-  Search,
-  SlidersHorizontal,
-  ArrowLeft,
-  Pencil,
-  Trash,
-  Plus,
-  Building2,
-  UserCheck,
-  UserRound,
-  Bell,
-  UserPen,
-  ClipboardList,
-  CreditCard,
-  RefreshCw,
-  Ban,
-  Send,
-  Sparkles,
-  Smartphone,
-  Monitor,
-  Copy,
-  CheckCheck,
-  FileCode,
-  Layers,
-  Palette,
-  Type,
-  ToggleLeft,
-  Navigation as NavIcon,
-} from 'lucide-react';
-import { Button, PrimaryButton, SecondaryButton } from '../../components/ui/Button';
+import { Car, Bike, ShieldCheck, Star, CheckCircle2, AlertTriangle, Clock, History, MapPin, Calendar as CalendarIcon, CalendarClock, CalendarRange, ChevronRight, Info, MessageSquare, XCircle, RotateCcw, Check, Search, SlidersHorizontal, ArrowLeft, Pencil, Trash, Plus, Building2, UserCheck, UserRound, UserPen, ClipboardList, CreditCard, RefreshCw, Ban, Send, Sparkles, Smartphone, Monitor, Copy, CheckCheck, FileCode, Layers, Palette, Type, ToggleLeft, Navigation as NavIcon, PackageOpen, Home, BookOpen, List, Map, } from 'lucide-react';
+import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Checkbox } from '../../components/ui/Checkbox';
 import { OtpInput } from '../../components/ui/OtpInput';
 import { Badge } from '../../components/ui/Badge';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Rating } from '../../components/ui/Rating';
-import { Price } from '../../components/ui/Price';
-import { Avatar } from '../../components/ui/Avatar';
-import { Calendar } from '../../components/ui/Calendar';
-import { TimePicker, TimeSlot } from '../../components/ui/TimePicker';
-import { ProviderCard } from '../../components/ui/ProviderCard';
-import { VehicleCard } from '../../components/ui/VehicleCard';
 import { BookingCard } from '../../components/ui/BookingCard';
 import { EmptyState, ErrorState } from '../../components/ui/EmptyState';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { Tabs } from '../../components/ui/Tabs';
 import { Modal } from '../../components/ui/Modal';
-import { ModalActionFooter } from '../../components/ui/ModalActionFooter';
-import { FloatingActionFooter } from '../../components/ui/FloatingActionFooter';
+import { AppHomeHeader } from '../../components/ui/AppHomeHeader';
+import { AppPageHeader } from '../../components/ui/AppPageHeader';
+import { AppBottomNav } from '../../components/ui/AppBottomNav';
+import { IconButton } from '../../components/ui/IconButton';
+import { ListEmptyState } from '../../components/ui/ListEmptyState';
+import { ObjectEmptyState } from '../../components/ui/ObjectEmptyState';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { UniversalMap } from '../../components/maps/UniversalMap';
-import {
-  MOCK_PROVIDERS,
-  MOCK_VEHICLES,
-  MOCK_BOOKINGS,
-} from '../../data/mockData';
+import { SearchHeader } from '../../components/search/SearchHeader';
+import { FilterDrawer } from '../../components/search/FilterDrawer';
+import { ProviderResultCard } from '../../components/search/ProviderResultCard';
+import { MapView } from '../../components/search/MapView';
+import { ProviderPublicProfileModal } from '../../components/search/ProviderPublicProfileModal';
+import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
+import { BookingDetailsModal } from '../student/components/BookingDetailsModal';
+import { SlotSelectorModal, addDays, type PublicSlot } from '../student/components/SlotSelectorModal';
+import type { PublicSearchProviderResult, SearchRequest } from '../../types';
+import { MOCK_BOOKINGS } from '../../data/mockData';
 
 type SectionId =
   | 'foundations'
@@ -83,14 +41,16 @@ type SectionId =
   | 'cards'
   | 'alerts'
   | 'modals'
-  | 'bottom-actions'
   | 'cancellation'
   | 'booking'
   | 'chat'
   | 'loading'
   | 'empty-states'
   | 'navigation'
-  | 'mobile-patterns';
+  | 'mobile-patterns'
+  | 'app-headers'
+  | 'component-inventory'
+  | 'student-reference';
 
 interface Section {
   id: SectionId;
@@ -110,15 +70,98 @@ const SECTIONS: Section[] = [
   { id: 'cards', label: '9. Cards de Domínio', icon: <Layers className="w-4 h-4" /> },
   { id: 'alerts', label: '10. Alertas & Banners', icon: <AlertTriangle className="w-4 h-4" /> },
   { id: 'modals', label: '11. Modais & Dialogs', icon: <Layers className="w-4 h-4" /> },
-  { id: 'bottom-actions', label: '12. Bottom Action Footers', icon: <NavIcon className="w-4 h-4" /> },
   { id: 'cancellation', label: '13. Padrão de Cancelamento', icon: <XCircle className="w-4 h-4" /> },
-  { id: 'booking', label: '14. Fluxo de Agendamento', icon: <CalendarIcon className="w-4 h-4" /> },
+  { id: 'booking', label: '14. Dias & Horários', icon: <CalendarIcon className="w-4 h-4" /> },
   { id: 'chat', label: '15. Componentes de Chat', icon: <MessageSquare className="w-4 h-4" /> },
   { id: 'loading', label: '16. Loading & Skeletons', icon: <Clock className="w-4 h-4" /> },
   { id: 'empty-states', label: '17. Empty & Error States', icon: <Info className="w-4 h-4" /> },
   { id: 'navigation', label: '18. Navegação & Tabs', icon: <NavIcon className="w-4 h-4" /> },
   { id: 'mobile-patterns', label: '19. Mobile Patterns (360-430px)', icon: <Smartphone className="w-4 h-4" /> },
+  { id: 'app-headers', label: '20. Headers dos Apps', icon: <Layers className="w-4 h-4" /> },
+  { id: 'component-inventory', label: '21. Inventário Completo', icon: <PackageOpen className="w-4 h-4" /> },
+  { id: 'student-reference', label: '22. Referência MAZZI Aluno', icon: <UserRound className="w-4 h-4" /> },
 ];
+
+const COMPONENT_INVENTORY = [
+  ['Ações', 'Button, ButtonBase, PrimaryButton, SecondaryButton, IconButton'],
+  ['Formulários', 'Input, Select, OtpInput, Rating'],
+  ['Conteúdo', 'Badge, StatusBadge, BookingCard'],
+  ['Feedback', 'EmptyState, ErrorState, ListEmptyState, ObjectEmptyState, LoadingScreen'],
+  ['Overlays', 'Modal'],
+  ['Navegação', 'AppBottomNav, AppHomeHeader, AppPageHeader'],
+] as const;
+
+const STUDENT_COMPONENT_INVENTORY = [
+  ['Entrada e navegação', 'AppHomeHeader, AppPageHeader, AppBottomNav'],
+  ['Busca', 'SearchHeader, FilterDrawer, ProviderResultCard, MapView, ProviderPublicProfileModal'],
+  ['Aulas', 'BookingCard, BookingDetailsModal, SlotSelectorModal, CheckoutModal'],
+  ['Relacionamento', 'BookingChatPanel, NotificationsPanel, ReviewModal'],
+  ['Conta', 'ProfilePhotoPicker, formulário e resumo de perfil'],
+] as const;
+
+const STUDENT_SEARCH_RESULT: PublicSearchProviderResult = {
+  providerId: 'design-system-provider',
+  displayName: 'Carlos Alberto Silva',
+  providerType: 'INSTRUCTOR',
+  verificationBadge: 'Verificado pela plataforma',
+  isVerified: true,
+  ratingAverage: 4.9,
+  ratingCount: 84,
+  ratingSource: 'REAL',
+  approximateDistanceKm: 1.8,
+  roundedDistanceMeters: 1800,
+  formattedDistance: '1,8 km',
+  neighborhood: 'Pinheiros',
+  city: 'São Paulo',
+  categories: ['B'],
+  transmissions: ['MANUAL'],
+  startingPriceInCents: 9500,
+  normalizedPricePerFiftyMinInCents: 9500,
+  publicOfferings: [{
+    id: 'design-system-offering',
+    vehicleId: 'design-system-vehicle',
+    vehicleTitle: 'Hyundai HB20 2025',
+    vehicleType: 'CAR',
+    category: 'B',
+    transmission: 'MANUAL',
+    photos: [],
+    durationMinutes: 50,
+    priceInCents: 9500,
+  }],
+  availableSlotCount: 8,
+  availableResourceCount: 1,
+  nextAvailableSlot: '2026-08-22T09:00:00-03:00',
+  publicMapLocation: {
+    latitude: -23.5614,
+    longitude: -46.7016,
+    type: 'NEIGHBORHOOD_CENTROID',
+    label: 'Pinheiros, São Paulo',
+  },
+  rankingScore: 0.96,
+};
+
+const previewDateOnly = (() => {
+  const date = new Date();
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+})();
+
+const DESIGN_SYSTEM_PREVIEW_SLOTS: PublicSlot[] = [
+  [1, '09:00', '09:50'],
+  [1, '10:00', '10:50'],
+  [1, '14:00', '14:50'],
+  [3, '08:00', '08:50'],
+  [3, '16:00', '16:50'],
+  [5, '18:30', '19:20'],
+].map(([offset, start, end]) => {
+  const date = addDays(previewDateOnly, Number(offset));
+  return {
+    local_date: date,
+    local_start_time: String(start),
+    local_end_time: String(end),
+    slot_start_at: `${date}T${start}:00-03:00`,
+    slot_end_at: `${date}T${end}:00-03:00`,
+  };
+});
 
 export const DesignSystemShowcase: React.FC = () => {
   const [activeSection, setActiveSection] = useState<SectionId>('foundations');
@@ -128,6 +171,24 @@ export const DesignSystemShowcase: React.FC = () => {
   const [selectedChip, setSelectedChip] = useState('Imprevisto pessoal');
   const [isBasicModalOpen, setIsBasicModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [demoRating, setDemoRating] = useState(4);
+  const [demoNav, setDemoNav] = useState<'home' | 'lessons' | 'profile'>('home');
+  const [demoLessonTab, setDemoLessonTab] = useState<'today' | 'history'>('today');
+  const [demoProLessonTab, setDemoProLessonTab] = useState<'all' | 'today' | 'upcoming' | 'history'>('today');
+  const [isStudentSlotPreviewOpen, setIsStudentSlotPreviewOpen] = useState(false);
+  const [studentSearch, setStudentSearch] = useState<SearchRequest>({
+    latitude: -23.5614,
+    longitude: -46.7016,
+    radiusMeters: 10000,
+    category: 'B',
+    sortBy: 'RECOMMENDED',
+  });
+  const [studentPreviewTab, setStudentPreviewTab] = useState<'search' | 'bookings' | 'profile'>('search');
+  const [studentViewMode, setStudentViewMode] = useState<'list' | 'map'>('list');
+  const [studentProfilePhoto, setStudentProfilePhoto] = useState<string | undefined>();
+  const [isStudentFilterOpen, setIsStudentFilterOpen] = useState(false);
+  const [isStudentProfileOpen, setIsStudentProfileOpen] = useState(false);
+  const [isStudentBookingOpen, setIsStudentBookingOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const copySnippet = (code: string) => {
@@ -153,8 +214,8 @@ export const DesignSystemShowcase: React.FC = () => {
     <div className="min-h-screen bg-[#f7f5ef] text-[#202126] font-sans flex flex-col">
       {/* Top Bar Header */}
       <header className="sticky top-0 z-50 bg-[#202126] text-white px-4 py-3 shadow-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="w-9 h-9 rounded-2xl bg-[#f6c945] text-[#202126] font-black flex items-center justify-center text-lg tracking-tighter shadow-sm">
               M
             </div>
@@ -172,49 +233,51 @@ export const DesignSystemShowcase: React.FC = () => {
           </div>
 
           {/* Viewport Preview Toolbar */}
-          <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
-            <button
+          <div className="flex w-full max-w-full items-center gap-1 overflow-x-auto bg-slate-800 p-1 rounded-xl border border-slate-700 sm:w-auto">
+            <ButtonBase
               type="button"
               onClick={() => setViewportWidth('full')}
-              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+              className={`shrink-0 px-2.5 py-1 text-xs font-bold rounded-lg transition ${
                 viewportWidth === 'full' ? 'bg-[#f6c945] text-[#202126]' : 'text-slate-300 hover:text-white'
               }`}
               title="Visualização Completa Desktop"
             >
               <Monitor className="w-3.5 h-3.5 inline mr-1" />
               Full
-            </button>
-            <button
+            </ButtonBase>
+            <ButtonBase
               type="button"
               onClick={() => setViewportWidth('360')}
-              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+              className={`shrink-0 px-2.5 py-1 text-xs font-bold rounded-lg transition ${
                 viewportWidth === '360' ? 'bg-[#f6c945] text-[#202126]' : 'text-slate-300 hover:text-white'
               }`}
               title="Mobile Pequeno 360px"
             >
               <Smartphone className="w-3.5 h-3.5 inline mr-1" />
               360px
-            </button>
-            <button
+            </ButtonBase>
+            <ButtonBase
               type="button"
               onClick={() => setViewportWidth('390')}
-              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+              className={`shrink-0 px-2.5 py-1 text-xs font-bold rounded-lg transition ${
                 viewportWidth === '390' ? 'bg-[#f6c945] text-[#202126]' : 'text-slate-300 hover:text-white'
               }`}
               title="Mobile Médio 390px"
             >
+              <Smartphone className="w-3.5 h-3.5 inline mr-1" />
               390px
-            </button>
-            <button
+            </ButtonBase>
+            <ButtonBase
               type="button"
               onClick={() => setViewportWidth('430')}
-              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+              className={`shrink-0 px-2.5 py-1 text-xs font-bold rounded-lg transition ${
                 viewportWidth === '430' ? 'bg-[#f6c945] text-[#202126]' : 'text-slate-300 hover:text-white'
               }`}
               title="Mobile Grande 430px"
             >
+              <Smartphone className="w-3.5 h-3.5 inline mr-1" />
               430px
-            </button>
+            </ButtonBase>
           </div>
         </div>
       </header>
@@ -227,7 +290,7 @@ export const DesignSystemShowcase: React.FC = () => {
             Navegação do Catálogo
           </p>
           {SECTIONS.map((sec) => (
-            <button
+            <ButtonBase
               key={sec.id}
               type="button"
               onClick={() => setActiveSection(sec.id)}
@@ -239,7 +302,7 @@ export const DesignSystemShowcase: React.FC = () => {
             >
               {sec.icon}
               <span className="truncate">{sec.label}</span>
-            </button>
+            </ButtonBase>
           ))}
         </aside>
 
@@ -382,7 +445,7 @@ export const DesignSystemShowcase: React.FC = () => {
                       <span className="text-xs font-mono text-slate-400">src/components/ui/Button.tsx</span>
                     </div>
                     <p className="text-xs text-slate-600 mt-1">
-                      Todas as variantes possuem altura mínima touch de 44px (48px para CTAs primários) e peso tipográfico <code className="font-mono font-bold">font-bold</code>.
+                      O padrão de ações nos três apps é <code className="font-mono font-bold">size=&quot;sm&quot;</code>, com texto de 12px e alvo touch de 44px. Os tamanhos md e lg abaixo ficam reservados para exceções documentadas. Botões textuais recebem um ícone Lucide por ação; <code className="font-mono">leftIcon</code> e <code className="font-mono">rightIcon</code> permitem substituição explícita.
                     </p>
                   </div>
 
@@ -391,13 +454,13 @@ export const DesignSystemShowcase: React.FC = () => {
                     <div className="p-4 rounded-2xl border border-[#e9e6de] space-y-3">
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Primary (99 Yellow)</h4>
-                        <button
+                        <ButtonBase
                           type="button"
                           onClick={() => copySnippet('<PrimaryButton size="md" leftIcon={<Check className="w-4 h-4" />}>Confirmar</PrimaryButton>')}
                           className="text-[10px] font-bold text-slate-500 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
                         >
                           <Copy className="w-3 h-3" /> Copy Code
-                        </button>
+                        </ButtonBase>
                       </div>
                       <div className="flex flex-wrap items-center gap-3">
                         <PrimaryButton size="sm">Small (sm)</PrimaryButton>
@@ -429,33 +492,6 @@ export const DesignSystemShowcase: React.FC = () => {
                         </PrimaryButton>
                       </div>
 
-                      {/* Header Square Icon Buttons (48px x 48px) */}
-                      <div className="pt-3 border-t border-[#e9e6de]">
-                        <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Botões Ícone de Cabeçalho (48px x 48px)</h5>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <button
-                            type="button"
-                            className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                            title="Atualizar lista de aulas"
-                          >
-                            <RefreshCw className="h-5 w-5 text-amber-600" />
-                          </button>
-                          <button
-                            type="button"
-                            className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                            title="Editar perfil"
-                          >
-                            <Pencil className="h-5 w-5 text-slate-700" />
-                          </button>
-                          <button
-                            type="button"
-                            className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                            title="Notificações"
-                          >
-                            <Bell className="h-5 w-5 text-slate-700" />
-                          </button>
-                        </div>
-                      </div>
                     </div>
 
                     {/* Secondary & Outline Button */}
@@ -478,17 +514,16 @@ export const DesignSystemShowcase: React.FC = () => {
                     {/* Danger Buttons */}
                     <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50/40 space-y-3">
                       <h4 className="text-xs font-black text-rose-800 uppercase tracking-wider">Danger Variants (Soft vs Solid)</h4>
+                      <p className="text-xs leading-relaxed text-rose-800">
+                        Use <code className="font-mono font-bold">dangerSoft</code> para cancelar uma edição, fechar um formulário ou abrir uma confirmação. Use <code className="font-mono font-bold">danger</code> somente na ação final que efetiva o cancelamento destrutivo.
+                      </p>
                       <div className="flex flex-wrap items-center gap-3">
                         {/* Soft Danger */}
-                        <button
-                          type="button"
-                          className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 text-rose-700 font-bold rounded-2xl transition flex items-center gap-2 text-xs shadow-2xs cursor-pointer min-h-[44px]"
-                        >
-                          <XCircle className="w-4 h-4 text-rose-600" />
-                          <span>Cancelar aula (Soft Danger)</span>
-                        </button>
+                        <Button variant="dangerSoft" size="sm" leftIcon={<XCircle className="w-4 h-4 text-rose-600" />}>
+                          Cancelar aula (Soft Danger)
+                        </Button>
                         {/* Solid Danger */}
-                        <Button variant="danger" size="md" leftIcon={<XCircle className="w-4 h-4 text-white" />}>
+                        <Button variant="danger" size="sm" leftIcon={<XCircle className="w-4 h-4 text-white" />}>
                           Cancelar aula (Solid Danger)
                         </Button>
                       </div>
@@ -566,12 +601,6 @@ export const DesignSystemShowcase: React.FC = () => {
                       ]}
                     />
                   </div>
-                  <Checkbox
-                    id="chk-demo"
-                    checked={true}
-                    onChange={() => {}}
-                    label="Li e aceito os termos de cancelamento e reembolso (DEC-013)."
-                  />
                 </section>
               )}
 
@@ -607,7 +636,7 @@ export const DesignSystemShowcase: React.FC = () => {
                     <p className="text-xs font-bold text-slate-700">Chips de Motivo de Cancelamento:</p>
                     <div className="flex flex-wrap gap-2">
                       {['Imprevisto pessoal', 'Mudança de horário', 'Problema de saúde', 'Outro motivo'].map((chip) => (
-                        <button
+                        <ButtonBase
                           key={chip}
                           type="button"
                           onClick={() => setSelectedChip(chip)}
@@ -618,7 +647,7 @@ export const DesignSystemShowcase: React.FC = () => {
                           }`}
                         >
                           {chip}
-                        </button>
+                        </ButtonBase>
                       ))}
                     </div>
                   </div>
@@ -654,9 +683,8 @@ export const DesignSystemShowcase: React.FC = () => {
                     <h2 className="text-xl font-black text-[#202126]">9. Cards de Domínio do Marketplace</h2>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <ProviderCard provider={MOCK_PROVIDERS[0]} onSelect={() => {}} />
-                    <VehicleCard vehicle={MOCK_VEHICLES[0]} />
+                  <div className="grid grid-cols-1 gap-4">
+                    <BookingCard booking={MOCK_BOOKINGS[0]} variant="student" onViewDetails={() => setIsStudentBookingOpen(true)} />
                   </div>
                 </section>
               )}
@@ -709,47 +737,13 @@ export const DesignSystemShowcase: React.FC = () => {
                 </section>
               )}
 
-              {/* 12. BOTTOM ACTIONS */}
-              {activeSection === 'bottom-actions' && (
-                <section className="space-y-6">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-black text-[#202126]">12. Sticky White Bottom Footers</h2>
-                      <span className="text-xs font-mono text-slate-400">src/components/ui/ModalActionFooter.tsx</span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-1">
-                      Padrão Oficial V2: Fundo branco fixo (<code className="font-mono bg-slate-100">bg-white</code>) com botões flutuantes elevados (<code className="font-mono bg-slate-100">rounded-2xl shadow-md</code>) e safe-area.
-                    </p>
-                  </div>
-
-                  {/* Visual Example of Sticky White Footer */}
-                  <div className="border border-slate-200 rounded-3xl overflow-hidden bg-slate-50 shadow-inner">
-                    <div className="p-4 space-y-2 text-xs text-slate-600 max-h-36 overflow-y-auto">
-                      <p className="font-bold text-slate-900">Conteúdo rolável passa por trás do footer...</p>
-                      <p>Linha 1 do conteúdo do modal ou formulário longo...</p>
-                      <p>Linha 2 do conteúdo do modal ou formulário longo...</p>
-                      <p>Linha 3 do conteúdo do modal ou formulário longo...</p>
-                      <p>Linha 4 do conteúdo do modal ou formulário longo...</p>
-                    </div>
-                    <ModalActionFooter align="between">
-                      <SecondaryButton size="md" leftIcon={<RotateCcw className="w-4 h-4 text-slate-500" />} className="w-1/2 min-h-[48px] rounded-2xl">
-                        Limpar
-                      </SecondaryButton>
-                      <PrimaryButton size="md" leftIcon={<Check className="w-4 h-4 text-slate-950" />} className="w-1/2 min-h-[48px] rounded-2xl">
-                        Aplicar Filtros
-                      </PrimaryButton>
-                    </ModalActionFooter>
-                  </div>
-                </section>
-              )}
-
               {/* 13. CANCELLATION */}
               {activeSection === 'cancellation' && (
                 <section className="space-y-6">
                   <div>
                     <h2 className="text-xl font-black text-[#202126]">13. Padrão Visual de Cancelamento (LADO A LADO)</h2>
                     <p className="text-xs text-slate-600 mt-1">
-                      Composição oficial nos detalhes da aula: <code className="font-mono text-slate-800">[ 💬 Abrir Chat ] [ ✕ Cancelar aula ]</code> dispostos LADO A LADO (50/50) com ambos os botões em <code className="font-mono text-rose-600">font-bold</code>.
+                      Composição oficial nos detalhes da aula: <code className="font-mono text-slate-800">[ Abrir Chat ] [ Cancelar aula ]</code> lado a lado (50/50). O gatilho usa <code className="font-mono text-rose-700">dangerSoft</code>; a confirmação posterior usa <code className="font-mono text-rose-700">danger</code> sólido.
                     </p>
                   </div>
 
@@ -765,25 +759,43 @@ export const DesignSystemShowcase: React.FC = () => {
                       >
                         Abrir Chat
                       </Button>
-                      <button
+                      <Button
                         type="button"
-                        className="w-1/2 min-h-[44px] bg-rose-50 hover:bg-rose-100 border border-rose-200/80 text-rose-700 font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-xs shadow-2xs cursor-pointer"
+                        variant="dangerSoft"
+                        size="sm"
+                        className="w-1/2"
+                        leftIcon={<XCircle className="w-4 h-4 text-rose-600" />}
                       >
-                        <XCircle className="w-4 h-4 text-rose-600" />
-                        <span className="font-bold">Cancelar aula</span>
-                      </button>
+                        Cancelar aula
+                      </Button>
                     </div>
                   </div>
                 </section>
               )}
 
-              {/* 14. BOOKING */}
+              {/* 14. BOOKING DAYS AND TIMES */}
               {activeSection === 'booking' && (
-                <section className="space-y-6">
+                <section className="space-y-6" data-section="booking-schedule">
                   <div>
-                    <h2 className="text-xl font-black text-[#202126]">14. Agendamento & TimePicker</h2>
+                    <h2 className="text-xl font-black text-[#202126]">14. Agendamento — Dias e Horários</h2>
+                    <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-600">
+                      O exemplo abre o mesmo <code className="font-mono font-bold">SlotSelectorModal</code> usado pelo Aluno, com calendário, disponibilidade diária, períodos e resumo da seleção.
+                    </p>
                   </div>
-                  <Calendar selectedDate="2026-08-18" onSelectDate={() => {}} />
+                  <div className="mx-auto max-w-[430px] rounded-3xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] p-5 shadow-xs">
+                    <div className="flex items-start gap-3">
+                      <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-600">
+                        <CalendarClock className="h-6 w-6" aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-base font-bold text-[var(--mazzi-dark)]">Escolha sua aula</h3>
+                        <p className="mt-1 text-xs leading-relaxed text-[var(--mazzi-muted)]">Consulte os dias disponíveis e selecione um horário para continuar.</p>
+                      </div>
+                    </div>
+                    <PrimaryButton className="mt-5 w-full" leftIcon={<CalendarIcon className="h-4 w-4" aria-hidden="true" />} onClick={() => setIsStudentSlotPreviewOpen(true)}>
+                      Ver dias e horários
+                    </PrimaryButton>
+                  </div>
                 </section>
               )}
 
@@ -813,11 +825,10 @@ export const DesignSystemShowcase: React.FC = () => {
               {activeSection === 'loading' && (
                 <section className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-black text-[#202126]">16. Loading & Skeletons</h2>
+                    <h2 className="text-xl font-black text-[#202126]">16. Loading</h2>
                   </div>
-                  <div className="space-y-3">
-                    <Skeleton variant="card" />
-                    <Skeleton variant="text" />
+                  <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5">
+                    <LoadingScreen fullscreen={false} label="Atualizando conteúdo" />
                   </div>
                 </section>
               )}
@@ -844,16 +855,62 @@ export const DesignSystemShowcase: React.FC = () => {
                       Aulas ativas ficam na aba Próximas. Aulas cujo horário já terminou (scheduled_end_at &lt;= NOW) migram automaticamente para o Histórico.
                     </p>
                   </div>
-                  <Tabs
-                    id="demo-tabs"
-                    ariaLabel="Navegação demo"
-                    activeTab="t1"
-                    onChange={() => {}}
-                    tabs={[
-                      { id: 't1', label: 'Próximas Aulas' },
-                      { id: 't2', label: 'Histórico' },
-                    ]}
-                  />
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Aluno — Minhas aulas</h3>
+                      <div className="max-w-[430px]">
+                        <div role="tablist" aria-label="Aulas" className="grid grid-cols-2 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
+                          {([
+                            ['today', 'Hoje', Clock],
+                            ['history', 'Histórico', History],
+                          ] as const).map(([value, label, Icon]) => (
+                            <ButtonBase
+                              key={value}
+                              role="tab"
+                              aria-selected={demoLessonTab === value}
+                              type="button"
+                              onClick={() => setDemoLessonTab(value)}
+                              className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
+                                demoLessonTab === value
+                                  ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
+                                  : 'font-semibold text-slate-600 hover:bg-slate-200/50 hover:text-[var(--mazzi-dark)]'
+                              }`}
+                            >
+                              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                              {label}
+                            </ButtonBase>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">PRO — Minhas aulas</h3>
+                      <div className="max-w-[430px]">
+                        <div role="tablist" aria-label="Filtros de aulas" className="mazzi-segmented overflow-x-auto">
+                          {([
+                            ['all', 'Todas', CalendarRange, 'min-w-[72px]'],
+                            ['today', 'Hoje', Clock, 'min-w-[64px]'],
+                            ['upcoming', 'Próximas', CalendarClock, 'min-w-[84px]'],
+                            ['history', 'Histórico', History, 'min-w-[88px]'],
+                          ] as const).map(([value, label, Icon, minWidth]) => (
+                            <ButtonBase
+                              key={value}
+                              type="button"
+                              role="tab"
+                              onClick={() => setDemoProLessonTab(value)}
+                              aria-selected={demoProLessonTab === value}
+                              data-active={demoProLessonTab === value}
+                              className={`flex ${minWidth} items-center justify-center gap-1.5 whitespace-nowrap !px-1.5`}
+                            >
+                              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                              <span>{label}</span>
+                            </ButtonBase>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="space-y-3 pt-2">
                     <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Exemplo A: Aula Futura (Aba Próximas)</h4>
@@ -902,6 +959,348 @@ export const DesignSystemShowcase: React.FC = () => {
                 </section>
               )}
 
+              {/* 20. APP HOME HEADERS */}
+              {activeSection === 'app-headers' && (
+                <section className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-black text-[#202126]">20. Headers Iniciais dos Apps</h2>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Componente global usado nas telas iniciais do MAZZI Aluno e MAZZI PRO. A estrutura, a tipografia e as ações permanecem idênticas; apenas o contexto e os textos mudam.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-3xl border border-[#e9e6de] bg-[#f7f5ef] p-5">
+                      <AppHomeHeader
+                        eyebrow="Aluno MAZZI"
+                        eyebrowIcon={<UserRound className="h-3 w-3" aria-hidden="true" />}
+                        title="Olá, Ana"
+                        subtitle="Encontre sua próxima aula e acompanhe seus agendamentos."
+                        onOpenNotifications={() => undefined}
+                        onRefresh={() => undefined}
+                      />
+                    </div>
+                    <div className="rounded-3xl border border-[#e9e6de] bg-[#f7f5ef] p-5">
+                      <AppHomeHeader
+                        eyebrow="Instrutor MAZZI"
+                        eyebrowIcon={<UserCheck className="h-3 w-3" aria-hidden="true" />}
+                        title="Olá, Carlos"
+                        subtitle="Gerencie sua operação e acompanhe suas aulas."
+                        onOpenNotifications={() => undefined}
+                        onRefresh={() => undefined}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700">
+                    <code className="font-mono">src/components/ui/AppHomeHeader.tsx</code>
+                  </div>
+                </section>
+              )}
+
+              {/* 21. COMPLETE COMPONENT INVENTORY */}
+              {activeSection === 'component-inventory' && (
+                <section className="space-y-8" data-section="component-inventory">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-black text-[#202126]">21. Componentes usados por Aluno e PRO</h2>
+                      <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-600">
+                        Inventário restrito aos componentes alcançáveis pelos entrypoints Student e Instructor. Exemplos sem uso real não fazem parte deste catálogo.
+                      </p>
+                    </div>
+                    <Badge variant="primary" size="md">21 componentes públicos</Badge>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {COMPONENT_INVENTORY.map(([group, components]) => (
+                      <div key={group} className="rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
+                        <p className="text-xs font-bold text-[var(--mazzi-dark)]">{group}</p>
+                        <p className="mt-1 text-xs font-normal leading-relaxed text-slate-500">{components}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="mazzi-section-title">Ações e status</h3>
+                    <div className="space-y-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <ButtonBase className="min-h-11 rounded-2xl border border-[var(--mazzi-border)] bg-white px-3.5 text-xs font-bold">ButtonBase</ButtonBase>
+                        <Button variant="primary" leftIcon={<Check className="h-4 w-4" aria-hidden="true" />}>Button</Button>
+                        <PrimaryButton leftIcon={<CalendarIcon className="h-4 w-4" aria-hidden="true" />}>PrimaryButton</PrimaryButton>
+                        <SecondaryButton leftIcon={<UserRound className="h-4 w-4" aria-hidden="true" />}>SecondaryButton</SecondaryButton>
+                        <IconButton label="Atualizar exemplo" className="mazzi-icon-button">
+                          <RefreshCw className="h-5 w-5" aria-hidden="true" />
+                        </IconButton>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Badge>Default</Badge>
+                        <Badge variant="success">Success</Badge>
+                        <Badge variant="warning">Warning</Badge>
+                        <Badge variant="danger">Danger</Badge>
+                        <StatusBadge status="CONFIRMED" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="mazzi-section-title">Formulários e avaliação</h3>
+                    <div className="grid gap-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 md:grid-cols-2">
+                      <Input label="Endereço" value={inputVal} onChange={(event) => setInputVal(event.target.value)} />
+                      <Select label="Categoria" options={[{ value: 'B', label: 'Categoria B' }, { value: 'A', label: 'Categoria A' }]} />
+                      <div className="md:col-span-2"><OtpInput value={otpVal} onChange={setOtpVal} length={8} /></div>
+                      <div className="md:col-span-2"><Rating value={demoRating} count={24} interactive onChange={setDemoRating} /></div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="mazzi-section-title">Domínio</h3>
+                    <div className="grid gap-4">
+                      <BookingCard booking={MOCK_BOOKINGS[0]} perspective="STUDENT" onViewDetails={() => undefined} onOpenChat={() => undefined} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="mazzi-section-title">Feedback e estados</h3>
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      <ListEmptyState title="Nenhum item encontrado" description="A lista ainda não possui registros para este filtro." />
+                      <ObjectEmptyState
+                        title="Nenhuma próxima aula"
+                        description="Quando uma aula for confirmada, ela aparecerá neste resumo."
+                        action={<PrimaryButton>Buscar aulas</PrimaryButton>}
+                      />
+                      <ErrorState message="Não foi possível carregar os dados agora." onRetry={() => undefined} />
+                      <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5"><LoadingScreen fullscreen={false} label="Atualizando conteúdo" /></div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="mazzi-section-title">Headers e navegação</h3>
+                    <div className="space-y-6 rounded-3xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] p-5">
+                      <AppPageHeader
+                        eyebrow="Sua jornada"
+                        title="Minhas aulas"
+                        subtitle="Acompanhe seus próximos horários e o histórico."
+                        action={<IconButton label="Atualizar aulas" className="mazzi-icon-button"><RefreshCw className="h-5 w-5" aria-hidden="true" /></IconButton>}
+                      />
+                      <AppBottomNav
+                        placement="inline"
+                        ariaLabel="Navegação demonstrativa"
+                        activeId={demoNav}
+                        onChange={setDemoNav}
+                        items={[
+                          { id: 'home', label: 'Início', icon: <Home className="h-5 w-5" /> },
+                          { id: 'lessons', label: 'Aulas', icon: <BookOpen className="h-5 w-5" />, badge: 2 },
+                          { id: 'profile', label: 'Perfil', icon: <UserRound className="h-5 w-5" /> },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* 22. STUDENT APP REFERENCE */}
+              {activeSection === 'student-reference' && (
+                <section className="space-y-8" data-section="student-reference">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-black text-[#202126]">22. Referência MAZZI Aluno</h2>
+                      <p className="mt-1 max-w-3xl text-xs font-normal leading-relaxed text-slate-600">
+                        Fonte visual executável para os três PWAs. Os exemplos abaixo usam os mesmos componentes,
+                        tokens, tipografia, ícones e tamanhos do aplicativo Aluno.
+                      </p>
+                    </div>
+                    <Badge variant="primary" size="md">Fonte de verdade visual</Badge>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {STUDENT_COMPONENT_INVENTORY.map(([group, components]) => (
+                      <div key={group} className="rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
+                        <p className="text-xs font-bold text-[var(--mazzi-dark)]">{group}</p>
+                        <p className="mt-1 text-xs font-normal leading-relaxed text-slate-500">{components}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="-mx-6 w-[calc(100%+3rem)] overflow-hidden rounded-3xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] shadow-xs sm:mx-0 sm:w-full">
+                    <div className="mx-auto min-h-[720px] w-full max-w-[430px] bg-[var(--mazzi-bg)] px-2 pb-6 pt-5 sm:px-5">
+                      {studentPreviewTab === 'search' && (
+                        <div className="space-y-7">
+                          <AppHomeHeader
+                            eyebrow="Aluno MAZZI"
+                            eyebrowIcon={<UserRound className="h-3 w-3" aria-hidden="true" />}
+                            title="Olá, Ana"
+                            subtitle="Encontre sua próxima aula e acompanhe seus agendamentos."
+                            onOpenNotifications={() => undefined}
+                            onRefresh={() => undefined}
+                          />
+                          <SearchHeader
+                            searchRequest={studentSearch}
+                            onUpdateSearch={(update) => setStudentSearch((current) => ({ ...current, ...update }))}
+                            onPerformSearch={() => undefined}
+                            currentLocationName="Pinheiros, São Paulo"
+                            currentLocation={{ lat: -23.5614, lng: -46.7016 }}
+                          />
+                          <section aria-labelledby="student-reference-results">
+                            <div className="flex items-end justify-between gap-3">
+                              <div>
+                                <h3 id="student-reference-results" className="mazzi-section-title">Profissionais próximos</h3>
+                                <p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]">1 profissional encontrado</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <ButtonBase
+                                  type="button"
+                                  onClick={() => setIsStudentFilterOpen(true)}
+                                  className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"
+                                >
+                                  <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                                  Filtros
+                                </ButtonBase>
+                                <div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1">
+                                  <ButtonBase type="button" aria-label="Exibir lista" aria-pressed={studentViewMode === 'list'} onClick={() => setStudentViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${studentViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}>
+                                    <List className="h-4 w-4" aria-hidden="true" />
+                                  </ButtonBase>
+                                  <ButtonBase type="button" aria-label="Exibir mapa" aria-pressed={studentViewMode === 'map'} onClick={() => setStudentViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${studentViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}>
+                                    <Map className="h-4 w-4" aria-hidden="true" />
+                                  </ButtonBase>
+                                </div>
+                              </div>
+                            </div>
+                          </section>
+                          {studentViewMode === 'list' ? (
+                            <ProviderResultCard
+                              result={STUDENT_SEARCH_RESULT}
+                              onSelect={() => setIsStudentBookingOpen(true)}
+                              onViewProfile={() => setIsStudentProfileOpen(true)}
+                            />
+                          ) : (
+                            <MapView
+                              results={[STUDENT_SEARCH_RESULT]}
+                              selectedProviderId={STUDENT_SEARCH_RESULT.providerId}
+                              onSelectProvider={() => setIsStudentProfileOpen(true)}
+                              height="320px"
+                              userLocation={{ lat: -23.5614, lng: -46.7016 }}
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      {studentPreviewTab === 'bookings' && (
+                        <div className="space-y-5">
+                          <AppPageHeader
+                            eyebrow="Sua jornada"
+                            title="Minhas aulas"
+                            subtitle="Acompanhe seus próximos horários e o histórico."
+                            action={<IconButton label="Atualizar aulas" className="mazzi-icon-button"><RefreshCw className="h-5 w-5" aria-hidden="true" /></IconButton>}
+                          />
+                          <div role="tablist" aria-label="Aulas" className="grid grid-cols-2 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
+                            {([
+                              ['today', 'Hoje', Clock],
+                              ['history', 'Histórico', History],
+                            ] as const).map(([value, label, Icon]) => (
+                              <ButtonBase
+                                key={value}
+                                role="tab"
+                                aria-selected={demoLessonTab === value}
+                                type="button"
+                                onClick={() => setDemoLessonTab(value)}
+                                className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
+                                  demoLessonTab === value
+                                    ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
+                                    : 'font-semibold text-slate-600 hover:bg-slate-200/50 hover:text-[var(--mazzi-dark)]'
+                                }`}
+                              >
+                                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                                {label}
+                              </ButtonBase>
+                            ))}
+                          </div>
+                          <BookingCard
+                            booking={MOCK_BOOKINGS[0]}
+                            variant="student"
+                            onViewDetails={() => setIsStudentBookingOpen(true)}
+                            onOpenChat={() => undefined}
+                          />
+                        </div>
+                      )}
+
+                      {studentPreviewTab === 'profile' && (
+                        <div className="space-y-5">
+                          <AppPageHeader
+                            eyebrow="Sua conta"
+                            title="Meu Perfil"
+                            action={<IconButton label="Editar perfil" className="mazzi-icon-button"><Pencil className="h-5 w-5" aria-hidden="true" /></IconButton>}
+                          />
+                          <div className="pt-2 text-center">
+                            <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold shadow-[var(--mazzi-shadow)]">
+                              {studentProfilePhoto ? <img src={studentProfilePhoto} alt="Foto do perfil" className="h-full w-full object-cover" /> : 'AS'}
+                            </div>
+                            <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">Ana Beatriz Souza</h3>
+                            <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">ana.aluno@mazzi.com.br</p>
+                          </div>
+                          <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+                            <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Dados do perfil</h4>
+                            <dl className="mt-4 space-y-3 text-sm">
+                              {[
+                                ['Telefone', '(11) 98100-1002'],
+                                ['E-mail', 'ana.aluno@mazzi.com.br'],
+                                ['CPF', '529.***.***-22'],
+                                ['Data de nascimento', '20/08/1998'],
+                              ].map(([label, value]) => (
+                                <div key={label} className="flex items-center justify-between gap-3">
+                                  <dt className="text-slate-500">{label}</dt>
+                                  <dd className="truncate font-semibold text-slate-900">{value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </div>
+                          <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+                            <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Edição da foto</h4>
+                            <div className="mt-4">
+                              <ProfilePhotoPicker value={studentProfilePhoto} name="Ana Beatriz Souza" onChange={setStudentProfilePhoto} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-8">
+                        <AppBottomNav
+                          placement="inline"
+                          ariaLabel="Navegação de referência do app Aluno"
+                          activeId={studentPreviewTab}
+                          onChange={setStudentPreviewTab}
+                          items={[
+                            { id: 'search', label: 'Buscar', icon: <Search className="h-5 w-5" /> },
+                            { id: 'bookings', label: 'Aulas', icon: <CalendarIcon className="h-5 w-5" /> },
+                            { id: 'profile', label: 'Perfil', icon: <UserRound className="h-5 w-5" /> },
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="mazzi-section-title">Overlays e fluxos do Aluno</h3>
+                    <div className="space-y-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+                      <p className="text-xs font-normal leading-relaxed text-slate-600">
+                        Os fluxos transacionais permanecem componentes únicos do produto. O catálogo referencia as APIs reais sem duplicar marcação ou regras de negócio.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <SecondaryButton leftIcon={<SlidersHorizontal className="h-4 w-4" aria-hidden="true" />} onClick={() => setIsStudentFilterOpen(true)}>FilterDrawer</SecondaryButton>
+                        <SecondaryButton leftIcon={<UserRound className="h-4 w-4" aria-hidden="true" />} onClick={() => setIsStudentProfileOpen(true)}>ProviderPublicProfileModal</SecondaryButton>
+                        <SecondaryButton leftIcon={<ClipboardList className="h-4 w-4" aria-hidden="true" />} onClick={() => setIsStudentBookingOpen(true)}>BookingDetailsModal</SecondaryButton>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                        {['SlotSelectorModal', 'CheckoutModal', 'BookingChatPanel', 'NotificationsPanel', 'ReviewModal', 'ProfilePhotoPicker'].map((name) => (
+                          <div key={name} className="rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] px-3 py-2.5 text-xs font-bold text-[var(--mazzi-dark)]">
+                            {name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
             </div>
           </div>
         </main>
@@ -911,20 +1310,20 @@ export const DesignSystemShowcase: React.FC = () => {
       <Modal
         isOpen={isBasicModalOpen}
         onClose={() => setIsBasicModalOpen(false)}
-        title="Modal Básico com Sticky White Footer"
+        title="Modal Básico"
         size="sm"
       >
         <div className="space-y-3 text-xs text-slate-700">
-          <p>Exemplo de modal utilizando o padrão oficial MAZZI V2 com rodapé branco fixo e botões flutuantes elevados.</p>
+          <p>Exemplo do modal compartilhado usado pelos fluxos do Aluno e PRO.</p>
         </div>
-        <ModalActionFooter align="right">
-          <SecondaryButton size="md" onClick={() => setIsBasicModalOpen(false)}>
+        <div className="mt-6 flex items-center justify-end gap-2.5">
+          <Button variant="dangerSoft" size="sm" onClick={() => setIsBasicModalOpen(false)}>
             Cancelar
-          </SecondaryButton>
+          </Button>
           <PrimaryButton size="md" onClick={() => setIsBasicModalOpen(false)}>
             Confirmar
           </PrimaryButton>
-        </ModalActionFooter>
+        </div>
       </Modal>
 
       {/* Cancel Confirmation Test Modal */}
@@ -942,7 +1341,7 @@ export const DesignSystemShowcase: React.FC = () => {
             </p>
             <p>100% Reembolso garantido por estar a mais de 24h da aula.</p>
           </div>
-          <ModalActionFooter align="between">
+          <div className="flex items-center gap-2.5">
             <Button
               type="button"
               variant="outline"
@@ -956,16 +1355,59 @@ export const DesignSystemShowcase: React.FC = () => {
             <Button
               type="button"
               variant="danger"
-              size="md"
-              className="w-1/2 min-h-[48px] font-extrabold bg-rose-600 text-white rounded-2xl shadow-md"
+              size="sm"
+              className="w-1/2"
               onClick={() => setIsCancelModalOpen(false)}
             >
               <XCircle className="w-4 h-4 text-white mr-1 inline" />
               Confirmar cancelamento
             </Button>
-          </ModalActionFooter>
+          </div>
         </div>
       </Modal>
+
+      <FilterDrawer
+        isOpen={isStudentFilterOpen}
+        onClose={() => setIsStudentFilterOpen(false)}
+        filters={studentSearch}
+        onApplyFilters={(filters) => {
+          setStudentSearch((current) => ({ ...current, ...filters }));
+          setIsStudentFilterOpen(false);
+        }}
+        onResetFilters={() => setStudentSearch({ latitude: -23.5614, longitude: -46.7016, radiusMeters: 10000, category: 'B', sortBy: 'RECOMMENDED' })}
+      />
+
+      <ProviderPublicProfileModal
+        isOpen={isStudentProfileOpen}
+        onClose={() => setIsStudentProfileOpen(false)}
+        result={STUDENT_SEARCH_RESULT}
+        onSelectSlotToBook={() => {
+          setIsStudentProfileOpen(false);
+          setIsStudentBookingOpen(true);
+        }}
+      />
+
+      <SlotSelectorModal
+        isOpen={isStudentSlotPreviewOpen}
+        onClose={() => setIsStudentSlotPreviewOpen(false)}
+        offeringId="design-system-preview"
+        previewSlots={DESIGN_SYSTEM_PREVIEW_SLOTS}
+        instructorName="Carlos Alberto Silva"
+        vehicleLabel="Hyundai HB20 2025"
+        durationMinutes={50}
+        priceInCents={9500}
+        transmission="MANUAL"
+        onSelect={() => setIsStudentSlotPreviewOpen(false)}
+      />
+
+      <BookingDetailsModal
+        isOpen={isStudentBookingOpen}
+        onClose={() => setIsStudentBookingOpen(false)}
+        booking={MOCK_BOOKINGS[0]}
+        onOpenChat={() => {
+          setIsStudentBookingOpen(false);
+        }}
+      />
     </div>
   );
 };

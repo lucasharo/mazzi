@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, RefreshCw, TrendingUp, Users, Car, CalendarCheck, CreditCard, Star } from 'lucide-react';
+import { BarChart3, CalendarRange, RefreshCw, TrendingUp, Users, Car, CalendarCheck, CreditCard, Star } from 'lucide-react';
 import { dbService } from '../../lib/db-service';
 import {
-  AdminAnalyticsSummary,
-  AnalyticsPeriodPreset,
-  ProviderAnalyticsSummary,
-} from '../../types';
-import { Button } from '../ui/Button';
+  AdminAnalyticsSummary, AnalyticsPeriodPreset, ProviderAnalyticsSummary, } from '../../types';
+import { Button, ButtonBase } from '../ui/Button';
 import { formatCentsToBRL } from '../../domain/money';
 
 const PERIODS: AnalyticsPeriodPreset[] = [7, 30, 90];
@@ -55,19 +52,20 @@ function PeriodSelector({
   return (
     <div className="flex items-center gap-2">
       {PERIODS.map((days) => (
-        <button
+        <ButtonBase
           key={days}
           type="button"
           onClick={() => onChange(days)}
           disabled={isLoading}
-          className={`px-3 py-1.5 rounded-xl text-xs font-black transition ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition ${
             period === days
               ? 'bg-slate-950 text-white'
               : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-950'
           }`}
         >
+          <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" />
           {days} dias
-        </button>
+        </ButtonBase>
       ))}
     </div>
   );

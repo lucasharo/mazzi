@@ -1,19 +1,11 @@
 import React from 'react';
-import {
-  Clock,
-  ShieldCheck,
-  AlertCircle,
-  AlertTriangle,
-  ArrowRight,
-  Star,
-  Calendar,
-  SlidersHorizontal,
-  Plus,
-} from 'lucide-react';
+import { Clock, ShieldCheck, AlertCircle, AlertTriangle, ArrowRight, Star, Calendar, SlidersHorizontal, Plus, } from 'lucide-react';
 import { Provider, Booking, ComplianceDocument, Vehicle } from '../../../types';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Badge } from '../../../components/ui/Badge';
-import { Button } from '../../../components/ui/Button';
+import { Button, ButtonBase } from '../../../components/ui/Button';
+import { ObjectEmptyState } from '../../../components/ui/ObjectEmptyState';
+import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { getVerificationBadgeTooltip } from '../../../domain/compliance';
 
@@ -47,16 +39,16 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
 }) => {
   return (
     <div className="space-y-6 text-left">
-      {/* Eyebrow & Main Title */}
-      <div>
-        <p className="mazzi-eyebrow mb-1">Hoje</p>
-        <h2 className="mazzi-title">Sua rotina operacional</h2>
-      </div>
+      <AppPageHeader
+        eyebrow="Hoje"
+        title="Sua rotina operacional"
+        subtitle={!calendarLoadError ? 'Aulas agendadas hoje' : undefined}
+      />
 
-      {calendarLoadError ? (
+      {calendarLoadError && (
         <div className="space-y-4">
           <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 text-left space-y-2">
-            <h3 className="text-sm font-extrabold text-amber-950 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-amber-950 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
               Agenda unificada indisponível
             </h3>
@@ -65,58 +57,11 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
             </p>
           </div>
         </div>
-      ) : (
-        /* Hero Banner (MAZZI Hero split gradient) */
-        <section className="mazzi-hero">
-          <div className="p-5 flex flex-col justify-between">
-            <div>
-              <p className="text-[38px] font-black leading-none text-[#202126]">
-                {todayBookings.length}
-              </p>
-              <p className="mt-1.5 text-xs font-extrabold uppercase tracking-wider text-[#202126]/80">
-                {todayBookings.length === 1 ? 'Aula agendada hoje' : 'Aulas agendadas hoje'}
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-[#202126]/10 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[#202126]/70">Confirmadas: {confirmedBookings.length}</span>
-              <span className="text-[11px] font-bold text-[#202126]/70">Concluídas: {completedBookings.length}</span>
-            </div>
-          </div>
-
-          <div className="p-5 flex flex-col justify-between">
-            <div>
-              <p className="text-[28px] font-black leading-none text-white">
-                {nextBooking?.startTime || '—'}
-              </p>
-              <p className="mt-1.5 text-xs font-bold text-white/70">
-                {nextBooking ? 'Próximo compromisso' : 'Sem agendamentos próximos'}
-              </p>
-            </div>
-            {nextBooking && (
-              <button
-                type="button"
-                onClick={() => onSelectBooking(nextBooking)}
-                className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#f6c945] hover:underline"
-              >
-                <span>Ver detalhes</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </section>
       )}
 
       {/* Compliance / Status Banner */}
       <div
-        className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-          currentProvider.status === 'ACTIVE'
-            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
-            : currentProvider.status === 'PENDING_REVIEW'
-            ? 'bg-amber-50/80 border-amber-200 text-amber-950'
-            : currentProvider.status === 'REJECTED'
-            ? 'bg-rose-50/80 border-rose-200 text-rose-950'
-            : 'bg-slate-100 border-slate-300 text-slate-900'
-        }`}
+        className="mazzi-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex items-center gap-3">
           <div
@@ -134,17 +79,17 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="font-extrabold text-slate-900 text-sm">
+              <h4 className="text-sm font-bold text-slate-900">
                 {currentProvider.status === 'ACTIVE' && 'Credenciamento Ativo • Verificado pela MAZZI'}
                 {currentProvider.status === 'PENDING_REVIEW' && 'Cadastro em Análise pelo Compliance'}
                 {currentProvider.status === 'DRAFT' && 'Cadastro em Rascunho'}
                 {currentProvider.status === 'REJECTED' && 'Cadastro Rejeitado — Ação Necessária'}
                 {currentProvider.status === 'SUSPENDED' && 'Cadastro Suspenso'}
               </h4>
-              {currentProvider.isVerified && (
+              {currentProvider.isVerified && currentProvider.status !== 'ACTIVE' && (
                 <span
                   title={getVerificationBadgeTooltip()}
-                  className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1"
+                  className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800"
                 >
                   <ShieldCheck className="w-3 h-3 text-emerald-700" />
                   Verificado
@@ -161,39 +106,39 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
             </p>
           </div>
         </div>
-        <StatusBadge status={currentProvider.status} />
+        {currentProvider.status !== 'ACTIVE' && <StatusBadge status={currentProvider.status} />}
       </div>
 
       {!calendarLoadError && (
         <>
           {/* Operational Metrics Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+            <div className="mazzi-card p-4">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--mazzi-muted)]">
                 Aulas Hoje
               </span>
-              <p className="text-2xl font-black text-slate-900 mt-1">{todayBookings.length}</p>
+              <p className="mt-1 text-2xl font-bold text-[var(--mazzi-dark)]">{todayBookings.length}</p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+            <div className="mazzi-card p-4">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--mazzi-muted)]">
                 Confirmadas
               </span>
-              <p className="text-2xl font-black text-emerald-600 mt-1">{confirmedBookings.length}</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-600">{confirmedBookings.length}</p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+            <div className="mazzi-card p-4">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--mazzi-muted)]">
                 Concluídas
               </span>
-              <p className="text-2xl font-black text-slate-900 mt-1">{completedBookings.length}</p>
+              <p className="mt-1 text-2xl font-bold text-[var(--mazzi-dark)]">{completedBookings.length}</p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#202126] text-white shadow-xs">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#f6c945] block">
+            <div className="rounded-[22px] border border-[var(--mazzi-dark)] bg-[var(--mazzi-dark)] p-4 text-white shadow-[var(--mazzi-shadow)]">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--mazzi-yellow)]">
                 Avaliação
               </span>
-              <p className="text-xl font-black text-white mt-1 flex items-center gap-1">
+              <p className="mt-1 flex items-center gap-1 text-xl font-bold text-white">
                 <Star className="w-4 h-4 fill-[#f6c945] text-[#f6c945]" />
                 {currentProvider.ratingAverage?.toFixed(1) || '5.0'}
               </p>
@@ -201,13 +146,13 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           </div>
 
           {/* NEXT LESSON OPERATIONAL WIDGET */}
-          <div className="p-5 rounded-3xl bg-[#202126] text-[#ffffff] space-y-4 shadow-xl">
+          <div className="space-y-4 rounded-3xl bg-[var(--mazzi-dark)] p-5 text-white shadow-[var(--mazzi-shadow)]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-[#f6c945]" />
-                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-white">
                   Próxima Aula Agendada
-                </h3>
+                </h2>
               </div>
               <Badge variant="warning">Próxima Aula</Badge>
             </div>
@@ -217,8 +162,8 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-base font-black text-white">{nextBooking.studentName}</p>
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#f6c945]/20 text-[#f6c945] border border-[#f6c945]/40">
+                      <p className="text-base font-bold text-white">{nextBooking.studentName}</p>
+                      <span className="rounded-md border border-[var(--mazzi-yellow)]/40 bg-[var(--mazzi-yellow)]/20 px-2 py-0.5 text-[10px] font-bold text-[var(--mazzi-yellow)]">
                         Cat. {nextBooking.category}
                       </span>
                       {(nextBooking.snapshot?.providerName || nextBooking.providerName) && (
@@ -252,9 +197,15 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="p-6 text-center text-slate-400 text-xs font-semibold">
-                Nenhuma aula confirmada agendada para os próximos horários.
-              </div>
+              <ObjectEmptyState
+                title="Nenhuma aula confirmada"
+                description="Não há aulas agendadas para os próximos horários."
+                action={(
+                  <Button variant="primary" size="sm" onClick={() => onNavigateTab('bookings')}>
+                    Ver minhas aulas
+                  </Button>
+                )}
+              />
             )}
           </div>
         </>
@@ -274,48 +225,48 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
 
       {/* Quick Action Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
+        <ButtonBase
           type="button"
           onClick={() => onNavigateTab('schedule')}
-          className="p-4 rounded-2xl bg-white border border-[#e9e6de] hover:border-slate-400 transition text-left flex items-center justify-between group shadow-xs cursor-pointer"
+          className="mazzi-card group flex min-h-20 cursor-pointer items-center justify-between p-4 text-left transition hover:border-slate-300"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 text-[#202126] font-bold flex items-center justify-center">
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-extrabold text-slate-900 group-hover:text-amber-600 transition">
+              <h3 className="text-sm font-bold text-slate-900 transition group-hover:text-amber-700">
                 Gerenciar Agenda & Horários
-              </h4>
+              </h3>
               <p className="text-xs text-slate-500">Configure regras semanais e bloqueios</p>
             </div>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition" />
-        </button>
+        </ButtonBase>
 
-        <button
+        <ButtonBase
           type="button"
           onClick={() => onNavigateTab('management')}
-          className="p-4 rounded-2xl bg-white border border-[#e9e6de] hover:border-slate-400 transition text-left flex items-center justify-between group shadow-xs cursor-pointer"
+          className="mazzi-card group flex min-h-20 cursor-pointer items-center justify-between p-4 text-left transition hover:border-slate-300"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#202126] font-bold flex items-center justify-center">
               <SlidersHorizontal className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-extrabold text-slate-900 group-hover:text-slate-700 transition">
+              <h3 className="text-sm font-bold text-slate-900 transition group-hover:text-slate-700">
                 Gestão de Veículos & Ofertas
-              </h4>
+              </h3>
               <p className="text-xs text-slate-500">Cadastre modelos, categorias e preços</p>
             </div>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition" />
-        </button>
+        </ButtonBase>
       </div>
 
       {/* Operational Alerts */}
       <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-2">
-        <div className="flex items-center gap-2 font-extrabold">
+        <div className="flex items-center gap-2 font-bold">
           <AlertTriangle className="w-4 h-4 text-amber-700" />
           <span>Alertas da Operação MAZZI Pro:</span>
         </div>
@@ -326,14 +277,14 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           {providerVehicles.length === 0 && (
             <li>
               Nenhum veículo cadastrado.{' '}
-              <button
+              <ButtonBase
                 type="button"
                 onClick={onOpenAddVehicleModal}
                 className="underline font-bold hover:text-amber-950 inline-flex items-center gap-1"
               >
                 <Plus className="w-3 h-3" />
                 Cadastrar Veículo
-              </button>
+              </ButtonBase>
             </li>
           )}
         </ul>

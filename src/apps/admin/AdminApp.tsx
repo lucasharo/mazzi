@@ -5,8 +5,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
-import { LogOut } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import {
+  BarChart3, CalendarDays, Car, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, } from 'lucide-react';
+import { Button, ButtonBase } from '../../components/ui/Button';
 import { dbService } from '../../lib/db-service';
 import {
   Provider,
@@ -238,7 +239,7 @@ export const AdminApp: React.FC = () => {
   };
 
   return (
-    <div className="mazzi-admin min-h-[100dvh] w-full bg-[var(--mazzi-bg)] text-[var(--mazzi-text)] md:grid md:grid-cols-[248px_1fr] md:grid-rows-[92px_1fr]">
+    <div className="min-h-[100dvh] w-full bg-[var(--mazzi-bg)] text-[var(--mazzi-text)] md:grid md:grid-cols-[248px_1fr] md:grid-rows-[92px_1fr]">
       {/* Top Main Navigation Header */}
       <header className="flex items-center bg-[var(--mazzi-dark)] px-6 text-white md:col-start-1 md:row-start-1">
         <div className="flex items-center gap-3">
@@ -259,21 +260,21 @@ export const AdminApp: React.FC = () => {
       {/* Tabs Menu Subheader */}
       <aside className="flex gap-1 overflow-x-auto bg-[var(--mazzi-dark)] px-4 pb-4 md:col-start-1 md:row-start-2 md:flex-col md:overflow-visible">
         {[
-          { id: 'dashboard', label: 'Visão Geral' },
-          { id: 'providers', label: 'Prestadores', count: providers.filter((p) => p.status === 'PENDING_REVIEW').length },
-          { id: 'compliance', label: 'Compliance', count: complianceDocs.filter((d) => d.status === 'UNDER_REVIEW').length },
-          { id: 'vehicles', label: 'Veículos', count: vehicles.filter((v) => v.status === 'UNDER_REVIEW').length },
-          { id: 'bookings', label: 'Reservas' },
-          { id: 'financial', label: 'Financeiro' },
-          { id: 'analytics', label: 'Analytics' },
-          { id: 'users', label: 'Usuários & Papéis' },
-          { id: 'audit', label: 'Auditoria' },
-          { id: 'settings', label: 'Configurações' },
-          { id: 'profile', label: 'Perfil' },
+          { id: 'dashboard', label: 'Visão Geral', icon: LayoutDashboard },
+          { id: 'providers', label: 'Prestadores', icon: UserCheck, count: providers.filter((p) => p.status === 'PENDING_REVIEW').length },
+          { id: 'compliance', label: 'Compliance', icon: ShieldCheck, count: complianceDocs.filter((d) => d.status === 'UNDER_REVIEW').length },
+          { id: 'vehicles', label: 'Veículos', icon: Car, count: vehicles.filter((v) => v.status === 'UNDER_REVIEW').length },
+          { id: 'bookings', label: 'Reservas', icon: CalendarDays },
+          { id: 'financial', label: 'Financeiro', icon: WalletCards },
+          { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+          { id: 'users', label: 'Usuários & Papéis', icon: Users },
+          { id: 'audit', label: 'Auditoria', icon: ScrollText },
+          { id: 'settings', label: 'Configurações', icon: Settings },
+          { id: 'profile', label: 'Perfil', icon: UserRound },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
           return (
-            <button
+            <ButtonBase
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
@@ -282,20 +283,21 @@ export const AdminApp: React.FC = () => {
                   : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
             >
+              <tab.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
               {tab.label}
               {tab.count !== undefined && tab.count > 0 && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? 'bg-amber-400 text-slate-950' : 'bg-rose-100 text-rose-700'}`}>
                   {tab.count}
                 </span>
               )}
-            </button>
+            </ButtonBase>
           );
         })}
       </aside>
 
       {/* App Workspace */}
       <main className="w-full p-6 md:col-start-2 md:row-span-2 md:row-start-1 md:p-10">
-        <div className="mb-8"><p className="mazzi-eyebrow mb-2">MAZZI Admin</p><h1 className="text-3xl font-extrabold tracking-[-.04em]">{activeTab === 'dashboard' ? 'Visão geral' : 'Operação'}</h1></div>
+        {activeTab !== 'profile' && <div className="mb-8"><p className="mazzi-eyebrow mb-2">MAZZI Admin</p><h1 className="text-3xl font-extrabold tracking-[-.04em]">{activeTab === 'dashboard' ? 'Visão geral' : 'Operação'}</h1></div>}
         {isLoadingRealData && (
           <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-600">
             Carregando dados reais do Supabase...
@@ -396,38 +398,36 @@ export const AdminApp: React.FC = () => {
         )}
 
         {activeTab === 'profile' && (
-          <section className="max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-xl font-black text-slate-900">Meu perfil</h2>
-              <p className="mt-1 text-sm text-slate-500">Dados da sessão administrativa atual.</p>
-            </div>
-            <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-900">Foto do perfil</h3>
-              {!isEditingProfile ? (
-                <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(true)}>Editar foto</Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => { setProfileAvatar(user?.avatarUrl); setIsEditingProfile(false); }}>Cancelar</Button>
-                  <Button variant="primary" size="sm" onClick={() => void handleSaveProfilePhoto()}>Salvar foto</Button>
+          <section className="max-w-xl space-y-5 text-left">
+            <header className="flex items-start justify-between gap-4 pt-0">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--mazzi-muted)]">Sua conta</p>
+                <h2 className="mt-1 text-2xl font-extrabold leading-tight tracking-[-0.03em] text-[var(--mazzi-dark)] sm:text-[32px]">Meu Perfil</h2>
+              </div>
+              {!isEditingProfile && <ButtonBase type="button" onClick={() => setIsEditingProfile(true)} aria-label="Editar perfil" title="Editar perfil" className="mazzi-icon-button"><Pencil className="h-5 w-5" aria-hidden="true" /></ButtonBase>}
+            </header>
+
+            <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+              <div className="flex flex-col items-center gap-4 border-b border-[var(--mazzi-border)] pb-6 text-center">
+                {isEditingProfile ? <ProfilePhotoPicker value={profileAvatar} name={user?.name} onChange={setProfileAvatar} /> : <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold text-[var(--mazzi-dark)] shadow-[var(--mazzi-shadow)]">{profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (user?.name || 'Admin').split(/\s+/).map((n) => n[0]).slice(0, 2).join('').toUpperCase()}</div>}
+                <div className="space-y-1">
+                  <h3 className="text-2xl font-bold tracking-[-0.02em] text-[var(--mazzi-dark)]">{user?.name || 'Nome não informado'}</h3>
+                  <p className="text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p>
                 </div>
-              )}
+              </div>
+              {profileError && <p role="alert" className="mt-4 text-xs font-semibold text-rose-700">{profileError}</p>}
+              <div className="mt-5 rounded-2xl border border-[var(--mazzi-border)] bg-white p-1">
+                <h4 className="px-3 pt-2 text-sm font-bold text-[var(--mazzi-dark)]">Dados do perfil</h4>
+                <dl className="space-y-3 p-3 text-sm">
+                  <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Nome</dt><dd className="font-semibold text-slate-900">{user?.name || 'Não informado'}</dd></div>
+                  <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">E-mail</dt><dd className="truncate font-semibold text-slate-900">{user?.email || 'Não informado'}</dd></div>
+                  <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Perfil</dt><dd className="font-semibold text-slate-900">{user?.roles?.[0] || 'Não informado'}</dd></div>
+                </dl>
+              </div>
+              {isEditingProfile && <div className="flex items-center gap-2.5 pt-5"><Button variant="dangerSoft" size="sm" className="w-1/2" onClick={() => { setProfileAvatar(user?.avatarUrl); setIsEditingProfile(false); }}>Cancelar</Button><Button variant="primary" size="sm" className="w-1/2" onClick={() => void handleSaveProfilePhoto()}>Salvar foto</Button></div>}
             </div>
-            <ProfilePhotoPicker value={profileAvatar} name={user?.name} onChange={setProfileAvatar} disabled={!isEditingProfile} />
-            {profileError && <p className="mt-2 text-xs text-rose-600">{profileError}</p>}
-            <div className="space-y-2 rounded-2xl bg-slate-50 p-4 text-sm">
-              <p><span className="font-bold text-slate-700">Nome:</span> {user?.name || 'Nome não informado'}</p>
-              <p><span className="font-bold text-slate-700">E-mail:</span> {user?.email || 'E-mail não informado'}</p>
-              <p><span className="font-bold text-slate-700">Perfil:</span> {user?.roles?.[0] || 'Perfil não informado'}</p>
-            </div>
-            <Button
-              variant="outline"
-              size="md"
-              className="mt-6 text-rose-700 border-rose-200 hover:bg-rose-50"
-              onClick={() => { void logout(); }}
-              leftIcon={<LogOut className="w-4 h-4" />}
-            >
-              Sair
-            </Button>
+
+            {!isEditingProfile && <div className="border-t border-[var(--mazzi-border)] pt-4"><Button variant="ghost" size="sm" className="w-full font-bold text-rose-700 hover:bg-rose-50" onClick={() => { void logout(); }} leftIcon={<LogOut className="w-4 h-4" />}>Sair</Button></div>}
           </section>
         )}
       </main>

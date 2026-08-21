@@ -80,7 +80,7 @@ export const OtpInput: React.FC<OtpInputProps> = ({
           className={`w-full min-h-[56px] text-center font-mono text-xl sm:text-2xl tracking-[0.3em] sm:tracking-[0.4em] font-bold rounded-2xl border px-3 py-2 transition-all outline-none bg-white text-slate-900 shadow-2xs placeholder:text-slate-300 placeholder:tracking-[0.3em] ${
             error
               ? 'border-rose-400 focus:border-rose-500 focus:ring-4 focus:ring-rose-100'
-              : 'border-[var(--mazzi-border)] focus:border-amber-400 focus:ring-4 focus:ring-[var(--mazzi-focus-glow)]'
+              : 'border-[var(--mazzi-border)] focus:border-[var(--mazzi-yellow)] focus:ring-4 focus:ring-[var(--mazzi-focus-glow)]'
           } ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50' : ''}`}
         />
       </div>
@@ -104,4 +104,3 @@ export const OtpInput: React.FC<OtpInputProps> = ({
     </div>
   );
 };
-

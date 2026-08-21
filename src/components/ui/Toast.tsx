@@ -1,3 +1,4 @@
+import { ButtonBase } from './Button';
 import React from 'react';
 import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
 
@@ -52,12 +53,12 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
                 <p className="mt-1 text-slate-300 leading-normal">{toast.description}</p>
               )}
             </div>
-            <button
+            <ButtonBase
               onClick={() => onDismiss(toast.id)}
               className="text-slate-400 hover:text-white transition p-0.5"
             >
               <X className="w-4 h-4" />
-            </button>
+            </ButtonBase>
           </div>
         );
       })}

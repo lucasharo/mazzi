@@ -94,6 +94,7 @@ export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
   const [activeTab, setActiveTab] = useState<ProviderTabId>('dashboard');
+  const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
   const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance'>('vehicles');
   const [bookingFilterTab, setBookingFilterTab] = useState<'all' | 'today' | 'upcoming' | 'history'>('all');
   const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions' | 'simulator'>('rules');
@@ -224,10 +225,13 @@ export const ProviderApp: React.FC = () => {
     }
   }, [user]);
 
-  const loadWorkspace = async (providerId: string) => {
-    setWorkspaceLoading(true);
-    setWorkspaceError(null);
-    setUnifiedCalendarError(null);
+  const loadWorkspace = async (providerId: string, options?: { silent?: boolean }) => {
+    const isSilent = options?.silent === true;
+    if (!isSilent) {
+      setWorkspaceLoading(true);
+      setWorkspaceError(null);
+      setUnifiedCalendarError(null);
+    }
     try {
       const workspace = await dbService.getProviderWorkspace(providerId);
       if (!workspace.provider) {
@@ -282,6 +286,7 @@ export const ProviderApp: React.FC = () => {
       })));
     } catch (err: any) {
       console.error('Provider workspace load failed:', err);
+      if (isSilent) return;
       setProviders([]);
       setVehicles([]);
       setOfferings([]);
@@ -291,7 +296,30 @@ export const ProviderApp: React.FC = () => {
       setAvailabilityExceptions([]);
       setWorkspaceError(err.message || 'Não foi possível carregar seus dados.');
     } finally {
-      setWorkspaceLoading(false);
+      if (!isSilent) setWorkspaceLoading(false);
+    }
+  };
+
+  const refreshCurrentTab = async () => {
+    if (isRefreshingCurrentTab) return;
+    if (!activeProviderId && activeTab !== 'bookings' && activeTab !== 'profile') return;
+    setIsRefreshingCurrentTab(true);
+    try {
+      if (activeTab === 'bookings') {
+        const refreshedBookings = user?.role === 'INSTRUCTOR' || user?.roles?.includes('INSTRUCTOR')
+          ? await dbService.getMyUnifiedInstructorBookings()
+          : await dbService.getBookings();
+        setBookings(refreshedBookings || []);
+      } else if (activeTab === 'profile') {
+        const avatarUrl = await getMyProfileAvatar();
+        setProfileAvatar(avatarUrl);
+      } else {
+        // Schedule and Management share the provider workspace source; only the
+        // visible tab consumes the refreshed state below.
+        await loadWorkspace(activeProviderId);
+      }
+    } finally {
+      setIsRefreshingCurrentTab(false);
     }
   };
 
@@ -312,10 +340,21 @@ export const ProviderApp: React.FC = () => {
 
   if (isAuthLoading || workspaceLoading) {
     return (
-      <div className="min-h-dvh grid place-items-center bg-[#f7f5ef] text-[#202126] font-sans">
-        <div className="space-y-3 text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#202126] border-t-transparent" />
-          <p className="text-sm font-extrabold">Carregando painel do instrutor...</p>
+      <div className="min-h-dvh bg-[#f7f5ef] text-[#202126] font-sans">
+        <div aria-busy="true" aria-label="Carregando painel do instrutor" className="mx-auto w-full max-w-[680px] space-y-5 px-5 py-6 sm:px-7">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="h-3 w-28 animate-pulse rounded bg-slate-200" />
+              <div className="h-8 w-52 animate-pulse rounded-xl bg-slate-200" />
+              <div className="h-3 w-64 animate-pulse rounded bg-slate-200" />
+            </div>
+            <div className="h-12 w-12 animate-pulse rounded-2xl bg-slate-200" />
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="h-32 animate-pulse rounded-3xl border border-slate-200 bg-white" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -768,17 +807,16 @@ export const ProviderApp: React.FC = () => {
   return (
     <div className="mazzi-app flex flex-col min-h-dvh bg-[#f7f5ef] text-[#202126]">
       {/* Header */}
-      <ProviderHeader
-        currentProvider={currentProvider}
-        currentRole={currentRole}
-        userEmail={user?.email}
-        userName={user?.name}
-        profileAvatar={profileAvatar}
-        onOpenNotifications={() => setIsNotificationsOpen((prev) => !prev)}
-        onRefreshWorkspace={() => void loadWorkspace(activeProviderId)}
-        onLogout={logout}
-        onOpenProfile={() => setActiveTab('profile')}
-      />
+      {activeTab === 'dashboard' && (
+        <ProviderHeader
+          currentProvider={currentProvider}
+          currentRole={currentRole}
+          userName={user?.name}
+          onOpenNotifications={() => setIsNotificationsOpen((prev) => !prev)}
+          onRefreshWorkspace={() => void refreshCurrentTab()}
+          isRefreshing={isRefreshingCurrentTab}
+        />
+      )}
 
       {/* Main Content Body */}
       <main className="mazzi-mobile flex-1 space-y-6 pb-28">
@@ -881,13 +919,16 @@ export const ProviderApp: React.FC = () => {
             isCompleting={isCompleting}
             canCancelBooking={(b) => canProviderCommerciallyCancelBooking(b, user?.role || currentRole, currentProvider)}
             calendarLoadError={unifiedCalendarError}
-            onRetryCalendarLoad={() => void loadWorkspace(activeProviderId)}
+            isRefreshing={isRefreshingCurrentTab}
+            onRetryCalendarLoad={() => void refreshCurrentTab()}
           />
         )}
 
         {/* TAB 4: MANAGEMENT */}
         {activeTab === 'management' && (
           <ProviderManagementTab
+            onRefresh={() => void refreshCurrentTab()}
+            isRefreshing={isRefreshingCurrentTab}
             managementSubTab={managementSubTab}
             onSubTabChange={setManagementSubTab}
             vehicles={vehicles}
@@ -1040,7 +1081,7 @@ export const ProviderApp: React.FC = () => {
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-              <Button variant="secondary" size="sm" onClick={() => setUploadModalDocType(null)}>
+              <Button variant="dangerSoft" size="sm" onClick={() => setUploadModalDocType(null)}>
                 Cancelar
               </Button>
               <Button

@@ -84,5 +84,7 @@ describe('accessible UI primitives', () => {
     expect(buttonMarkup).toContain('bg-[var(--mazzi-yellow)]');
     expect(buttonMarkup).toContain('min-h-[44px]');
     expect(inputMarkup).toContain('min-h-11');
+    expect(inputMarkup).toContain('focus:border-[var(--mazzi-yellow)]');
+    expect(inputMarkup).not.toContain('focus:border-[var(--mazzi-dark)]');
   });
 });

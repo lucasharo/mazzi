@@ -1,3 +1,4 @@
+import { ButtonBase } from './Button';
 import React, { useRef } from 'react';
 import { Star } from 'lucide-react';
 
@@ -68,7 +69,7 @@ export const Rating: React.FC<RatingProps> = ({
           );
 
           return interactive ? (
-            <button
+            <ButtonBase
               ref={(element) => { starRefs.current[star - 1] = element; }}
               type="button"
               role="radio"
@@ -81,7 +82,7 @@ export const Rating: React.FC<RatingProps> = ({
               className={`grid h-11 w-11 place-items-center rounded-xl cursor-pointer transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-yellow)] ${isFilled ? 'bg-amber-100 hover:bg-amber-200' : 'bg-slate-100 hover:bg-slate-200'}`}
             >
               {starIcon}
-            </button>
+            </ButtonBase>
           ) : (
             <span key={star} aria-hidden="true" className="grid place-items-center p-0.5">
               {starIcon}

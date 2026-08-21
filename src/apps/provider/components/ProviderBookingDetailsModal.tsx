@@ -186,10 +186,9 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
 
             {(canCancelBooking ? canCancelBooking(booking) : isConfirmed && !booking.instructorCheckedIn) && (
               <Button
-                variant="ghost"
+                variant="dangerSoft"
                 size="sm"
                 onClick={() => onCancelBooking(booking)}
-                className="text-rose-600 hover:bg-rose-50"
                 leftIcon={<XCircle className="w-3.5 h-3.5" />}
               >
                 Cancelar

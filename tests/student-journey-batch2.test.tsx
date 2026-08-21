@@ -170,6 +170,7 @@ describe('Student Journey Batch 2 - UI/UX Pro Max Contracts', () => {
     expect(markup).toContain('Cat. B');
     expect(markup).toContain('Automático · Categoria B · 50 min');
     expect(markup).toContain('Agendar aula');
+    expect(markup).toContain('lucide-calendar-plus');
   });
 
   it('BookingCard & BookingDetailsModal: preserves callbacks, tokens and permissions properly', () => {

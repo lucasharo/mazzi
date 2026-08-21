@@ -1,3 +1,4 @@
+import { ButtonBase } from './Button';
 import React from 'react';
 import { Clock } from 'lucide-react';
 
@@ -22,9 +23,9 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   id,
 }) => {
   return (
-    <div id={id || 'mazzi-time-picker'} className="w-full space-y-2 select-none text-left">
+    <div id={id || 'mazzi-time-picker'} className="min-w-0 max-w-full w-full space-y-2 select-none text-left">
       <div className="flex items-center justify-between px-1">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+        <span className="min-w-0 text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5 text-amber-500" />
           Horários Disponíveis
         </span>
@@ -41,7 +42,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
           const isBlocked = !slot.isAvailable || slot.isBooked;
 
           return (
-            <button
+            <ButtonBase
               type="button"
               key={`${slot.startTime}-${slot.endTime}`}
               disabled={isBlocked}
@@ -54,11 +55,14 @@ export const TimePicker: React.FC<TimePickerProps> = ({
                   : 'bg-white border-slate-200 text-slate-800 hover:border-amber-400 hover:bg-amber-50/40'
               }`}
             >
-              <span>{slot.startTime}</span>
+              <span className="inline-flex items-center justify-center gap-1">
+                <Clock className="h-3 w-3" aria-hidden="true" />
+                {slot.startTime}
+              </span>
               <span className={`block text-[10px] ${isSelected ? 'text-slate-900 font-medium' : 'text-slate-400 font-normal'}`}>
                 até {slot.endTime}
               </span>
-            </button>
+            </ButtonBase>
           );
         })}
       </div>

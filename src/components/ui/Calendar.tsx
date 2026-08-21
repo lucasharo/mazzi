@@ -1,3 +1,4 @@
+import { ButtonBase } from './Button';
 import React from 'react';
 
 export interface CalendarProps {
@@ -42,7 +43,7 @@ export const Calendar: React.FC<CalendarProps> = ({
         {days.map((item) => {
           const isSelected = selectedDate === item.dateStr;
           return (
-            <button
+            <ButtonBase
               type="button"
               key={item.dateStr}
               disabled={!item.isAvailable}
@@ -64,7 +65,7 @@ export const Calendar: React.FC<CalendarProps> = ({
               <span className={`text-[10px] uppercase font-semibold ${isSelected ? 'text-slate-950/80' : 'text-slate-400'}`}>
                 {item.monthName}
               </span>
-            </button>
+            </ButtonBase>
           );
         })}
       </div>

@@ -1,5 +1,9 @@
 # 13 — Painel MAZZI Admin (Backoffice & Marketplace)
 
+## Padrão visual Premium UI V2
+
+O Admin usa os mesmos tokens, botões, formulários, estados vazios e tipografia dos apps Aluno e PRO. A tela de Perfil segue a composição compartilhada com avatar central, identificação, card de dados e edição no topo direito. A navegação permanece em sidebar por ser uma superfície web de backoffice.
+
 ## Módulos do Painel Administrativo
 
 ### 1. Dashboard Executivo & Marketplace Liquidity

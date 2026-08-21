@@ -1,5 +1,6 @@
+import { ButtonBase } from '../../ui/Button';
 import React, { useState } from 'react';
-import { ChevronDown, LoaderCircle, Sparkles } from 'lucide-react';
+import { ChevronDown, LoaderCircle, LogIn, Sparkles } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import type { AppLoginKind } from '../AppLogin';
 import {
@@ -76,13 +77,13 @@ export const DevQuickLogin: React.FC<{
   const buttons = (items: DevDemoAccount[]) => (
     <div className="grid grid-cols-2 gap-2">
       {items.map((account) => (
-        <button
+        <ButtonBase
           type="button"
           aria-label={`Entrar com ${account.name}`}
           key={account.email}
           disabled={Boolean(selected) || isLoading}
           onClick={() => login(account)}
-          className="min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-2.5 py-2 text-left text-xs font-bold text-[var(--mazzi-dark)] hover:border-amber-400 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)] shadow-2xs"
+          className="flex min-h-11 items-center gap-1.5 rounded-xl border border-[var(--mazzi-border)] bg-white px-2.5 py-2 text-left text-xs font-bold text-[var(--mazzi-dark)] hover:border-amber-400 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)] shadow-2xs"
         >
           {selected === account.email ? (
             <span className="flex items-center gap-1.5 text-amber-600">
@@ -90,9 +91,12 @@ export const DevQuickLogin: React.FC<{
               <span>Entrando…</span>
             </span>
           ) : (
-            <span className="truncate block">{account.name}</span>
+            <>
+              <LogIn className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden="true" />
+              <span className="min-w-0 truncate">{account.name}</span>
+            </>
           )}
-        </button>
+        </ButtonBase>
       ))}
     </div>
   );
@@ -123,7 +127,7 @@ export const DevQuickLogin: React.FC<{
       )}
 
       {kind === 'student' && accounts.length > 5 && (
-        <button
+        <ButtonBase
           type="button"
           onClick={() => setExpanded((value) => !value)}
           className="mt-2.5 flex min-h-11 items-center gap-1 text-xs font-bold text-slate-600 hover:text-[var(--mazzi-dark)] transition cursor-pointer rounded-lg px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
@@ -133,7 +137,7 @@ export const DevQuickLogin: React.FC<{
             className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
             aria-hidden="true"
           />
-        </button>
+        </ButtonBase>
       )}
     </section>
   );

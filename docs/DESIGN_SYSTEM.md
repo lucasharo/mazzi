@@ -1,80 +1,112 @@
-# MAZZI OFFICIAL DESIGN SYSTEM (V2)
+# MAZZI Official Design System V2
 
-> **REGRA CRÍTICA PARA DESENVOLVEDORES E AGENTES DE IA:**
-> **Antes de criar ou alterar qualquer componente visual ou tela no projeto MAZZI, consulte obrigatoriamente o MAZZI Design System (`src/apps/design-system`) e este documento.**
-> Nenhuma IA ou desenvolvedor deve inventar novos padrões, botões ou cores arbitrárias quando já houver componente equivalente no Design System.
+**Última revisão:** 2026-08-21
 
----
+> Antes de criar ou alterar qualquer interface, consulte o catálogo executável em `src/apps/design-system` e os componentes globais em `src/components/ui`. Os apps Aluno, PRO e Admin devem compartilhar componentes, tokens e classes; não crie seletores CSS específicos por app para alterar tipografia ou aparência de um componente global.
 
-## 1. Tokens de Design Oficiais
+## 1. Tokens oficiais
 
-- **Fundo Principal (Background)**: `#f7f5ef` (`bg-[#f7f5ef]`)
-- **Amarelo MAZZI Primary**: `#f6c945` / Amber 400 (`bg-[#f6c945]`, `text-[#202126]`)
-- **Dark Charcoal**: `#202126` (`bg-[#202126]`, `text-white`)
-- **Borda Padrão**: `#e9e6de` (`border-[#e9e6de]`)
-- **Danger Soft**: `bg-rose-50 border-rose-200 text-rose-700` (Gatilhos e confirmações de perigo)
-- **Danger Solid**: `bg-rose-600 hover:bg-rose-700 text-white` (Ações destrutivas fatais)
-- **Success**: `emerald-500` / `emerald-600`
-- **Warning**: `amber-50` / `amber-200` / `amber-800`
+- Fundo principal: `var(--mazzi-bg)` / `#f7f5ef`.
+- Superfície: `var(--mazzi-surface)` / branco.
+- Superfície suave: `var(--mazzi-surface-soft)`.
+- Amarelo principal: `var(--mazzi-yellow)` / `#f6c945`.
+- Grafite: `var(--mazzi-dark)` / `#202126`.
+- Texto secundário: `var(--mazzi-muted)`.
+- Borda: `var(--mazzi-border)` / `#e9e6de`.
+- Danger Soft: fundo `rose-50`, borda `rose-200`, texto `rose-700`.
+- Danger Solid: fundo `rose-600`, texto branco.
 
----
+Os tokens e utilitários globais vivem em `src/index.css`. Cabeçalhos não devem receber peso ou espaçamento por seletores como `.mazzi-provider h1`; a tipografia é definida pelo componente e deve permanecer idêntica entre os apps.
 
-## 2. Regra de Tipografia e Font-Weight
+## 2. Tipografia
 
-- **Botões e Ações Funcionais**: Todo botão deve possuir obrigatoriamente tipografia em **`font-bold`** ou **`font-extrabold`**.
-- Nunca utilizar `font-normal` ou `font-medium` em botões de ação ou gatilhos funcionais.
+- Fonte global única, herdada por todos os componentes e apps.
+- Títulos de página usam `AppPageHeader`; títulos da tela inicial usam `AppHomeHeader`.
+- Botões usam peso `font-bold`, tamanho visual pequeno por padrão e área interativa mínima de 44 px.
+- Textos auxiliares usam peso normal ou semibold conforme hierarquia, sem aumento global de peso por app.
 
----
+## 3. Botões e ícones
 
-## 3. Política de Ícones (Icon Usage Policy)
+O componente canônico é `src/components/ui/Button.tsx`:
 
-- **Biblioteca Oficial**: `lucide-react`.
-- **Tamanhos Padrão**:
-  - Small (`sm`): `14-16px` (`w-4 h-4` ou `w-3.5 h-3.5`)
-  - Medium (`md`): `16px` (`w-4 h-4`)
-  - Large (`lg`): `18px` (`w-4.5 h-4.5` ou `w-5 h-5`)
-- **Regras de Aplicação**:
-  - Usar ícones quando o símbolo universal aumentar a velocidade de leitura e identificação da ação.
-  - `Abrir Chat` / `Ver Chat` → `<MessageSquare className="w-4 h-4" />`
-  - `Cancelar aula` / `Cancelar agendamento` → `<XCircle className="w-4 h-4" />` ou `<Ban className="w-4 h-4" />`
-  - `Limpar` → `<RotateCcw className="w-4 h-4" />`
-  - `Aplicar Filtros` / `Confirmar` → `<Check className="w-4 h-4" />`
-  - `Voltar` → `<ArrowLeft className="w-4 h-4" />`
-- **Proibições**:
-  - Proibido o uso de Emojis em botões funcionais do produto.
-  - Proibido usar ícones decorativos sem propósito claro.
+- `ButtonBase`: reset acessível para controles com composição própria.
+- `Button`: variantes `primary`, `secondary`, `outline`, `ghost`, `dangerSoft` e `danger`.
+- `PrimaryButton` e `SecondaryButton`: aliases compatíveis sobre `Button`.
+- Tamanho padrão: `sm`.
+- Ícones funcionais: `lucide-react`, normalmente entre 14 e 16 px.
+- Ações conhecidas recebem o ícone global definido por `ButtonActionIcon` quando não informam um ícone explicitamente.
+- Cancelamentos intermediários usam `dangerSoft`; a confirmação destrutiva final usa `danger`, sempre com `XCircle`.
+- Botões de cabeçalho exclusivamente icônicos usam `IconButton`/`mazzi-icon-button`, com 48 × 48 px.
 
----
+## 4. Cabeçalhos e navegação
 
-## 4. Composição dos Detalhes da Aula (Chat + Cancelamento)
+- `AppHomeHeader`: somente para a tela inicial, com eyebrow, título, subtítulo e ações contextuais.
+- `AppPageHeader`: telas internas; ação de atualizar ou editar posicionada no canto superior direito quando aplicável.
+- `AppBottomNav`: navegação inferior compartilhada entre Aluno e PRO.
+- A atualização deve recarregar apenas os dados da tela atual e apresentar loading/skeleton local.
+- Abas do Aluno em “Minhas aulas”: grade de duas colunas, `Hoje` e `Histórico`.
+- Abas do PRO em “Minhas aulas”: controle segmentado rolável com `Todas`, `Hoje`, `Próximas` e `Histórico`.
+- Abas não exibem contadores incorporados ao texto.
 
-- **Layout LADO A LADO**: Nos modais de Detalhes da Aula (Student e Provider), os botões `Abrir Chat` e `Cancelar aula` devem ficar dispostos **LADO A LADO (50% / 50%)**.
-- **Visual**:
-  - `[ 💬 Abrir Chat ]`: Variant Outline/Secondary com ícone `MessageSquare`, `font-bold`.
-  - `[ ✕ Cancelar aula ]`: Variant Soft Danger (`bg-rose-50 border-rose-200 text-rose-700 font-bold`) com ícone `XCircle`.
+## 5. Estados vazios e de erro
 
----
+- `ListEmptyState`: listas sem resultados, com borda tracejada, ícone `Inbox`, título e descrição.
+- `ObjectEmptyState`: ausência de um único objeto de domínio, incluindo a próxima aula.
+- `EmptyState`: adaptador público para `ListEmptyState`, com ação opcional.
+- `ErrorState`: falha recuperável com ação de tentar novamente.
 
-## 5. Padrão Oficial de Modal Action Footer (Rodapé Branco Fixo)
+Todos usam tipografia, cores e espaçamentos globais. Não replique o markup em cada app.
 
-- **Fundo**: Branco sólido (`bg-white`).
-- **Comportamento**: Preso ao fundo do modal/container (`sticky bottom-0 z-[60]`).
-- **Sobreposição**: O conteúdo do modal rola por trás do rodapé (`overflow-y-auto pb-8`).
-- **Visual dos Botões**: Os botões de ação ficam **elevados/flutuantes dentro da barra branca** (`rounded-2xl shadow-md`).
-- **Safe Area**: Respeita rigorosamente a safe-area em PWAs e dispositivos móveis (`pb-[max(1rem,env(safe-area-inset-bottom))]`).
-- **Componentes Reutilizáveis**: `<ModalActionFooter>` / `<FloatingActionFooter>`.
+## 6. Perfis e formulários
 
----
+- Perfis Aluno, PRO e Admin seguem a mesma composição: `AppPageHeader`, avatar central, identificação e card de dados.
+- A edição fica no canto superior direito do header.
+- Foto e galeria usam `ProfilePhotoPicker` e botões globais.
+- Inputs usam `Input` e o mesmo tratamento de borda/foco em todos os apps; não há borda preta específica do PRO.
 
-## 6. Inventário de Componentes Reutilizáveis
+## 7. Agendamento
 
-- **Botões**: `src/components/ui/Button.tsx`, `PrimaryButton.tsx`, `SecondaryButton.tsx`, `IconButton.tsx`
-- **Campos & Seletores**: `Input.tsx`, `Select.tsx`, `Checkbox.tsx`, `OtpInput.tsx`
-- **Badges & Status**: `Badge.tsx`, `StatusBadge.tsx`
-- **Cards de Domínio**: `ProviderCard.tsx`, `VehicleCard.tsx`, `BookingCard.tsx`, `Card.tsx`
-- **Feedback & Estados**: `EmptyState.tsx`, `Skeleton.tsx`, `Toast.tsx`, `LoadingScreen.tsx`
-- **Modais & Action Bars**: `Modal.tsx`, `ModalActionFooter.tsx`, `FloatingActionFooter.tsx`, `BottomSheet.tsx`
-- **Navegação & Tabs**: `Tabs.tsx`
-- **Avaliações & Preços**: `Rating.tsx`, `Price.tsx`, `Avatar.tsx`
-- **Agendamento**: `Calendar.tsx`, `TimePicker.tsx`
-- **Mapas**: `src/components/maps/UniversalMap.tsx`
+- O fluxo Aluno usa `SlotSelectorModal`, com horizonte de até 60 dias e carregamento progressivo 30 + 30.
+- O seletor contém navegação mensal, dias disponíveis, horários agrupados por manhã/tarde/noite, resumo e confirmação.
+- O catálogo executável demonstra o próprio `SlotSelectorModal` com `previewSlots` isolados. Essa propriedade é opcional e não altera o carregamento real do backend quando omitida.
+- Dias do calendário são identificados pelo número; ícones de calendário não são repetidos em cada dia.
+
+## 8. Inventário público executável
+
+O catálogo apresenta somente componentes alcançados pelos entrypoints Aluno ou PRO:
+
+1. `AppBottomNav`
+2. `AppHomeHeader`
+3. `AppPageHeader`
+4. `Badge`
+5. `BookingCard`
+6. `Button`
+7. `ButtonBase`
+8. `PrimaryButton`
+9. `SecondaryButton`
+10. `EmptyState`
+11. `ErrorState`
+12. `IconButton`
+13. `Input`
+14. `ListEmptyState`
+15. `LoadingScreen`
+16. `Modal`
+17. `ObjectEmptyState`
+18. `OtpInput`
+19. `Rating`
+20. `Select`
+21. `StatusBadge`
+
+Componentes existentes no repositório, mas sem uso nos entrypoints Aluno/PRO, não recebem demonstrações no catálogo. O Design System também inclui uma referência executável das superfícies do Aluno e a seção “Dias & Horários” com o fluxo real de seleção.
+
+## 9. Execução e validação
+
+```bash
+npm run dev:design-system
+npm test
+npm run lint
+npm run build:all
+npx vite build --mode=design-system
+```
+
+O catálogo roda em `http://localhost:3004/` durante o desenvolvimento.

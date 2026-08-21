@@ -1,28 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, } from 'lucide-react';
 import {
-  Search,
-  Calendar as CalendarIcon,
-  User,
-  UserPen,
-  Pencil,
-  Bell,
-  MessageSquare,
-  Map,
-  List,
-  SlidersHorizontal,
-  RefreshCw,
-} from 'lucide-react';
-import {
-  Provider,
-  Booking,
-  SearchRequest,
-  PublicSearchProviderResult,
-  SearchResultResponse,
-  Vehicle,
-  ServiceOffering,
-} from '../../types';
+  Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, } from '../../types';
 import { BookingCard } from '../../components/ui/BookingCard';
-import { Button, PrimaryButton, SecondaryButton } from '../../components/ui/Button';
+import { EmptyState, ErrorState } from '../../components/ui/EmptyState';
+import { AppPageHeader } from '../../components/ui/AppPageHeader';
+import { AppBottomNav } from '../../components/ui/AppBottomNav';
+import { AppHomeHeader } from '../../components/ui/AppHomeHeader';
+import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
 import { getBookingEndTimestamp, isBookingEnded } from '../../domain/booking';
@@ -614,25 +599,15 @@ function applyStrictProviderFilters(
           {/* SEARCH TAB */}
           {activeTab === 'search' && (
             <div className="space-y-7">
-              <header className="flex items-start justify-between gap-4 pt-0">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--mazzi-muted)]">
-                    Olá, {user?.name?.split(' ')[0] || 'aluno'}
-                  </p>
-                  <h1 className="mt-1 text-2xl sm:text-[32px] font-extrabold text-[var(--mazzi-dark)] leading-tight tracking-[-0.03em]">
-                    Encontre sua próxima aula
-                  </h1>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Abrir notificações"
-                  title="Notificações"
-                  onClick={() => setIsNotificationsOpen(true)}
-                  className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
-                >
-                  <Bell className="h-5 w-5 text-slate-700" aria-hidden="true" />
-                </button>
-              </header>
+              <AppHomeHeader
+                eyebrow="Aluno MAZZI"
+                eyebrowIcon={<UserRound className="h-3 w-3" aria-hidden="true" />}
+                title={`Olá, ${user?.name?.split(' ')[0] || 'aluno'}`}
+                subtitle="Encontre sua próxima aula e acompanhe seus agendamentos."
+                onOpenNotifications={() => setIsNotificationsOpen(true)}
+                onRefresh={() => setSearchRefreshKey((value) => value + 1)}
+                isRefreshing={searchLoading}
+              />
               {/* Search Header */}
               <SearchHeader
                 searchRequest={searchRequest}
@@ -647,13 +622,16 @@ function applyStrictProviderFilters(
               />
 
               <section aria-labelledby="student-results-title" className="mt-8">
-                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</button><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><button type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></button><button type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><Map className="h-4 w-4"/></button></div></div></div>
+                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><ButtonBase type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</ButtonBase><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><ButtonBase type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></ButtonBase><ButtonBase type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><Map className="h-4 w-4"/></ButtonBase></div></div></div>
               </section>
 
               {searchError && (
                   <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
                   <span>Não foi possível buscar profissionais agora.</span>
-                  <button type="button" onClick={() => setSearchRefreshKey((value) => value + 1)} className="font-bold underline">Tentar novamente</button>
+                  <ButtonBase type="button" onClick={() => setSearchRefreshKey((value) => value + 1)} className="inline-flex items-center gap-1.5 font-bold underline">
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                    Tentar novamente
+                  </ButtonBase>
                 </div>
               )}
 
@@ -690,11 +668,12 @@ function applyStrictProviderFilters(
                       <p className="text-xs text-slate-500 mt-1">Digite seu endereço ou bairro na busca acima para ver os profissionais disponíveis na sua região.</p>
                     </div>
                   ) : (!searchResponse?.results || searchResponse.results.length === 0) ? (
-                    <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
-                      <p className="text-sm font-bold text-slate-800">Nenhum profissional encontrado com esses filtros.</p>
-                      <p className="text-xs text-slate-500 mt-1">Tente aumentar o raio de busca ou remover alguns filtros.</p>
-                      <button type="button" onClick={() => setSearchRequest(defaultSearchRequest)} className="mt-3 text-xs font-bold text-amber-700 underline">Limpar filtros</button>
-                    </div>
+                    <EmptyState
+                      title="Nenhum profissional encontrado"
+                      description="Tente aumentar o raio de busca ou remover alguns filtros."
+                      actionLabel="Limpar filtros"
+                      onAction={() => setSearchRequest(defaultSearchRequest)}
+                    />
                   ) : (
                     searchResponse.results.map((res) => (
                       <ProviderResultCard
@@ -745,71 +724,66 @@ function applyStrictProviderFilters(
           {/* BOOKINGS TAB (MINHAS AULAS) */}
           {activeTab === 'bookings' && (
             <div className="space-y-5">
-              <header className="flex items-start justify-between gap-4 pt-0">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--mazzi-muted)]">Sua jornada</p>
-                  <h1 className="mt-1 text-2xl sm:text-[32px] font-extrabold text-[var(--mazzi-dark)] leading-tight tracking-[-0.03em]">Minhas aulas</h1>
-                  <p className="mt-1 text-xs sm:text-sm text-slate-500 font-medium">Acompanhe seus próximos horários e o histórico.</p>
-                </div>
-                <button
+              <AppPageHeader
+                eyebrow="Sua jornada"
+                title="Minhas aulas"
+                subtitle="Acompanhe seus próximos horários e o histórico."
+                action={<ButtonBase
                   type="button"
                   aria-label="Atualizar lista de aulas"
                   title="Atualizar lista de aulas"
                   onClick={() => setBookingsRefreshKey((k) => k + 1)}
-                  className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                  className="mazzi-icon-button shrink-0 cursor-pointer"
                 >
                   <RefreshCw className={`h-5 w-5 text-slate-700 ${bookingsLoading ? 'animate-spin text-amber-600' : ''}`} aria-hidden="true" />
-                </button>
-              </header>
+                </ButtonBase>}
+              />
 
-              {/* Filter Tabs: Próximas vs Histórico */}
+              {/* Filter Tabs: Hoje vs Histórico */}
               <div role="tablist" aria-label="Aulas" className="grid grid-cols-2 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
-                <button
+                <ButtonBase
                   role="tab"
                   aria-selected={bookingTab === 'upcoming'}
                   type="button"
                   onClick={() => setBookingTab('upcoming')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-11 flex items-center justify-center ${
+                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
                     bookingTab === 'upcoming'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
                       : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
                   }`}
                 >
-                  Próximas {!bookingsLoading && `(${upcomingBookings.length})`}
-                </button>
-                <button
+                  <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Hoje
+                </ButtonBase>
+                <ButtonBase
                   role="tab"
                   aria-selected={bookingTab === 'history'}
                   type="button"
                   onClick={() => setBookingTab('history')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-11 flex items-center justify-center ${
+                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
                     bookingTab === 'history'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
                       : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
                   }`}
                 >
-                  Histórico {!bookingsLoading && `(${historyBookings.length})`}
-                </button>
+                  <History className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Histórico
+                </ButtonBase>
               </div>
 
               {/* Upcoming Bookings Section */}
-              {bookingsError && <div role="alert" className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="text-sm font-bold text-rose-800">Não foi possível carregar suas aulas.</p><button type="button" onClick={() => setBookingsRefreshKey((value) => value + 1)} className="mt-3 rounded-xl bg-white px-4 py-2 text-xs font-bold text-rose-800 shadow-sm">Tentar novamente</button></div>}
+              {bookingsError && <ErrorState message="Não foi possível carregar suas aulas." onRetry={() => setBookingsRefreshKey((value) => value + 1)} />}
               {bookingsLoading && <div aria-busy="true" aria-label="Carregando suas aulas" className="space-y-3">{[1, 2, 3].map((item) => <div key={item} aria-hidden="true" className="h-44 animate-pulse rounded-3xl border border-slate-200 bg-white p-5"><div className="h-4 w-1/2 rounded bg-slate-100" /><div className="mt-4 h-3 w-2/3 rounded bg-slate-100" /><div className="mt-6 h-3 w-full rounded bg-slate-100" /><div className="mt-3 h-3 w-4/5 rounded bg-slate-100" /></div>)}</div>}
               {!bookingsError && !bookingsLoading && bookingTab === 'upcoming' && (
                 <div className="space-y-3">
                   {upcomingBookings.length === 0 ? (
-                    <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
-                      <p className="text-sm font-bold text-slate-800">Nenhuma aula agendada.</p>
-                      <p className="text-xs text-slate-500 mt-1">Encontre um instrutor ou autoescola para marcar sua próxima aula.</p>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        className="mt-3 font-bold"
-                        onClick={() => setActiveTab('search')}
-                      >
-                        Buscar aulas
-                      </Button>
-                    </div>
+                    <EmptyState
+                      title="Nenhuma aula agendada"
+                      description="Encontre um instrutor ou autoescola para marcar sua próxima aula."
+                      actionLabel="Buscar aulas"
+                      actionIcon={<Search className="h-4 w-4" aria-hidden="true" />}
+                      onAction={() => setActiveTab('search')}
+                    />
                   ) : (
                     upcomingBookings.map((b) => (
                       <BookingCard
@@ -831,9 +805,7 @@ function applyStrictProviderFilters(
               {!bookingsError && !bookingsLoading && bookingTab === 'history' && (
                 <div className="space-y-3">
                   {historyBookings.length === 0 ? (
-                    <div className="p-8 text-center bg-white rounded-3xl border border-[var(--mazzi-border)]">
-                      <p className="text-sm font-bold text-slate-800">Seu histórico ainda está vazio.</p>
-                    </div>
+                    <EmptyState title="Seu histórico está vazio" description="As aulas concluídas aparecerão aqui." />
                   ) : (
                     historyBookings.map((b) => (
                       <BookingCard
@@ -853,25 +825,21 @@ function applyStrictProviderFilters(
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="space-y-5">
-              <header className="flex items-start justify-between gap-4 pt-0">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--mazzi-muted)]">Sua conta</p>
-                  <h1 className="mt-1 text-2xl sm:text-[32px] font-extrabold text-[var(--mazzi-dark)] leading-tight tracking-[-0.03em]">Meu Perfil</h1>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {!isEditingProfile && (
-                    <button
+              <AppPageHeader
+                eyebrow="Sua conta"
+                title="Meu Perfil"
+                action={!isEditingProfile ? (
+                    <ButtonBase
                       type="button"
                       aria-label="Editar perfil"
                       title="Editar perfil"
                       onClick={() => setIsEditingProfile(true)}
-                      className="mazzi-avatar grid h-12 w-12 min-h-[48px] min-w-[48px] place-items-center bg-white border border-[#e9e6de] rounded-2xl text-slate-700 hover:text-slate-900 transition shadow-2xs hover:shadow-xs active:scale-95 shrink-0 cursor-pointer"
+                      className="mazzi-icon-button shrink-0 cursor-pointer"
                     >
                       <Pencil className="h-5 w-5 text-slate-700" aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
-              </header>
+                    </ButtonBase>
+                  ) : undefined}
+              />
 
               <div className="text-center pt-2">
                 <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] bg-[var(--mazzi-yellow)] text-2xl font-bold shadow-[var(--mazzi-shadow)] border border-[var(--mazzi-border)]">
@@ -914,7 +882,7 @@ function applyStrictProviderFilters(
                         value={profileName}
                         onChange={(event) => setProfileName(event.target.value)}
                         disabled={profileSaving}
-                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
+                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
                       />
                     </div>
 
@@ -928,7 +896,7 @@ function applyStrictProviderFilters(
                         onChange={(event) => setProfilePhone(formatPhone(event.target.value))}
                         placeholder="(11) 99999-9999"
                         disabled={profileSaving}
-                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
+                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
                       />
                     </div>
 
@@ -942,7 +910,7 @@ function applyStrictProviderFilters(
                         onChange={(event) => setProfileBirthDate(formatDateMask(event.target.value))}
                         placeholder="DD/MM/AAAA"
                         disabled={profileSaving}
-                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
+                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
                       />
                     </div>
 
@@ -983,10 +951,11 @@ function applyStrictProviderFilters(
 
                     {/* Side-by-side Cancel and Save Buttons */}
                     <div className="flex items-center gap-2.5 pt-2">
-                      <SecondaryButton
+                      <Button
                         type="button"
-                        size="md"
-                        className="w-1/2 min-h-11 font-bold shadow-2xs"
+                        variant="dangerSoft"
+                        size="sm"
+                        className="w-1/2"
                         disabled={profileSaving}
                         onClick={() => {
                           setProfileName(user?.name || '');
@@ -998,10 +967,10 @@ function applyStrictProviderFilters(
                         }}
                       >
                         Cancelar
-                      </SecondaryButton>
+                      </Button>
                       <PrimaryButton
                         type="button"
-                        size="md"
+                        size="sm"
                         className="w-1/2 min-h-11 font-bold shadow-xs"
                         isLoading={profileSaving}
                         onClick={async () => {
@@ -1066,7 +1035,7 @@ function applyStrictProviderFilters(
               </div>
 
               <div className="border-t border-[var(--mazzi-border)] pt-4">
-                <Button variant="ghost" size="md" className="w-full text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void logout(); }}>
+                <Button variant="ghost" size="sm" className="w-full text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void logout(); }}>
                   Sair
                 </Button>
               </div>
@@ -1075,34 +1044,16 @@ function applyStrictProviderFilters(
         </main>
 
         {/* Bottom navigation: 3 main tabs for Student (Search, Bookings, Profile) */}
-        <nav aria-label="Navegação principal" className="mazzi-bottom-nav grid-cols-3">
-          {[
+        <AppBottomNav
+          ariaLabel="Navegação principal"
+          activeId={activeTab}
+          items={[
             { id: 'search', label: 'Buscar', icon: <Search className="w-5 h-5" /> },
             { id: 'bookings', label: 'Aulas', icon: <CalendarIcon className="w-5 h-5" /> },
             { id: 'profile', label: 'Perfil', icon: <User className="w-5 h-5" /> },
-          ].map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                aria-label={tab.label}
-                aria-current={isActive ? 'page' : undefined}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`mx-1 flex min-h-12 items-center justify-center rounded-2xl transition ${
-                  isActive
-                    ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-[0_6px_16px_rgba(246,201,69,.28)] font-bold'
-                    : 'flex-col text-[var(--mazzi-muted)] hover:text-[var(--mazzi-dark)]'
-                }`}
-              >
-                <div className="grid h-8 w-8 place-items-center rounded-xl">
-                  {tab.icon}
-                </div>
-                {!isActive && <span className="mt-0.5 text-[10px] font-semibold">{tab.label}</span>}
-              </button>
-            );
-          })}
-        </nav>
+          ]}
+          onChange={(tab) => setActiveTab(tab)}
+        />
 
       <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações" size="md">
         <NotificationsPanel />
@@ -1184,10 +1135,10 @@ function applyStrictProviderFilters(
           <div className="space-y-3">
             <p className="text-sm font-semibold text-slate-500">Escolha quem vai acompanhar sua aula na autoescola.</p>
             {instructorChoices.map((ctx) => (
-              <button
+              <ButtonBase
                 key={`${ctx.instructor_id}-${ctx.offering_id}`}
                 type="button"
-                className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
                 onClick={() => {
                   const offering = offeringFromBookingContext(ctx);
                    const vehicle = vehicleFromBookingContext(ctx);
@@ -1200,8 +1151,9 @@ function applyStrictProviderFilters(
                   setIsSlotSelectorOpen(true);
                 }}
               >
-                <span className="flex items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-amber-400">{(ctx.instructor_name || ctx.instructorName || 'Instrutor disponível').split(/\s+/).map((part: string) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-black text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{ctx.vehicle_brand || 'Veículo'} {ctx.vehicle_model || ''} · {ctx.vehicle_transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. {ctx.category || ctx.offering_category || 'B'}</span><span className="mt-1 block text-xs font-bold text-slate-700">{ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}</span></span></span>
-              </button>
+                <span className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-amber-400">{(ctx.instructor_name || ctx.instructorName || 'Instrutor disponível').split(/\s+/).map((part: string) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-black text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{ctx.vehicle_brand || 'Veículo'} {ctx.vehicle_model || ''} · {ctx.vehicle_transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. {ctx.category || ctx.offering_category || 'B'}</span><span className="mt-1 block text-xs font-bold text-slate-700">{ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}</span></span></span>
+                <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+              </ButtonBase>
             ))}
           </div>
         </Modal>

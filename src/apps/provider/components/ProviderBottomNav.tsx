@@ -6,6 +6,7 @@ import {
   SlidersHorizontal,
   User,
 } from 'lucide-react';
+import { AppBottomNav, AppBottomNavItem } from '../../../components/ui/AppBottomNav';
 
 export type ProviderTabId = 'dashboard' | 'schedule' | 'bookings' | 'management' | 'profile';
 
@@ -15,19 +16,12 @@ interface ProviderBottomNavProps {
   pendingBookingsCount?: number;
 }
 
-interface NavItem {
-  id: ProviderTabId;
-  label: string;
-  icon: React.ReactNode;
-  badge?: number;
-}
-
 export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
   activeTab,
   onTabChange,
   pendingBookingsCount = 0,
 }) => {
-  const NAV_ITEMS: NavItem[] = [
+  const NAV_ITEMS: AppBottomNavItem<ProviderTabId>[] = [
     {
       id: 'dashboard',
       label: 'Início',
@@ -56,43 +50,5 @@ export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
     },
   ];
 
-  return (
-    <nav
-      aria-label="Navegação Principal MAZZI Pro"
-      className="mazzi-bottom-nav grid grid-cols-5 gap-1 shadow-2xl"
-    >
-      {NAV_ITEMS.map((item) => {
-        const isActive = activeTab === item.id;
-        return (
-          <button
-            type="button"
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            className={`relative flex min-h-[52px] flex-col items-center justify-center rounded-2xl text-[10px] font-extrabold transition duration-150 active:scale-95 ${
-              isActive
-                ? 'text-[#202126]'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-            aria-current={isActive ? 'page' : undefined}
-          >
-            <span
-              className={`relative mb-1 grid h-8 w-8 place-items-center rounded-xl transition ${
-                isActive
-                  ? 'bg-[#f6c945] text-[#202126] shadow-sm'
-                  : 'bg-transparent text-slate-500'
-              }`}
-            >
-              {item.icon}
-              {item.badge && item.badge > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-600 text-[9px] font-black text-white ring-2 ring-white">
-                  {item.badge}
-                </span>
-              )}
-            </span>
-            <span className="leading-none">{item.label}</span>
-          </button>
-        );
-      })}
-    </nav>
-  );
+  return <AppBottomNav ariaLabel="Navegação principal" activeId={activeTab as ProviderTabId} items={NAV_ITEMS} onChange={onTabChange} />;
 };

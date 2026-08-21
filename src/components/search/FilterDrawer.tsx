@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Calendar,
-  Car,
-  DollarSign,
-  MapPin,
-  ShieldCheck,
-  Star,
-  Check,
-  ArrowUpDown,
-  RotateCcw,
-} from 'lucide-react';
-import { Button, PrimaryButton, SecondaryButton } from '../ui/Button';
+import { Calendar, Car, DollarSign, MapPin, ShieldCheck, Star, Check, ArrowUpDown, RotateCcw, } from 'lucide-react';
+import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { SearchRequest } from '../../types';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
@@ -71,8 +61,8 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   const footerContent = (
     <div className="flex items-center gap-3 w-full sticky bottom-0 pb-safe safe-area-inset-bottom z-[60] shrink-0">
       <SecondaryButton
-        size="md"
-        className="w-1/2 min-h-[48px] font-bold shadow-sm hover:shadow-md transition-all rounded-2xl border-slate-300 bg-white flex items-center justify-center gap-2 text-slate-700"
+        size="sm"
+        className="w-1/2 font-bold shadow-sm hover:shadow-md transition-all rounded-2xl border-slate-300 bg-white flex items-center justify-center gap-2 text-slate-700"
         onClick={handleReset}
         leftIcon={<RotateCcw className="w-4 h-4 text-slate-500" aria-hidden="true" />}
         aria-label="Limpar todos os filtros selecionados"
@@ -80,8 +70,8 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
         Limpar
       </SecondaryButton>
       <PrimaryButton
-        size="md"
-        className="w-1/2 min-h-[48px] font-bold shadow-md hover:shadow-lg transition-all rounded-2xl flex items-center justify-center gap-2"
+        size="sm"
+        className="w-1/2 font-bold shadow-md hover:shadow-lg transition-all rounded-2xl flex items-center justify-center gap-2"
         onClick={handleApply}
         leftIcon={<Check className="w-4 h-4 text-slate-950" aria-hidden="true" />}
         aria-label="Aplicar filtros selecionados à busca"
@@ -113,19 +103,20 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             ].map((dateOption) => {
               const active = isSelectedDate(dateOption.value);
               return (
-                <button
+                <ButtonBase
                   key={dateOption.label}
                   type="button"
                   onClick={() => updateDraft({ date: dateOption.value })}
                   aria-pressed={active}
-                  className={`min-h-11 rounded-xl border px-3 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-11 rounded-xl border px-3 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     active
                       ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                       : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
+                  <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   {dateOption.label}
-                </button>
+                </ButtonBase>
               );
             })}
           </div>
@@ -147,7 +138,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             ].map((opt) => {
               const active = (currentDraft.sortBy || 'RECOMMENDED') === opt.id;
               return (
-                <button
+                <ButtonBase
                   key={opt.id}
                   type="button"
                   onClick={() => updateDraft({ sortBy: opt.id as any })}
@@ -160,7 +151,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                 >
                   <span>{opt.label}</span>
                   {active && <Check className="w-4 h-4 text-[var(--mazzi-dark)] shrink-0" aria-hidden="true" />}
-                </button>
+                </ButtonBase>
               );
             })}
           </div>
@@ -180,19 +171,20 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             ].map((pType) => {
               const active = isSelectedProvider(pType.id);
               return (
-                <button
+                <ButtonBase
                   key={pType.id}
                   type="button"
                   onClick={() => updateDraft({ providerType: pType.id as any })}
                   aria-pressed={active}
-                  className={`min-h-11 rounded-xl border px-2.5 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-11 rounded-xl border px-2.5 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     active
                       ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                       : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
+                  <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   {pType.label}
-                </button>
+                </ButtonBase>
               );
             })}
           </div>
@@ -213,19 +205,20 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
               ].map((trans) => {
                 const active = isSelectedTransmission(trans.id);
                 return (
-                  <button
+                  <ButtonBase
                     key={trans.id}
                     type="button"
                     onClick={() => updateDraft({ transmission: trans.id as any })}
                     aria-pressed={active}
-                    className={`min-h-11 rounded-xl border px-3 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                    className={`min-h-11 rounded-xl border px-3 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                       active
                         ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                         : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
+                    <Car className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     {trans.label}
-                  </button>
+                  </ButtonBase>
                 );
               })}
             </div>
@@ -247,19 +240,20 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             {[2000, 5000, 10000, 20000, 50000].map((rMeters) => {
               const active = (currentDraft.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) === rMeters;
               return (
-                <button
+                <ButtonBase
                   key={rMeters}
                   type="button"
                   onClick={() => updateDraft({ radiusMeters: rMeters })}
                   aria-pressed={active}
-                  className={`min-h-11 rounded-xl text-xs border transition cursor-pointer flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-11 rounded-xl text-xs border transition cursor-pointer flex items-center justify-center gap-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     active
                       ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                       : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
+                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
                   {rMeters / 1000}km
-                </button>
+                </ButtonBase>
               );
             })}
           </div>
@@ -280,7 +274,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             ].map((rate) => {
               const active = currentDraft.minimumRating === rate.val;
               return (
-                <button
+                <ButtonBase
                   key={rate.label}
                   type="button"
                   onClick={() => updateDraft({ minimumRating: rate.val })}
@@ -293,7 +287,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                 >
                   <Star className="w-3 h-3 text-amber-500 fill-amber-500" aria-hidden="true" />
                   <span>{rate.label}</span>
-                </button>
+                </ButtonBase>
               );
             })}
           </div>
@@ -313,19 +307,20 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             ].map((p) => {
               const active = currentDraft.maxPriceInCents === p.maxInCents;
               return (
-                <button
+                <ButtonBase
                   key={p.label}
                   type="button"
                   onClick={() => updateDraft({ maxPriceInCents: p.maxInCents })}
                   aria-pressed={active}
-                  className={`min-h-11 rounded-xl border px-2 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-11 rounded-xl border px-2 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     active
                       ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                       : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
+                  <DollarSign className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   {p.label}
-                </button>
+                </ButtonBase>
               );
             })}
           </div>

@@ -412,9 +412,7 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
         />
       );
 
-      const cancelButtons = screen.queryAllByRole('button', { hidden: true });
-      const cancelActionBtn = cancelButtons.find((btn) => btn.textContent?.includes('Cancelar') && btn.className.includes('text-rose-600'));
-      expect(cancelActionBtn).toBeUndefined();
+      expect(screen.queryByRole('button', { name: /^Cancelar$/i, hidden: true })).toBeNull();
     });
 
     it('Para aula particular CONFIRMED do próprio instrutor, o modal EXIBE o botão Cancelar', () => {
@@ -438,9 +436,9 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
         />
       );
 
-      const cancelButtons = screen.getAllByRole('button', { hidden: true });
-      const cancelActionBtn = cancelButtons.find((btn) => btn.textContent?.includes('Cancelar') && btn.className.includes('text-rose-600'));
-      expect(cancelActionBtn).toBeTruthy();
+      const cancelActionBtn = screen.getByRole('button', { name: /^Cancelar$/i, hidden: true });
+      expect(cancelActionBtn.className).toContain('bg-rose-50');
+      expect(cancelActionBtn.className).toContain('text-rose-700');
     });
   });
 });

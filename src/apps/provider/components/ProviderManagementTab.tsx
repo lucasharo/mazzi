@@ -1,31 +1,8 @@
 import React from 'react';
+import { Car, Bike, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, } from 'lucide-react';
 import {
-  Car,
-  Bike,
-  Plus,
-  ShieldCheck,
-  Upload,
-  AlertCircle,
-  Check,
-  Ban,
-  Tag,
-  Info,
-  SlidersHorizontal,
-  Power,
-  PowerOff,
-  Save,
-  X,
-} from 'lucide-react';
-import {
-  Vehicle,
-  ServiceOffering,
-  ComplianceDocument,
-  Provider,
-  VehicleCategory,
-  VehicleType,
-  TransmissionType,
-} from '../../../types';
-import { Button } from '../../../components/ui/Button';
+  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, } from '../../../types';
+import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Modal } from '../../../components/ui/Modal';
@@ -37,8 +14,11 @@ import { formatCentsToBRL } from '../../../domain/money';
 import { DEFAULT_COMPLIANCE_REQUIREMENTS } from '../../../domain/compliance';
 import { formatTransmissionLabel } from '../../../lib/date-format';
 import { maskVehiclePlate, normalizeVehiclePlate, maskBRLInput } from '../../../lib/input-masks';
+import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 
 interface ProviderManagementTabProps {
+  onRefresh: () => void;
+  isRefreshing?: boolean;
   managementSubTab: 'vehicles' | 'offerings' | 'compliance';
   onSubTabChange: (tab: 'vehicles' | 'offerings' | 'compliance') => void;
   vehicles: Vehicle[];
@@ -80,6 +60,8 @@ interface ProviderManagementTabProps {
 }
 
 export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
+  onRefresh,
+  isRefreshing,
   managementSubTab,
   onSubTabChange,
   vehicles,
@@ -107,58 +89,58 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   return (
     <div className="space-y-6 text-left">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <p className="mazzi-eyebrow mb-1">Gestão Pro</p>
-          <h2 className="mazzi-title">Frota, Ofertas & Compliance</h2>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {managementSubTab === 'vehicles' && (
-            <Button variant="primary" size="sm" onClick={onOpenAddVehicleModal} leftIcon={<Plus className="w-4 h-4" />}>
-              Cadastrar Veículo
-            </Button>
-          )}
-          {managementSubTab === 'offerings' && (
-            <Button variant="primary" size="sm" onClick={onOpenAddOfferingModal} leftIcon={<Plus className="w-4 h-4" />}>
-              Cadastrar Oferta
-            </Button>
-          )}
-        </div>
-      </div>
+      <AppPageHeader
+        eyebrow="Sua operação"
+        title="Gestão"
+        subtitle="Organize veículos, ofertas e compliance."
+        action={<ButtonBase type="button" className="mazzi-icon-button" onClick={onRefresh} disabled={isRefreshing} aria-label="Atualizar gestão" title="Atualizar gestão"><RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden="true" /></ButtonBase>}
+      />
 
       {/* Subtabs Switcher */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-[#e9e6de] shadow-xs">
-        <button
+      <div className="mazzi-segmented overflow-x-auto">
+        <ButtonBase
           type="button"
           onClick={() => onSubTabChange('vehicles')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            managementSubTab === 'vehicles' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={managementSubTab === 'vehicles'}
+          data-active={managementSubTab === 'vehicles'}
+          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
         >
           <Car className="w-3.5 h-3.5" />
-          <span>Veículos ({vehicles.length})</span>
-        </button>
-        <button
+          <span>Veículos</span>
+        </ButtonBase>
+        <ButtonBase
           type="button"
           onClick={() => onSubTabChange('offerings')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            managementSubTab === 'offerings' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={managementSubTab === 'offerings'}
+          data-active={managementSubTab === 'offerings'}
+          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
         >
           <Tag className="w-3.5 h-3.5" />
-          <span>Ofertas ({offerings.length})</span>
-        </button>
-        <button
+          <span>Ofertas</span>
+        </ButtonBase>
+        <ButtonBase
           type="button"
           onClick={() => onSubTabChange('compliance')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-            managementSubTab === 'compliance' ? 'bg-[#202126] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          aria-selected={managementSubTab === 'compliance'}
+          data-active={managementSubTab === 'compliance'}
+          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
         >
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Compliance ({complianceDocs.length})</span>
-        </button>
+          <span>Compliance</span>
+        </ButtonBase>
+      </div>
+
+      <div className="flex justify-end">
+        {managementSubTab === 'vehicles' && (
+          <Button variant="primary" size="sm" onClick={onOpenAddVehicleModal} leftIcon={<Plus className="w-4 h-4" />}>
+            Cadastrar Veículo
+          </Button>
+        )}
+        {managementSubTab === 'offerings' && (
+          <Button variant="primary" size="sm" onClick={onOpenAddOfferingModal} leftIcon={<Plus className="w-4 h-4" />}>
+            Cadastrar Oferta
+          </Button>
+        )}
       </div>
 
       {/* VEHICLES SUBTAB */}
@@ -187,7 +169,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                         ) : (
                           <Car className="w-5 h-5 text-slate-900" />
                         )}
-                        <h4 className="text-base font-black text-slate-900">
+                      <h4 className="text-base font-bold text-slate-900">
                           {v.brand} {v.model} ({v.year})
                         </h4>
                       </div>
@@ -213,7 +195,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                       ID: {v.id.slice(0, 8)}
                     </span>
                     <Button
-                      variant={v.status === 'ACTIVE' ? 'outline' : 'primary'}
+                      variant={v.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
                       size="sm"
                       onClick={() => onToggleVehicleStatus(v.id)}
                       leftIcon={v.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
@@ -255,7 +237,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                           <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-[#202126] text-white">
                             Cat. {o.category}
                           </span>
-                          <h4 className="text-base font-black text-slate-900">
+                      <h4 className="text-base font-bold text-slate-900">
                             {formatCentsToBRL(o.priceInCents)} / {o.durationMinutes} min
                           </h4>
                         </div>
@@ -266,7 +248,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
 
                       <p className="text-xs text-slate-600 font-medium">
                         Veículo vinculado:{' '}
-                        <span className="text-slate-900 font-extrabold">
+                          <span className="text-slate-900 font-bold">
                           {linkedVehicle ? `${linkedVehicle.brand} ${linkedVehicle.model}` : 'Veículo não localizado'}
                         </span>
                       </p>
@@ -317,7 +299,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-900 text-sm">{req.title}</span>
+                      <span className="text-sm font-bold text-slate-900">{req.title}</span>
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 flex items-center gap-1">
                         <ShieldCheck className="w-3 h-3 text-blue-700" />
                         CTB Regulamentado
@@ -441,7 +423,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           </div>
 
           <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
-            <Button variant="secondary" size="sm" onClick={onCloseAddVehicleModal} leftIcon={<X className="w-4 h-4" />}>
+            <Button variant="dangerSoft" size="sm" onClick={onCloseAddVehicleModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>
             <Button variant="primary" size="sm" onClick={onSaveVehicle} leftIcon={<Save className="w-4 h-4" />}>
@@ -497,7 +479,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           </div>
 
           <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
-            <Button variant="secondary" size="sm" onClick={onCloseAddOfferingModal} leftIcon={<X className="w-4 h-4" />}>
+            <Button variant="dangerSoft" size="sm" onClick={onCloseAddOfferingModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>
             <Button variant="primary" size="sm" onClick={onSaveOffering} leftIcon={<Save className="w-4 h-4" />}>

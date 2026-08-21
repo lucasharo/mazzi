@@ -1,3 +1,4 @@
+import { ButtonBase } from './Button';
 import React from 'react';
 
 export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> {
@@ -10,7 +11,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
   ref,
 ) {
   return (
-    <button
+    <ButtonBase
       ref={ref}
       type={type}
       aria-label={label}
@@ -19,6 +20,6 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
       {...props}
     >
       {children}
-    </button>
+    </ButtonBase>
   );
 });

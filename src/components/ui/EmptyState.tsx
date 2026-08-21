@@ -1,12 +1,14 @@
 import React from 'react';
-import { Inbox, AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from './Button';
+import { ListEmptyState } from './ListEmptyState';
 
 export interface EmptyStateProps {
   title: string;
   description: string;
   actionLabel?: string;
   onAction?: () => void;
+  actionIcon?: React.ReactNode;
   icon?: React.ReactNode;
   id?: string;
 }
@@ -16,27 +18,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   description,
   actionLabel,
   onAction,
+  actionIcon,
   icon,
   id,
 }) => {
   return (
-    <div
+    <ListEmptyState
       id={id || 'mazzi-empty-state'}
-      className="p-8 my-4 rounded-3xl border border-dashed border-slate-300 bg-slate-50/50 flex flex-col items-center justify-center text-center max-w-md mx-auto"
-    >
-      <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mb-4 shadow-xs">
-        {icon || <Inbox className="w-7 h-7" />}
-      </div>
-      <h3 className="text-base font-bold text-slate-900 mb-1">{title}</h3>
-      <p className="text-xs text-slate-500 leading-relaxed max-w-xs mb-5">
-        {description}
-      </p>
-      {actionLabel && onAction && (
-        <Button variant="primary" size="sm" onClick={onAction}>
-          {actionLabel}
-        </Button>
-      )}
-    </div>
+      title={title}
+      description={description}
+      icon={icon}
+      action={actionLabel && onAction ? <Button variant="primary" size="sm" onClick={onAction} leftIcon={actionIcon}>{actionLabel}</Button> : undefined}
+    />
   );
 };
 
