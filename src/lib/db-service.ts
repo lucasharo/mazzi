@@ -1245,9 +1245,7 @@ export const dbService = {
 
   // 6. PLATFORM CONFIGURATION
   async getPlatformConfigs(): Promise<any[]> {
-    const { data, error } = await sp
-      .from('platform_configurations')
-      .select('*');
+    const { data, error } = await sp.rpc('get_admin_platform_configurations');
     if (error) throw error;
     return data || [];
   },
@@ -1265,10 +1263,7 @@ export const dbService = {
 
   // 7. AUDIT LOGS
   async getAuditLogs(): Promise<AuditLog[]> {
-    const { data, error } = await sp
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data, error } = await sp.rpc('get_admin_audit_logs');
     if (error) throw error;
     return (data || []).map(mapAuditLogFromDb);
   },
