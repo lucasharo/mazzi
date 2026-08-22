@@ -44,6 +44,10 @@ describe('SchoolMembershipPanel', () => {
     expect(await screen.findByText('Marcos Vinícius Prado')).toBeTruthy();
     expect(screen.getByText('instrutor03@mazzi.com.br')).toBeTruthy();
     expect(screen.getByText('Elegível')).toBeTruthy();
+    expect(screen.queryByPlaceholderText('E-mail do instrutor')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Convidar instrutor' }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Ativar' }));
 
