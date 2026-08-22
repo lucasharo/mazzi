@@ -10,9 +10,7 @@ const AdminGate: React.FC = () => {
   if (auth.isLoading) return <LoadingScreen />;
   if (auth.recoveryInProgress) return <AppLogin kind="admin" />;
   if (!auth.isAuthenticated) return <AppLogin kind="admin" />;
-  return auth.user?.roles.some((role) =>
-    ['PLATFORM_ADMIN', 'SUPPORT'].includes(role)
-  ) ? (
+  return auth.user?.roles.includes('PLATFORM_ADMIN') ? (
     <AdminApp />
   ) : (
     <AccessDenied />

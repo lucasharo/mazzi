@@ -6,6 +6,12 @@ O Admin usa os mesmos tokens, botões, formulários, estados vazios e tipografia
 
 ## Módulos do Painel Administrativo
 
+### Escopo do Admin MVP
+
+O Admin MVP é uma superfície exclusiva de `PLATFORM_ADMIN`. Usuários `SUPPORT` continuam existindo no modelo RBAC, mas recebem `AccessDenied` neste painel; um Support Console específico fica fora desta versão.
+
+As leituras administrativas falham de forma explícita e não são convertidas em listas vazias. A fila de compliance usa projeção mínima e não exibe caminhos internos de storage; o bucket permanece privado.
+
 ### 1. Dashboard Executivo & Marketplace Liquidity
 - **North Star Metric:** Aulas práticas concluídas na semana.
 - **Liquidez:** Taxa de conversão *Search-to-Booking*.
@@ -23,4 +29,6 @@ O fluxo de revisão também atende documentos globais do instrutor e documentos 
 ### 3. Configurações & Auditoria
 - Configuração global da taxa de comissão (`platform_fee_percentage`).
 - Configuração do tempo de expiração de Quotes (padrão: 10 minutos).
-- Trilha de Auditoria (`AuditLog`): Histórico cronológico detalhado com ator, ação, entidade, valores anteriores e novos, IP e User-Agent.
+- Trilha de Auditoria (`AuditLog`): Histórico cronológico detalhado com ator, ação, entidade, valores anteriores e novos; a leitura Admin retorna somente as colunas operacionais aprovadas.
+
+Pagamentos continuam `FAKE / MOCK_VALIDATION`. Disputas, reassignment e operações reais de payout permanecem deferidos.

@@ -89,15 +89,6 @@ export const AdminApp: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const refreshAdminDataRef = useRef<() => void>(() => undefined);
 
-  // Active Session Toggle (Interactive testing for PLATFORM_ADMIN vs SUPPORT)
-  const [currentRole, setCurrentRole] = useState<UserRole>('PLATFORM_ADMIN');
-
-  useEffect(() => {
-    if (user?.roles && user.roles.length > 0) {
-      setCurrentRole(user.roles[0]);
-    }
-  }, [user]);
-
   // Load live data from Supabase
   useEffect(() => {
     async function loadRealData(isRefresh = false) {
@@ -106,34 +97,13 @@ export const AdminApp: React.FC = () => {
       setLoadError(null);
       try {
         const [p, v, b, c, a, configs, u] = await Promise.all([
-          dbService.getProviders().catch((err) => {
-            console.warn('AdminApp: could not load providers', err);
-            return [];
-          }),
-          dbService.getVehicles().catch((err) => {
-            console.warn('AdminApp: could not load vehicles', err);
-            return [];
-          }),
-          dbService.getBookings().catch((err) => {
-            console.warn('AdminApp: could not load bookings', err);
-            return [];
-          }),
-          dbService.getComplianceDocs().catch((err) => {
-            console.warn('AdminApp: could not load compliance docs', err);
-            return [];
-          }),
-          dbService.getAuditLogs().catch((err) => {
-            console.warn('AdminApp: could not load audit logs', err);
-            return [];
-          }),
-          dbService.getPlatformConfigs().catch((err) => {
-            console.warn('AdminApp: could not load platform configs', err);
-            return [];
-          }),
-          dbService.getUsers().catch((err) => {
-            console.warn('AdminApp: could not load users', err);
-            return [];
-          }),
+          dbService.getProviders(),
+          dbService.getVehicles(),
+          dbService.getBookings(),
+          dbService.getAdminComplianceDocs(),
+          dbService.getAuditLogs(),
+          dbService.getPlatformConfigs(),
+          dbService.getUsers(),
         ]);
         setProviders(p);
         setVehicles(v);
@@ -172,19 +142,13 @@ export const AdminApp: React.FC = () => {
   const activeActor: AuthContext = {
     userId: user?.id || 'AUTH_REQUIRED',
     email: user?.email || 'auth-required@mazzi.local',
-    roles: [currentRole],
-    status: 'ACTIVE',
+    roles: user?.roles || [],
+    status: user?.status || 'ACTIVE',
   };
 
   // Helper eligibility evaluator
   const handleEligibilityCheck = (provider: Provider, docs: ComplianceDocument[]) => {
     return evaluateProviderEligibility(provider, docs, DEFAULT_COMPLIANCE_REQUIREMENTS);
-  };
-
-  const blockPendingAdminMutation = (action: string) => {
-    alert(
-      `${action} bloqueado na Sprint 12: esta operação precisa de RPC/endpoint transacional com RBAC, auditoria e persistência real no Supabase.`
-    );
   };
 
   // ==========================================================================

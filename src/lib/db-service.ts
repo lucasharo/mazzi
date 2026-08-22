@@ -198,7 +198,7 @@ export function mapComplianceFromDb(row: any): ComplianceDocument {
       : row.document_type,
     status: row.status,
     fileName: row.storage_path ? row.storage_path.split('/').pop() || 'document.pdf' : 'document.pdf',
-    storagePath: row.storage_path,
+    storagePath: row.storage_path || '',
     uploadedAt: row.created_at,
     expiresAt: row.expires_at || undefined,
     reviewedBy: row.reviewed_by || undefined,
@@ -1318,6 +1318,14 @@ export const dbService = {
     const { data, error } = await sp
       .from('compliance_documents')
       .select('*');
+    if (error) throw error;
+    return (data || []).map(mapComplianceFromDb);
+  },
+
+  async getAdminComplianceDocs(): Promise<ComplianceDocument[]> {
+    const { data, error } = await sp
+      .from('compliance_documents')
+      .select('id,provider_id,user_id,document_type,status,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
     if (error) throw error;
     return (data || []).map(mapComplianceFromDb);
   },

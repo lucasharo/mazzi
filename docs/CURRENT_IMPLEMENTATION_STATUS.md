@@ -1,6 +1,6 @@
 # MAZZI — Current Implementation Status
 
-**Última revisão**: 2026-08-21
+**Última revisão**: 2026-08-22
 *Nota: Este documento deve ser atualizado sempre que uma TASK alterar o estado de uma feature relevante.*
 
 ---
@@ -77,7 +77,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Prestador | Portal do Prestador (`src/apps/provider/`) | `IMPLEMENTADO` | [`src/apps/provider/`](../src/apps/provider/) | Gestão de perfil, horários de disponibilidade, veículos e ofertas |
 | Compliance | Gestão de Documentação Regulatória | `IMPLEMENTADO` | [`src/domain/compliance.ts`](../src/domain/compliance.ts) | Upload e moderação de CNH, CRLV, alvarás e inspeções |
 | Frota | Cadastro de Veículos e Transmissões | `IMPLEMENTADO` | [`src/domain/vehicles-offerings.ts`](../src/domain/vehicles-offerings.ts) | Homologação de veículos com pedal duplo e categoria |
-| Admin | Painel Administrativo (`src/apps/admin/`) | `PARCIAL` | [`src/apps/admin/`](../src/apps/admin/) | Base de UI e leituras administrativas existentes; o painel completo end-to-end não é declarado concluído nesta etapa. |
+| Admin | Painel Administrativo (`src/apps/admin/`) | `IMPLEMENTADO` | [`src/apps/admin/`](../src/apps/admin/), [`src/entrypoints/admin/AdminRoot.tsx`](../src/entrypoints/admin/AdminRoot.tsx), migration `20260822164851_task_077a_admin_access_hardening` | MVP restrito a `PLATFORM_ADMIN`, leituras fail-closed, revisão de compliance alinhada à permissão canônica e payload administrativo sem `storage_path`. SUPPORT permanece reservado para uma superfície futura. Disputas, reassignment e payouts reais continuam deferidos; pagamentos permanecem `FAKE / MOCK_VALIDATION`. |
 | Auditoria | Registro Estruturado de Logs (`AuditLog`) | `IMPLEMENTADO` | `supabase/migrations/20260814000015_sprint15_security_hardening.sql` | Tabela `audit_logs` registrando ações críticas de sistema |
 
 ### 3.4. Premium UI V2 e Design System

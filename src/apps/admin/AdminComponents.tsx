@@ -58,8 +58,30 @@ export const DashboardTab: React.FC<{
   const expiringDocsCount = complianceDocs.filter((d) => d.status === 'EXPIRED').length;
   const vehiclesUnderReview = vehicles.filter((v) => v.status === 'UNDER_REVIEW').length;
   
-  const todayISO = '2026-08-15';
-  const bookingsToday = bookings.filter((b) => b.scheduledDate === todayISO).length;
+  const todayParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const todayISO = ['year', 'month', 'day']
+    .map((part) => todayParts.find((item) => item.type === part)?.value)
+    .join('-');
+  const todayLabel = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    dateStyle: 'short',
+  }).format(new Date());
+  const bookingsToday = bookings.filter((b) => {
+    const bookingParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date(b.scheduledStartAt));
+    return ['year', 'month', 'day']
+      .map((part) => bookingParts.find((item) => item.type === part)?.value)
+      .join('-') === todayISO;
+  }).length;
   const bookingsConfirmed = bookings.filter((b) => b.status === 'CONFIRMED').length;
   const bookingsDisputed = bookings.filter((b) => b.status === 'DISPUTED').length;
 
@@ -132,7 +154,7 @@ export const DashboardTab: React.FC<{
             <p className="text-[10px] text-slate-400 font-medium">Prestadores Credenciados Ativos</p>
           </div>
           <div className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
-            <TrendingUp className="w-3.5 h-3.5" /> 100% de conformidade regulatória
+            <TrendingUp className="w-3.5 h-3.5" /> Compliance monitorado na fila operacional
           </div>
         </div>
 
@@ -171,7 +193,7 @@ export const DashboardTab: React.FC<{
           </div>
           <div className="my-3">
             <p className="text-3xl font-black text-slate-900">{bookingsToday}</p>
-            <p className="text-[10px] text-slate-500 font-medium">Reservas para {todayISO}</p>
+            <p className="text-[10px] text-slate-500 font-medium">Reservas para {todayLabel}</p>
           </div>
           <span className="text-[11px] text-slate-400 font-medium">
             {bookingsConfirmed} confirmadas • {bookingsDisputed} em disputa
@@ -784,23 +806,8 @@ export const ComplianceTab: React.FC<{
               </div>
             </div>
 
-            {/* Visualização de Armazenamento Privado Simulado */}
-            <div className="p-4 rounded-2xl bg-slate-950 text-white font-mono text-[11px] space-y-2 border border-slate-900 shadow-inner">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-[10px] text-emerald-400 font-black">⚡ SIMULATED_STORAGE_PRIVATE_BUCKET</span>
-                <span className="text-[10px] text-slate-500">MIME: {selectedDoc.mimeType || 'application/pdf'}</span>
-              </div>
-              <div className="space-y-1.5 opacity-90">
-                <p><span className="text-slate-500">Armazenamento:</span> Storage privado de compliance</p>
-                <p className="truncate"><span className="text-slate-500">StoragePath:</span> {selectedDoc.storagePath}</p>
-                <p><span className="text-slate-500">FileName:</span> {selectedDoc.fileName}</p>
-                <p><span className="text-slate-500">Bytes:</span> {selectedDoc.fileSize || 1048576} bytes ({(selectedDoc.fileSize ? (selectedDoc.fileSize / 1024 / 1024).toFixed(2) : '1.00')} MB)</p>
-              </div>
-              <div className="pt-3 border-t border-slate-800 text-center">
-                <span className="inline-block text-[10px] font-bold text-amber-400 bg-amber-950/40 px-3 py-1 rounded-full border border-amber-500/20">
-                  ⚠️ Dados protegidos por sigilo fiscal/pessoal de acordo com LGPD. Apenas operadores autorizados podem abrir.
-                </span>
-              </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+              Documento armazenado em bucket privado. O painel exibe somente os metadados necessários para a decisão de compliance.
             </div>
 
             {selectedDoc.rejectionReason && (
