@@ -190,20 +190,40 @@ export const AdminApp: React.FC = () => {
   // ==========================================================================
   // PROVIDER STATE TRANSITIONS HANDLERS
   // ==========================================================================
-  const handleApproveProvider = (_p: Provider) => {
-    blockPendingAdminMutation('Aprovação de prestador');
+  const handleApproveProvider = async (p: Provider) => {
+    try {
+      const updated = await dbService.reviewProvider(p.id, 'ACTIVE');
+      setProviders((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (error: any) {
+      alert(`Não foi possível aprovar o prestador: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
-  const handleRejectProvider = (_p: Provider, _reason: string) => {
-    blockPendingAdminMutation('Rejeição de prestador');
+  const handleRejectProvider = async (p: Provider, reason: string) => {
+    try {
+      const updated = await dbService.reviewProvider(p.id, 'REJECTED', reason);
+      setProviders((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (error: any) {
+      alert(`Não foi possível rejeitar o prestador: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
-  const handleSuspendProvider = (_p: Provider, _reason: string) => {
-    blockPendingAdminMutation('Suspensão de prestador');
+  const handleSuspendProvider = async (p: Provider, reason: string) => {
+    try {
+      const updated = await dbService.reviewProvider(p.id, 'SUSPENDED', reason);
+      setProviders((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (error: any) {
+      alert(`Não foi possível suspender o prestador: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
-  const handleBlockProvider = (_p: Provider, _reason: string) => {
-    blockPendingAdminMutation('Bloqueio de prestador');
+  const handleBlockProvider = async (p: Provider, reason: string) => {
+    try {
+      const updated = await dbService.reviewProvider(p.id, 'BLOCKED', reason);
+      setProviders((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (error: any) {
+      alert(`Não foi possível bloquear o prestador: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
   // ==========================================================================
@@ -265,15 +285,25 @@ export const AdminApp: React.FC = () => {
   // ==========================================================================
   // REFUND HANDLER
   // ==========================================================================
-  const handleProcessRefund = (_b: Booking) => {
-    blockPendingAdminMutation('Estorno administrativo');
+  const handleProcessRefund = async (b: Booking) => {
+    try {
+      await dbService.adminRefundMockBooking(b.id);
+      setBookings((current) => current.map((item) => item.id === b.id ? { ...item, status: 'REFUNDED' } : item));
+    } catch (error: any) {
+      alert(`Não foi possível processar o estorno simulado: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
   // ==========================================================================
   // USER ROLE MANAGEMENT HANDLER
   // ==========================================================================
-  const handleChangeRole = (_userId: string, _newRole: UserRole) => {
-    blockPendingAdminMutation('Alteração de papel de usuário');
+  const handleChangeRole = async (userId: string, newRole: UserRole) => {
+    try {
+      const updated = await dbService.updateUserRole(userId, newRole);
+      setUsers((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (error: any) {
+      alert(`Não foi possível alterar o papel: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
   // ==========================================================================

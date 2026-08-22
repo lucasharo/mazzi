@@ -87,6 +87,20 @@ export async function signUpStudent({ email, password, name, phone, cpf, birthDa
 }
 
 /**
+ * Completes the authenticated instructor onboarding without accepting a role
+ * or provider id from the browser. The database RPC derives the identity from
+ * auth.uid(), validates the existing profile, grants only INSTRUCTOR, and
+ * creates an initial non-public provider profile idempotently.
+ */
+export async function onboardInstructor() {
+  const { data, error } = await supabase.rpc('onboard_my_instructor');
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+}
+
+/**
  * Verify 6-digit OTP for email confirmation (Signup)
  */
 export async function verifyEmailOtp({ email, token }: { email: string; token: string }) {

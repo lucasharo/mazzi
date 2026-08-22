@@ -7,12 +7,13 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { UserRole } from '../../types';
 import { AppPermission, resolveUserPermissions } from '../../domain/rbac';
 import { AuthSessionState } from '../../lib/auth-service';
-import { signInWithEmail, signUpStudent as signUpStudentService, type SignUpParams } from '../../lib/auth-service';
+import { onboardInstructor as onboardInstructorService, signInWithEmail, signUpStudent as signUpStudentService, type SignUpParams } from '../../lib/auth-service';
 import { supabase } from '../../lib/supabase';
 
 interface AuthContextType extends AuthSessionState {
   signIn: (email: string, password: string) => Promise<void>;
   signUpStudent: (params: SignUpParams) => ReturnType<typeof signUpStudentService>;
+  onboardInstructor: () => ReturnType<typeof onboardInstructorService>;
   logout: () => Promise<void>;
   beginPasswordRecovery: () => void;
   completePasswordRecovery: () => Promise<void>;
@@ -202,12 +203,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const userRole: UserRole = (profile?.role || user.user_metadata?.role || 'STUDENT') as UserRole;
+      const { data: additionalRoles } = await sp
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', profile.id);
+      const roles = Array.from(new Set<UserRole>([
+        userRole,
+        ...((additionalRoles || []).map((entry: { role: UserRole }) => entry.role)),
+      ]));
 
       // 2. Fetch active provider details or school details if any (only for instructors or school admins)
       let providerId: string | undefined;
       let schoolId: string | undefined;
 
-      if (profile && (userRole === 'INSTRUCTOR' || userRole === 'SCHOOL_ADMIN')) {
+      if (profile && roles.some((role) => ['INSTRUCTOR', 'SCHOOL_ADMIN', 'SCHOOL_STAFF'].includes(role))) {
         const { data: prov } = await sp
           .from('providers')
           .select('id')
@@ -230,7 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: profile?.phone || user.user_metadata?.phone || '',
         cpf: profile?.cpf || user.user_metadata?.cpf,
         birthDate: profile?.birth_date || user.user_metadata?.birth_date,
-        roles: [userRole],
+        roles,
         status: (profile?.status || 'ACTIVE') as any,
         providerId,
         schoolId,
@@ -300,6 +309,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUpStudent = (params: SignUpParams) => signUpStudentService(params);
+  const onboardInstructor = () => onboardInstructorService();
 
   const logout = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
@@ -328,6 +338,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...authState,
         signIn,
         signUpStudent,
+        onboardInstructor,
         logout,
         beginPasswordRecovery,
         completePasswordRecovery,

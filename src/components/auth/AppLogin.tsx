@@ -85,6 +85,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   const {
     signIn,
     signUpStudent,
+    onboardInstructor,
     beginPasswordRecovery,
     completePasswordRecovery,
     error: contextError,
@@ -278,14 +279,6 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     }
     setErrors({});
 
-    if (kind === 'instructor') {
-      return setFeedback({
-        tone: 'error',
-        message:
-          'O envio seguro do cadastro de instrutor está em desenvolvimento. Nenhuma conta foi criada.',
-      });
-    }
-
     setIsSubmitting(true);
     try {
       const { session } = await signUpStudent({
@@ -304,6 +297,9 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         // Requires 6-digit OTP verification
         goTo('signup_otp');
       } else {
+        if (kind === 'instructor') {
+          await onboardInstructor();
+        }
         setFeedback({ tone: 'success', message: 'Conta criada com sucesso.' });
       }
     } catch (caught: any) {
@@ -337,6 +333,9 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       setFeedback({ tone: 'success', message: 'E-mail confirmado com sucesso!' });
       if (password) {
         await signIn(otpEmail, password);
+        if (kind === 'instructor') {
+          await onboardInstructor();
+        }
       } else {
         goTo('login');
       }

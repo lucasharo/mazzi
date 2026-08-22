@@ -38,6 +38,24 @@ import { maskCpf } from '../../utils/cpf';
 import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
 import { useMobileAppRoute } from '../../lib/mobile-app-router';
 
+export const MAX_MAP_RESULTS = 50;
+
+export function mergePagedProviderResults(
+  previous: PublicSearchProviderResult[],
+  incoming: PublicSearchProviderResult[],
+  viewMode: 'list' | 'map',
+): PublicSearchProviderResult[] {
+  const seen = new Set<string>();
+  const merged: PublicSearchProviderResult[] = [];
+  for (const result of [...previous, ...incoming]) {
+    if (seen.has(result.providerId)) continue;
+    seen.add(result.providerId);
+    merged.push(result);
+    if (viewMode === 'map' && merged.length >= MAX_MAP_RESULTS) break;
+  }
+  return merged;
+}
+
 function mapPublicResultToProvider(result: PublicSearchProviderResult): Provider {
   return {
     id: result.providerId,
@@ -119,6 +137,27 @@ export function groupBookingContextsByVehicle(bookingContexts: any[]): any[] {
     }
   }
   return Array.from(contextsByVehicle.values());
+}
+
+export function uniqueBookingOfferingContexts(bookingContexts: any[]): any[] {
+  const contextsByOffering = new Map<string, any>();
+  for (const context of bookingContexts) {
+    const offeringId = context.offering_id || context.offeringId;
+    if (offeringId && !contextsByOffering.has(offeringId)) {
+      contextsByOffering.set(offeringId, context);
+    }
+  }
+  return Array.from(contextsByOffering.values());
+}
+
+export function filterBookingContextsByInstructor(bookingContexts: any[], instructorId: string): any[] {
+  return bookingContexts.filter((context) => (context.instructor_id || context.instructorId) === instructorId);
+}
+
+export function isBookingSlotCompatibleWithOffering(slot: any | null | undefined, offeringId: string): boolean {
+  if (!slot) return false;
+  const slotOfferingId = slot.offering_id || slot.offeringId;
+  return Boolean(slotOfferingId && slotOfferingId === offeringId);
 }
 
 export const StudentApp: React.FC = () => {
@@ -415,8 +454,8 @@ function applyStrictProviderFilters(
         });
         const pageSize = searchRequest.limit || 10;
         const previousResults = requestedPage === 1 ? [] : (realSearchResponse?.results || []);
-        const mergedResults = [...previousResults, ...sortedResults.filter((result) => !previousResults.some((previous) => previous.providerId === result.providerId))];
-        const hasMore = rawResults.length >= pageSize;
+        const mergedResults = mergePagedProviderResults(previousResults, sortedResults, searchViewMode);
+        const hasMore = rawResults.length >= pageSize && (searchViewMode !== 'map' || mergedResults.length < MAX_MAP_RESULTS);
         setRealSearchResponse({
           results: mergedResults,
           totalCount: mergedResults.length,
@@ -438,7 +477,7 @@ function applyStrictProviderFilters(
     return () => {
       window.clearTimeout(timer);
     };
-  }, [isRealSupabase, searchRequest, searchRefreshKey]);
+  }, [isRealSupabase, searchRequest, searchRefreshKey, searchViewMode]);
 
   const defaultSearchRequest: SearchRequest = {
     latitude: searchRequest.latitude,
@@ -473,7 +512,9 @@ function applyStrictProviderFilters(
   const searchResponse = useMemo(() => realSearchResponse, [realSearchResponse]);
 
   useEffect(() => {
-    if (activeTab !== 'search' || searchViewMode !== 'list' || !searchResponse?.hasMore || searchLoading) return undefined;
+    const loadedResults = searchResponse?.results?.length || 0;
+    const mapAtSafeLimit = searchViewMode === 'map' && loadedResults >= MAX_MAP_RESULTS;
+    if (activeTab !== 'search' || !searchResponse?.hasMore || searchLoading || mapAtSafeLimit) return undefined;
     const sentinel = searchEndRef.current;
     if (!sentinel || typeof IntersectionObserver === 'undefined') return undefined;
 
@@ -483,7 +524,7 @@ function applyStrictProviderFilters(
     }, { rootMargin: '320px 0px' });
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [activeTab, searchViewMode, searchLoading, searchResponse?.hasMore]);
+  }, [activeTab, searchViewMode, searchLoading, searchResponse?.hasMore, searchResponse?.results?.length]);
 
   // Selected Public Profile View State
   const [selectedPublicProfile, setSelectedPublicProfile] = useState<PublicSearchProviderResult | null>(null);
@@ -502,9 +543,10 @@ function applyStrictProviderFilters(
   const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
   const [instructorChoices, setInstructorChoices] = useState<any[]>([]);
   const [instructorPickerProvider, setInstructorPickerProvider] = useState<Provider | null>(null);
-  const [vehicleChoices, setVehicleChoices] = useState<any[]>([]);
-  const [vehiclePickerProvider, setVehiclePickerProvider] = useState<Provider | null>(null);
-  const [vehiclePickerSlot, setVehiclePickerSlot] = useState<any | null>(null);
+  const [bookingContextChoices, setBookingContextChoices] = useState<any[]>([]);
+  const [offeringPickerProvider, setOfferingPickerProvider] = useState<Provider | null>(null);
+  const [offeringPickerSlot, setOfferingPickerSlot] = useState<any | null>(null);
+  const [bookingContextsForSelection, setBookingContextsForSelection] = useState<any[]>([]);
 
   const handleOpenCheckoutByProviderId = async (providerId: string, _date?: string, slot?: any) => {
     const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
@@ -525,28 +567,31 @@ function applyStrictProviderFilters(
         const bookingContexts = await dbService.getProviderBookingContextPublic(providerId);
         if (!bookingContexts || bookingContexts.length === 0) return;
 
-        // A school can publish several vehicle/duration offerings for the same
-        // instructor. The first choice must represent people, not offerings.
+        setBookingContextsForSelection(bookingContexts);
         const distinctInstructorContexts = groupBookingContextsByInstructor(bookingContexts);
-        const ctx = distinctInstructorContexts[0] || bookingContexts[0];
-        matchingOffering = offeringFromBookingContext(ctx);
-        matchingVehicle = vehicleFromBookingContext(ctx);
         if (rawProv?.type === 'DRIVING_SCHOOL' && distinctInstructorContexts.length > 1) {
           setInstructorChoices(distinctInstructorContexts);
           setInstructorPickerProvider(rawProv);
           return;
         }
 
-        const distinctVehicleContexts = groupBookingContextsByVehicle(
-          rawProv?.type === 'DRIVING_SCHOOL'
-            ? distinctInstructorContexts
-            : bookingContexts
-        );
-        if (distinctVehicleContexts.length > 1) {
-          setVehicleChoices(distinctVehicleContexts);
-          setVehiclePickerProvider(rawProv || null);
-          setVehiclePickerSlot(slot || null);
+        const instructorId = distinctInstructorContexts[0]?.instructor_id || distinctInstructorContexts[0]?.instructorId;
+        const contextsForInstructor = rawProv?.type === 'DRIVING_SCHOOL' && instructorId
+          ? filterBookingContextsByInstructor(bookingContexts, instructorId)
+          : bookingContexts;
+        const distinctOfferings = uniqueBookingOfferingContexts(contextsForInstructor);
+        if (distinctOfferings.length > 1) {
+          setBookingContextChoices(distinctOfferings);
+          setOfferingPickerProvider(rawProv || null);
+          setOfferingPickerSlot(slot || null);
           return;
+        }
+
+        const ctx = distinctOfferings[0] || contextsForInstructor[0] || bookingContexts[0];
+        matchingOffering = offeringFromBookingContext(ctx);
+        matchingVehicle = vehicleFromBookingContext(ctx);
+        if (slot && !isBookingSlotCompatibleWithOffering(slot, matchingOffering.id)) {
+          slot = null;
         }
       } catch (err) {
         console.error('Error fetching booking context', err);
@@ -571,6 +616,26 @@ function applyStrictProviderFilters(
       }
     });
     if (slot) {
+      setIsCheckoutOpen(true);
+    } else {
+      setIsSlotSelectorOpen(true);
+    }
+  };
+
+  const openCheckoutForContext = (provider: Provider, ctx: any, slot?: any) => {
+    const offering = offeringFromBookingContext(ctx);
+    const vehicle = vehicleFromBookingContext(ctx);
+    const compatibleSlot = isBookingSlotCompatibleWithOffering(slot, offering.id) ? slot : null;
+    setCheckoutProvider(provider);
+    setCheckoutVehicle(vehicle);
+    setCheckoutOffering(offering);
+    setSelectedSlot(compatibleSlot);
+    setInstructorPickerProvider(null);
+    setInstructorChoices([]);
+    setOfferingPickerProvider(null);
+    setBookingContextChoices([]);
+    setOfferingPickerSlot(null);
+    if (compatibleSlot) {
       setIsCheckoutOpen(true);
     } else {
       setIsSlotSelectorOpen(true);
@@ -685,7 +750,7 @@ function applyStrictProviderFilters(
               />
 
               <section aria-labelledby="student-results-title" className="mt-8">
-                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><ButtonBase type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</ButtonBase><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><ButtonBase type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></ButtonBase><ButtonBase type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => setSearchViewMode('map')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><MapIcon className="h-4 w-4"/></ButtonBase></div></div></div>
+                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><ButtonBase type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</ButtonBase><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><ButtonBase type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></ButtonBase><ButtonBase type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => { setSearchViewMode('map'); setSearchRequest((previous) => ({ ...previous, page: 1 })); }} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><MapIcon className="h-4 w-4"/></ButtonBase></div></div></div>
               </section>
 
               {searchError && (
@@ -717,6 +782,8 @@ function applyStrictProviderFilters(
                         onViewProfile={() => setSelectedPublicProfile(res)}
                       />
                     ))}
+                    {searchLoading && <ContentSkeleton count={2} label="Carregando profissionais no mapa" />}
+                    <div ref={searchEndRef} className="h-2" aria-hidden="true" />
                   </div>
                 </div>
               ) : (
@@ -1205,15 +1272,18 @@ function applyStrictProviderFilters(
                 type="button"
                 className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
                 onClick={() => {
-                  const offering = offeringFromBookingContext(ctx);
-                   const vehicle = vehicleFromBookingContext(ctx);
-                  setCheckoutProvider(instructorPickerProvider);
-                  setCheckoutVehicle(vehicle);
-                  setCheckoutOffering(offering);
-                  setSelectedSlot(null);
+                  const instructorId = ctx.instructor_id || ctx.instructorId;
+                  const instructorContexts = filterBookingContextsByInstructor(bookingContextsForSelection, instructorId);
+                  const offerings = uniqueBookingOfferingContexts(instructorContexts);
                   setInstructorPickerProvider(null);
                   setInstructorChoices([]);
-                  setIsSlotSelectorOpen(true);
+                  if (offerings.length > 1) {
+                    setBookingContextChoices(offerings);
+                    setOfferingPickerProvider(instructorPickerProvider);
+                    setOfferingPickerSlot(null);
+                    return;
+                  }
+                  openCheckoutForContext(instructorPickerProvider, offerings[0] || instructorContexts[0] || ctx);
                 }}
               >
                 <span className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-amber-400">{(ctx.instructor_name || ctx.instructorName || 'Instrutor disponível').split(/\s+/).map((part: string) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-black text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{ctx.vehicle_brand || 'Veículo'} {ctx.vehicle_model || ''} · {ctx.vehicle_transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. {ctx.category || ctx.offering_category || 'B'}</span><span className="mt-1 block text-xs font-bold text-slate-700">{ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}</span></span></span>
@@ -1224,39 +1294,25 @@ function applyStrictProviderFilters(
         </Modal>
       )}
 
-      {vehiclePickerProvider && (
+      {offeringPickerProvider && (
         <Modal
           isOpen={true}
-          onClose={() => { setVehiclePickerProvider(null); setVehicleChoices([]); setVehiclePickerSlot(null); }}
-          title="Escolha o veículo"
+          onClose={() => { setOfferingPickerProvider(null); setBookingContextChoices([]); setOfferingPickerSlot(null); }}
+          title="Escolha a oferta"
           size="sm"
         >
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-slate-500">Escolha o veículo da sua aula com {vehicleChoices[0]?.instructor_name || vehicleChoices[0]?.instructorName || 'a instrutora'}.</p>
-            {vehicleChoices.map((ctx) => {
+            <p className="text-sm font-semibold text-slate-500">Escolha o veículo e a duração da sua aula.</p>
+            {bookingContextChoices.map((ctx) => {
               const vehicleName = `${ctx.vehicle_brand || 'Veículo'} ${ctx.vehicle_model || ''}`.trim();
               const transmission = ctx.vehicle_transmission || ctx.transmission;
               return (
                 <ButtonBase
-                  key={`${ctx.vehicle_id || ctx.vehicleId}-${ctx.offering_id || ctx.offeringId}`}
+                  key={ctx.offering_id || ctx.offeringId}
                   type="button"
                   className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
                   onClick={() => {
-                    const offering = offeringFromBookingContext(ctx);
-                    const vehicle = vehicleFromBookingContext(ctx);
-                    const slotForVehicle = vehiclePickerSlot;
-                    setCheckoutProvider(vehiclePickerProvider);
-                    setCheckoutVehicle(vehicle);
-                    setCheckoutOffering(offering);
-                    setSelectedSlot(slotForVehicle);
-                    setVehiclePickerProvider(null);
-                    setVehicleChoices([]);
-                    setVehiclePickerSlot(null);
-                    if (slotForVehicle) {
-                      setIsCheckoutOpen(true);
-                    } else {
-                      setIsSlotSelectorOpen(true);
-                    }
+                    openCheckoutForContext(offeringPickerProvider, ctx, offeringPickerSlot);
                   }}
                 >
                   <span className="flex min-w-0 items-center gap-3">

@@ -15,6 +15,7 @@ import {
   AuditLog,
   User,
   UserRole,
+  ProviderStatus,
   Quote,
   Conversation,
   Message,
@@ -1223,6 +1224,34 @@ export const dbService = {
       .limit(50);
     if (error) throw error;
     return (data || []).map(mapNotificationFromDb);
+  },
+
+  async reviewProvider(providerId: string, status: ProviderStatus, reason?: string): Promise<Provider> {
+    const { data, error } = await sp.rpc('admin_review_provider', {
+      p_provider_id: providerId,
+      p_status: status,
+      p_reason: reason || null,
+    });
+    if (error) throw error;
+    return mapProviderFromDb(data);
+  },
+
+  async updateUserRole(userId: string, role: UserRole): Promise<User> {
+    const { data, error } = await sp.rpc('admin_update_user_role', {
+      p_user_id: userId,
+      p_role: role,
+    });
+    if (error) throw error;
+    return mapUserFromDb(data);
+  },
+
+  async adminRefundMockBooking(bookingId: string, reason?: string): Promise<any> {
+    const { data, error } = await sp.rpc('admin_refund_mock_booking', {
+      p_booking_id: bookingId,
+      p_reason: reason || 'ADMIN_MOCK_REFUND',
+    });
+    if (error) throw error;
+    return data;
   },
 
   async getMyUnreadNotificationCount(): Promise<number> {
