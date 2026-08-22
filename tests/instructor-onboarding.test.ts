@@ -26,7 +26,8 @@ describe('TASK-076 instructor onboarding contract', () => {
 
   it('keeps onboarding behind the service/RPC boundary and merges multi-role sessions', () => {
     expect(authService).toContain("supabase.rpc('onboard_my_instructor')");
-    expect(authContext).toContain(".from('user_roles')");
+    expect(authContext).toContain(".rpc('get_my_roles')");
+    expect(authContext).not.toContain(".from('user_roles')");
     expect(authContext).toContain('const roles = Array.from(new Set<UserRole>');
     expect(appLogin).toContain('await onboardInstructor();');
   });

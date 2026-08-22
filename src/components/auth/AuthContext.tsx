@@ -13,7 +13,7 @@ import { supabase } from '../../lib/supabase';
 interface AuthContextType extends AuthSessionState {
   signIn: (email: string, password: string) => Promise<void>;
   signUpStudent: (params: SignUpParams) => ReturnType<typeof signUpStudentService>;
-  onboardInstructor: () => ReturnType<typeof onboardInstructorService>;
+  onboardInstructor: () => Promise<Awaited<ReturnType<typeof onboardInstructorService>>>;
   logout: () => Promise<void>;
   beginPasswordRecovery: () => void;
   completePasswordRecovery: () => Promise<void>;
@@ -202,15 +202,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      const userRole: UserRole = (profile?.role || user.user_metadata?.role || 'STUDENT') as UserRole;
-      const { data: additionalRoles } = await sp
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', profile.id);
+      const { data: roleRows, error: rolesError } = await sp.rpc('get_my_roles');
+      if (rolesError) {
+        throw new Error(`AUTH_ROLES_UNAVAILABLE: ${rolesError.message || 'Não foi possível carregar suas permissões.'}`);
+      }
       const roles = Array.from(new Set<UserRole>([
-        userRole,
-        ...((additionalRoles || []).map((entry: { role: UserRole }) => entry.role)),
+        ...((roleRows || []).map((entry: { role: UserRole }) => entry.role)),
       ]));
+      if (roles.length === 0) {
+        throw new Error('AUTH_ROLES_UNAVAILABLE: Nenhuma role válida foi encontrada para esta conta.');
+      }
 
       // 2. Fetch active provider details or school details if any (only for instructors or school admins)
       let providerId: string | undefined;
@@ -309,7 +310,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUpStudent = (params: SignUpParams) => signUpStudentService(params);
-  const onboardInstructor = () => onboardInstructorService();
+  const onboardInstructor = async () => {
+    const result = await onboardInstructorService();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session?.user) {
+      throw new Error('AUTH_SESSION_UNAVAILABLE: Não foi possível reidratar a sessão do instrutor.');
+    }
+    await handleSession(session);
+    return result;
+  };
 
   const logout = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
