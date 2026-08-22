@@ -465,6 +465,32 @@ export interface ProviderEligibilityResult {
   ineligibilityReasons: string[];
 }
 
+/** Returns whether a submitted document can satisfy a catalog requirement. */
+export function doesDocumentSatisfyRequirement(
+  documentType: string,
+  requirementType: string,
+): boolean {
+  if (requirementType === 'CNH_EAR') {
+    return documentType === 'CNH_EAR' || documentType === 'CNH';
+  }
+  if (requirementType === 'CREDENTIAL_DETRAN_SP') {
+    return documentType === 'CREDENTIAL_DETRAN_SP' || documentType === 'CREDENTIAL_DETRAN';
+  }
+  return documentType === requirementType;
+}
+
+function documentTimestamp(document: ComplianceDocument): number {
+  const timestamp = new Date(document.uploadedAt).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function newestDocument(documents: ComplianceDocument[]): ComplianceDocument | undefined {
+  return [...documents].sort((a, b) => {
+    const byDate = documentTimestamp(b) - documentTimestamp(a);
+    return byDate || b.id.localeCompare(a.id);
+  })[0];
+}
+
 /**
  * CENTRAL ELIGIBILITY ENGINE: evaluateProviderEligibility
  * Evaluates whether a Provider satisfies all mandatory compliance requirements to become or remain ACTIVE.
@@ -496,49 +522,55 @@ export function evaluateProviderEligibility(
   const approvedDocuments: ComplianceDocument[] = [];
   const ineligibilityReasons: string[] = [];
 
-  // Categorize submitted documents
-  for (const doc of documents) {
-    if (doc.providerId !== provider.id) {
+  const scopedDocuments = documents.filter((doc) =>
+    doc.providerId === provider.id ||
+    (provider.type === 'INSTRUCTOR' &&
+      doc.scope === 'USER_GLOBAL' &&
+      doc.userId === provider.userId)
+  );
+
+  // Evaluate each requirement independently. Historical submissions are not
+  // blockers when a newer approved, non-expired submission satisfies the same
+  // requirement. Only the latest relevant submission is operationally shown
+  // when no valid approval exists.
+  for (const req of providerReqs) {
+    const relevantDocuments = scopedDocuments.filter((doc) =>
+      doesDocumentSatisfyRequirement(doc.type, req.documentType)
+    );
+    const validApproved = relevantDocuments.filter(
+      (doc) => doc.status === 'APPROVED' && !isComplianceDocumentExpired(doc, referenceDate)
+    );
+
+    if (validApproved.length > 0) {
+      const effectiveApproved = newestDocument(validApproved);
+      if (effectiveApproved) approvedDocuments.push(effectiveApproved);
       continue;
     }
 
-    if (isComplianceDocumentExpired(doc, referenceDate)) {
-      expiredDocuments.push(doc);
-      ineligibilityReasons.push(`Documento '${doc.title}' está vencido (expirou em ${doc.expiresAt}).`);
-    } else if (doc.status === 'REJECTED') {
-      rejectedDocuments.push(doc);
-      ineligibilityReasons.push(`Documento '${doc.title}' foi rejeitado: ${doc.rejectionReason || 'Correção necessária'}.`);
-    } else if (doc.status === 'PENDING' || doc.status === 'UNDER_REVIEW') {
-      pendingDocuments.push(doc);
-      ineligibilityReasons.push(`Documento '${doc.title}' ainda está em análise.`);
-    } else if (doc.status === 'APPROVED') {
-      approvedDocuments.push(doc);
-    }
-  }
-
-  // Check that every mandatory requirement has an active, approved document
-  for (const req of providerReqs) {
-    const hasApproved = approvedDocuments.some(
-      (doc) => doc.type === req.documentType && !isComplianceDocumentExpired(doc, referenceDate)
-    );
-
-    if (!hasApproved) {
+    const latest = newestDocument(relevantDocuments);
+    if (!latest) {
       missingRequirements.push(req);
-      const isPending = pendingDocuments.some((doc) => doc.type === req.documentType);
-      const isRejected = rejectedDocuments.some((doc) => doc.type === req.documentType);
+      ineligibilityReasons.push(`Requisito obrigatório não enviado: '${req.title}'.`);
+      continue;
+    }
 
-      if (!isPending && !isRejected) {
-        ineligibilityReasons.push(`Requisito obrigatório não enviado: '${req.title}'.`);
-      }
+    if (latest.status === 'REJECTED') {
+      rejectedDocuments.push(latest);
+      ineligibilityReasons.push(`Documento '${latest.title}' foi rejeitado: ${latest.rejectionReason || 'Correção necessária'}.`);
+    } else if (latest.status === 'PENDING' || latest.status === 'UNDER_REVIEW') {
+      pendingDocuments.push(latest);
+      ineligibilityReasons.push(`Documento '${latest.title}' ainda está em análise.`);
+    } else if (latest.status === 'EXPIRED' || isComplianceDocumentExpired(latest, referenceDate)) {
+      expiredDocuments.push(latest);
+      ineligibilityReasons.push(`Documento '${latest.title}' está vencido (expirou em ${latest.expiresAt || 'data não informada'}).`);
+    } else {
+      // An approved document can still be ineffective when it is expired.
+      expiredDocuments.push(latest);
+      ineligibilityReasons.push(`Documento '${latest.title}' está vencido.`);
     }
   }
 
-  const isEligible =
-    missingRequirements.length === 0 &&
-    rejectedDocuments.length === 0 &&
-    expiredDocuments.length === 0 &&
-    pendingDocuments.length === 0 &&
-    approvedDocuments.length >= providerReqs.length;
+  const isEligible = approvedDocuments.length === providerReqs.length;
 
   return {
     isEligible,

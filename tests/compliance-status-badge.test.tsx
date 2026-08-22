@@ -22,4 +22,9 @@ describe('global compliance status badge', () => {
     expect(markup).toContain(label);
     expect(markup).toContain(color);
   });
+
+  it('keeps blocked and rejected operational states distinct', () => {
+    expect(renderToStaticMarkup(<StatusBadge status="BLOCKED" />)).toContain('Bloqueado');
+    expect(renderToStaticMarkup(<StatusBadge status="REJECTED" />)).toContain('Rejeitado');
+  });
 });

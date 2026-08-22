@@ -191,7 +191,9 @@ export function mapComplianceFromDb(row: any): ComplianceDocument {
   const documentType = row.document_type === 'CNH' ? 'CNH_EAR' : row.document_type;
   return {
     id: row.id,
-    providerId: row.provider_id,
+    providerId: row.provider_id || '',
+    userId: row.user_id || undefined,
+    scope: row.scope || undefined,
     type: documentType,
     title: row.document_type === 'CNH' || row.document_type === 'CNH_EAR'
       ? 'Carteira Nacional de Habilitação com EAR'

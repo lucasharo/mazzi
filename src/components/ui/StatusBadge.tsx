@@ -94,8 +94,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'INACTIVE':
         return { label: 'Suspenso / Inativo', bg: 'bg-amber-50 border-amber-300', text: 'text-amber-900', dot: 'bg-amber-600' };
       case 'BLOCKED':
+        return { label: 'Bloqueado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
       case 'REJECTED':
-        return { label: 'Bloqueado / Rejeitado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
+        return { label: 'Rejeitado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
       case 'EXPIRED':
         return { label: 'Expirada', bg: 'bg-slate-100 border-slate-300', text: 'text-slate-600', dot: 'bg-slate-400' };
 

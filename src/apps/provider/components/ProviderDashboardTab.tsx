@@ -42,13 +42,9 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
 }) => {
   const complianceEligibility = evaluateProviderEligibility(currentProvider, providerDocs);
   const isComplianceVerified = currentProvider.status === 'ACTIVE' && complianceEligibility.isEligible;
-  const complianceStatus = complianceEligibility.pendingDocuments.length > 0
-    ? 'UNDER_REVIEW'
-    : complianceEligibility.missingRequirements.length > 0
-      ? 'PENDING'
-      : complianceEligibility.rejectedDocuments.length > 0 || complianceEligibility.expiredDocuments.length > 0
-        ? 'REJECTED'
-        : currentProvider.status;
+  const complianceStatus = currentProvider.status === 'ACTIVE' && !complianceEligibility.isEligible
+    ? (complianceEligibility.pendingDocuments.length > 0 ? 'UNDER_REVIEW' : 'PENDING')
+    : currentProvider.status;
 
   return (
     <div className="space-y-6 text-left">
@@ -98,7 +94,12 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
                 {isComplianceVerified && 'Credenciamento Ativo • Verificado pela MAZZI'}
                 {!isComplianceVerified && complianceEligibility.pendingDocuments.length > 0 && 'Documentos em análise pelo Compliance'}
                 {!isComplianceVerified && complianceEligibility.pendingDocuments.length === 0 && complianceEligibility.missingRequirements.length > 0 && 'Documentação pendente para verificação'}
+                {!isComplianceVerified && complianceEligibility.pendingDocuments.length === 0 && complianceEligibility.missingRequirements.length === 0 && complianceEligibility.rejectedDocuments.length > 0 && 'Documentos rejeitados: correção necessária'}
+                {!isComplianceVerified && complianceEligibility.pendingDocuments.length === 0 && complianceEligibility.missingRequirements.length === 0 && complianceEligibility.rejectedDocuments.length === 0 && complianceEligibility.expiredDocuments.length > 0 && 'Documentos vencidos: atualização necessária'}
                 {!isComplianceVerified && complianceEligibility.isEligible && 'Compliance aprovado • Aguardando ativação'}
+                {!isComplianceVerified && currentProvider.status === 'REJECTED' && 'Cadastro rejeitado'}
+                {!isComplianceVerified && currentProvider.status === 'SUSPENDED' && 'Cadastro suspenso'}
+                {!isComplianceVerified && currentProvider.status === 'BLOCKED' && 'Cadastro bloqueado'}
               </h4>
               {currentProvider.isVerified && currentProvider.status !== 'ACTIVE' && (
                 <span

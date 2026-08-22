@@ -289,7 +289,23 @@ export const ProviderApp: React.FC = () => {
       } else {
         setBookings(workspace.bookings);
       }
-      setComplianceDocs(workspace.complianceDocuments);
+      let effectiveComplianceDocuments = workspace.complianceDocuments;
+      if (isInstructorUser && workspace.provider.type === 'INSTRUCTOR') {
+        // USER_GLOBAL documents (for example CNH/EAR) are part of the
+        // instructor's effective compliance set, but must never be mixed into
+        // another user/provider's workspace. Fail closed if this read fails.
+        const globalDocuments = await dbService.listMyGlobalCompliance();
+        const seen = new Set(effectiveComplianceDocuments.map((document) => document.id));
+        effectiveComplianceDocuments = [
+          ...effectiveComplianceDocuments,
+          ...globalDocuments.filter((document) =>
+            document.scope === 'USER_GLOBAL' &&
+            document.userId === user?.id &&
+            !seen.has(document.id)
+          ),
+        ];
+      }
+      setComplianceDocs(effectiveComplianceDocuments);
       setAvailabilityRules(workspace.availabilityRules.map((rule: any) => ({
         id: rule.id,
         providerId: rule.provider_id,

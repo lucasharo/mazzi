@@ -178,6 +178,7 @@ export interface ComplianceDocument {
   providerId: string;
   providerName?: string;
   userId?: string;
+  scope?: 'USER_GLOBAL' | 'PROVIDER' | 'MEMBERSHIP' | 'VEHICLE';
   type: string;
   title: string;
   status: DocumentStatus;
