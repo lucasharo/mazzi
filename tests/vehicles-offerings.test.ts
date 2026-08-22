@@ -13,6 +13,7 @@ import {
   validateOfferingActivationPermission,
 } from '../src/domain/vehicles-offerings';
 import { Provider, Vehicle, ServiceOffering } from '../src/types';
+import { maskBRLInput } from '../src/lib/input-masks';
 
 describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
   const mockProvider: Provider = {
@@ -129,6 +130,11 @@ describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
         priceInCents: 0,
       })
     ).toThrowError(/Preço da aula deve ser um valor inteiro em centavos maior que zero/i);
+  });
+
+  it('keeps browser currency masking aligned with integer cents', () => {
+    expect(maskBRLInput('15000')).toBe('R$ 150,00');
+    expect(parseBrlToCents('R$ 150,00')).toBe(15000);
   });
 
   it('evaluates offering eligibility accurately based on provider status and vehicle status', () => {
