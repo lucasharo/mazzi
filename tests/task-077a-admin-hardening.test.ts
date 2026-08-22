@@ -7,7 +7,7 @@ const adminComponents = readFileSync('src/apps/admin/AdminComponents.tsx', 'utf8
 const dbService = readFileSync('src/lib/db-service.ts', 'utf8');
 const rbac = readFileSync('src/domain/rbac.ts', 'utf8');
 const migration = readFileSync(
-  'supabase/migrations/20260822164454_task_077a_admin_access_hardening.sql',
+  'supabase/migrations/20260822164851_task_077a_admin_access_hardening.sql',
   'utf8',
 );
 
