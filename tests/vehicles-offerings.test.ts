@@ -108,6 +108,7 @@ describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
   it('validates service offering creation with positive price in cents and duration', () => {
     const createdOffering = createServiceOffering({
       providerId: 'prov_100',
+      instructorId: 'inst_100',
       vehicle: activeVehicle,
       category: 'B',
       durationMinutes: 50,
@@ -121,6 +122,7 @@ describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
     expect(() =>
       createServiceOffering({
         providerId: 'prov_100',
+        instructorId: 'inst_100',
         vehicle: activeVehicle,
         category: 'B',
         durationMinutes: 50,

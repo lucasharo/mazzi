@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
+import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../lib/db-service';
 import {
   UserRole,
   Vehicle,
@@ -104,6 +105,8 @@ export const ProviderApp: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [offerings, setOfferings] = useState<ServiceOffering[]>([]);
+  const [schoolInstructors, setSchoolInstructors] = useState<SchoolMembership[]>([]);
+  const [schoolInstructorSummary, setSchoolInstructorSummary] = useState<SchoolInstructorComplianceSummary[]>([]);
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>([]);
   const [availabilityExceptions, setAvailabilityExceptions] = useState<AvailabilityException[]>([]);
   const [lessonSessions, setLessonSessions] = useState<Record<string, LessonSession>>({});
@@ -209,6 +212,7 @@ export const ProviderApp: React.FC = () => {
   const [isAddOfferingModalOpen, setIsAddOfferingModalOpen] = useState<boolean>(false);
   const [offeringForm, setOfferingForm] = useState({
     vehicleId: '',
+    instructorId: '',
     category: 'B' as VehicleCategory,
     durationMinutes: 60,
     priceInBrl: '95',
@@ -240,6 +244,24 @@ export const ProviderApp: React.FC = () => {
       setProviders([workspace.provider]);
       setVehicles(workspace.vehicles);
       setOfferings(workspace.offerings);
+
+      if (workspace.provider.type === 'DRIVING_SCHOOL') {
+        try {
+          const [memberships, complianceSummary] = await Promise.all([
+            dbService.listSchoolMemberships(workspace.provider.id),
+            dbService.getSchoolInstructorComplianceSummary(workspace.provider.id),
+          ]);
+          setSchoolInstructors(memberships);
+          setSchoolInstructorSummary(complianceSummary);
+        } catch (error) {
+          console.warn('School instructors load failed:', error);
+          setSchoolInstructors([]);
+          setSchoolInstructorSummary([]);
+        }
+      } else {
+        setSchoolInstructors([]);
+        setSchoolInstructorSummary([]);
+      }
 
       const isInstructorUser = user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'));
       if (isInstructorUser) {
@@ -290,6 +312,8 @@ export const ProviderApp: React.FC = () => {
       setProviders([]);
       setVehicles([]);
       setOfferings([]);
+      setSchoolInstructors([]);
+      setSchoolInstructorSummary([]);
       setBookings([]);
       setComplianceDocs([]);
       setAvailabilityRules([]);
@@ -328,6 +352,10 @@ export const ProviderApp: React.FC = () => {
     setActiveProviderId(user.providerId);
     void loadWorkspace(user.providerId);
   }, [user?.providerId]);
+
+  useEffect(() => {
+    setOfferingForm((previous) => ({ ...previous, instructorId: '' }));
+  }, [activeProviderId]);
 
   useEffect(() => {
     setProfileAvatar(user?.avatarUrl);
@@ -727,10 +755,28 @@ export const ProviderApp: React.FC = () => {
         throw new Error('Selecione um veículo válido para a oferta.');
       }
 
+      const instructorId = currentProvider.type === 'DRIVING_SCHOOL'
+        ? offeringForm.instructorId
+        : currentProvider.userId || user?.id || '';
+      if (!instructorId) {
+        throw new Error(currentProvider.type === 'DRIVING_SCHOOL'
+          ? 'Selecione um instrutor ativo para a oferta.'
+          : 'Não foi possível identificar o instrutor proprietário.');
+      }
+
+      if (currentProvider.type === 'DRIVING_SCHOOL') {
+        const selectedInstructor = schoolInstructors.find((instructor) => instructor.userId === instructorId);
+        const selectedCompliance = schoolInstructorSummary.find((entry) => entry.membershipId === selectedInstructor?.id);
+        if (!selectedInstructor || selectedInstructor.membershipStatus !== 'ACTIVE' || !selectedInstructor.isActive || selectedCompliance?.eligible !== true) {
+          throw new Error('Selecione um instrutor ativo e elegível para a oferta.');
+        }
+      }
+
       const priceInCents = parseBrlToCents(offeringForm.priceInBrl);
 
       const newOffering = createServiceOffering({
         providerId: currentProvider.id,
+        instructorId,
         vehicle,
         category: vehicle.category,
         durationMinutes: Number(offeringForm.durationMinutes),
@@ -743,6 +789,7 @@ export const ProviderApp: React.FC = () => {
       setIsAddOfferingModalOpen(false);
       setOfferingForm({
         vehicleId: '',
+        instructorId: '',
         category: 'B',
         durationMinutes: 60,
         priceInBrl: '95',
@@ -935,6 +982,8 @@ export const ProviderApp: React.FC = () => {
             offerings={offerings}
             complianceDocs={complianceDocs}
             currentProvider={currentProvider}
+            schoolInstructors={schoolInstructors}
+            schoolInstructorSummary={schoolInstructorSummary}
             isAddVehicleModalOpen={isAddVehicleModalOpen}
             onOpenAddVehicleModal={() => setIsAddVehicleModalOpen(true)}
             onCloseAddVehicleModal={() => setIsAddVehicleModalOpen(false)}

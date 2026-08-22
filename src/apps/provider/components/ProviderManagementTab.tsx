@@ -16,6 +16,7 @@ import { formatTransmissionLabel } from '../../../lib/date-format';
 import { maskVehiclePlate, normalizeVehiclePlate, maskBRLInput } from '../../../lib/input-masks';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { SchoolMembershipPanel } from './SchoolMembershipPanel';
+import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../../lib/db-service';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
@@ -26,6 +27,8 @@ interface ProviderManagementTabProps {
   offerings: ServiceOffering[];
   complianceDocs: ComplianceDocument[];
   currentProvider: Provider;
+  schoolInstructors: SchoolMembership[];
+  schoolInstructorSummary: SchoolInstructorComplianceSummary[];
   isAddVehicleModalOpen: boolean;
   onOpenAddVehicleModal: () => void;
   onCloseAddVehicleModal: () => void;
@@ -49,6 +52,7 @@ interface ProviderManagementTabProps {
   onCloseAddOfferingModal: () => void;
   offeringForm: {
     vehicleId: string;
+    instructorId: string;
     category: VehicleCategory;
     durationMinutes: number;
     priceInBrl: string;
@@ -69,6 +73,8 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   offerings,
   complianceDocs,
   currentProvider,
+  schoolInstructors,
+  schoolInstructorSummary,
   isAddVehicleModalOpen,
   onOpenAddVehicleModal,
   onCloseAddVehicleModal,
@@ -87,6 +93,11 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   offeringError,
   onUploadDocClick,
 }) => {
+  const eligibleSchoolInstructors = schoolInstructors.filter((instructor) => {
+    const compliance = schoolInstructorSummary.find((entry) => entry.membershipId === instructor.id);
+    return instructor.membershipStatus === 'ACTIVE' && instructor.isActive && compliance?.eligible === true;
+  });
+
   return (
     <div className="space-y-6 text-left">
       {/* Header */}
@@ -148,7 +159,13 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           </Button>
         )}
         {managementSubTab === 'offerings' && (
-          <Button variant="primary" size="sm" onClick={onOpenAddOfferingModal} leftIcon={<Plus className="w-4 h-4" />}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onOpenAddOfferingModal}
+            disabled={currentProvider.type === 'DRIVING_SCHOOL' && eligibleSchoolInstructors.length === 0}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
             Cadastrar Oferta
           </Button>
         )}
@@ -231,6 +248,11 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       {/* OFFERINGS SUBTAB */}
       {managementSubTab === 'offerings' && (
         <div className="space-y-4">
+          {currentProvider.type === 'DRIVING_SCHOOL' && eligibleSchoolInstructors.length === 0 && (
+            <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+              Ative ao menos um instrutor antes de cadastrar uma oferta.
+            </p>
+          )}
           {offerings.length === 0 ? (
             <EmptyState
               icon={<Tag className="w-8 h-8 text-slate-400" />}
@@ -243,6 +265,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {offerings.map((o) => {
                 const linkedVehicle = vehicles.find((v) => v.id === o.vehicleId);
+                const linkedInstructor = schoolInstructors.find((instructor) => instructor.userId === o.instructorId);
 
                 return (
                   <div
@@ -270,6 +293,15 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                           {linkedVehicle ? `${linkedVehicle.brand} ${linkedVehicle.model}` : 'Veículo não localizado'}
                         </span>
                       </p>
+
+                      {currentProvider.type === 'DRIVING_SCHOOL' && (
+                        <p className="text-xs text-slate-600 font-medium">
+                          Instrutor:{' '}
+                          <span className="text-slate-900 font-bold">
+                            {linkedInstructor?.name || 'Instrutor não localizado'}
+                          </span>
+                        </p>
+                      )}
 
                       <p className="text-xs text-slate-500">
                         Transmissão: {formatTransmissionLabel(o.transmission)}
@@ -458,6 +490,24 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{offeringError}</span>
+            </div>
+          )}
+
+          {currentProvider.type === 'DRIVING_SCHOOL' && (
+            <div>
+              <label className="text-xs font-extrabold text-slate-900 block mb-1">Instrutor *</label>
+              <Select
+                value={offeringForm.instructorId}
+                onChange={(e) => onOfferingFormChange({ ...offeringForm, instructorId: e.target.value })}
+                options={[
+                  { value: '', label: 'Selecione um instrutor...' },
+                  ...eligibleSchoolInstructors.map((instructor) => ({ value: instructor.userId, label: instructor.name })),
+                ]}
+                disabled={eligibleSchoolInstructors.length === 0}
+              />
+              {eligibleSchoolInstructors.length === 0 && (
+                <p className="mt-1 text-xs font-semibold text-amber-700">Ative ao menos um instrutor antes de cadastrar uma oferta.</p>
+              )}
             </div>
           )}
 

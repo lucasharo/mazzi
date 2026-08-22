@@ -471,12 +471,21 @@ export function validateOfferingData(data: Partial<ServiceOffering>): void {
  */
 export function createServiceOffering(params: {
   providerId: string;
+  instructorId: string;
   vehicle: Vehicle;
   category: VehicleCategory;
   durationMinutes: number;
   priceInCents: number;
   existingOfferings?: ServiceOffering[];
 }): ServiceOffering {
+  if (!params.instructorId || typeof params.instructorId !== 'string') {
+    throw new OfferingDomainError(
+      'Instrutor da oferta é obrigatório.',
+      'MISSING_OFFERING_INSTRUCTOR',
+      400
+    );
+  }
+
   // Validate Vehicle Ownership
   if (params.vehicle.providerId !== params.providerId) {
     throw new OfferingDomainError(
@@ -500,6 +509,7 @@ export function createServiceOffering(params: {
     const isDuplicate = params.existingOfferings.some(
       (off) =>
         off.providerId === params.providerId &&
+        off.instructorId === params.instructorId &&
         off.vehicleId === params.vehicle.id &&
         off.category === params.category &&
         off.durationMinutes === params.durationMinutes &&
@@ -507,7 +517,7 @@ export function createServiceOffering(params: {
     );
     if (isDuplicate) {
       throw new OfferingDomainError(
-        'Já existe uma oferta ativa idêntica para este veículo, categoria e duração.',
+        'Já existe uma oferta ativa idêntica para este instrutor, veículo, categoria e duração.',
         'DUPLICATE_OFFERING_EXISTS',
         409
       );
@@ -517,6 +527,7 @@ export function createServiceOffering(params: {
   const offering: ServiceOffering = {
     id: `off_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     providerId: params.providerId,
+    instructorId: params.instructorId,
     vehicleId: params.vehicle.id,
     category: params.category,
     durationMinutes: params.durationMinutes,
