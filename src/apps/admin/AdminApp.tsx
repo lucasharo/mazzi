@@ -3,10 +3,10 @@
 // File: src/apps/admin/AdminApp.tsx
 // ============================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import {
-  BarChart3, CalendarDays, Car, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, } from 'lucide-react';
+  BarChart3, Bell, CalendarDays, Car, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { dbService } from '../../lib/db-service';
 import {
@@ -43,10 +43,15 @@ import {
 import { AdminAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
+import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
+import { NotificationIndicator } from '../../components/ui/NotificationIndicator';
+import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
+import { Modal } from '../../components/ui/Modal';
 
 export const AdminApp: React.FC = () => {
   const { user, logout } = useAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
   const [profileError, setProfileError] = useState<string | null>(null);
 
@@ -80,7 +85,9 @@ export const AdminApp: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfiguration>(DEFAULT_PLATFORM_CONFIGURATION);
   const [isLoadingRealData, setIsLoadingRealData] = useState(true);
+  const [isRefreshingRealData, setIsRefreshingRealData] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const refreshAdminDataRef = useRef<() => void>(() => undefined);
 
   // Active Session Toggle (Interactive testing for PLATFORM_ADMIN vs SUPPORT)
   const [currentRole, setCurrentRole] = useState<UserRole>('PLATFORM_ADMIN');
@@ -93,8 +100,9 @@ export const AdminApp: React.FC = () => {
 
   // Load live data from Supabase
   useEffect(() => {
-    async function loadRealData() {
-      setIsLoadingRealData(true);
+    async function loadRealData(isRefresh = false) {
+      if (isRefresh) setIsRefreshingRealData(true);
+      else setIsLoadingRealData(true);
       setLoadError(null);
       try {
         const [p, v, b, c, a, configs, u] = await Promise.all([
@@ -137,8 +145,13 @@ export const AdminApp: React.FC = () => {
         if (configs.length > 0) {
           const mappedConfig = { ...DEFAULT_PLATFORM_CONFIGURATION };
           for (const item of configs) {
-            if (item.key in mappedConfig) {
-              (mappedConfig as any)[item.key] = item.value;
+            if (item.key === 'platform_fees' && item.value?.default_percentage !== undefined) mappedConfig.platformFeeDefaultPercentage = Number(item.value.default_percentage);
+            if (item.key === 'quote_settings' && item.value?.expiration_minutes !== undefined) mappedConfig.quoteExpirationMinutes = Number(item.value.expiration_minutes);
+            if (item.key === 'scheduling_settings' && item.value?.max_booking_horizon_days !== undefined) mappedConfig.availabilityHorizonDays = Number(item.value.max_booking_horizon_days);
+            if (item.key === 'platform_operations') {
+              if (item.value?.minimum_notice_hours !== null && item.value?.minimum_notice_hours !== undefined) mappedConfig.minimumBookingNoticeHours = Number(item.value.minimum_notice_hours);
+              if (item.value?.payout_safety_period_hours !== null && item.value?.payout_safety_period_hours !== undefined) mappedConfig.payoutSafetyPeriodHours = Number(item.value.payout_safety_period_hours);
+              if (item.value?.search_radius_km !== null && item.value?.search_radius_km !== undefined) mappedConfig.searchRadiusDefaultsKm = Number(item.value.search_radius_km);
             }
           }
           setPlatformConfig(mappedConfig);
@@ -147,10 +160,12 @@ export const AdminApp: React.FC = () => {
         console.error('Failed to load live database state in AdminApp:', err);
         setLoadError(err?.message || 'Falha ao carregar dados reais do Supabase para o Admin.');
       } finally {
-        setIsLoadingRealData(false);
+        if (isRefresh) setIsRefreshingRealData(false);
+        else setIsLoadingRealData(false);
       }
     }
-    loadRealData();
+    refreshAdminDataRef.current = () => { void loadRealData(true); };
+    void loadRealData();
   }, [user]);
 
   // Resolved Session Context
@@ -194,27 +209,57 @@ export const AdminApp: React.FC = () => {
   // ==========================================================================
   // COMPLIANCE DOCUMENTS HANDLERS
   // ==========================================================================
-  const handleApproveDoc = (_doc: ComplianceDocument) => {
-    blockPendingAdminMutation('Aprovação de documento');
+  const handleApproveDoc = async (doc: ComplianceDocument) => {
+    try {
+      const updatedDoc = await dbService.reviewComplianceDocument(doc.id, 'APPROVED');
+      setComplianceDocs((current) => current.map((item) => item.id === updatedDoc.id ? updatedDoc : item));
+    } catch (error: any) {
+      console.error('Admin document approval failed:', error);
+      alert(`Não foi possível aprovar o documento: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
-  const handleRejectDoc = (_doc: ComplianceDocument, _reason: string) => {
-    blockPendingAdminMutation('Rejeição de documento');
+  const handleRejectDoc = async (doc: ComplianceDocument, reason: string) => {
+    try {
+      const updatedDoc = await dbService.reviewComplianceDocument(doc.id, 'REJECTED', reason);
+      setComplianceDocs((current) => current.map((item) => item.id === updatedDoc.id ? updatedDoc : item));
+    } catch (error: any) {
+      console.error('Admin document rejection failed:', error);
+      alert(`Não foi possível rejeitar o documento: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
   // ==========================================================================
   // VEHICLE TRANSITION HANDLERS
   // ==========================================================================
-  const handleApproveVehicle = (_v: Vehicle) => {
-    blockPendingAdminMutation('Aprovação de veículo');
+  const handleApproveVehicle = async (vehicle: Vehicle) => {
+    try {
+      const updatedVehicle = await dbService.reviewVehicle(vehicle.id, 'ACTIVE');
+      setVehicles((current) => current.map((item) => item.id === updatedVehicle.id ? updatedVehicle : item));
+    } catch (error: any) {
+      console.error('Admin vehicle approval failed:', error);
+      alert(`Não foi possível aprovar o veículo: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
-  const handleRejectVehicle = (_v: Vehicle, _reason: string) => {
-    blockPendingAdminMutation('Rejeição de veículo');
+  const handleRejectVehicle = async (vehicle: Vehicle, reason: string) => {
+    try {
+      const updatedVehicle = await dbService.reviewVehicle(vehicle.id, 'INACTIVE', reason);
+      setVehicles((current) => current.map((item) => item.id === updatedVehicle.id ? updatedVehicle : item));
+    } catch (error: any) {
+      console.error('Admin vehicle rejection failed:', error);
+      alert(`Não foi possível reprovar o veículo: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
-  const handleBlockVehicle = (_v: Vehicle, _reason: string) => {
-    blockPendingAdminMutation('Bloqueio de veículo');
+  const handleBlockVehicle = async (vehicle: Vehicle, reason: string) => {
+    try {
+      const updatedVehicle = await dbService.reviewVehicle(vehicle.id, 'BLOCKED', reason);
+      setVehicles((current) => current.map((item) => item.id === updatedVehicle.id ? updatedVehicle : item));
+    } catch (error: any) {
+      console.error('Admin vehicle block failed:', error);
+      alert(`Não foi possível bloquear o veículo: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
   // ==========================================================================
@@ -234,8 +279,23 @@ export const AdminApp: React.FC = () => {
   // ==========================================================================
   // PLATFORM CONFIGURATION UPDATE HANDLER
   // ==========================================================================
-  const handleUpdateConfig = (_updates: Partial<PlatformConfiguration>) => {
-    blockPendingAdminMutation('Alteração de configuração da plataforma');
+  const handleUpdateConfig = async (updates: Partial<PlatformConfiguration>) => {
+    try {
+      const persistedUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([, value]) => typeof value === 'number'),
+      ) as Record<string, number>;
+      await dbService.updatePlatformConfigs(persistedUpdates);
+      setPlatformConfig((current) => ({
+        ...current,
+        ...updates,
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.email || current.updatedBy,
+      }));
+      alert('Parâmetros globais atualizados com sucesso.');
+    } catch (error: any) {
+      console.error('Admin platform configuration update failed:', error);
+      alert(`Não foi possível salvar os parâmetros: ${error?.message || 'erro desconhecido'}`);
+    }
   };
 
   return (
@@ -254,6 +314,27 @@ export const AdminApp: React.FC = () => {
             <p className="text-[11px] text-slate-400 font-medium">Operação do marketplace</p>
           </div>
         </div>
+        <ButtonBase
+          type="button"
+          onClick={() => refreshAdminDataRef.current()}
+          disabled={isRefreshingRealData}
+          aria-label="Atualizar dados do Admin"
+          title="Atualizar dados do Admin"
+          className="ml-auto grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-white hover:bg-white/15 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-5 w-5 ${isRefreshingRealData ? 'animate-spin' : ''}`} aria-hidden="true" />
+        </ButtonBase>
+        <ButtonBase
+          type="button"
+          onClick={() => setIsNotificationsOpen(true)}
+          aria-label="Abrir notificações"
+          title="Notificações"
+          className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-white hover:bg-white/15"
+        >
+          <NotificationIndicator className="h-full w-full items-center justify-center">
+            <Bell className="h-5 w-5" aria-hidden="true" />
+          </NotificationIndicator>
+        </ButtonBase>
 
       </header>
 
@@ -298,11 +379,12 @@ export const AdminApp: React.FC = () => {
       {/* App Workspace */}
       <main className="w-full p-6 md:col-start-2 md:row-span-2 md:row-start-1 md:p-10">
         {activeTab !== 'profile' && <div className="mb-8"><p className="mazzi-eyebrow mb-2">MAZZI Admin</p><h1 className="text-3xl font-extrabold tracking-[-.04em]">{activeTab === 'dashboard' ? 'Visão geral' : 'Operação'}</h1></div>}
-        {isLoadingRealData && (
+        {isLoadingRealData && !isRefreshingRealData && (
           <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-600">
             Carregando dados reais do Supabase...
           </div>
         )}
+        {isRefreshingRealData && <ContentSkeleton mode={activeTab === 'profile' ? 'object' : 'list'} label="Atualizando dados do Admin" />}
 
         {loadError && (
           <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
@@ -310,7 +392,7 @@ export const AdminApp: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'dashboard' && (
+        {!isRefreshingRealData && activeTab === 'dashboard' && (
           <DashboardTab
             providers={providers}
             complianceDocs={complianceDocs}
@@ -321,7 +403,7 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {activeTab === 'providers' && (
+        {!isRefreshingRealData && activeTab === 'providers' && (
           <ProvidersTab
             providers={providers}
             complianceDocs={complianceDocs}
@@ -336,7 +418,7 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {activeTab === 'compliance' && (
+        {!isRefreshingRealData && activeTab === 'compliance' && (
           <ComplianceTab
             complianceDocs={complianceDocs}
             actor={activeActor}
@@ -345,7 +427,7 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {activeTab === 'vehicles' && (
+        {!isRefreshingRealData && activeTab === 'vehicles' && (
           <VehiclesTab
             vehicles={vehicles}
             providers={providers}
@@ -355,14 +437,14 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {activeTab === 'bookings' && (
+        {!isRefreshingRealData && activeTab === 'bookings' && (
           <BookingsTab
             bookings={bookings}
             auditLogs={auditLogs}
           />
         )}
 
-        {activeTab === 'financial' && (
+        {!isRefreshingRealData && activeTab === 'financial' && (
           <FinancialTab
             bookings={bookings}
             auditLogs={auditLogs}
@@ -371,11 +453,11 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {activeTab === 'analytics' && (
+        {!isRefreshingRealData && activeTab === 'analytics' && (
           <AdminAnalyticsPanel />
         )}
 
-        {activeTab === 'users' && (
+        {!isRefreshingRealData && activeTab === 'users' && (
           <UsersTab
             users={users}
             actor={activeActor}
@@ -383,13 +465,13 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {activeTab === 'audit' && (
+        {!isRefreshingRealData && activeTab === 'audit' && (
           <AuditTab
             auditLogs={auditLogs}
           />
         )}
 
-        {activeTab === 'settings' && (
+        {!isRefreshingRealData && activeTab === 'settings' && (
           <SettingsTab
             config={platformConfig}
             actor={activeActor}
@@ -397,7 +479,7 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {activeTab === 'profile' && (
+        {!isRefreshingRealData && activeTab === 'profile' && (
           <section className="max-w-xl space-y-5 text-left">
             <header className="flex items-start justify-between gap-4 pt-0">
               <div>
@@ -431,6 +513,9 @@ export const AdminApp: React.FC = () => {
           </section>
         )}
       </main>
+      <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações MAZZI Admin">
+        <NotificationsPanel />
+      </Modal>
     </div>
   );
 };

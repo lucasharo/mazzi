@@ -1,6 +1,7 @@
 import { ButtonBase } from './Button';
 import React from 'react';
 import { Bell, RefreshCw } from 'lucide-react';
+import { NotificationIndicator } from './NotificationIndicator';
 
 interface AppHomeHeaderProps {
   eyebrow: string;
@@ -43,9 +44,10 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
         className="mazzi-icon-button cursor-pointer"
         title="Notificações"
         aria-label="Abrir notificações"
-        data-notification="true"
       >
-        <Bell className="h-5 w-5" aria-hidden="true" />
+        <NotificationIndicator className="h-full w-full items-center justify-center">
+          <Bell className="h-5 w-5" aria-hidden="true" />
+        </NotificationIndicator>
       </ButtonBase>
       <ButtonBase
         type="button"

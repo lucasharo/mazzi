@@ -17,6 +17,9 @@ import {
   VehicleType,
 } from '../types';
 
+/** Duração única de aula disponível no MVP, conforme a hora-aula do CONTRAN. */
+export const MVP_LESSON_DURATION_MINUTES = 50;
+
 export class VehicleDomainError extends Error {
   constructor(
     message: string,
@@ -433,13 +436,9 @@ export function validateOfferingData(data: Partial<ServiceOffering>): void {
     );
   }
 
-  if (
-    typeof data.durationMinutes !== 'number' ||
-    !Number.isInteger(data.durationMinutes) ||
-    data.durationMinutes <= 0
-  ) {
+  if (data.durationMinutes !== MVP_LESSON_DURATION_MINUTES) {
     throw new OfferingDomainError(
-      'Duração da aula deve ser um número inteiro de minutos maior que zero.',
+      'No MVP, a duração da aula deve ser de 50 minutos.',
       'INVALID_OFFERING_DURATION',
       400
     );

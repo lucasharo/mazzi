@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { groupBookingContextsByInstructor } from '../src/apps/student/StudentApp';
+import { groupBookingContextsByInstructor, groupBookingContextsByVehicle } from '../src/apps/student/StudentApp';
 
 describe('Student booking context instructor selection', () => {
   it('groups multiple offerings from one school by distinct instructor', () => {
@@ -24,5 +24,25 @@ describe('Student booking context instructor selection', () => {
 
     expect(contexts).toHaveLength(1);
     expect(contexts[0].offering_id).toBe('offering-a');
+  });
+
+  it('keeps multiple vehicles for the same instructor as separate choices', () => {
+    const contexts = groupBookingContextsByVehicle([
+      { instructor_id: 'fernanda', vehicle_id: 'honda-city', offering_id: 'offering-honda' },
+      { instructor_id: 'fernanda', vehicle_id: 'vw-polo', offering_id: 'offering-polo' },
+    ]);
+
+    expect(contexts).toHaveLength(2);
+    expect(contexts.map((context) => context.vehicle_id)).toEqual(['honda-city', 'vw-polo']);
+  });
+
+  it('does not duplicate one vehicle when it has multiple offerings', () => {
+    const contexts = groupBookingContextsByVehicle([
+      { instructor_id: 'fernanda', vehicle_id: 'honda-city', offering_id: 'offering-50' },
+      { instructor_id: 'fernanda', vehicle_id: 'honda-city', offering_id: 'offering-60' },
+    ]);
+
+    expect(contexts).toHaveLength(1);
+    expect(contexts[0].offering_id).toBe('offering-50');
   });
 });

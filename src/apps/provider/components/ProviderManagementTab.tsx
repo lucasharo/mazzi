@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, Bike, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, } from 'lucide-react';
+import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, } from 'lucide-react';
 import {
   Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -15,8 +15,10 @@ import { DEFAULT_COMPLIANCE_REQUIREMENTS } from '../../../domain/compliance';
 import { formatTransmissionLabel } from '../../../lib/date-format';
 import { maskVehiclePlate, normalizeVehiclePlate, maskBRLInput } from '../../../lib/input-masks';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
+import { Tabs } from '../../../components/ui/Tabs';
 import { SchoolMembershipPanel } from './SchoolMembershipPanel';
 import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../../lib/db-service';
+import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
@@ -62,6 +64,9 @@ interface ProviderManagementTabProps {
   onToggleOfferingStatus: (offeringId: string) => void;
   offeringError: string | null;
   onUploadDocClick: (docType: string) => void;
+  onAcceptComplianceTerms: () => void;
+  isAcceptingComplianceTerms?: boolean;
+  complianceTermsError?: string | null;
 }
 
 export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
@@ -92,7 +97,11 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   onToggleOfferingStatus,
   offeringError,
   onUploadDocClick,
+  onAcceptComplianceTerms,
+  isAcceptingComplianceTerms = false,
+  complianceTermsError,
 }) => {
+  const [isInviteInstructorModalOpen, setIsInviteInstructorModalOpen] = React.useState(false);
   const eligibleSchoolInstructors = schoolInstructors.filter((instructor) => {
     const compliance = schoolInstructorSummary.find((entry) => entry.membershipId === instructor.id);
     return instructor.membershipStatus === 'ACTIVE' && instructor.isActive && compliance?.eligible === true;
@@ -108,49 +117,19 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         action={<ButtonBase type="button" className="mazzi-icon-button" onClick={onRefresh} disabled={isRefreshing} aria-label="Atualizar gestão" title="Atualizar gestão"><RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden="true" /></ButtonBase>}
       />
 
-      {/* Subtabs Switcher */}
-      <div className="mazzi-segmented overflow-x-auto">
-        <ButtonBase
-          type="button"
-          onClick={() => onSubTabChange('vehicles')}
-          aria-selected={managementSubTab === 'vehicles'}
-          data-active={managementSubTab === 'vehicles'}
-          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
-        >
-          <Car className="w-3.5 h-3.5" />
-          <span>Veículos</span>
-        </ButtonBase>
-        <ButtonBase
-          type="button"
-          onClick={() => onSubTabChange('offerings')}
-          aria-selected={managementSubTab === 'offerings'}
-          data-active={managementSubTab === 'offerings'}
-          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
-        >
-          <Tag className="w-3.5 h-3.5" />
-          <span>Ofertas</span>
-        </ButtonBase>
-        <ButtonBase
-          type="button"
-          onClick={() => onSubTabChange('compliance')}
-          aria-selected={managementSubTab === 'compliance'}
-          data-active={managementSubTab === 'compliance'}
-          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
-        >
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Compliance</span>
-        </ButtonBase>
-        <ButtonBase
-          type="button"
-          onClick={() => onSubTabChange('memberships')}
-          aria-selected={managementSubTab === 'memberships'}
-          data-active={managementSubTab === 'memberships'}
-          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>Instrutores</span>
-        </ButtonBase>
-      </div>
+      <Tabs
+        id="provider-management-tabs"
+        ariaLabel="Seções de gestão"
+        activeTab={managementSubTab}
+        onChange={(tab) => onSubTabChange(tab as ProviderManagementTabProps['managementSubTab'])}
+        tabs={[
+          { id: 'vehicles', label: 'Veículos', icon: <Car className="h-3.5 w-3.5" /> },
+          { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" /> },
+          { id: 'compliance', label: 'Compliance', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
+          { id: 'memberships', label: 'Instrutores', icon: <Users className="h-3.5 w-3.5" /> },
+        ]}
+        className="mazzi-segmented"
+      />
 
       <div className="flex justify-end">
         {managementSubTab === 'vehicles' && (
@@ -169,17 +148,27 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             Cadastrar Oferta
           </Button>
         )}
+        {managementSubTab === 'memberships' && currentProvider.type === 'DRIVING_SCHOOL' && (
+          <Button variant="primary" size="sm" onClick={() => setIsInviteInstructorModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
+            Convidar Instrutor
+          </Button>
+        )}
       </div>
 
-      {managementSubTab === 'memberships' && (
+      {isRefreshing && <ContentSkeleton label="Atualizando gestão" />}
+
+      {!isRefreshing && managementSubTab === 'memberships' && (
         <SchoolMembershipPanel
           provider={currentProvider}
           isInstructor={currentProvider.type === 'INSTRUCTOR'}
+          isInviteModalOpen={isInviteInstructorModalOpen}
+          onOpenInviteModal={() => setIsInviteInstructorModalOpen(true)}
+          onCloseInviteModal={() => setIsInviteInstructorModalOpen(false)}
         />
       )}
 
       {/* VEHICLES SUBTAB */}
-      {managementSubTab === 'vehicles' && (
+      {!isRefreshing && managementSubTab === 'vehicles' && (
         <div className="space-y-4">
           {vehicles.length === 0 ? (
             <EmptyState
@@ -191,54 +180,24 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {vehicles.map((v) => (
-                <div
-                  key={v.id}
-                  className="p-5 rounded-3xl bg-white border border-[#e9e6de] shadow-xs space-y-3 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
+              {vehicles.map((vehicle) => (
+                <VehicleCard
+                  key={vehicle.id}
+                  vehicle={vehicle}
+                  footer={(
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {v.vehicleType === 'MOTORCYCLE' ? (
-                          <Bike className="w-5 h-5 text-amber-600" />
-                        ) : (
-                          <Car className="w-5 h-5 text-slate-900" />
-                        )}
-                      <h4 className="text-base font-bold text-slate-900">
-                          {v.brand} {v.model} ({v.year})
-                        </h4>
-                      </div>
-                      <Badge variant={v.status === 'ACTIVE' ? 'success' : 'default'}>
-                        {v.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
-                      </Badge>
+                      <span className="text-[11px] font-bold text-slate-400">ID: {vehicle.id.slice(0, 8)}</span>
+                      <Button
+                        variant={vehicle.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
+                        size="sm"
+                        onClick={() => onToggleVehicleStatus(vehicle.id)}
+                        leftIcon={vehicle.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                      >
+                        {vehicle.status === 'ACTIVE' ? 'Desativar Veículo' : 'Ativar Veículo'}
+                      </Button>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
-                      <span className="px-2.5 py-0.5 rounded-md bg-slate-100 font-mono text-[#202126] font-bold">
-                        {maskVehiclePlate(v.licensePlate) || 'Sem placa'}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold">
-                        Cat. {v.category}
-                      </span>
-                      <span>Transmissão: {formatTransmissionLabel(v.transmission)}</span>
-                      {v.color && <span>• Cor: {v.color}</span>}
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold text-slate-400">
-                      ID: {v.id.slice(0, 8)}
-                    </span>
-                    <Button
-                      variant={v.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
-                      size="sm"
-                      onClick={() => onToggleVehicleStatus(v.id)}
-                      leftIcon={v.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
-                    >
-                      {v.status === 'ACTIVE' ? 'Desativar Veículo' : 'Ativar Veículo'}
-                    </Button>
-                  </div>
-                </div>
+                  )}
+                />
               ))}
             </div>
           )}
@@ -246,7 +205,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       )}
 
       {/* OFFERINGS SUBTAB */}
-      {managementSubTab === 'offerings' && (
+      {!isRefreshing && managementSubTab === 'offerings' && (
         <div className="space-y-4">
           {currentProvider.type === 'DRIVING_SCHOOL' && eligibleSchoolInstructors.length === 0 && (
             <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
@@ -313,7 +272,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                         R$ {(o.priceInCents / 100).toFixed(2)}
                       </span>
                       <Button
-                        variant={o.status === 'ACTIVE' ? 'outline' : 'primary'}
+                        variant={o.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
                         size="sm"
                         onClick={() => onToggleOfferingStatus(o.id)}
                         leftIcon={o.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
@@ -330,8 +289,13 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       )}
 
       {/* COMPLIANCE SUBTAB */}
-      {managementSubTab === 'compliance' && (
+      {!isRefreshing && managementSubTab === 'compliance' && (
         <div className="space-y-4">
+          {complianceTermsError && (
+            <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
+              {complianceTermsError}
+            </div>
+          )}
           <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
             <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
             <p>
@@ -341,7 +305,12 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
 
           <div className="space-y-3">
             {DEFAULT_COMPLIANCE_REQUIREMENTS.filter((r) => r.providerType === currentProvider.type).map((req) => {
-              const doc = complianceDocs.find((d) => d.type === req.documentType);
+              const docsForRequirement = complianceDocs
+                .filter((d) => d.type === req.documentType)
+                .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+              const doc = docsForRequirement[0];
+              const isTermsAcceptance = req.documentType === 'MAZZI_TERMS_ACCEPTANCE';
+              const canResubmit = doc?.status === 'REJECTED' || doc?.status === 'EXPIRED';
               return (
                 <div
                   key={req.id}
@@ -350,32 +319,43 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-slate-900">{req.title}</span>
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-blue-700" />
-                        CTB Regulamentado
-                      </span>
                     </div>
                     <p className="text-xs text-slate-500">{req.description}</p>
-                    {doc && (
-                      <p className="text-[11px] text-slate-600 font-mono">
-                        Status: <strong className="uppercase">{doc.status}</strong> • {doc.fileName}
-                      </p>
+                    {doc && !isTermsAcceptance && (
+                      <>
+                        <p className="text-[11px] text-slate-600 font-mono">Arquivo: {doc.fileName}</p>
+                        {doc.status === 'REJECTED' && doc.rejectionReason && (
+                          <p className="text-[11px] font-semibold text-rose-700">Motivo: {doc.rejectionReason}</p>
+                        )}
+                      </>
                     )}
                   </div>
 
                   <div>
-                    {doc ? (
-                      <Badge variant="success">Enviado</Badge>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        leftIcon={<Upload className="w-3.5 h-3.5" />}
-                        onClick={() => onUploadDocClick(req.documentType)}
-                      >
-                        Anexar Arquivo
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={doc?.status ?? 'PENDING'} domain="compliance" />
+                      {(!doc || canResubmit) && !isTermsAcceptance && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          leftIcon={<Upload className="w-3.5 h-3.5" />}
+                          onClick={() => onUploadDocClick(req.documentType)}
+                        >
+                          {canResubmit ? 'Enviar novo arquivo' : 'Anexar Arquivo'}
+                        </Button>
+                      )}
+                      {!doc && isTermsAcceptance && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          leftIcon={<Check className="w-3.5 h-3.5" />}
+                          onClick={onAcceptComplianceTerms}
+                          disabled={isAcceptingComplianceTerms}
+                        >
+                          {isAcceptingComplianceTerms ? 'Registrando...' : 'Concordar e aceitar'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -531,8 +511,8 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                 onChange={(e) => onOfferingFormChange({ ...offeringForm, durationMinutes: Number(e.target.value) })}
                 options={[
                   { value: 50, label: '50 Minutos (Padrão CTB)' },
-                  { value: 60, label: '60 Minutos (1 Hora)' },
-                  { value: 100, label: '100 Minutos (Dupla)' },
+                  { value: 60, label: '60 Minutos (indisponível no MVP)', disabled: true },
+                  { value: 100, label: '100 Minutos (indisponível no MVP)', disabled: true },
                 ]}
               />
             </div>

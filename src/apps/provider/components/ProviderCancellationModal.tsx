@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle2, Circle, XCircle, Info } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Circle, XCircle, Info } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -44,11 +44,38 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
   const isOther = reasonCode === 'OTHER';
   const isSubmitDisabled = isProcessing || (isOther && !customReason.trim());
 
+  const footer = (
+    <div className="flex w-full items-center gap-2.5">
+      <Button
+        variant="outline"
+        size="sm"
+        className="min-h-[48px] w-1/2 rounded-2xl border-slate-300 bg-white font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
+        onClick={onClose}
+        disabled={isProcessing}
+        leftIcon={<ArrowLeft className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />}
+      >
+        Manter aula
+      </Button>
+      <Button
+        variant="danger"
+        size="sm"
+        className="min-h-[48px] w-1/2"
+        onClick={onConfirmCancel}
+        disabled={isSubmitDisabled}
+        isLoading={isProcessing}
+        leftIcon={<XCircle className="h-4 w-4 shrink-0 text-white" aria-hidden="true" />}
+      >
+        Confirmar cancelamento
+      </Button>
+    </div>
+  );
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title="Cancelar Agendamento (Instrutor)"
+      footer={footer}
     >
       <div className="space-y-5 text-left">
         {/* Policy Warning Banner */}
@@ -126,22 +153,6 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
           </div>
         )}
 
-        {/* Actions Footer */}
-        <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200">
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={isProcessing}>
-            Voltar
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={onConfirmCancel}
-            disabled={isSubmitDisabled}
-            isLoading={isProcessing}
-            leftIcon={<XCircle className="w-4 h-4" />}
-          >
-            Confirmar Cancelamento
-          </Button>
-        </div>
       </div>
     </Modal>
   );

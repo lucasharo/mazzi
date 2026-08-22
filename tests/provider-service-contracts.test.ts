@@ -204,7 +204,7 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
             vehicle_id: '11111111-2222-3333-4444-555555555555',
             category: 'B',
             transmission: 'MANUAL',
-            duration_minutes: 60,
+            duration_minutes: 50,
             price_in_cents: 9500,
             status: 'ACTIVE',
             is_active: true,
@@ -221,7 +221,7 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
         providerId: 'prov-123',
         vehicleId: '11111111-2222-3333-4444-555555555555',
         category: 'B',
-        durationMinutes: 60,
+        durationMinutes: 50,
         priceInCents: 9500,
         status: 'ACTIVE',
       });

@@ -7,6 +7,7 @@ import {
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
+import { DateInput, TimeInput } from '../../../components/ui/DateTimeInput';
 import { Select } from '../../../components/ui/Select';
 import { Badge } from '../../../components/ui/Badge';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -466,10 +467,9 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             </div>
             <div>
               <label className="text-xs font-extrabold text-slate-700 block mb-1">Selecione a Data</label>
-              <Input
-                type="date"
+              <DateInput
                 value={simDate}
-                onChange={(e) => onSimDateChange(e.target.value)}
+                onChange={onSimDateChange}
               />
             </div>
           </div>
@@ -523,18 +523,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Horário Inicial *</label>
-              <Input
-                type="time"
+              <TimeInput
                 value={ruleForm.startTime}
-                onChange={(e) => onRuleFormChange({ ...ruleForm, startTime: e.target.value })}
+                onChange={(value) => onRuleFormChange({ ...ruleForm, startTime: value })}
               />
             </div>
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Horário Final *</label>
-              <Input
-                type="time"
+              <TimeInput
                 value={ruleForm.endTime}
-                onChange={(e) => onRuleFormChange({ ...ruleForm, endTime: e.target.value })}
+                onChange={(value) => onRuleFormChange({ ...ruleForm, endTime: value })}
               />
             </div>
           </div>
@@ -572,18 +570,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Data Início *</label>
-              <Input
-                type="date"
+              <DateInput
                 value={exceptionForm.startDate}
-                onChange={(e) => onExceptionFormChange({ ...exceptionForm, startDate: e.target.value })}
+                onChange={(value) => onExceptionFormChange({ ...exceptionForm, startDate: value })}
               />
             </div>
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Data Fim *</label>
-              <Input
-                type="date"
+              <DateInput
                 value={exceptionForm.endDate}
-                onChange={(e) => onExceptionFormChange({ ...exceptionForm, endDate: e.target.value })}
+                onChange={(value) => onExceptionFormChange({ ...exceptionForm, endDate: value })}
               />
             </div>
           </div>
@@ -625,18 +621,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Data Início *</label>
-              <Input
-                type="date"
+              <DateInput
                 value={globalBlockForm.startDate}
-                onChange={(e) => setGlobalBlockForm({ ...globalBlockForm, startDate: e.target.value })}
+                onChange={(value) => setGlobalBlockForm({ ...globalBlockForm, startDate: value })}
               />
             </div>
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Hora Início *</label>
-              <Input
-                type="time"
+              <TimeInput
                 value={globalBlockForm.startTime}
-                onChange={(e) => setGlobalBlockForm({ ...globalBlockForm, startTime: e.target.value })}
+                onChange={(value) => setGlobalBlockForm({ ...globalBlockForm, startTime: value })}
               />
             </div>
           </div>
@@ -644,18 +638,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Data Fim *</label>
-              <Input
-                type="date"
+              <DateInput
                 value={globalBlockForm.endDate}
-                onChange={(e) => setGlobalBlockForm({ ...globalBlockForm, endDate: e.target.value })}
+                onChange={(value) => setGlobalBlockForm({ ...globalBlockForm, endDate: value })}
               />
             </div>
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Hora Fim *</label>
-              <Input
-                type="time"
+              <TimeInput
                 value={globalBlockForm.endTime}
-                onChange={(e) => setGlobalBlockForm({ ...globalBlockForm, endTime: e.target.value })}
+                onChange={(value) => setGlobalBlockForm({ ...globalBlockForm, endTime: value })}
               />
             </div>
           </div>

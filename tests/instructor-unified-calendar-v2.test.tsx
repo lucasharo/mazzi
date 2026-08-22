@@ -125,9 +125,9 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
 
       const dateInputs = screen.getAllByDisplayValue(/2026|08:|18:/);
       if (dateInputs.length >= 4) {
-        fireEvent.change(dateInputs[0], { target: { value: '2026-08-20' } });
+        fireEvent.change(dateInputs[0], { target: { value: '20/08/2026' } });
         fireEvent.change(dateInputs[1], { target: { value: '18:00' } });
-        fireEvent.change(dateInputs[2], { target: { value: '2026-08-20' } });
+        fireEvent.change(dateInputs[2], { target: { value: '20/08/2026' } });
         fireEvent.change(dateInputs[3], { target: { value: '08:00' } });
       }
 
@@ -436,9 +436,35 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
         />
       );
 
-      const cancelActionBtn = screen.getByRole('button', { name: /^Cancelar$/i, hidden: true });
+      const cancelActionBtn = screen.getByRole('button', { name: /^Cancelar aula$/i, hidden: true });
       expect(cancelActionBtn.className).toContain('bg-rose-50');
       expect(cancelActionBtn.className).toContain('text-rose-700');
+    });
+
+    it('Exibe no modal o erro retornado pelo check-in do instrutor', async () => {
+      const booking = {
+        id: 'bk_checkin_error',
+        providerId: 'p_private_checkin',
+        status: 'CONFIRMED',
+        studentName: 'Aluno Check-in',
+        scheduledDate: '20/08/2026',
+        startTime: '09:00',
+        endTime: '10:00',
+        category: 'B',
+      };
+
+      render(
+        <ProviderBookingDetailsModal
+          {...defaultModalProps}
+          booking={booking}
+          onCheckIn={vi.fn().mockResolvedValue('O check-in ainda não está disponível.')}
+          canCancelBooking={() => false}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Fazer check-in na aula' }));
+
+      expect((await screen.findByRole('alert')).textContent).toContain('O check-in ainda não está disponível.');
     });
   });
 });

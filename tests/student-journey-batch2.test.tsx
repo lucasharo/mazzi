@@ -228,7 +228,7 @@ describe('Student Journey Batch 2 - UI/UX Pro Max Contracts', () => {
     expect(cardMarkup).toContain('Manual');
     expect(cardMarkup).toContain('Rua Augusta, 1000');
     expect(cardMarkup).toContain('R$ 110,00');
-    expect(cardMarkup).toContain('Chat');
+    expect(cardMarkup).not.toContain('Chat');
     expect(cardMarkup).toContain('Detalhes');
 
     const detailsMarkup = renderToStaticMarkup(

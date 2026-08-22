@@ -139,13 +139,13 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
   };
 
   return (
-    <div className="space-y-4 text-left">
-      <div className="mazzi-card p-4 border border-[var(--mazzi-border)]">
+    <div className="space-y-3 text-left">
+      <div className="mazzi-card border border-[var(--mazzi-border)] p-3">
         {onBack && (
           <ButtonBase
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-700 hover:text-slate-950 transition-colors py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 cursor-pointer mb-3 shadow-2xs active:scale-95"
+            className="mb-2 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-2xs transition-colors hover:bg-slate-200 hover:text-slate-950 active:scale-95"
             aria-label="Voltar para os detalhes da aula"
           >
             <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
@@ -160,7 +160,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
           </div>
           <StatusBadge status={booking.status} audience="student" />
         </div>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-slate-600">
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-xs font-semibold text-slate-600">
           <span className="inline-flex items-center gap-1.5">
             <Calendar className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
             {formatDateBR(start)}
@@ -209,7 +209,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
         </div>
       )}
 
-      <div ref={scrollContainerRef} aria-live="polite" aria-busy={loading} className="mazzi-card h-[min(50vh,26rem)] space-y-2 overflow-y-auto p-3 border border-[var(--mazzi-border)]">
+      <div ref={scrollContainerRef} aria-live="polite" aria-busy={loading} className="mazzi-card h-[min(38vh,20rem)] min-h-[14rem] space-y-2 overflow-y-auto border border-[var(--mazzi-border)] p-3">
         {loading ? (
           <div aria-hidden="true" className="space-y-3 p-2">
             {[1, 2, 3].map((item) => (
@@ -263,14 +263,14 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
 
       {/* Modern Integrated Composer */}
       <div className="space-y-1.5">
-        <div className="relative flex items-center rounded-2xl bg-white border border-[var(--mazzi-border)] focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-[var(--mazzi-focus-glow)] transition-all shadow-xs">
+        <div className="relative flex min-h-14 items-center rounded-2xl bg-white border border-[var(--mazzi-border)] focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-[var(--mazzi-focus-glow)] transition-all shadow-xs">
           <textarea
             aria-label="Mensagem"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            rows={2}
+            rows={1}
             maxLength={2000}
-            className="w-full resize-none border-0 bg-transparent px-4 py-3 text-xs sm:text-sm text-[var(--mazzi-dark)] placeholder:text-slate-400 focus:outline-none focus:ring-0 pr-14 leading-relaxed disabled:bg-slate-50 disabled:cursor-not-allowed"
+            className="min-h-14 w-full resize-none border-0 bg-transparent px-4 py-3.5 pr-16 text-xs leading-relaxed text-[var(--mazzi-dark)] placeholder:text-slate-400 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-slate-50 sm:text-sm"
             placeholder={booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER' ? 'Chat encerrado por cancelamento da aula.' : 'Escreva uma mensagem sobre esta aula...'}
             disabled={!conversation || loading || sending || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             onKeyDown={(event) => {
@@ -286,7 +286,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             disabled={!conversation || loading || sending || !draft.trim() || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             aria-label="Enviar mensagem"
             title="Enviar mensagem"
-            className="absolute right-2.5 bottom-2.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
+            className="absolute right-2 bottom-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
           >
             {sending ? (
               <RefreshCw className="h-4 w-4 animate-spin text-current" aria-hidden="true" />

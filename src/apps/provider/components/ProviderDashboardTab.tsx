@@ -7,7 +7,8 @@ import { Button, ButtonBase } from '../../../components/ui/Button';
 import { ObjectEmptyState } from '../../../components/ui/ObjectEmptyState';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
-import { getVerificationBadgeTooltip } from '../../../domain/compliance';
+import { evaluateProviderEligibility, getVerificationBadgeTooltip } from '../../../domain/compliance';
+import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 
 interface ProviderDashboardTabProps {
   currentProvider: Provider;
@@ -22,6 +23,7 @@ interface ProviderDashboardTabProps {
   onOpenAddVehicleModal: () => void;
   onOpenAddOfferingModal: () => void;
   calendarLoadError?: string | null;
+  isRefreshing?: boolean;
 }
 
 export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
@@ -36,7 +38,18 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   onNavigateTab,
   onOpenAddVehicleModal,
   calendarLoadError,
+  isRefreshing = false,
 }) => {
+  const complianceEligibility = evaluateProviderEligibility(currentProvider, providerDocs);
+  const isComplianceVerified = currentProvider.status === 'ACTIVE' && complianceEligibility.isEligible;
+  const complianceStatus = complianceEligibility.pendingDocuments.length > 0
+    ? 'UNDER_REVIEW'
+    : complianceEligibility.missingRequirements.length > 0
+      ? 'PENDING'
+      : complianceEligibility.rejectedDocuments.length > 0 || complianceEligibility.expiredDocuments.length > 0
+        ? 'REJECTED'
+        : currentProvider.status;
+
   return (
     <div className="space-y-6 text-left">
       <AppPageHeader
@@ -45,7 +58,9 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         subtitle={!calendarLoadError ? 'Aulas agendadas hoje' : undefined}
       />
 
-      {calendarLoadError && (
+      {isRefreshing && <ContentSkeleton mode="object" label="Atualizando painel" />}
+
+      {!isRefreshing && calendarLoadError && (
         <div className="space-y-4">
           <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 text-left space-y-2">
             <h3 className="text-sm font-bold text-amber-950 flex items-center gap-2">
@@ -60,18 +75,18 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
       )}
 
       {/* Compliance / Status Banner */}
-      <div
+      {!isRefreshing && <div
         className="mazzi-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex items-center gap-3">
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-              currentProvider.status === 'ACTIVE'
+              isComplianceVerified
                 ? 'bg-emerald-500 text-white'
                 : 'bg-amber-400 text-slate-950'
-            }`}
-          >
-            {currentProvider.status === 'ACTIVE' ? (
+          }`}
+        >
+            {isComplianceVerified ? (
               <ShieldCheck className="w-5 h-5" />
             ) : (
               <AlertCircle className="w-5 h-5" />
@@ -80,11 +95,10 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-bold text-slate-900">
-                {currentProvider.status === 'ACTIVE' && 'Credenciamento Ativo • Verificado pela MAZZI'}
-                {currentProvider.status === 'PENDING_REVIEW' && 'Cadastro em Análise pelo Compliance'}
-                {currentProvider.status === 'DRAFT' && 'Cadastro em Rascunho'}
-                {currentProvider.status === 'REJECTED' && 'Cadastro Rejeitado — Ação Necessária'}
-                {currentProvider.status === 'SUSPENDED' && 'Cadastro Suspenso'}
+                {isComplianceVerified && 'Credenciamento Ativo • Verificado pela MAZZI'}
+                {!isComplianceVerified && complianceEligibility.pendingDocuments.length > 0 && 'Documentos em análise pelo Compliance'}
+                {!isComplianceVerified && complianceEligibility.pendingDocuments.length === 0 && complianceEligibility.missingRequirements.length > 0 && 'Documentação pendente para verificação'}
+                {!isComplianceVerified && complianceEligibility.isEligible && 'Compliance aprovado • Aguardando ativação'}
               </h4>
               {currentProvider.isVerified && currentProvider.status !== 'ACTIVE' && (
                 <span
@@ -97,8 +111,10 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
               )}
             </div>
             <p className="text-xs text-slate-600 mt-0.5">
-              {currentProvider.status === 'ACTIVE' &&
+              {isComplianceVerified &&
                 'Suas ofertas e horários estão visíveis para agendamentos de alunos em São Paulo.'}
+              {!isComplianceVerified && complianceEligibility.missingRequirements.length > 0 &&
+                'Envie e aguarde a aprovação de todos os documentos obrigatórios para receber o selo de verificação.'}
               {currentProvider.status === 'PENDING_REVIEW' &&
                 'Seus documentos foram recebidos e estão na fila de auditoria da equipe de moderação.'}
               {currentProvider.status === 'REJECTED' &&
@@ -106,10 +122,10 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
             </p>
           </div>
         </div>
-        {currentProvider.status !== 'ACTIVE' && <StatusBadge status={currentProvider.status} />}
-      </div>
+        {!isComplianceVerified && <StatusBadge status={complianceStatus} />}
+      </div>}
 
-      {!calendarLoadError && (
+      {!isRefreshing && !calendarLoadError && (
         <>
           {/* Operational Metrics Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -211,7 +227,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         </>
       )}
 
-      {calendarLoadError && (
+      {!isRefreshing && calendarLoadError && (
         <div className="p-4 rounded-2xl bg-[#202126] text-white shadow-xs inline-flex items-center gap-3">
           <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#f6c945]">
             Avaliação do Perfil:
@@ -224,7 +240,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
       )}
 
       {/* Quick Action Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {!isRefreshing && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <ButtonBase
           type="button"
           onClick={() => onNavigateTab('schedule')}
@@ -262,7 +278,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition" />
         </ButtonBase>
-      </div>
+      </div>}
 
       {/* Operational Alerts */}
       <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-2">

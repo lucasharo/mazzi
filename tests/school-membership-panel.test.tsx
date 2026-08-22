@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-const { membershipId, tryActivate } = vi.hoisted(() => ({
+const { membershipId, tryActivate, endMembership } = vi.hoisted(() => ({
   membershipId: '7c309d68-5a6a-4aad-9b70-2d7e711827c3',
   tryActivate: vi.fn().mockResolvedValue({}),
+  endMembership: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('../src/lib/db-service', () => ({
@@ -27,6 +28,7 @@ vi.mock('../src/lib/db-service', () => ({
       eligible: true,
     }]),
     tryActivateSchoolInstructorMembership: tryActivate,
+    endSchoolInstructorMembership: endMembership,
   },
 }));
 
@@ -38,6 +40,9 @@ describe('SchoolMembershipPanel', () => {
       <SchoolMembershipPanel
         provider={{ id: 'school-1', type: 'DRIVING_SCHOOL' } as any}
         isInstructor={false}
+        isInviteModalOpen
+        onOpenInviteModal={vi.fn()}
+        onCloseInviteModal={vi.fn()}
       />,
     );
 
@@ -51,5 +56,23 @@ describe('SchoolMembershipPanel', () => {
 
     await waitFor(() => expect(tryActivate).toHaveBeenCalledWith(membershipId));
     expect(tryActivate.mock.calls[0][0]).not.toBeUndefined();
+  });
+
+  it('confirms removal and ends the membership through the secure RPC', async () => {
+    render(
+      <SchoolMembershipPanel
+        provider={{ id: 'school-1', type: 'DRIVING_SCHOOL' } as any}
+        isInstructor={false}
+        isInviteModalOpen={false}
+        onOpenInviteModal={vi.fn()}
+        onCloseInviteModal={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remover instrutor' }));
+    expect(await screen.findByText(/da autoescola\?/)).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Remover instrutor' }));
+
+    await waitFor(() => expect(endMembership).toHaveBeenCalledWith(membershipId, 'Removido pela autoescola'));
   });
 });

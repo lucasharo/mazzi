@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, Car, } from 'lucide-react';
+import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
 import {
   Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, } from '../../types';
 import { BookingCard } from '../../components/ui/BookingCard';
@@ -35,6 +36,7 @@ import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker'
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { maskCpf } from '../../utils/cpf';
 import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
+import { useMobileAppRoute } from '../../lib/mobile-app-router';
 
 function mapPublicResultToProvider(result: PublicSearchProviderResult): Provider {
   return {
@@ -108,11 +110,22 @@ export function groupBookingContextsByInstructor(bookingContexts: any[]): any[] 
   return Array.from(contextsByInstructor.values());
 }
 
+export function groupBookingContextsByVehicle(bookingContexts: any[]): any[] {
+  const contextsByVehicle = new Map<string, any>();
+  for (const context of bookingContexts) {
+    const vehicleId = context.vehicle_id || context.vehicleId || context.offering_id || context.offeringId;
+    if (vehicleId && !contextsByVehicle.has(vehicleId)) {
+      contextsByVehicle.set(vehicleId, context);
+    }
+  }
+  return Array.from(contextsByVehicle.values());
+}
+
 export const StudentApp: React.FC = () => {
   const { user, logout } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
-  const [activeTab, setActiveTab] = useState<'search' | 'bookings' | 'profile'>('search');
+  const [activeTab, setActiveTab] = useMobileAppRoute<'search' | 'bookings' | 'profile'>('student', 'search', ['search', 'bookings', 'profile']);
   const [bookingTab, setBookingTab] = useState<'upcoming' | 'history'>('upcoming');
   const [searchLocation, setSearchLocation] = useState('');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
@@ -135,6 +148,7 @@ export const StudentApp: React.FC = () => {
   const [resumeBooking, setResumeBooking] = useState<Booking | null>(null);
 
   const searchRequestIdRef = useRef(0);
+  const searchEndRef = useRef<HTMLDivElement | null>(null);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -369,6 +383,8 @@ function applyStrictProviderFilters(
 
     setSearchLoading(true);
     setSearchError(false);
+    const requestedPage = searchRequest.page || 1;
+    if (requestedPage === 1) setRealSearchResponse(null);
     const requestId = ++searchRequestIdRef.current;
     const timer = window.setTimeout(async () => {
       try {
@@ -397,12 +413,16 @@ function applyStrictProviderFilters(
           if (searchRequest.sortBy === 'RATING') return (b.ratingAverage || 0) - (a.ratingAverage || 0) || a.providerId.localeCompare(b.providerId);
           return 0;
         });
+        const pageSize = searchRequest.limit || 10;
+        const previousResults = requestedPage === 1 ? [] : (realSearchResponse?.results || []);
+        const mergedResults = [...previousResults, ...sortedResults.filter((result) => !previousResults.some((previous) => previous.providerId === result.providerId))];
+        const hasMore = rawResults.length >= pageSize;
         setRealSearchResponse({
-          results: sortedResults,
-          totalCount: sortedResults.length,
-          page: searchRequest.page || 1,
-          totalPages: 1,
-          hasMore: false,
+          results: mergedResults,
+          totalCount: mergedResults.length,
+          page: requestedPage,
+          totalPages: hasMore ? requestedPage + 1 : requestedPage,
+          hasMore,
           appliedFilters: searchRequest,
           executionTimeMs: 0,
         });
@@ -452,6 +472,19 @@ function applyStrictProviderFilters(
   // Execute Public Search Engine
   const searchResponse = useMemo(() => realSearchResponse, [realSearchResponse]);
 
+  useEffect(() => {
+    if (activeTab !== 'search' || searchViewMode !== 'list' || !searchResponse?.hasMore || searchLoading) return undefined;
+    const sentinel = searchEndRef.current;
+    if (!sentinel || typeof IntersectionObserver === 'undefined') return undefined;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      setSearchRequest((previous) => ({ ...previous, page: (previous.page || 1) + 1 }));
+    }, { rootMargin: '320px 0px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeTab, searchViewMode, searchLoading, searchResponse?.hasMore]);
+
   // Selected Public Profile View State
   const [selectedPublicProfile, setSelectedPublicProfile] = useState<PublicSearchProviderResult | null>(null);
 
@@ -469,6 +502,9 @@ function applyStrictProviderFilters(
   const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
   const [instructorChoices, setInstructorChoices] = useState<any[]>([]);
   const [instructorPickerProvider, setInstructorPickerProvider] = useState<Provider | null>(null);
+  const [vehicleChoices, setVehicleChoices] = useState<any[]>([]);
+  const [vehiclePickerProvider, setVehiclePickerProvider] = useState<Provider | null>(null);
+  const [vehiclePickerSlot, setVehiclePickerSlot] = useState<any | null>(null);
 
   const handleOpenCheckoutByProviderId = async (providerId: string, _date?: string, slot?: any) => {
     const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
@@ -498,6 +534,18 @@ function applyStrictProviderFilters(
         if (rawProv?.type === 'DRIVING_SCHOOL' && distinctInstructorContexts.length > 1) {
           setInstructorChoices(distinctInstructorContexts);
           setInstructorPickerProvider(rawProv);
+          return;
+        }
+
+        const distinctVehicleContexts = groupBookingContextsByVehicle(
+          rawProv?.type === 'DRIVING_SCHOOL'
+            ? distinctInstructorContexts
+            : bookingContexts
+        );
+        if (distinctVehicleContexts.length > 1) {
+          setVehicleChoices(distinctVehicleContexts);
+          setVehiclePickerProvider(rawProv || null);
+          setVehiclePickerSlot(slot || null);
           return;
         }
       } catch (err) {
@@ -673,10 +721,8 @@ function applyStrictProviderFilters(
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {searchLoading || (locationStatus === 'RESOLVING' && searchRequest.latitude === undefined) ? (
-                    <div aria-busy="true" className="space-y-3" aria-label="Carregando resultados">
-                      {[1, 2, 3, 4].map((item) => <div key={item} aria-hidden="true" className="h-44 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><div className="h-12 w-12 animate-pulse rounded-2xl bg-slate-100" /><div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-slate-100" /><div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-slate-100" /></div>)}
-                    </div>
+                  {searchLoading && !(searchResponse?.results?.length) || (locationStatus === 'RESOLVING' && searchRequest.latitude === undefined) ? (
+                    <ContentSkeleton count={4} label="Carregando profissionais" />
                   ) : searchError ? null : (searchRequest.latitude === undefined || searchRequest.longitude === undefined) ? (
                     <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
                       <p className="text-sm font-bold text-slate-800">Informe sua localização para encontrar instrutores próximos.</p>
@@ -690,14 +736,18 @@ function applyStrictProviderFilters(
                       onAction={() => setSearchRequest(defaultSearchRequest)}
                     />
                   ) : (
-                    searchResponse.results.map((res) => (
-                      <ProviderResultCard
-                        key={res.providerId}
-                        result={res}
-                        onSelect={(id) => handleOpenCheckoutByProviderId(id)}
-                        onViewProfile={() => setSelectedPublicProfile(res)}
-                      />
-                    ))
+                    <>
+                      {searchResponse.results.map((res) => (
+                        <ProviderResultCard
+                          key={res.providerId}
+                          result={res}
+                          onSelect={(id) => handleOpenCheckoutByProviderId(id)}
+                          onViewProfile={() => setSelectedPublicProfile(res)}
+                        />
+                      ))}
+                      {searchLoading && <ContentSkeleton count={2} label="Carregando mais instrutores" />}
+                      <div ref={searchEndRef} className="h-2" aria-hidden="true" />
+                    </>
                   )}
                 </div>
               )}
@@ -788,7 +838,7 @@ function applyStrictProviderFilters(
 
               {/* Upcoming Bookings Section */}
               {bookingsError && <ErrorState message="Não foi possível carregar suas aulas." onRetry={() => setBookingsRefreshKey((value) => value + 1)} />}
-              {bookingsLoading && <div aria-busy="true" aria-label="Carregando suas aulas" className="space-y-3">{[1, 2, 3].map((item) => <div key={item} aria-hidden="true" className="h-44 animate-pulse rounded-3xl border border-slate-200 bg-white p-5"><div className="h-4 w-1/2 rounded bg-slate-100" /><div className="mt-4 h-3 w-2/3 rounded bg-slate-100" /><div className="mt-6 h-3 w-full rounded bg-slate-100" /><div className="mt-3 h-3 w-4/5 rounded bg-slate-100" /></div>)}</div>}
+              {bookingsLoading && <ContentSkeleton count={3} label="Carregando suas aulas" />}
               {!bookingsError && !bookingsLoading && bookingTab === 'upcoming' && (
                 <div className="space-y-3">
                   {upcomingBookings.length === 0 ? (
@@ -1170,6 +1220,63 @@ function applyStrictProviderFilters(
                 <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
               </ButtonBase>
             ))}
+          </div>
+        </Modal>
+      )}
+
+      {vehiclePickerProvider && (
+        <Modal
+          isOpen={true}
+          onClose={() => { setVehiclePickerProvider(null); setVehicleChoices([]); setVehiclePickerSlot(null); }}
+          title="Escolha o veículo"
+          size="sm"
+        >
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-slate-500">Escolha o veículo da sua aula com {vehicleChoices[0]?.instructor_name || vehicleChoices[0]?.instructorName || 'a instrutora'}.</p>
+            {vehicleChoices.map((ctx) => {
+              const vehicleName = `${ctx.vehicle_brand || 'Veículo'} ${ctx.vehicle_model || ''}`.trim();
+              const transmission = ctx.vehicle_transmission || ctx.transmission;
+              return (
+                <ButtonBase
+                  key={`${ctx.vehicle_id || ctx.vehicleId}-${ctx.offering_id || ctx.offeringId}`}
+                  type="button"
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
+                  onClick={() => {
+                    const offering = offeringFromBookingContext(ctx);
+                    const vehicle = vehicleFromBookingContext(ctx);
+                    const slotForVehicle = vehiclePickerSlot;
+                    setCheckoutProvider(vehiclePickerProvider);
+                    setCheckoutVehicle(vehicle);
+                    setCheckoutOffering(offering);
+                    setSelectedSlot(slotForVehicle);
+                    setVehiclePickerProvider(null);
+                    setVehicleChoices([]);
+                    setVehiclePickerSlot(null);
+                    if (slotForVehicle) {
+                      setIsCheckoutOpen(true);
+                    } else {
+                      setIsSlotSelectorOpen(true);
+                    }
+                  }}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                      <Car className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-black text-slate-900">{vehicleName}</span>
+                      <span className="mt-1 block truncate text-xs font-semibold text-slate-500">
+                        {transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. {ctx.category || ctx.offering_category || 'B'}
+                      </span>
+                      <span className="mt-1 block text-xs font-bold text-slate-700">
+                        {ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}
+                      </span>
+                    </span>
+                  </span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                </ButtonBase>
+              );
+            })}
           </div>
         </Modal>
       )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Car, Bike, ShieldCheck, Star, CheckCircle2, AlertTriangle, Clock, History, MapPin, Calendar as CalendarIcon, CalendarClock, CalendarRange, ChevronRight, Info, MessageSquare, XCircle, RotateCcw, Check, Search, SlidersHorizontal, ArrowLeft, Pencil, Trash, Plus, Building2, UserCheck, UserRound, UserPen, ClipboardList, CreditCard, RefreshCw, Ban, Send, Sparkles, Smartphone, Monitor, Copy, CheckCheck, FileCode, Layers, Palette, Type, ToggleLeft, Navigation as NavIcon, PackageOpen, Home, BookOpen, List, Map, } from 'lucide-react';
+import { Bell, Car, Bike, ShieldCheck, Star, CheckCircle2, AlertTriangle, Clock, History, MapPin, Calendar as CalendarIcon, CalendarClock, CalendarRange, ChevronRight, Info, MessageSquare, XCircle, RotateCcw, Check, Search, SlidersHorizontal, ArrowLeft, Pencil, Trash, Plus, Building2, UserCheck, UserRound, UserPen, ClipboardList, CreditCard, RefreshCw, Ban, Send, Sparkles, Smartphone, Monitor, Copy, CheckCheck, FileCode, Layers, Palette, Type, ToggleLeft, Navigation as NavIcon, PackageOpen, Home, BookOpen, List, Map, } from 'lucide-react';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -17,6 +17,8 @@ import { IconButton } from '../../components/ui/IconButton';
 import { ListEmptyState } from '../../components/ui/ListEmptyState';
 import { ObjectEmptyState } from '../../components/ui/ObjectEmptyState';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
+import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
+import { NotificationIndicator } from '../../components/ui/NotificationIndicator';
 import { UniversalMap } from '../../components/maps/UniversalMap';
 import { SearchHeader } from '../../components/search/SearchHeader';
 import { FilterDrawer } from '../../components/search/FilterDrawer';
@@ -88,7 +90,7 @@ const COMPONENT_INVENTORY = [
   ['Conteúdo', 'Badge, StatusBadge, BookingCard'],
   ['Feedback', 'EmptyState, ErrorState, ListEmptyState, ObjectEmptyState, LoadingScreen'],
   ['Overlays', 'Modal'],
-  ['Navegação', 'AppBottomNav, AppHomeHeader, AppPageHeader'],
+  ['Navegação', 'AppBottomNav, AppHomeHeader, AppPageHeader, NotificationIndicator'],
 ] as const;
 
 const STUDENT_COMPONENT_INVENTORY = [
@@ -825,10 +827,19 @@ export const DesignSystemShowcase: React.FC = () => {
               {activeSection === 'loading' && (
                 <section className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-black text-[#202126]">16. Loading</h2>
+                    <h2 className="text-xl font-black text-[#202126]">16. Loading & Skeletons</h2>
+                    <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-600">
+                      Skeletons aparecem somente na região de dados que está sendo atualizada. O header, as abas e os controles da tela permanecem visíveis e interativos.
+                    </p>
                   </div>
-                  <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5">
-                    <LoadingScreen fullscreen={false} label="Atualizando conteúdo" />
+                  <div className="space-y-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Lista</h3>
+                    <ContentSkeleton label="Atualizando lista" />
+                    <h3 className="pt-2 text-xs font-black uppercase tracking-wider text-slate-500">Objeto</h3>
+                    <ContentSkeleton mode="object" label="Atualizando objeto" />
+                    <div className="border-t border-slate-100 pt-4">
+                      <LoadingScreen fullscreen={false} label="Carregamento inicial da tela" />
+                    </div>
                   </div>
                 </section>
               )}
@@ -994,6 +1005,14 @@ export const DesignSystemShowcase: React.FC = () => {
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700">
                     <code className="font-mono">src/components/ui/AppHomeHeader.tsx</code>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                    <NotificationIndicator className="h-full w-full items-center justify-center">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--mazzi-border)] bg-white text-[var(--mazzi-dark)] shadow-xs">
+                        <Bell className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                    </NotificationIndicator>
+                    <p className="text-xs text-slate-600">NotificationIndicator: exibe a contagem de não lidas somente quando houver notificações.</p>
                   </div>
                 </section>
               )}

@@ -496,7 +496,7 @@ export const ProvidersTab: React.FC<{
                     <div key={doc.id} className="p-3 border rounded-xl bg-white flex flex-col justify-between">
                       <div className="flex items-start justify-between gap-1">
                         <span className="font-bold text-xs truncate" title={doc.title}>{doc.title}</span>
-                        <StatusBadge status={doc.status} />
+                        <StatusBadge status={doc.status} domain="compliance" />
                       </div>
                       <p className="text-[10px] text-slate-500 mt-1 font-mono leading-none truncate">
                         Expiração: {doc.expiresAt ? new Date(doc.expiresAt).toLocaleDateString() : 'N/A'}
@@ -753,7 +753,7 @@ export const ComplianceTab: React.FC<{
                 >
                   <div className="flex items-start justify-between gap-1">
                     <span className="font-bold line-clamp-1">{doc.title}</span>
-                    <StatusBadge status={doc.status} />
+                    <StatusBadge status={doc.status} domain="compliance" />
                   </div>
                   <p className={`text-[11px] mt-1 truncate opacity-80`}>Prestador: {doc.providerName || 'N/A'}</p>
                   <p className={`text-[10px] mt-0.5 font-mono opacity-60`}>Enviado em: {new Date(doc.uploadedAt).toLocaleDateString()}</p>
@@ -791,7 +791,7 @@ export const ComplianceTab: React.FC<{
                 <span className="text-[10px] text-slate-500">MIME: {selectedDoc.mimeType || 'application/pdf'}</span>
               </div>
               <div className="space-y-1.5 opacity-90">
-                <p><span className="text-slate-500">Bucket:</span> mazzi-private-compliance-prod</p>
+                <p><span className="text-slate-500">Armazenamento:</span> Storage privado de compliance</p>
                 <p className="truncate"><span className="text-slate-500">StoragePath:</span> {selectedDoc.storagePath}</p>
                 <p><span className="text-slate-500">FileName:</span> {selectedDoc.fileName}</p>
                 <p><span className="text-slate-500">Bytes:</span> {selectedDoc.fileSize || 1048576} bytes ({(selectedDoc.fileSize ? (selectedDoc.fileSize / 1024 / 1024).toFixed(2) : '1.00')} MB)</p>
@@ -1756,7 +1756,7 @@ export const AuditTab: React.FC<{
 export const SettingsTab: React.FC<{
   config: PlatformConfiguration;
   actor: AuthContext;
-  onUpdateConfig: (updates: Partial<PlatformConfiguration>) => void;
+  onUpdateConfig: (updates: Partial<PlatformConfiguration>) => void | Promise<void>;
 }> = ({ config, actor, onUpdateConfig }) => {
   const isAuthorized = actor.roles.includes('PLATFORM_ADMIN');
 

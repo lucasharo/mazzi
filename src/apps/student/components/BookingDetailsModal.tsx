@@ -141,6 +141,54 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     }
   };
 
+  const footerContent = !isConfirmingCancel ? (
+    <div className="flex w-full flex-col gap-2.5">
+      {isPendingPayment && isHoldValid && onContinuePayment && (
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          className="w-full rounded-2xl font-bold shadow-md transition-all hover:shadow-lg"
+          onClick={() => onContinuePayment(booking)}
+          leftIcon={<CreditCard className="h-4 w-4" aria-hidden="true" />}
+          aria-label="Finalizar pagamento desta reserva pendente"
+        >
+          Realizar pagamento
+        </Button>
+      )}
+
+      <div className="flex w-full items-center gap-3">
+        {onOpenChat && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={`${isUpcoming ? 'w-1/2' : 'w-full'} rounded-2xl border-slate-200 bg-white font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md`}
+            onClick={() => onOpenChat(booking)}
+            leftIcon={<MessageSquare className="h-4 w-4 text-slate-600" aria-hidden="true" />}
+            aria-label="Abrir conversa no chat sobre esta reserva"
+          >
+            {isCancelled ? 'Ver Chat' : 'Abrir Chat'}
+          </Button>
+        )}
+
+        {isUpcoming && (
+          <Button
+            type="button"
+            variant="dangerSoft"
+            size="sm"
+            onClick={() => setIsConfirmingCancel(true)}
+            className={onOpenChat ? 'w-1/2' : 'w-full'}
+            aria-label="Cancelar esta aula"
+            leftIcon={<XCircle className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />}
+          >
+            Cancelar aula
+          </Button>
+        )}
+      </div>
+    </div>
+  ) : undefined;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -151,6 +199,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       }}
       title={isConfirmingCancel ? 'Cancelar Agendamento' : 'Detalhes da Reserva'}
       size="md"
+      footer={footerContent}
     >
       {isConfirmingCancel ? (
         /* CANCELLATION CONFIRMATION VIEW (DEC-013) */
@@ -477,53 +526,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Floating Actions - Side-by-side layout (LADO A LADO) for Chat and Cancel */}
-          <div className="flex flex-col gap-2.5 pt-2 bg-transparent">
-            {isPendingPayment && isHoldValid && onContinuePayment && (
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                className="w-full font-bold shadow-md hover:shadow-lg transition-all rounded-2xl cursor-pointer"
-                onClick={() => onContinuePayment(booking)}
-                leftIcon={<CreditCard className="w-4 h-4" aria-hidden="true" />}
-                aria-label="Finalizar pagamento desta reserva pendente"
-              >
-                Realizar pagamento
-              </Button>
-            )}
-
-            <div className="flex items-center gap-2.5 w-full">
-              {onOpenChat && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={`${isUpcoming ? 'w-1/2' : 'w-full'} min-h-[44px] font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 text-xs`}
-                  onClick={() => onOpenChat(booking)}
-                  leftIcon={<MessageSquare className="w-4 h-4 text-slate-600" aria-hidden="true" />}
-                  aria-label="Abrir conversa no chat sobre esta reserva"
-                >
-                  {isCancelled ? 'Ver Chat' : 'Abrir Chat'}
-                </Button>
-              )}
-
-              {/* Soft Danger Cancel Trigger Button */}
-              {isUpcoming && (
-                <Button
-                  type="button"
-                  variant="dangerSoft"
-                  size="sm"
-                  onClick={() => setIsConfirmingCancel(true)}
-                  className={onOpenChat ? 'w-1/2' : 'w-full'}
-                  aria-label="Cancelar esta aula"
-                  leftIcon={<XCircle className="w-4 h-4 text-rose-600 shrink-0" aria-hidden="true" />}
-                >
-                  Cancelar aula
-                </Button>
-              )}
-            </div>
-          </div>
         </div>
       )}
     </Modal>

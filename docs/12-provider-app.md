@@ -34,6 +34,7 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 - Visão por Instrutor ou por Veículo.
 - Bloqueio de horários (férias, almoço, manutenção do carro).
 - Criação de ofertas associando Veículo + Categoria + Duração + Preço em centavos.
+- No MVP, a duração disponível para ofertas é exclusivamente uma hora-aula de 50 minutos, conforme a definição do CONTRAN; durações maiores ficam reservadas para uma evolução futura.
 
 ### Ciclo Autoescola ↔ Instrutor
 

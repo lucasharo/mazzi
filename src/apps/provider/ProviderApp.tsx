@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
+import { supabase } from '../../lib/supabase';
 import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../lib/db-service';
 import {
   UserRole,
@@ -53,6 +54,7 @@ import { getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
 import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
+import { useMobileAppRoute } from '../../lib/mobile-app-router';
 
 import { ProviderHeader } from './components/ProviderHeader';
 import { ProviderBottomNav, ProviderTabId } from './components/ProviderBottomNav';
@@ -94,7 +96,7 @@ export function canProviderCommerciallyCancelBooking(
 export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
-  const [activeTab, setActiveTab] = useState<ProviderTabId>('dashboard');
+  const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'management', 'profile']);
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
   const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance' | 'memberships'>('vehicles');
   const [bookingFilterTab, setBookingFilterTab] = useState<'all' | 'today' | 'upcoming' | 'history'>('all');
@@ -179,6 +181,11 @@ export const ProviderApp: React.FC = () => {
 
   // Upload Modal State
   const [uploadModalDocType, setUploadModalDocType] = useState<string | null>(null);
+  const [selectedComplianceFile, setSelectedComplianceFile] = useState<File | null>(null);
+  const [complianceUploadError, setComplianceUploadError] = useState<string | null>(null);
+  const [isUploadingCompliance, setIsUploadingCompliance] = useState(false);
+  const [isAcceptingComplianceTerms, setIsAcceptingComplianceTerms] = useState(false);
+  const [complianceTermsError, setComplianceTermsError] = useState<string | null>(null);
 
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
@@ -214,7 +221,7 @@ export const ProviderApp: React.FC = () => {
     vehicleId: '',
     instructorId: '',
     category: 'B' as VehicleCategory,
-    durationMinutes: 60,
+    durationMinutes: 50,
     priceInBrl: '95',
   });
   const [offeringError, setOfferingError] = useState<string | null>(null);
@@ -340,7 +347,7 @@ export const ProviderApp: React.FC = () => {
       } else {
         // Schedule and Management share the provider workspace source; only the
         // visible tab consumes the refreshed state below.
-        await loadWorkspace(activeProviderId);
+        await loadWorkspace(activeProviderId, { silent: true });
       }
     } finally {
       setIsRefreshingCurrentTab(false);
@@ -484,8 +491,11 @@ export const ProviderApp: React.FC = () => {
       setBookings((prev) => prev.map((item) => (item.id === b.id ? updatedBooking : item)));
       if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
       setBookingActionSuccess('✓ Check-in realizado com sucesso! O aluno foi notificado.');
+      return;
     } catch (err: any) {
-      setBookingActionError(mapFriendlyErrorMessage(err, 'Não foi possível realizar o check-in.'));
+      const message = mapFriendlyErrorMessage(err, 'Não foi possível realizar o check-in.');
+      setBookingActionError(message);
+      return message;
     }
   };
 
@@ -791,7 +801,7 @@ export const ProviderApp: React.FC = () => {
         vehicleId: '',
         instructorId: '',
         category: 'B',
-        durationMinutes: 60,
+        durationMinutes: 50,
         priceInBrl: '95',
       });
     } catch (err: any) {
@@ -851,6 +861,77 @@ export const ProviderApp: React.FC = () => {
     setIsEditingProfile(false);
   };
 
+  const handleComplianceFileUpload = async () => {
+    if (!uploadModalDocType || !selectedComplianceFile || !currentProvider || !user) return;
+
+    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg'];
+    if (!allowedTypes.includes(selectedComplianceFile.type)) {
+      setComplianceUploadError('Selecione um arquivo PDF, PNG ou JPG.');
+      return;
+    }
+    if (selectedComplianceFile.size > 10 * 1024 * 1024) {
+      setComplianceUploadError('O arquivo deve ter no máximo 10 MB.');
+      return;
+    }
+
+    setIsUploadingCompliance(true);
+    setComplianceUploadError(null);
+    const documentId = crypto.randomUUID();
+    const safeFileName = selectedComplianceFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `providers/${currentProvider.id}/compliance/${documentId}/${safeFileName}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('provider-compliance-docs')
+        .upload(storagePath, selectedComplianceFile, {
+          contentType: selectedComplianceFile.type,
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+
+      await dbService.saveComplianceDoc({
+        providerId: currentProvider.id,
+        userId: user.id,
+        type: uploadModalDocType,
+        storagePath,
+        status: 'UNDER_REVIEW',
+      });
+
+      setSelectedComplianceFile(null);
+      setUploadModalDocType(null);
+      await loadWorkspace(currentProvider.id, { silent: true });
+    } catch (error) {
+      console.error('Compliance document upload failed:', error);
+      setComplianceUploadError('Não foi possível enviar o arquivo. Tente novamente.');
+      await supabase.storage.from('provider-compliance-docs').remove([storagePath]).catch(() => undefined);
+    } finally {
+      setIsUploadingCompliance(false);
+    }
+  };
+
+  const handleAcceptComplianceTerms = async () => {
+    if (!currentProvider || !user || isAcceptingComplianceTerms) return;
+
+    setIsAcceptingComplianceTerms(true);
+    setComplianceTermsError(null);
+    try {
+      await dbService.saveComplianceDoc({
+        providerId: currentProvider.id,
+        userId: user.id,
+        type: 'MAZZI_TERMS_ACCEPTANCE',
+        storagePath: 'acceptance://mazzi-ethics/v1',
+        status: 'APPROVED',
+        scope: 'PROVIDER',
+      });
+      await loadWorkspace(currentProvider.id, { silent: true });
+    } catch (error) {
+      console.error('Compliance terms acceptance failed:', error);
+      setComplianceTermsError('Não foi possível registrar sua concordância. Tente novamente.');
+    } finally {
+      setIsAcceptingComplianceTerms(false);
+    }
+  };
+
   return (
     <div className="mazzi-app flex flex-col min-h-dvh bg-[#f7f5ef] text-[#202126]">
       {/* Header */}
@@ -902,6 +983,7 @@ export const ProviderApp: React.FC = () => {
             onOpenAddVehicleModal={() => setIsAddVehicleModalOpen(true)}
             onOpenAddOfferingModal={() => setIsAddOfferingModalOpen(true)}
             calendarLoadError={unifiedCalendarError}
+            isRefreshing={isRefreshingCurrentTab}
           />
         )}
 
@@ -1001,6 +1083,9 @@ export const ProviderApp: React.FC = () => {
             onToggleOfferingStatus={handleToggleOfferingStatus}
             offeringError={offeringError}
             onUploadDocClick={(type) => setUploadModalDocType(type)}
+            onAcceptComplianceTerms={() => void handleAcceptComplianceTerms()}
+            isAcceptingComplianceTerms={isAcceptingComplianceTerms}
+            complianceTermsError={complianceTermsError}
           />
         )}
 
@@ -1088,10 +1173,9 @@ export const ProviderApp: React.FC = () => {
           isOpen={true}
           onClose={() => setSelectedBookingForChat(null)}
           title={`Chat com Aluno(a): ${selectedBookingForChat.studentName}`}
+          size="lg"
         >
-          <div className="h-[460px] flex flex-col">
-            <BookingChatPanel booking={selectedBookingForChat} />
-          </div>
+          <BookingChatPanel booking={selectedBookingForChat} />
         </Modal>
       )}
 
@@ -1112,10 +1196,22 @@ export const ProviderApp: React.FC = () => {
       {uploadModalDocType && (
         <Modal
           isOpen={true}
-          onClose={() => setUploadModalDocType(null)}
+          onClose={() => {
+            if (!isUploadingCompliance) {
+              setSelectedComplianceFile(null);
+              setComplianceUploadError(null);
+              setUploadModalDocType(null);
+            }
+          }}
           title="Envio de Documento de Compliance"
         >
           <div className="space-y-4 text-left">
+            {complianceUploadError && (
+              <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{complianceUploadError}</span>
+              </div>
+            )}
             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
               <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
               <p>
@@ -1125,23 +1221,50 @@ export const ProviderApp: React.FC = () => {
 
             <div className="p-6 border-2 border-dashed border-slate-300 rounded-2xl text-center space-y-2 hover:border-[#202126] transition">
               <Upload className="w-8 h-8 text-slate-400 mx-auto" />
-              <p className="text-xs font-bold text-slate-700">Arraste ou selecione o arquivo (PDF, PNG ou JPG)</p>
+              <p className="text-xs font-bold text-slate-700">
+                {selectedComplianceFile?.name || 'Selecione o arquivo (PDF, PNG ou JPG)'}
+              </p>
               <p className="text-[11px] text-slate-500">Tamanho máximo: 10 MB</p>
+              <input
+                id="compliance-document-file"
+                type="file"
+                accept="application/pdf,image/png,image/jpeg"
+                className="sr-only"
+                onChange={(event) => {
+                  setSelectedComplianceFile(event.target.files?.[0] || null);
+                  setComplianceUploadError(null);
+                }}
+                disabled={isUploadingCompliance}
+              />
+              <label
+                htmlFor="compliance-document-file"
+                className="mx-auto inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-slate-900"
+              >
+                <Upload className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />
+                Selecionar arquivo
+              </label>
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-              <Button variant="dangerSoft" size="sm" onClick={() => setUploadModalDocType(null)}>
+              <Button
+                variant="dangerSoft"
+                size="sm"
+                disabled={isUploadingCompliance}
+                onClick={() => {
+                  setSelectedComplianceFile(null);
+                  setComplianceUploadError(null);
+                  setUploadModalDocType(null);
+                }}
+              >
                 Cancelar
               </Button>
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => {
-                  setUploadModalDocType(null);
-                  alert('✓ Documento enviado para análise do compliance!');
-                }}
+                disabled={!selectedComplianceFile || isUploadingCompliance}
+                onClick={() => void handleComplianceFileUpload()}
               >
-                Enviar Documento
+                {isUploadingCompliance ? 'Enviando...' : 'Enviar Documento'}
               </Button>
             </div>
           </div>

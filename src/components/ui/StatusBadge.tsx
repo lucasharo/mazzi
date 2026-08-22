@@ -20,10 +20,41 @@ export interface StatusBadgeProps {
   className?: string;
   id?: string;
   audience?: 'default' | 'student';
+  domain?: 'default' | 'compliance';
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '', id, audience = 'default' }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({
+  status,
+  className = '',
+  id,
+  audience = 'default',
+  domain = 'default',
+}) => {
   const getStatusConfig = (s: string): { label: string; bg: string; text: string; dot: string } => {
+    if (domain === 'compliance') {
+      switch (s) {
+        case 'OFFICIALLY_VALIDATED':
+          return { label: 'Regulamentado', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' };
+        case 'REQUIRES_REGULATORY_VALIDATION':
+          return { label: 'Em análise', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-900', dot: 'bg-amber-500' };
+        case 'SUPERSEDED':
+          return { label: 'Pendente', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', dot: 'bg-orange-500' };
+        case 'INACTIVE':
+          return { label: 'Não aprovado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
+        case 'APPROVED':
+          return { label: 'Aprovado', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' };
+        case 'UNDER_REVIEW':
+          return { label: 'Em análise', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-800', dot: 'bg-blue-500' };
+        case 'PENDING':
+          return { label: 'Pendente', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', dot: 'bg-orange-500' };
+        case 'REJECTED':
+        case 'EXPIRED':
+          return { label: 'Não aprovado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
+        default:
+          return { label: 'Não aprovado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
+      }
+    }
+
     switch (s) {
       // Booking Statuses
       case 'CONFIRMED':

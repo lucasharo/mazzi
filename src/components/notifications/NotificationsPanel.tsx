@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { dbService } from '../../lib/db-service';
 import { formatDateTimeBR } from '../../lib/date-format';
+import { NOTIFICATIONS_CHANGED } from '../ui/NotificationIndicator';
 
 export const NotificationsPanel: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -29,6 +30,7 @@ export const NotificationsPanel: React.FC = () => {
       setNotifications([]);
     } finally {
       setLoading(false);
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
     }
   };
 
@@ -48,6 +50,7 @@ export const NotificationsPanel: React.FC = () => {
             : notification
         )
       );
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') console.error('Failed to mark notification as read:', err);
       setError('Não foi possível marcar a notificação como lida.');

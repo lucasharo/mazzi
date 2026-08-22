@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { supabase } from './supabase';
+import { MVP_LESSON_DURATION_MINUTES } from '../domain/vehicles-offerings';
 import {
   Provider,
   Vehicle,
@@ -127,6 +128,15 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
   // Category resolution order: row.category -> snapshot.category -> offeringCategory
   const rawCategory = row.category || snapshot.category || offeringCategory;
   const category = typeof rawCategory === 'string' ? rawCategory.trim() : '';
+  const studentName =
+    snapshot.studentName ||
+    snapshot.student_name ||
+    row.student_name ||
+    row.studentName ||
+    row.student_display_name ||
+    row.student_displayName ||
+    row.student?.name ||
+    'Estudante';
 
   if (!category) {
     throw new Error(`BOOKING_CATEGORY_MISSING: A categoria do agendamento ${row.id || ''} não pôde ser determinada.`);
@@ -135,7 +145,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
   return {
     id: row.id,
     studentId: row.student_id,
-    studentName: snapshot.studentName || snapshot.student_name || row.student_name || 'Estudante',
+    studentName,
     providerId: row.provider_id,
     providerName,
     instructorId: row.instructor_id,
@@ -177,11 +187,14 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
 }
 
 export function mapComplianceFromDb(row: any): ComplianceDocument {
+  const documentType = row.document_type === 'CNH' ? 'CNH_EAR' : row.document_type;
   return {
     id: row.id,
     providerId: row.provider_id,
-    type: row.document_type,
-    title: row.document_type === 'CNH' ? 'Carteira Nacional de Habilitação (CNH)' : row.document_type,
+    type: documentType,
+    title: row.document_type === 'CNH' || row.document_type === 'CNH_EAR'
+      ? 'Carteira Nacional de Habilitação com EAR'
+      : row.document_type,
     status: row.status,
     fileName: row.storage_path ? row.storage_path.split('/').pop() || 'document.pdf' : 'document.pdf',
     storagePath: row.storage_path,
@@ -690,6 +703,16 @@ export const dbService = {
     return (data || []).map(mapVehicleFromDb);
   },
 
+  async reviewVehicle(vehicleId: string, status: 'ACTIVE' | 'INACTIVE' | 'BLOCKED', reason?: string): Promise<Vehicle> {
+    const { data, error } = await sp.rpc('review_vehicle', {
+      p_vehicle_id: vehicleId,
+      p_status: status,
+      p_reason: reason || null,
+    });
+    if (error) throw error;
+    return mapVehicleFromDb(data);
+  },
+
   async saveVehicle(vehicle: Partial<Vehicle>): Promise<Vehicle> {
     const isNew = !vehicle.id || !isUuid(vehicle.id);
 
@@ -767,6 +790,9 @@ export const dbService = {
   },
 
   async saveOffering(offering: Partial<ServiceOffering>): Promise<ServiceOffering> {
+    if (offering.durationMinutes !== undefined && offering.durationMinutes !== MVP_LESSON_DURATION_MINUTES) {
+      throw new Error('No MVP, a duração da aula deve ser de 50 minutos.');
+    }
     const isNew = !offering.id || !isUuid(offering.id);
 
     if (isNew) {
@@ -1199,6 +1225,15 @@ export const dbService = {
     return (data || []).map(mapNotificationFromDb);
   },
 
+  async getMyUnreadNotificationCount(): Promise<number> {
+    const { count, error } = await sp
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_read', false);
+    if (error) throw error;
+    return count || 0;
+  },
+
   async markNotificationAsRead(notificationId: string): Promise<void> {
     const { error } = await sp
       .from('notifications')
@@ -1258,7 +1293,7 @@ export const dbService = {
     return (data || []).map(mapComplianceFromDb);
   },
 
-  async saveComplianceDoc(doc: Partial<ComplianceDocument>): Promise<ComplianceDocument> {
+  async saveComplianceDoc(doc: Partial<ComplianceDocument> & { scope?: 'USER_GLOBAL' | 'PROVIDER' | 'MEMBERSHIP' | 'VEHICLE' }): Promise<ComplianceDocument> {
     const isNew = !doc.id;
     const dbRow = {
       provider_id: doc.providerId,
@@ -1267,6 +1302,7 @@ export const dbService = {
       storage_path: doc.storagePath,
       status: doc.status || 'PENDING',
       rejection_reason: doc.rejectionReason || null,
+      scope: doc.scope || (doc.providerId ? 'PROVIDER' : 'USER_GLOBAL'),
     };
 
     if (isNew) {
@@ -1374,6 +1410,15 @@ export const dbService = {
     return data;
   },
 
+  async endSchoolInstructorMembership(membershipId: string, reason?: string): Promise<any> {
+    const { data, error } = await sp.rpc('end_school_instructor_membership', {
+      p_membership_id: membershipId,
+      p_reason: reason || null,
+    });
+    if (error) throw error;
+    return data;
+  },
+
   // 6. PLATFORM CONFIGURATION
   async getPlatformConfigs(): Promise<any[]> {
     const { data, error } = await sp.rpc('get_admin_platform_configurations');
@@ -1381,15 +1426,26 @@ export const dbService = {
     return data || [];
   },
 
-  async savePlatformConfig(key: string, value: any): Promise<void> {
-    const { error } = await sp
-      .from('platform_configurations')
-      .upsert({
-        key,
-        value,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'key' });
+  async updatePlatformConfigs(updates: Record<string, number>): Promise<any[]> {
+    const { data, error } = await sp.rpc('update_admin_platform_configurations', {
+      p_updates: updates,
+    });
     if (error) throw error;
+    return data || [];
+  },
+
+  async savePlatformConfig(key: string, value: any): Promise<void> {
+    const updates: Record<string, number> = {};
+    if (key === 'platform_fees' && value?.default_percentage !== undefined) {
+      updates.platformFeeDefaultPercentage = Number(value.default_percentage);
+    } else if (key === 'quote_settings' && value?.expiration_minutes !== undefined) {
+      updates.quoteExpirationMinutes = Number(value.expiration_minutes);
+    } else if (key === 'scheduling_settings' && value?.max_booking_horizon_days !== undefined) {
+      updates.availabilityHorizonDays = Number(value.max_booking_horizon_days);
+    } else {
+      throw new Error('Configuração de plataforma não suportada pelo fluxo transacional.');
+    }
+    await this.updatePlatformConfigs(updates);
   },
 
   // 7. AUDIT LOGS

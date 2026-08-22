@@ -8,6 +8,7 @@ export interface VehicleCardProps {
   vehicle: Vehicle;
   isSelected?: boolean;
   onSelect?: (vehicle: Vehicle) => void;
+  footer?: React.ReactNode;
   id?: string;
 }
 
@@ -15,6 +16,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
   vehicle,
   isSelected = false,
   onSelect,
+  footer,
   id,
 }) => {
   return (
@@ -68,6 +70,12 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
         <div className="mt-2.5 pt-2 border-t border-emerald-200/60 flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Veículo Selecionado</span>
+        </div>
+      )}
+
+      {footer && (
+        <div className="mt-3 border-t border-[var(--mazzi-border)] pt-3">
+          {footer}
         </div>
       )}
     </div>

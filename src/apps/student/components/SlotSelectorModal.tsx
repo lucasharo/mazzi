@@ -3,7 +3,6 @@ import { ChevronDown, ChevronLeft, ChevronRight, Clock, RefreshCw, Check } from 
 import { Modal } from '../../../components/ui/Modal';
 import { Button, PrimaryButton, ButtonBase } from '../../../components/ui/Button';
 import { supabase } from '../../../lib/supabase';
-import { dbService } from '../../../lib/db-service';
 import { formatCentsToBRL } from '../../../domain/money';
 import { STUDENT_BOOKING_HORIZON_DAYS } from '../../../domain/availability';
 
@@ -12,6 +11,7 @@ export { STUDENT_BOOKING_HORIZON_DAYS };
 export const MAX_HORIZON_DAYS = STUDENT_BOOKING_HORIZON_DAYS;
 export const INITIAL_WINDOW_DAYS = 30; // Progressive initial window (batch 1)
 export const LOAD_MORE_DAYS = 30;      // Progressive load more batch (batch 2 to reach 60)
+export const MAX_RPC_DATE_RANGE_DAYS = 31;
 
 export type PublicSlot = {
   local_date: string;
@@ -29,6 +29,19 @@ export function addDays(dateOnly: string, days: number): string {
   const [year, month, day] = dateOnly.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day + days));
   return date.toISOString().slice(0, 10);
+}
+
+export function splitDateRange(fromDate: string, daysToFetch: number, maxRangeDays = MAX_RPC_DATE_RANGE_DAYS): Array<{ from: string; to: string }> {
+  const safeDays = Math.max(0, Math.floor(daysToFetch));
+  const safeRange = Math.max(1, Math.floor(maxRangeDays));
+  return Array.from({ length: Math.ceil(safeDays / safeRange) }, (_, index) => {
+    const startOffset = index * safeRange;
+    const endOffset = Math.min(safeDays - 1, startOffset + safeRange - 1);
+    return {
+      from: addDays(fromDate, startOffset),
+      to: addDays(fromDate, endOffset),
+    };
+  });
 }
 
 export function formatDateOnly(dateOnly: string, options: Intl.DateTimeFormatOptions): string {
@@ -93,20 +106,20 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
     if (!offeringId) return;
     setIsLoading(true);
     setError(null);
-    const toDate = addDays(fromDate, daysToFetch - 1);
+    const ranges = splitDateRange(fromDate, daysToFetch);
 
     try {
-      const { data, error: rpcError } = await (supabase as any).rpc('get_available_slots_public', {
-        p_offering_id: offeringId,
-        p_date_from: fromDate,
-        p_date_to: toDate,
-      });
+      const batches = await Promise.all(ranges.map(async ({ from, to }) => {
+        const { data, error: rpcError } = await (supabase as any).rpc('get_available_slots_public', {
+          p_offering_id: offeringId,
+          p_date_from: from,
+          p_date_to: to,
+        });
+        if (rpcError) throw rpcError;
+        return (data as PublicSlot[]) || [];
+      }));
 
-      if (rpcError) {
-        throw rpcError;
-      }
-
-      const grouped = groupSlots((data as PublicSlot[]) || []);
+      const grouped = groupSlots(batches.flat());
       setSlotsByDate(grouped);
 
       const firstAvailable = Object.keys(grouped).sort()[0] || null;
@@ -120,32 +133,8 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
       const firstMonth = (firstAvailable || fromDate).slice(0, 7);
       setVisibleMonth((prev) => prev || firstMonth);
     } catch (err: any) {
-      console.warn('[SlotSelectorModal] RPC call failed, attempting fallback query:', err);
-      try {
-        const slots = await (dbService as any).getPublicSlots(offeringId, fromDate, toDate);
-        const mapped: PublicSlot[] = (slots || []).map((s: any) => ({
-          local_date: s.slot_start_at.slice(0, 10),
-          local_start_time: s.slot_start_at.slice(11, 16),
-          local_end_time: s.slot_end_at ? s.slot_end_at.slice(11, 16) : '',
-          slot_start_at: s.slot_start_at,
-          slot_end_at: s.slot_end_at,
-        }));
-        const grouped = groupSlots(mapped);
-        setSlotsByDate(grouped);
-
-        const firstAvailable = Object.keys(grouped).sort()[0] || null;
-        if (resetSelection) {
-          setSelectedDate(firstAvailable);
-          setSelectedSlot(null);
-        } else {
-          setSelectedDate((prev) => prev || firstAvailable);
-        }
-
-        const firstMonth = (firstAvailable || fromDate).slice(0, 7);
-        setVisibleMonth((prev) => prev || firstMonth);
-      } catch (fallbackErr: any) {
-        setError('Não foi possível carregar os horários. Tente novamente.');
-      }
+      console.warn('[SlotSelectorModal] RPC call failed:', err);
+      setError('Não foi possível carregar os horários. Tente novamente.');
     } finally {
       setIsLoading(false);
     }

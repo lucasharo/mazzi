@@ -251,7 +251,7 @@ export interface ServiceOffering {
   vehicleId: string;
   category: VehicleCategory;
   transmission?: TransmissionType;
-  durationMinutes: number; // Integer minutes > 0 (e.g. 50, 60, 90, 120)
+  durationMinutes: number; // MVP: 50 minutes (CONTRAN hour-class)
   priceInCents: number; // Integer cents > 0 (e.g. 10000 = R$ 100,00)
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;

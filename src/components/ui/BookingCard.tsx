@@ -3,18 +3,13 @@ import { Booking } from '../../types';
 import { formatDateBR, formatTimeRange } from '../../lib/date-format';
 import { formatMeetingPoint } from '../../lib/meeting-point';
 import { formatCentsToBRL } from '../../domain/money';
-import { Button, PrimaryButton, SecondaryButton } from './Button';
+import { PrimaryButton } from './Button';
 import {
   Calendar,
   Clock,
   Car,
   ClipboardList,
   MapPin,
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
-  MessageSquare,
-  Star,
 } from 'lucide-react';
 
 import { StatusBadge } from './StatusBadge';
@@ -49,6 +44,11 @@ export interface BookingCardProps {
   perspective?: BookingPerspective;
   variant?: 'default' | 'student' | 'instructor';
   onCheckIn?: (booking: Booking) => void;
+  onStartLesson?: (booking: Booking) => void;
+  onCompleteLesson?: (booking: Booking) => void;
+  onCancelBooking?: (booking: Booking) => void;
+  isCompleting?: boolean;
+  canCancelBooking?: (booking: Booking) => boolean;
   onOpenChat?: (booking: Booking) => void;
   onViewDetails?: (booking: Booking) => void;
   onReview?: (booking: Booking) => void;
@@ -58,19 +58,10 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   booking,
   perspective = 'STUDENT',
   variant,
-  onCheckIn,
-  onOpenChat,
   onViewDetails,
-  onReview,
 }) => {
   const isInstructorPerspective = variant === 'instructor' || perspective === 'INSTRUCTOR';
   const isStudent = !isInstructorPerspective;
-  const isPending = booking.status === 'PENDING_PAYMENT';
-  const isConfirmed = booking.status === 'CONFIRMED';
-  const isInProgress = booking.status === 'IN_PROGRESS';
-  const isCompleted = booking.status === 'COMPLETED';
-  const isCancelled = booking.status === 'CANCELLED';
-  const isUpcoming = isConfirmed || isInProgress;
 
   const vehicle =
     (booking.vehicle ? formatVehicleLabel(booking.vehicle) : undefined) ||
@@ -79,7 +70,6 @@ export const BookingCard: React.FC<BookingCardProps> = ({
     'Veículo não informado';
 
   const instructor = booking.instructorName || booking.instructor?.name || 'Instrutor';
-  const provider = booking.providerName || booking.provider?.name || 'Autoescola';
   const student = booking.studentName || booking.student?.name || 'Aluno';
   const point = formatMeetingPoint(booking.meetingPoint) || 'Ponto de encontro a combinar';
   const transLabel = booking.snapshot?.transmission === 'AUTOMATIC' ? 'Automático' : 'Manual';
@@ -172,60 +162,6 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {onOpenChat && (
-            <SecondaryButton
-              type="button"
-              size="sm"
-              className="min-h-11 px-3.5 text-xs font-bold shadow-2xs"
-              onClick={() => onOpenChat(booking)}
-              leftIcon={<MessageSquare className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />}
-              aria-label="Abrir chat da reserva"
-            >
-              Chat
-            </SecondaryButton>
-          )}
-
-          {!isStudent && isUpcoming && onCheckIn && (
-            <PrimaryButton
-              type="button"
-              size="sm"
-              className="min-h-11 px-4 text-xs font-bold shadow-xs"
-              onClick={() => onCheckIn(booking)}
-              leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-current" aria-hidden="true" />}
-              aria-label={
-                isInstructorPerspective
-                  ? booking.instructorCheckedIn
-                    ? 'Check-in já realizado pelo instrutor'
-                    : 'Fazer Check-in como instrutor'
-                  : booking.studentCheckedIn
-                  ? 'Check-in já realizado pelo aluno'
-                  : 'Fazer Check-in como aluno'
-              }
-            >
-              {isInstructorPerspective
-                ? booking.instructorCheckedIn
-                  ? 'Check-in Realizado'
-                  : 'Fazer Check-in'
-                : booking.studentCheckedIn
-                ? 'Check-in Realizado'
-                : 'Fazer Check-in'}
-            </PrimaryButton>
-          )}
-
-          {isCompleted && onReview && !isInstructorPerspective && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="min-h-11 px-3.5 text-xs font-bold"
-              onClick={() => onReview(booking)}
-              leftIcon={<Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" aria-hidden="true" />}
-              aria-label="Avaliar esta aula concluída"
-            >
-              Avaliar Aula
-            </Button>
-          )}
-
           {onViewDetails && (
             <PrimaryButton
               type="button"

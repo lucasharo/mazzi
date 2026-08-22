@@ -130,6 +130,17 @@ describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
         priceInCents: 0,
       })
     ).toThrowError(/Preço da aula deve ser um valor inteiro em centavos maior que zero/i);
+
+    expect(() =>
+      createServiceOffering({
+        providerId: 'prov_100',
+        instructorId: 'inst_100',
+        vehicle: activeVehicle,
+        category: 'B',
+        durationMinutes: 60,
+        priceInCents: 9500,
+      })
+    ).toThrowError(/duração.*50 minutos/i);
   });
 
   it('keeps browser currency masking aligned with integer cents', () => {
