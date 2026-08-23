@@ -74,6 +74,15 @@ const DAY_OPTIONS: { value: DayOfWeek; label: string }[] = [
   { value: 'SUNDAY', label: 'Domingo' },
 ];
 
+const BLOCK_REASON_OPTIONS: { value: ExceptionReasonCategory; label: string }[] = [
+  { value: 'VACATION', label: 'Férias' },
+  { value: 'PERSONAL', label: 'Folga / compromisso pessoal' },
+  { value: 'MAINTENANCE', label: 'Manutenção do carro' },
+  { value: 'HOLIDAY', label: 'Feriado' },
+  { value: 'MANUAL_BLOCK', label: 'Indisponibilidade' },
+  { value: 'OTHER', label: 'Outro motivo' },
+];
+
 export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   scheduleSubTab,
   onSubTabChange,
@@ -586,13 +595,32 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-extrabold text-slate-900 block mb-1">Motivo do Bloqueio *</label>
-            <Input
-              value={exceptionForm.reason}
-              onChange={(e) => onExceptionFormChange({ ...exceptionForm, reason: e.target.value })}
-              placeholder="Ex: Manutenção do veículo, Folga médica, Feriado"
-            />
+          <div className="space-y-2">
+            <label className="text-xs font-extrabold text-slate-900 block">Motivo do Bloqueio *</label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {BLOCK_REASON_OPTIONS.map((option) => {
+                const selected = exceptionForm.reasonCategory === option.value;
+                return (
+                  <ButtonBase
+                    key={option.value}
+                    type="button"
+                    onClick={() => onExceptionFormChange({ ...exceptionForm, reasonCategory: option.value, reason: option.value === 'OTHER' ? '' : option.label })}
+                    className={`rounded-xl border p-3 text-left text-xs font-bold transition ${selected ? 'border-[#202126] bg-[#202126] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
+                    aria-pressed={selected}
+                  >
+                    {option.label}
+                  </ButtonBase>
+                );
+              })}
+            </div>
+            {exceptionForm.reasonCategory === 'OTHER' && (
+              <Input
+                label="Descreva o motivo"
+                value={exceptionForm.reason}
+                onChange={(e) => onExceptionFormChange({ ...exceptionForm, reason: e.target.value })}
+                placeholder="Descreva o motivo do bloqueio"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
