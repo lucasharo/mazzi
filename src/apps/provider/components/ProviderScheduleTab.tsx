@@ -84,6 +84,36 @@ const BLOCK_REASON_OPTIONS: { value: ExceptionReasonCategory; label: string }[] 
   { value: 'OTHER', label: 'Outro motivo' },
 ];
 
+interface ScheduleBlockCardItem {
+  id: string;
+  kind: 'quick' | 'days';
+  startAt: string;
+  endAt: string;
+  reason?: string;
+  editable: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  deleting?: boolean;
+}
+
+const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt, endAt, reason, editable, onEdit, onDelete, deleting }) => (
+  <div key={id} className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3">
+    <div className="min-w-0 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="warning">{kind === 'quick' ? 'Bloqueio rápido' : 'Bloqueio de dias'}</Badge>
+        {kind === 'days' && reason && <span className="text-xs font-bold text-slate-900">{reason}</span>}
+      </div>
+      <p className="text-xs font-bold text-slate-900">{formatDateTimeBR(startAt)} até {formatDateTimeBR(endAt)}</p>
+      {kind === 'quick' && reason && <p className="text-xs text-slate-600 font-medium">{reason}</p>}
+      {!editable && <p className="text-[11px] font-semibold text-slate-400">Histórico · período encerrado</p>}
+    </div>
+    <div className="flex shrink-0 items-center gap-1">
+      <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100 disabled:opacity-40" disabled={!editable} onClick={onEdit} aria-label="Editar bloqueio"><Pencil className="w-4 h-4" /></Button>
+      <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 disabled:opacity-40" disabled={!editable || deleting} isLoading={deleting} onClick={onDelete} aria-label="Excluir bloqueio"><Trash2 className="w-4 h-4" /></Button>
+    </div>
+  </div>
+);
+
 export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   scheduleSubTab,
   onSubTabChange,
@@ -144,6 +174,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const canChangeBlock = (endAt: string) => new Date(endAt).getTime() > Date.now();
   const sortedGlobalBlocks = React.useMemo(() => [...(instructorGlobalBlocks || [])].sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime()), [instructorGlobalBlocks]);
   const sortedExceptions = React.useMemo(() => [...availabilityExceptions].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [availabilityExceptions]);
+  const blockCardItems = React.useMemo<ScheduleBlockCardItem[]>(() => [
+    ...(isInstructorUser ? sortedGlobalBlocks.map((block) => ({
+      id: `global-${block.id}`, kind: 'quick' as const, startAt: block.start_at, endAt: block.end_at, reason: block.reason, editable: canChangeBlock(block.end_at),
+      onEdit: () => handleOpenEditGlobalBlock(block), onDelete: () => void handleDeleteGlobalBlockClick(block.id), deleting: deletingGlobalBlockId === block.id,
+    })) : []),
+    ...sortedExceptions.map((exception) => ({
+      id: exception.id, kind: 'days' as const, startAt: exception.startAt, endAt: exception.endAt, reason: exception.reason, editable: canChangeBlock(exception.endAt),
+      onEdit: () => handleEditException(exception), onDelete: () => void onDeleteException(exception.id),
+    })),
+  ].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [isInstructorUser, sortedGlobalBlocks, sortedExceptions, deletingGlobalBlockId]);
 
   const handleEditException = (exception: AvailabilityException) => {
     if (!canChangeBlock(exception.endAt)) return;
@@ -446,7 +486,9 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               onAction={onOpenAddExceptionModal}
             />
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-3">
+              {blockCardItems.map((item) => <ScheduleBlockCard key={item.id} {...item} />)}
+              {/*
               {isInstructorUser && sortedGlobalBlocks.map((gb) => {
                 const editable = canChangeBlock(gb.end_at);
                 return (
@@ -464,7 +506,8 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                 </div>
                 );
               })}
-              {sortedExceptions.map((exc) => {
+              */}
+              {/* {sortedExceptions.map((exc) => {
                 const editable = canChangeBlock(exc.endAt);
                 return (
                 <div
@@ -497,7 +540,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                   </Button>
                 </div>
                 );
-              })}
+              })} */}
             </div>
           )}
         </div>
