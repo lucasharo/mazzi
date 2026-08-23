@@ -396,93 +396,47 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       {/* EXCEPTIONS & BLOCKS SUBTAB */}
       {scheduleSubTab === 'exceptions' && (
         <div className="space-y-4">
-          {/* INSTRUCTOR GLOBAL PERSONAL BLOCKS SECTION */}
-          {isInstructorUser && (
-            <div className="space-y-3">
-              {globalBlockActionError && (
-                <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-extrabold text-rose-950 flex items-center justify-between gap-3">
-                  <span>{globalBlockActionError}</span>
-                  <ButtonBase
-                    type="button"
-                    onClick={() => setGlobalBlockActionError(null)}
-                    className="text-rose-600 hover:text-rose-900 font-bold cursor-pointer"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </ButtonBase>
-                </div>
-              )}
-
-              {instructorGlobalBlocks && instructorGlobalBlocks.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {instructorGlobalBlocks.map((gb) => (
-                    <div
-                      key={gb.id}
-                      className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3"
-                    >
-                      <div>
-                      <p className="text-xs font-bold text-slate-900">
-                          {formatDateTimeBR(gb.start_at)} até {formatDateTimeBR(gb.end_at)}
-                        </p>
-                        {gb.reason && (
-                          <p className="text-xs text-slate-600 font-medium mt-0.5">
-                            Motivo: {gb.reason}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-slate-600 hover:bg-slate-100"
-                          onClick={() => handleOpenEditGlobalBlock(gb)}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        {onDeleteGlobalBlock && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-rose-600 hover:bg-rose-50"
-                            disabled={deletingGlobalBlockId === gb.id}
-                            isLoading={deletingGlobalBlockId === gb.id}
-                            onClick={() => handleDeleteGlobalBlockClick(gb.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs font-extrabold text-amber-900/70 italic pt-1">
-                  Nenhum bloqueio pessoal global cadastrado.
-                </p>
-              )}
+          {globalBlockActionError && (
+            <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-extrabold text-rose-950 flex items-center justify-between gap-3">
+              <span>{globalBlockActionError}</span>
+              <ButtonBase type="button" onClick={() => setGlobalBlockActionError(null)} className="text-rose-600 hover:text-rose-900 font-bold cursor-pointer">
+                <X className="h-4 w-4" aria-hidden="true" />
+              </ButtonBase>
             </div>
           )}
 
-          {availabilityExceptions.length === 0 ? (
+          {(!isInstructorUser || instructorGlobalBlocks.length === 0) && availabilityExceptions.length === 0 ? (
             <EmptyState
               icon={<Ban className="w-8 h-8 text-slate-400" />}
               title="Nenhum bloqueio cadastrado"
-              description="Sua agenda não possui folgas ou bloqueios administrativos programados."
+              description="Sua agenda não possui bloqueios rápidos ou bloqueios de dias programados."
               actionLabel="Cadastrar Bloqueio"
               onAction={onOpenAddExceptionModal}
             />
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {isInstructorUser && instructorGlobalBlocks.map((gb) => (
+                <div key={`global-${gb.id}`} className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3">
+                  <div className="min-w-0 space-y-2">
+                    <Badge variant="warning">Bloqueio rápido</Badge>
+                    <p className="text-xs font-bold text-slate-900">{formatDateTimeBR(gb.start_at)} até {formatDateTimeBR(gb.end_at)}</p>
+                    {gb.reason && <p className="text-xs text-slate-600 font-medium">{gb.reason}</p>}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100" onClick={() => handleOpenEditGlobalBlock(gb)} aria-label="Editar bloqueio rápido"><Pencil className="w-3.5 h-3.5" /></Button>
+                    {onDeleteGlobalBlock && <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50" disabled={deletingGlobalBlockId === gb.id} isLoading={deletingGlobalBlockId === gb.id} onClick={() => handleDeleteGlobalBlockClick(gb.id)} aria-label="Excluir bloqueio rápido"><Trash2 className="w-3.5 h-3.5" /></Button>}
+                  </div>
+                </div>
+              ))}
               {availabilityExceptions.map((exc) => (
                 <div
                   key={exc.id}
-                  className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs flex items-center justify-between gap-3"
+                  className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3"
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={exc.type === 'BLOCK' ? 'danger' : 'success'}>
-                        {exc.type === 'BLOCK' ? 'Bloqueio Total' : 'Exceção Aberta'}
-                      </Badge>
-                    <span className="text-xs font-bold text-slate-900">{exc.reason}</span>
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="warning">Bloqueio de dias</Badge>
+                      <span className="text-xs font-bold text-slate-900">{exc.reason || 'Folga / indisponibilidade'}</span>
                     </div>
                     <p className="text-xs text-slate-500 font-medium">
                       De: {new Date(exc.startAt).toLocaleString('pt-BR')} até {new Date(exc.endAt).toLocaleString('pt-BR')}
@@ -493,7 +447,8 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => onDeleteException(exc.id)}
-                    className="text-rose-600 hover:bg-rose-50"
+                    className="shrink-0 text-rose-600 hover:bg-rose-50"
+                    aria-label="Excluir bloqueio de dias"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
