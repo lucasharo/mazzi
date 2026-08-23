@@ -23,10 +23,13 @@ interface ProviderScheduleTabProps {
   vehicles: Vehicle[];
   isAddRuleModalOpen: boolean;
   onOpenAddRuleModal: () => void;
+  onOpenEditRule: (rule: AvailabilityRule) => void;
   onCloseAddRuleModal: () => void;
   ruleForm: { dayOfWeek: DayOfWeek; startTime: string; endTime: string };
   onRuleFormChange: (form: { dayOfWeek: DayOfWeek; startTime: string; endTime: string }) => void;
   onSaveRule: () => void;
+  editingRuleId: string | null;
+  isSavingRule: boolean;
   onDeleteRule: (id: string) => void;
   ruleError: string | null;
   isAddExceptionModalOpen: boolean;
@@ -75,10 +78,13 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   vehicles,
   isAddRuleModalOpen,
   onOpenAddRuleModal,
+  onOpenEditRule,
   onCloseAddRuleModal,
   ruleForm,
   onRuleFormChange,
   onSaveRule,
+  editingRuleId,
+  isSavingRule,
   onDeleteRule,
   ruleError,
   isAddExceptionModalOpen,
@@ -291,15 +297,28 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                     </p>
                   </div>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDeleteRule(rule.id)}
-                    className="text-rose-600 hover:bg-rose-50"
-                    aria-label="Excluir regra"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onOpenEditRule(rule)}
+                      className="text-slate-700 hover:bg-slate-100"
+                      aria-label={`Editar horário de ${DAY_OF_WEEK_LABELS_PT[rule.dayOfWeek]}`}
+                      title="Editar horário"
+                    >
+                      <Pencil className="w-4 h-4" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDeleteRule(rule.id)}
+                      className="text-rose-600 hover:bg-rose-50"
+                      aria-label={`Excluir horário de ${DAY_OF_WEEK_LABELS_PT[rule.dayOfWeek]}`}
+                      title="Excluir horário"
+                    >
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -502,7 +521,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       )}
 
       {/* ADD RECURRING RULE MODAL */}
-      <Modal isOpen={isAddRuleModalOpen} onClose={onCloseAddRuleModal} title="Cadastrar Regra Semanal">
+      <Modal isOpen={isAddRuleModalOpen} onClose={onCloseAddRuleModal} title={editingRuleId ? 'Editar Regra Semanal' : 'Cadastrar Regra Semanal'}>
         <div className="space-y-4 text-left">
           {ruleError && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
@@ -538,11 +557,11 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           </div>
 
           <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
-            <Button variant="dangerSoft" size="sm" onClick={onCloseAddRuleModal}>
+            <Button variant="dangerSoft" size="sm" onClick={onCloseAddRuleModal} disabled={isSavingRule}>
               Cancelar
             </Button>
-            <Button variant="primary" size="sm" onClick={onSaveRule}>
-              Salvar Regra
+            <Button variant="primary" size="sm" onClick={onSaveRule} isLoading={isSavingRule}>
+              {editingRuleId ? 'Salvar Alterações' : 'Salvar Regra'}
             </Button>
           </div>
         </div>

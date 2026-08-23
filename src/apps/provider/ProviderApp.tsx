@@ -129,6 +129,8 @@ export const ProviderApp: React.FC = () => {
 
   // Modals for Availability Rules and Exceptions
   const [isAddRuleModalOpen, setIsAddRuleModalOpen] = useState<boolean>(false);
+  const [editingAvailabilityRuleId, setEditingAvailabilityRuleId] = useState<string | null>(null);
+  const [isSavingAvailabilityRule, setIsSavingAvailabilityRule] = useState(false);
   const [ruleForm, setRuleForm] = useState({
     dayOfWeek: 'MONDAY' as DayOfWeek,
     startTime: '08:00',
@@ -606,8 +608,28 @@ export const ProviderApp: React.FC = () => {
   };
 
   // Availability Handlers
-  const handleCreateAvailabilityRule = async () => {
+  const resetAvailabilityRuleForm = () => {
+    setEditingAvailabilityRuleId(null);
+    setRuleForm({ dayOfWeek: 'MONDAY', startTime: '08:00', endTime: '12:00' });
     setRuleError(null);
+  };
+
+  const handleOpenCreateAvailabilityRule = () => {
+    resetAvailabilityRuleForm();
+    setIsAddRuleModalOpen(true);
+  };
+
+  const handleOpenEditAvailabilityRule = (rule: AvailabilityRule) => {
+    setEditingAvailabilityRuleId(rule.id);
+    setRuleForm({ dayOfWeek: rule.dayOfWeek, startTime: rule.startTime, endTime: rule.endTime });
+    setRuleError(null);
+    setIsAddRuleModalOpen(true);
+  };
+
+  const handleSaveAvailabilityRule = async () => {
+    if (isSavingAvailabilityRule) return;
+    setRuleError(null);
+    setIsSavingAvailabilityRule(true);
     try {
       enforceAvailabilityOwnership({
         targetProviderId: currentProvider.id,
@@ -616,29 +638,53 @@ export const ProviderApp: React.FC = () => {
         providerStatus: currentProvider.status,
       });
 
-      const newRule: AvailabilityRule = {
-        id: `rule_${Date.now()}`,
-        providerId: currentProvider.id,
-        dayOfWeek: ruleForm.dayOfWeek,
-        startTime: ruleForm.startTime,
-        endTime: ruleForm.endTime,
-        timezone: 'America/Sao_Paulo',
-        isActive: true,
-      };
+      const originalRule = editingAvailabilityRuleId
+        ? availabilityRules.find((rule) => rule.id === editingAvailabilityRuleId)
+        : undefined;
+      if (editingAvailabilityRuleId && !originalRule) {
+        throw new Error('A regra semanal não está mais disponível. Atualize a agenda e tente novamente.');
+      }
+
+      const newRule: AvailabilityRule = originalRule
+        ? {
+          ...originalRule,
+          dayOfWeek: ruleForm.dayOfWeek,
+          startTime: ruleForm.startTime,
+          endTime: ruleForm.endTime,
+          timezone: originalRule.timezone || 'America/Sao_Paulo',
+        }
+        : {
+          id: `rule_${Date.now()}`,
+          providerId: currentProvider.id,
+          dayOfWeek: ruleForm.dayOfWeek,
+          startTime: ruleForm.startTime,
+          endTime: ruleForm.endTime,
+          timezone: 'America/Sao_Paulo',
+          isActive: true,
+        };
 
       validateAvailabilityRule(newRule, availabilityRules);
 
       const dayNumbers: Record<DayOfWeek, number> = { SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6 };
       const savedRule = await dbService.saveAvailabilityRule({ ...newRule, dayOfWeekNumber: dayNumbers[newRule.dayOfWeek] });
-      setAvailabilityRules((prev) => [...prev, {
-        ...newRule, id: savedRule.id, dayOfWeekNumber: savedRule.day_of_week,
+      const mappedSavedRule: AvailabilityRule = {
+        ...newRule,
+        id: savedRule.id || newRule.id,
+        dayOfWeekNumber: savedRule.day_of_week ?? dayNumbers[newRule.dayOfWeek],
         startTime: savedRule.start_time?.slice(0, 5) || newRule.startTime,
         endTime: savedRule.end_time?.slice(0, 5) || newRule.endTime,
-      }]);
+        timezone: savedRule.timezone || newRule.timezone,
+        isActive: savedRule.is_active ?? newRule.isActive,
+      };
+      setAvailabilityRules((prev) => editingAvailabilityRuleId
+        ? prev.map((rule) => rule.id === mappedSavedRule.id ? mappedSavedRule : rule)
+        : [...prev, mappedSavedRule]);
       setIsAddRuleModalOpen(false);
-      setRuleForm({ dayOfWeek: 'MONDAY', startTime: '08:00', endTime: '12:00' });
+      resetAvailabilityRuleForm();
     } catch (err: any) {
-      setRuleError(err.message || 'Erro ao criar regra de disponibilidade.');
+      setRuleError(mapFriendlyErrorMessage(err, 'Não foi possível salvar a regra semanal.'));
+    } finally {
+      setIsSavingAvailabilityRule(false);
     }
   };
 
@@ -1013,11 +1059,14 @@ export const ProviderApp: React.FC = () => {
             offerings={offerings}
             vehicles={vehicles}
             isAddRuleModalOpen={isAddRuleModalOpen}
-            onOpenAddRuleModal={() => setIsAddRuleModalOpen(true)}
+            onOpenAddRuleModal={handleOpenCreateAvailabilityRule}
+            onOpenEditRule={handleOpenEditAvailabilityRule}
             onCloseAddRuleModal={() => setIsAddRuleModalOpen(false)}
             ruleForm={ruleForm}
             onRuleFormChange={setRuleForm}
-            onSaveRule={handleCreateAvailabilityRule}
+            onSaveRule={handleSaveAvailabilityRule}
+            editingRuleId={editingAvailabilityRuleId}
+            isSavingRule={isSavingAvailabilityRule}
             onDeleteRule={handleDeleteAvailabilityRule}
             ruleError={ruleError}
             isAddExceptionModalOpen={isAddExceptionModalOpen}

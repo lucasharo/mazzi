@@ -427,7 +427,7 @@ export const dbService = {
     };
     const query = isNew
       ? sp.from('availabilities').insert({ ...row, id: crypto.randomUUID() })
-      : sp.from('availabilities').update(row).eq('id', rule.id);
+      : sp.from('availabilities').update(row).eq('id', rule.id).eq('provider_id', rule.providerId);
     const { data, error } = await query.select().single();
     if (error) throw error;
     return data;
