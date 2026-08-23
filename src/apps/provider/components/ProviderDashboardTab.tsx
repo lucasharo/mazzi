@@ -8,6 +8,7 @@ import { ObjectEmptyState } from '../../../components/ui/ObjectEmptyState';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { evaluateProviderEligibility, getVerificationBadgeTooltip } from '../../../domain/compliance';
+import { resolveProviderCompliancePresentation } from '../../../domain/provider-compliance-presentation';
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 
 interface ProviderDashboardTabProps {
@@ -41,10 +42,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   isRefreshing = false,
 }) => {
   const complianceEligibility = evaluateProviderEligibility(currentProvider, providerDocs);
-  const isComplianceVerified = currentProvider.status === 'ACTIVE' && complianceEligibility.isEligible;
-  const complianceStatus = currentProvider.status === 'ACTIVE' && !complianceEligibility.isEligible
-    ? (complianceEligibility.pendingDocuments.length > 0 ? 'UNDER_REVIEW' : 'PENDING')
-    : currentProvider.status;
+  const compliancePresentation = resolveProviderCompliancePresentation(currentProvider, complianceEligibility);
 
   return (
     <div className="space-y-6 text-left">
@@ -77,12 +75,12 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         <div className="flex items-center gap-3">
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-              isComplianceVerified
+                compliancePresentation.verified
                 ? 'bg-emerald-500 text-white'
                 : 'bg-amber-400 text-slate-950'
           }`}
         >
-            {isComplianceVerified ? (
+            {compliancePresentation.verified ? (
               <ShieldCheck className="w-5 h-5" />
             ) : (
               <AlertCircle className="w-5 h-5" />
@@ -91,15 +89,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-bold text-slate-900">
-                {isComplianceVerified && 'Credenciamento Ativo • Verificado pela MAZZI'}
-                {!isComplianceVerified && complianceEligibility.pendingDocuments.length > 0 && 'Documentos em análise pelo Compliance'}
-                {!isComplianceVerified && complianceEligibility.pendingDocuments.length === 0 && complianceEligibility.missingRequirements.length > 0 && 'Documentação pendente para verificação'}
-                {!isComplianceVerified && complianceEligibility.pendingDocuments.length === 0 && complianceEligibility.missingRequirements.length === 0 && complianceEligibility.rejectedDocuments.length > 0 && 'Documentos rejeitados: correção necessária'}
-                {!isComplianceVerified && complianceEligibility.pendingDocuments.length === 0 && complianceEligibility.missingRequirements.length === 0 && complianceEligibility.rejectedDocuments.length === 0 && complianceEligibility.expiredDocuments.length > 0 && 'Documentos vencidos: atualização necessária'}
-                {!isComplianceVerified && complianceEligibility.isEligible && 'Compliance aprovado • Aguardando ativação'}
-                {!isComplianceVerified && currentProvider.status === 'REJECTED' && 'Cadastro rejeitado'}
-                {!isComplianceVerified && currentProvider.status === 'SUSPENDED' && 'Cadastro suspenso'}
-                {!isComplianceVerified && currentProvider.status === 'BLOCKED' && 'Cadastro bloqueado'}
+                {compliancePresentation.title}
               </h4>
               {currentProvider.isVerified && currentProvider.status !== 'ACTIVE' && (
                 <span
@@ -112,18 +102,11 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
               )}
             </div>
             <p className="text-xs text-slate-600 mt-0.5">
-              {isComplianceVerified &&
-                'Suas ofertas e horários estão visíveis para agendamentos de alunos em São Paulo.'}
-              {!isComplianceVerified && complianceEligibility.missingRequirements.length > 0 &&
-                'Envie e aguarde a aprovação de todos os documentos obrigatórios para receber o selo de verificação.'}
-              {currentProvider.status === 'PENDING_REVIEW' &&
-                'Seus documentos foram recebidos e estão na fila de auditoria da equipe de moderação.'}
-              {currentProvider.status === 'REJECTED' &&
-                `Motivo: ${currentProvider.rejectionReason || 'Documentação não conforme.'}`}
+              {compliancePresentation.description}
             </p>
           </div>
         </div>
-        {!isComplianceVerified && <StatusBadge status={complianceStatus} />}
+        {!compliancePresentation.verified && <StatusBadge status={compliancePresentation.status} />}
       </div>}
 
       {!isRefreshing && !calendarLoadError && (
