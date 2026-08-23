@@ -1256,6 +1256,16 @@ export const dbService = {
     return data;
   },
 
+  async createInstructorEmergencyBlock(startAt: string, endAt: string, reason?: string): Promise<any> {
+    const { data, error } = await sp.rpc('create_instructor_emergency_block_if_free', {
+      p_start_at: startAt,
+      p_end_at: endAt,
+      p_reason: reason || null,
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async getMyUnreadNotificationCount(): Promise<number> {
     const { count, error } = await sp
       .from('notifications')

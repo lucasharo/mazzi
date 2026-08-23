@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar as CalendarIcon, Plus, Trash2, Clock, Ban, CheckCircle2, AlertCircle, Sliders, Sparkles, Info, Pencil, X, } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Clock, Clock3, Ban, CheckCircle2, AlertCircle, Sliders, Sparkles, Info, Pencil, X, } from 'lucide-react';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getTodayInSaoPaulo, getBusinessDateFromTimestamp, getTimeInSaoPaulo, formatDateTimeBR } from '../../../lib/date-format';
 import {
@@ -56,6 +56,7 @@ interface ProviderScheduleTabProps {
   instructorGlobalBlocks?: any[];
   onSaveGlobalBlock?: (startAt: string, endAt: string, reason?: string, blockId?: string) => Promise<void>;
   onDeleteGlobalBlock?: (blockId: string) => Promise<void>;
+  onSaveEmergencyBlock?: (startAt: string, endAt: string, reason?: string) => Promise<void>;
   isInstructorUser?: boolean;
 }
 
@@ -102,6 +103,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   instructorGlobalBlocks,
   onSaveGlobalBlock,
   onDeleteGlobalBlock,
+  onSaveEmergencyBlock,
   isInstructorUser,
 }) => {
   // Dedicated state for Global Personal Blocks
@@ -118,6 +120,47 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const [globalBlockActionError, setGlobalBlockActionError] = React.useState<string | null>(null);
   const [isSavingGlobalBlock, setIsSavingGlobalBlock] = React.useState(false);
   const [deletingGlobalBlockId, setDeletingGlobalBlockId] = React.useState<string | null>(null);
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = React.useState(false);
+  const [isSavingEmergencyBlock, setIsSavingEmergencyBlock] = React.useState(false);
+  const [emergencyBlockError, setEmergencyBlockError] = React.useState<string | null>(null);
+  const [emergencyBlockForm, setEmergencyBlockForm] = React.useState({
+    date: '', startTime: '08:00', endTime: '09:00', reason: '',
+  });
+
+  const openEmergencyBlockModal = () => {
+    const now = new Date();
+    const currentTime = getTimeInSaoPaulo(now);
+    const [hours, minutes] = currentTime.split(':').map(Number);
+    const roundedMinutes = Math.ceil((hours * 60 + minutes) / 15) * 15;
+    const startMinutes = roundedMinutes >= 24 * 60 ? 23 * 60 + 45 : roundedMinutes;
+    const endMinutes = Math.min(startMinutes + 60, 23 * 60 + 59);
+    const formatTime = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+    setEmergencyBlockForm({ date: getTodayInSaoPaulo(now), startTime: formatTime(startMinutes), endTime: formatTime(endMinutes), reason: '' });
+    setEmergencyBlockError(null);
+    setIsEmergencyModalOpen(true);
+  };
+
+  const saveEmergencyBlock = async () => {
+    if (!onSaveEmergencyBlock || isSavingEmergencyBlock) return;
+    setEmergencyBlockError(null);
+    if (!emergencyBlockForm.date || !emergencyBlockForm.startTime || !emergencyBlockForm.endTime || emergencyBlockForm.endTime <= emergencyBlockForm.startTime) {
+      setEmergencyBlockError('A hora final deve ser posterior à hora inicial.');
+      return;
+    }
+    setIsSavingEmergencyBlock(true);
+    try {
+      await onSaveEmergencyBlock(
+        `${emergencyBlockForm.date}T${emergencyBlockForm.startTime}:00.000-03:00`,
+        `${emergencyBlockForm.date}T${emergencyBlockForm.endTime}:00.000-03:00`,
+        emergencyBlockForm.reason.trim() || undefined,
+      );
+      setIsEmergencyModalOpen(false);
+    } catch (error: any) {
+      setEmergencyBlockError(mapFriendlyErrorMessage(error, 'Este horário já possui uma aula ou reserva ativa. O bloqueio não foi realizado.'));
+    } finally {
+      setIsSavingEmergencyBlock(false);
+    }
+  };
 
   const handleOpenCreateGlobalBlock = () => {
     setEditingGlobalBlockId(null);
@@ -247,9 +290,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       </div>
       <div className="flex justify-end">
         {scheduleSubTab === 'rules' && (
-          <Button variant="primary" size="sm" onClick={onOpenAddRuleModal} leftIcon={<Plus className="w-4 h-4" />}>
-            Nova Regra Semanal
-          </Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            {isInstructorUser && onSaveEmergencyBlock && (
+              <Button variant="secondary" size="sm" onClick={openEmergencyBlockModal} leftIcon={<Clock3 className="w-4 h-4" />} aria-label="Criar bloqueio rápido de horário">
+                Bloqueio rápido
+              </Button>
+            )}
+            <Button variant="primary" size="sm" onClick={onOpenAddRuleModal} leftIcon={<Plus className="w-4 h-4" />}>
+              Nova Regra Semanal
+            </Button>
+          </div>
         )}
         {scheduleSubTab === 'exceptions' && (
           <Button variant="primary" size="sm" onClick={onOpenAddExceptionModal} leftIcon={<Plus className="w-4 h-4" />}>
@@ -563,6 +613,34 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             <Button variant="primary" size="sm" onClick={onSaveRule} isLoading={isSavingRule}>
               {editingRuleId ? 'Salvar Alterações' : 'Salvar Regra'}
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={isEmergencyModalOpen} onClose={() => !isSavingEmergencyBlock && setIsEmergencyModalOpen(false)} title="Indisponibilizar horário">
+        <div className="space-y-4 text-left">
+          <p className="text-xs leading-relaxed text-slate-600">Use esta opção para emergências. O horário só poderá ser bloqueado se não houver aula ou reserva ativa no período selecionado.</p>
+          {emergencyBlockError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">{emergencyBlockError}</div>}
+          <DateInput label="Data" value={emergencyBlockForm.date} onChange={(value) => setEmergencyBlockForm((current) => ({ ...current, date: value }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <TimeInput value={emergencyBlockForm.startTime} onChange={(value) => setEmergencyBlockForm((current) => ({ ...current, startTime: value }))} />
+            <TimeInput value={emergencyBlockForm.endTime} onChange={(value) => setEmergencyBlockForm((current) => ({ ...current, endTime: value }))} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[60, 120, 240].map((duration) => (
+              <Button key={duration} type="button" variant="outline" size="sm" onClick={() => {
+                const [hours, minutes] = emergencyBlockForm.startTime.split(':').map(Number);
+                const end = Math.min(hours * 60 + minutes + duration, 23 * 60 + 59);
+                setEmergencyBlockForm((current) => ({ ...current, endTime: `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}` }));
+              }}>
+                +{duration / 60}h
+              </Button>
+            ))}
+          </div>
+          <Input label="Motivo (opcional)" placeholder="Ex: emergência pessoal, problema com veículo..." value={emergencyBlockForm.reason} onChange={(event) => setEmergencyBlockForm((current) => ({ ...current, reason: event.target.value }))} />
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+            <Button variant="dangerSoft" size="sm" onClick={() => setIsEmergencyModalOpen(false)} disabled={isSavingEmergencyBlock}>Cancelar</Button>
+            <Button variant="primary" size="sm" onClick={saveEmergencyBlock} isLoading={isSavingEmergencyBlock}>Bloquear horário</Button>
           </div>
         </div>
       </Modal>

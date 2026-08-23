@@ -1082,6 +1082,10 @@ export const ProviderApp: React.FC = () => {
             simDate={simDate}
             onSimDateChange={setSimDate}
             instructorGlobalBlocks={instructorGlobalBlocks}
+            onSaveEmergencyBlock={async (startAt, endAt, reason) => {
+              await dbService.createInstructorEmergencyBlock(startAt, endAt, reason);
+              setInstructorGlobalBlocks(await dbService.getMyInstructorGlobalBlocks());
+            }}
             onSaveGlobalBlock={async (startAt, endAt, reason, blockId) => {
               await dbService.saveInstructorGlobalBlock(startAt, endAt, reason, blockId);
               const updated = await dbService.getMyInstructorGlobalBlocks();
