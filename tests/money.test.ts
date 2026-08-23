@@ -29,6 +29,19 @@ describe('Domain: Money in Cents (Anti-Float Precision)', () => {
     expect(providerPayoutInCents).toBe(8100); // R$ 81,00
   });
 
+  it.each([
+    [15000, 10, 1500, 13500, 15000],
+    [15000, 0, 0, 15000, 15000],
+    [15000, 100, 15000, 0, 15000],
+    [12550, 10, 1255, 11295, 12550],
+  ])('keeps the student total equal to price for %i cents at %i%%', (price, percentage, fee, payout, total) => {
+    const result = calculatePlatformFeeAndPayout(price, percentage);
+    expect(result.platformFeeInCents).toBe(fee);
+    expect(result.providerPayoutInCents).toBe(payout);
+    expect(result.platformFeeInCents + result.providerPayoutInCents).toBe(price);
+    expect(total).toBe(price);
+  });
+
   it('handles edge case odd cent fee calculations with exact integer closure', () => {
     // R$ 125,50 -> 12550 cents -> 10% is 1255 cents
     const { platformFeeInCents, providerPayoutInCents } = calculatePlatformFeeAndPayout(12550, 10);

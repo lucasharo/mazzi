@@ -124,7 +124,9 @@ export function createQuote(input: CreateQuoteInput): Quote {
     offering.priceInCents,
     platformFeePercentage
   );
-  const totalInCents = offering.priceInCents + platformFeeInCents;
+  // The PRO price is the student's final price. MAZZI's commission is split
+  // from that amount and never added on top of it.
+  const totalInCents = offering.priceInCents;
 
   const createdAt = now.toISOString();
   const expiresAt = new Date(nowTimestamp + expirationMinutes * 60 * 1000).toISOString();

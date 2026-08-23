@@ -95,7 +95,7 @@ describe('Sprint 08 — Quote Creation & Lifecycle', () => {
     expect(quote.vehicleId).toBe(MOCK_VEHICLE_ACTIVE.id);
     expect(quote.priceInCents).toBe(11000);
     expect(quote.platformFeeInCents).toBe(1100); // 10%
-    expect(quote.totalInCents).toBe(12100);
+    expect(quote.totalInCents).toBe(11000);
     expect(quote.status).toBe('ACTIVE');
     expect(quote.expiresAt).toBe('2026-08-15T10:10:00.000Z'); // 10 minutes later
   });
@@ -280,7 +280,7 @@ describe('Sprint 08 — Transactional Booking Hold Engine', () => {
     expect(result.booking.holdExpiresAt).toBe('2026-08-15T10:10:00.000Z');
     expect(result.consumedQuote.status).toBe('CONSUMED');
     expect(result.booking.snapshot.priceInCents).toBe(11000);
-    expect(result.booking.snapshot.totalInCents).toBe(12100);
+    expect(result.booking.snapshot.totalInCents).toBe(11000);
   });
 
   it('guarantees Idempotency: repeated request with same idempotencyKey returns existing booking without duplicate hold', () => {

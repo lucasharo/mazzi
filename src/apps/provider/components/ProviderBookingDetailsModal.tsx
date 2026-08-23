@@ -72,7 +72,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const meetingPoint = formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint);
   const lessonPriceInCents = snapshot.priceInCents ?? booking.priceInCents ?? booking.totalInCents ?? 0;
   const platformFeeInCents = snapshot.platformFeeInCents ?? booking.platformFeeInCents ?? 0;
-  const bookingTotalInCents = snapshot.totalInCents ?? booking.totalInCents ?? lessonPriceInCents + platformFeeInCents;
+  const bookingTotalInCents = snapshot.totalInCents ?? booking.totalInCents ?? lessonPriceInCents;
   const canCancel = canCancelBooking
     ? canCancelBooking(booking)
     : isConfirmed && !booking.instructorCheckedIn;

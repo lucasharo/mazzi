@@ -125,7 +125,7 @@ describe('Sprint 10: Complete Student App Journey & Domain Rules', () => {
       expect(quote.studentId).toBe(studentA.id);
       expect(quote.priceInCents).toBe(10000); // R$ 100,00
       expect(quote.platformFeeInCents).toBe(1000); // 10% = R$ 10,00
-      expect(quote.totalInCents).toBe(11000); // R$ 110,00
+      expect(quote.totalInCents).toBe(10000); // R$ 100,00 final price
       expect(isQuoteExpired(quote)).toBe(false);
     });
 
@@ -158,7 +158,7 @@ describe('Sprint 10: Complete Student App Journey & Domain Rules', () => {
       // Booking continues to use frozen Quote values
       expect(booking.priceInCents).toBe(10000);
       expect(booking.platformFeeInCents).toBe(1000);
-      expect(booking.totalInCents).toBe(11000);
+      expect(booking.totalInCents).toBe(10000);
     });
 
     it('rejects price tampering attempts when client tries to send altered price', () => {
@@ -475,7 +475,7 @@ describe('Sprint 10: Complete Student App Journey & Domain Rules', () => {
 
       expect(confirmRes.payment.status).toBe('PAID');
       expect(confirmRes.booking.status).toBe('CONFIRMED');
-      expect(confirmRes.booking.snapshot.totalInCents).toBe(11000);
+      expect(confirmRes.booking.snapshot.totalInCents).toBe(10000);
     });
 
     it('E2E DECLINED: payment becomes FAILED and booking remains unconfirmed', async () => {
