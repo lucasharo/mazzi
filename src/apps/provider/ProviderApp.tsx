@@ -331,6 +331,7 @@ export const ProviderApp: React.FC = () => {
         reason: exception.reason,
         startAt: exception.start_at,
         endAt: exception.end_at,
+        isActive: exception.is_active !== false,
       })));
     } catch (err: any) {
       console.error('Provider workspace load failed:', err);
@@ -734,6 +735,7 @@ export const ProviderApp: React.FC = () => {
         startAt: startAtISO,
         endAt: endAtISO,
         vehicleId: exceptionForm.vehicleId || undefined,
+        isActive: true,
       };
 
       validateAvailabilityException(newException);
@@ -775,6 +777,15 @@ export const ProviderApp: React.FC = () => {
       setAvailabilityExceptions((prev) => prev.filter((e) => e.id !== exceptionId));
     } catch (err: any) {
       alert(mapFriendlyErrorMessage(err, 'Ação não autorizada.'));
+    }
+  };
+
+  const handleDeactivateAvailabilityException = async (exceptionId: string) => {
+    try {
+      await dbService.deactivateAvailabilityException(exceptionId);
+      setAvailabilityExceptions((prev) => prev.map((exception) => exception.id === exceptionId ? { ...exception, isActive: false } : exception));
+    } catch (err: any) {
+      alert(mapFriendlyErrorMessage(err, 'Não foi possível desativar o bloqueio.'));
     }
   };
 
@@ -1090,6 +1101,7 @@ export const ProviderApp: React.FC = () => {
             onExceptionFormChange={setExceptionForm}
             onSaveException={handleCreateAvailabilityException}
             onDeleteException={handleDeleteAvailabilityException}
+            onDeactivateException={handleDeactivateAvailabilityException}
             exceptionError={exceptionError}
             simOfferingId={simOfferingId}
             onSimOfferingIdChange={setSimOfferingId}

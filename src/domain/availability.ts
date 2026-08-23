@@ -551,7 +551,7 @@ export function generateAvailableSlots(options: SlotGenerationOptions): Availabi
 
     // Filter AVAILABLE_OVERRIDE exceptions for this date
     const dayOverrides = exceptions.filter((ex) => {
-      if (ex.type !== 'AVAILABLE_OVERRIDE') return false;
+      if (ex.isActive === false || ex.type !== 'AVAILABLE_OVERRIDE') return false;
       const exStart = ex.startAt.slice(0, 10);
       const exEnd = ex.endAt.slice(0, 10);
       return dateStr >= exStart && dateStr <= exEnd;
@@ -562,7 +562,7 @@ export function generateAvailableSlots(options: SlotGenerationOptions): Availabi
     }
 
     // Filter BLOCK exceptions affecting this date range
-    const activeBlockExceptions = exceptions.filter((ex) => ex.type === 'BLOCK');
+    const activeBlockExceptions = exceptions.filter((ex) => ex.isActive !== false && ex.type === 'BLOCK');
 
     for (const vehicle of eligibleVehicles) {
       for (const instructor of eligibleInstructors) {

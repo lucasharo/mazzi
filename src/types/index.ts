@@ -318,6 +318,7 @@ export interface AvailabilityException {
   endAt: string; // ISO 8601 string
   createdAt?: string;
   updatedAt?: string;
+  isActive?: boolean;
 }
 
 export interface AvailabilityCandidate {

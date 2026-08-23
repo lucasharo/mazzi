@@ -450,6 +450,7 @@ export const dbService = {
       reason: exception.reason,
       start_at: exception.startAt,
       end_at: exception.endAt,
+      is_active: exception.isActive !== false,
     };
     const query = isNew
       ? sp.from('availability_exceptions').insert({ ...row, id: crypto.randomUUID() })
@@ -704,6 +705,11 @@ export const dbService = {
     const { data, error } = await sp.rpc('get_public_vehicle_catalog');
     if (error) throw error;
     return (data || []).map(mapVehicleFromDb);
+  },
+
+  async deactivateAvailabilityException(id: string): Promise<void> {
+    const { error } = await sp.from('availability_exceptions').update({ is_active: false }).eq('id', id);
+    if (error) throw error;
   },
 
   async reviewVehicle(vehicleId: string, status: 'ACTIVE' | 'INACTIVE' | 'BLOCKED', reason?: string): Promise<Vehicle> {

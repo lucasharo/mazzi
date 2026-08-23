@@ -51,6 +51,7 @@ interface ProviderScheduleTabProps {
   onExceptionFormChange: (form: any) => void;
   onSaveException: () => void;
   onDeleteException: (id: string) => void;
+  onDeactivateException?: (id: string) => void;
   exceptionError: string | null;
   simOfferingId: string;
   onSimOfferingIdChange: (id: string) => void;
@@ -100,10 +101,11 @@ interface ScheduleBlockCardItem {
   editable: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onDeactivate?: () => void;
   deleting?: boolean;
 }
 
-const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt, endAt, reason, editable, onEdit, onDelete, deleting }) => (
+const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt, endAt, reason, editable, onEdit, onDelete, onDeactivate, deleting }) => (
   <div key={id} className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3">
     <div className="min-w-0 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -115,7 +117,7 @@ const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt,
     </div>
     <div className="flex shrink-0 items-center gap-1">
       <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100 disabled:opacity-40" disabled={!editable} onClick={onEdit} aria-label="Editar bloqueio"><Pencil className="w-4 h-4" /></Button>
-      <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 disabled:opacity-40" disabled={!editable || deleting} isLoading={deleting} onClick={onDelete} aria-label="Excluir bloqueio"><Trash2 className="w-4 h-4" /></Button>
+      {kind === 'days' ? <Button variant="ghost" size="sm" className="text-amber-700 hover:bg-amber-50" onClick={onDeactivate} aria-label="Desativar bloqueio de dias">Desativar</Button> : <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 disabled:opacity-40" disabled={!editable || deleting} isLoading={deleting} onClick={onDelete} aria-label="Excluir bloqueio"><Trash2 className="w-4 h-4" /></Button>}
     </div>
   </div>
 );
@@ -145,6 +147,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   onExceptionFormChange,
   onSaveException,
   onDeleteException,
+  onDeactivateException,
   exceptionError,
   simOfferingId,
   onSimOfferingIdChange,
@@ -188,9 +191,9 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       id: `global-${block.id}`, kind: 'quick' as const, startAt: block.start_at, endAt: block.end_at, reason: block.reason, editable: canChangeBlock(block.end_at),
       onEdit: () => handleOpenEditGlobalBlock(block), onDelete: () => void handleDeleteGlobalBlockClick(block.id), deleting: deletingGlobalBlockId === block.id,
     })) : []),
-    ...sortedExceptions.map((exception) => ({
+    ...sortedExceptions.filter((exception) => exception.isActive !== false).map((exception) => ({
       id: exception.id, kind: 'days' as const, startAt: exception.startAt, endAt: exception.endAt, reason: exception.reason, editable: canChangeBlock(exception.endAt),
-      onEdit: () => handleEditException(exception), onDelete: () => void onDeleteException(exception.id),
+      onEdit: () => handleEditException(exception), onDelete: () => void onDeleteException(exception.id), onDeactivate: () => onDeactivateException?.(exception.id),
     })),
   ].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [isInstructorUser, sortedGlobalBlocks, sortedExceptions, deletingGlobalBlockId]);
 
