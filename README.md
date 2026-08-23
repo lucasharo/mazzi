@@ -62,3 +62,12 @@ Consulte a pasta `/docs/` para a especificação detalhada:
 - `docs/15-testing.md` — Estratégia de testes
 - `docs/16-roadmap.md` — Funcionalidades planejadas pós-MVP
 - `AGENTS.md` — Diretrizes obrigatórias para agentes e desenvolvedores
+# Regras de produto
+
+## Aulas do aluno
+
+Reservas canceladas devem aparecer exclusivamente em **Histórico**. A aba de aulas confirmadas nunca deve exibir reservas com status de cancelamento (`CANCELLED_*`) nem payloads legados que contenham `cancelledAt`, `cancelledBy` ou `cancellationReason`, mesmo que o status recebido ainda seja `CONFIRMED`.
+
+O mesmo contrato vale para o app PRO: a aba principal de aulas é **Confirmadas** e exibe somente reservas confirmadas; canceladas pertencem exclusivamente a **Histórico**.
+
+Além do status, a classificação também é temporal: uma reserva cujo horário final já passou deve aparecer exclusivamente em **Histórico**. A aba **Confirmadas** (e o filtro **Hoje**) exibem apenas aulas confirmadas que ainda não terminaram. Essa regra vale para Student e PRO.

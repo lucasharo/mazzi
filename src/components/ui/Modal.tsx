@@ -2,6 +2,7 @@ import React, { useId } from 'react';
 import { X } from 'lucide-react';
 import { IconButton } from './IconButton';
 import { useAccessibleDialog } from './useAccessibleDialog';
+import { ModalActionFooter } from './ModalActionFooter';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -56,7 +57,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : ariaLabel || 'Janela de diálogo'}
         tabIndex={-1}
-        className={`w-full ${sizeStyles[size]} bg-white rounded-3xl shadow-xl border border-[var(--mazzi-border)] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150 text-left`}
+        className={`relative w-full ${sizeStyles[size]} bg-white rounded-3xl shadow-xl border border-[var(--mazzi-border)] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150 text-left`}
       >
         {title && (
           <div className="px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between">
@@ -72,13 +73,9 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
 
-        <div className="p-6 overflow-y-auto flex-1">{children}</div>
+        <div className={`mazzi-modal-content p-6 overflow-y-auto flex-1 min-h-0 ${footer ? 'pb-0' : ''}`}>{children}</div>
 
-        {footer && (
-          <div className="shrink-0 bg-white border-t border-[var(--mazzi-border)]/60 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] px-6 py-4 flex items-center justify-end gap-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {footer}
-          </div>
-        )}
+        {footer && <ModalActionFooter align="right">{footer}</ModalActionFooter>}
       </div>
     </div>
   );

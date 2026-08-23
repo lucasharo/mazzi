@@ -453,7 +453,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+          <div className="mazzi-modal-actions flex justify-end gap-2">
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddVehicleModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>
@@ -527,7 +527,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+          <div className="mazzi-modal-actions flex justify-end gap-2">
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddOfferingModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>

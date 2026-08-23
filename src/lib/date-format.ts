@@ -98,6 +98,50 @@ export function getTimeInSaoPaulo(timestamp: string | Date): string {
   return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
 }
 
+/** Builds the canonical half-open range for a date-only block in São Paulo. */
+export function buildFullDayBlockRange({
+  startDate,
+  inclusiveEndDate,
+}: {
+  startDate: string;
+  inclusiveEndDate: string;
+}): { startAt: string; endAt: string } {
+  if (!isDateOnly(startDate) || !isDateOnly(inclusiveEndDate)) {
+    throw new Error('Datas inválidas para bloqueio de dias.');
+  }
+  const start = new Date(`${startDate}T00:00:00-03:00`);
+  const inclusiveEnd = new Date(`${inclusiveEndDate}T00:00:00-03:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(inclusiveEnd.getTime()) || inclusiveEnd < start) {
+    throw new Error('O período do bloqueio de dias é inválido.');
+  }
+  const nextDay = new Date(Date.UTC(
+    inclusiveEnd.getUTCFullYear(),
+    inclusiveEnd.getUTCMonth(),
+    inclusiveEnd.getUTCDate() + 1,
+  ));
+  return {
+    startAt: `${startDate}T00:00:00.000-03:00`,
+    endAt: `${nextDay.toISOString().slice(0, 10)}T00:00:00.000-03:00`,
+  };
+}
+
+/** Converts a persisted date-only block into the user-facing inclusive range. */
+export function getDayBlockDisplayRange(startAt: string | Date, endAt: string | Date): {
+  startDate: string;
+  endDate: string;
+  label: 'Dia inteiro' | 'Dias inteiros';
+} {
+  const end = parseDate(endAt);
+  const inclusiveEnd = new Date(end.getTime() - 1);
+  const startDate = getBusinessDateFromTimestamp(startAt);
+  const endDate = getBusinessDateFromTimestamp(inclusiveEnd);
+  return {
+    startDate: formatDateBR(startDate),
+    endDate: formatDateBR(endDate),
+    label: startDate === endDate ? 'Dia inteiro' : 'Dias inteiros',
+  };
+}
+
 /** Canonical helper: Checks if a booking belongs to today in America/Sao_Paulo timezone */
 export function isBookingTodayInSaoPaulo(
   booking: { scheduledDate?: string | null; scheduledStartAt?: string | null },
@@ -188,4 +232,3 @@ export function formatTransmissionLabel(transmission?: string | null): string {
 }
 
 export { BRAZIL_TIME_ZONE };
-

@@ -94,6 +94,8 @@ export function timeStringToMinutes(timeStr: string): number {
   return (hours || 0) * 60 + (minutes || 0);
 }
 
+export const LESSON_START_INTERVAL_MINUTES = 60;
+
 /**
  * Converts minutes from start of day to "HH:mm" format.
  */
@@ -344,6 +346,16 @@ export function validateAvailabilityRule(
   const startMin = timeStringToMinutes(rule.startTime);
   const endMin = timeStringToMinutes(rule.endTime);
 
+  const startSeconds = Number(rule.startTime.split(':')[2] || 0);
+  const endSeconds = Number(rule.endTime.split(':')[2] || 0);
+  if (startMin % 60 !== 0 || endMin % 60 !== 0 || startSeconds !== 0 || endSeconds !== 0) {
+    throw new AvailabilityDomainError(
+      'Escolha horários em hora cheia, como 08:00 ou 09:00.',
+      'AVAILABILITY_FULL_HOUR_REQUIRED',
+      400,
+    );
+  }
+
   if (startMin >= endMin) {
     throw new AvailabilityDomainError(
       `Horário inicial (${rule.startTime}) deve ser menor que o horário final (${rule.endTime}). Não são permitidas janelas noturnas atravessando meia-noite no MVP.`,
@@ -443,7 +455,7 @@ export function generateAvailableSlots(options: SlotGenerationOptions): Availabi
     startDate,
     endDate,
     timezone = DEFAULT_TIMEZONE,
-    stepMinutes = offering.durationMinutes,
+    stepMinutes = LESSON_START_INTERVAL_MINUTES,
     bufferMinutes = 0,
     minimumNoticeMinutes = MINIMUM_BOOKING_NOTICE_MINUTES,
     maxAdvanceDays = AVAILABILITY_SEARCH_HORIZON_DAYS,

@@ -55,7 +55,7 @@ describe('Student Journey Batch 2 - UI/UX Pro Max Contracts', () => {
     expect(markup).toContain('Valor por aula');
     expect(markup).not.toContain('A partir de');
     expect(markup).toContain('R$ 120,00');
-    expect(markup).toContain('· 50 min');
+    expect(markup).toContain('50 min');
     expect(markup).toContain('Instrutor autônomo');
     expect(markup).toContain('Verificado');
     expect(markup).toContain('Cat. B');
@@ -170,7 +170,7 @@ describe('Student Journey Batch 2 - UI/UX Pro Max Contracts', () => {
     expect(markup).toContain('Cat. B');
     expect(markup).toContain('Automático · Categoria B · 50 min');
     expect(markup).toContain('Agendar aula');
-    expect(markup).toContain('lucide-calendar-plus');
+    expect(markup).toContain('lucide-calendar');
   });
 
   it('BookingCard & BookingDetailsModal: preserves callbacks, tokens and permissions properly', () => {

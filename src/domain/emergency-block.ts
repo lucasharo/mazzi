@@ -84,7 +84,8 @@ export function generateEmergencyBlockableSlots({ date, rules, bookings, globalB
   const matchingRules = rules.filter((rule) => rule.isActive && (rule.dayOfWeekNumber === weekday || dayNumber[rule.dayOfWeek] === weekday));
   const slots: EmergencyBlockableSlot[] = [];
   for (const rule of matchingRules) {
-    for (let minute = toMinutes(rule.startTime); minute + 60 <= toMinutes(rule.endTime); minute += 60) {
+    const firstHour = Math.ceil(toMinutes(rule.startTime) / 60) * 60;
+    for (let minute = firstHour; minute + 60 <= toMinutes(rule.endTime); minute += 60) {
       const startTime = fmt(minute); const endTime = fmt(minute + 60);
       const startAt = `${date}T${startTime}:00.000-03:00`; const endAt = `${date}T${endTime}:00.000-03:00`;
       const start = new Date(startAt); const end = new Date(endAt);

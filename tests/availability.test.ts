@@ -154,12 +154,14 @@ describe('Domain: Availability & Scheduling Engine', () => {
       minimumNoticeMinutes: 0,
     });
 
-    // 08:00-09:30 and 09:30-11:00 fit into 08:00-12:00 window (11:00-12:30 exceeds 12:00)
-    expect(slots.length).toBe(2);
+    // Starts use the fixed hourly grid; duration remains 90 minutes.
+    expect(slots.length).toBe(3);
     expect(slots[0].startTime).toBe('08:00');
     expect(slots[0].endTime).toBe('09:30');
-    expect(slots[1].startTime).toBe('09:30');
-    expect(slots[1].endTime).toBe('11:00');
+    expect(slots[1].startTime).toBe('09:00');
+    expect(slots[1].endTime).toBe('10:30');
+    expect(slots[2].startTime).toBe('10:00');
+    expect(slots[2].endTime).toBe('11:30');
   });
 
   it('removes slot covered by a BLOCK exception', () => {

@@ -121,7 +121,7 @@ export const SchoolMembershipPanel: React.FC<SchoolMembershipPanelProps> = ({ pr
             <div className="space-y-4 text-left">
               <p className="text-xs text-slate-500">Envie um convite para o instrutor entrar na operação da autoescola.</p>
               <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail do instrutor" type="email" aria-label="E-mail do instrutor" />
-              <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+              <div className="mazzi-modal-actions flex justify-end gap-2">
                 <Button variant="dangerSoft" size="sm" onClick={onCloseInviteModal}>Cancelar</Button>
                 <Button size="sm" onClick={handleInvite} disabled={busy || !email.trim()} leftIcon={<UserPlus className="h-4 w-4" />}>Convidar</Button>
               </div>
@@ -133,7 +133,7 @@ export const SchoolMembershipPanel: React.FC<SchoolMembershipPanelProps> = ({ pr
                 Remover <strong>{membershipToRemove?.name || membershipToRemove?.email || 'este instrutor'}</strong> da autoescola?
               </p>
               <p className="text-xs text-slate-500">O histórico será preservado e o instrutor deixará de aparecer como disponível para novas aulas. Ele poderá ser convidado novamente no futuro.</p>
-              <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+              <div className="mazzi-modal-actions flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setMembershipToRemove(null)} disabled={busy}>Manter vínculo</Button>
                 <Button variant="danger" size="sm" onClick={() => {
                   if (!membershipToRemove) return;

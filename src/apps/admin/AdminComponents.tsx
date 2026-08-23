@@ -676,7 +676,7 @@ export const ProvidersTab: React.FC<{
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="mazzi-modal-actions flex justify-end gap-2">
               <Button variant="dangerSoft" size="sm" onClick={() => setActionType(null)}>Cancelar</Button>
               <Button
                 variant="primary"
@@ -1100,7 +1100,7 @@ export const VehiclesTab: React.FC<{
               />
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="mazzi-modal-actions flex justify-end gap-2">
               <Button variant="dangerSoft" size="sm" onClick={() => setActionType(null)}>Cancelar</Button>
               <Button variant="primary" size="sm" className="bg-rose-600 hover:bg-rose-700 text-white" onClick={handleConfirmAction} disabled={!reason.trim()}>Confirmar</Button>
             </div>

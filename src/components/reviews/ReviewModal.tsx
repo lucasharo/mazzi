@@ -123,7 +123,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="mazzi-modal-actions flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={onClose}>
                   Fechar
                 </Button>

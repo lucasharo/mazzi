@@ -50,7 +50,8 @@ import {
   LessonSession,
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
-import { getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
+import { getStudentBookingSection } from '../../domain/booking';
+import { buildFullDayBlockRange, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
 import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
@@ -142,12 +143,10 @@ export const ProviderApp: React.FC = () => {
   const [exceptionForm, setExceptionForm] = useState({
     id: undefined as string | undefined,
     type: 'BLOCK' as ExceptionType,
-    reasonCategory: 'PERSONAL' as ExceptionReasonCategory,
+    reasonCategory: '' as ExceptionReasonCategory,
     reason: '',
     startDate: '',
-    startTime: '08:00',
     endDate: '',
-    endTime: '12:00',
     vehicleId: '',
   });
   const [exceptionError, setExceptionError] = useState<string | null>(null);
@@ -467,16 +466,16 @@ export const ProviderApp: React.FC = () => {
     const ended = isLessonEnded(b);
 
     if (bookingFilterTab === 'today') {
-      return isBookingTodayInSaoPaulo(b);
+      return getStudentBookingSection(b.status, b) === 'CONFIRMED' && !ended && isBookingTodayInSaoPaulo(b);
     }
     if (bookingFilterTab === 'upcoming') {
       if (ended || b.status === 'EXPIRED') return false;
       return b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'PENDING_PAYMENT';
     }
     if (bookingFilterTab === 'history') {
-      return ended || b.status === 'COMPLETED' || b.status.includes('CANCELLED') || b.status === 'EXPIRED';
+      return getStudentBookingSection(b.status, b) === 'HISTORY' || ended;
     }
-    return true;
+    return getStudentBookingSection(b.status, b) === 'CONFIRMED';
   });
 
   const getOrCreateSession = (b: Booking): LessonSession => {
@@ -710,7 +709,7 @@ export const ProviderApp: React.FC = () => {
     try {
       if (exceptionForm.id) {
         const currentException = availabilityExceptions.find((exception) => exception.id === exceptionForm.id);
-        if (currentException && new Date(currentException.startAt).getTime() <= Date.now()) {
+      if (currentException && new Date(currentException.startAt).getTime() <= Date.now()) {
           throw new Error('Bloqueios iniciados são históricos e não podem ser editados.');
         }
       }
@@ -722,9 +721,14 @@ export const ProviderApp: React.FC = () => {
         targetVehicleId: exceptionForm.vehicleId || undefined,
         providerVehicles: vehicles,
       });
+      if (!exceptionForm.reasonCategory) {
+        throw new Error('Selecione um motivo para o bloqueio.');
+      }
 
-      const startAtISO = `${exceptionForm.startDate}T${exceptionForm.startTime}:00.000-03:00`;
-      const endAtISO = `${exceptionForm.endDate}T${exceptionForm.endTime}:00.000-03:00`;
+      const { startAt: startAtISO, endAt: endAtISO } = buildFullDayBlockRange({
+        startDate: exceptionForm.startDate,
+        inclusiveEndDate: exceptionForm.endDate,
+      });
 
       const newException: AvailabilityException = {
         id: exceptionForm.id || `exc_${Date.now()}`,
@@ -748,12 +752,10 @@ export const ProviderApp: React.FC = () => {
       setExceptionForm({
         id: undefined,
         type: 'BLOCK',
-        reasonCategory: 'PERSONAL',
+        reasonCategory: '' as ExceptionReasonCategory,
         reason: '',
         startDate: '',
-        startTime: '08:00',
         endDate: '',
-        endTime: '12:00',
         vehicleId: '',
       });
     } catch (err: any) {
@@ -1108,7 +1110,11 @@ export const ProviderApp: React.FC = () => {
             onDeleteRule={handleDeleteAvailabilityRule}
             ruleError={ruleError}
             isAddExceptionModalOpen={isAddExceptionModalOpen}
-            onOpenAddExceptionModal={() => setIsAddExceptionModalOpen(true)}
+            onOpenAddExceptionModal={() => {
+              setExceptionForm({ id: undefined, type: 'BLOCK', reasonCategory: '' as ExceptionReasonCategory, reason: '', startDate: '', endDate: '', vehicleId: '' });
+              setExceptionError(null);
+              setIsAddExceptionModalOpen(true);
+            }}
             onCloseAddExceptionModal={() => setIsAddExceptionModalOpen(false)}
             exceptionForm={exceptionForm}
             onExceptionFormChange={setExceptionForm}
@@ -1360,7 +1366,7 @@ export const ProviderApp: React.FC = () => {
               </label>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+            <div className="mazzi-modal-actions flex justify-end gap-2">
               <Button
                 variant="dangerSoft"
                 size="sm"

@@ -12,7 +12,7 @@ import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../compon
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
 
-import { getBookingEndTimestamp, isBookingEnded } from '../../domain/booking';
+import { getBookingEndTimestamp, getStudentBookingSection, isBookingEnded } from '../../domain/booking';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { SearchHeader } from '../../components/search/SearchHeader';
 import { FilterDrawer } from '../../components/search/FilterDrawer';
@@ -165,7 +165,7 @@ export const StudentApp: React.FC = () => {
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
   const [activeTab, setActiveTab] = useMobileAppRoute<'search' | 'bookings' | 'profile'>('student', 'search', ['search', 'bookings', 'profile']);
-  const [bookingTab, setBookingTab] = useState<'all' | 'today' | 'history'>('all');
+  const [bookingTab, setBookingTab] = useState<'confirmed' | 'today' | 'history'>('confirmed');
   const [searchLocation, setSearchLocation] = useState('');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -684,38 +684,23 @@ function applyStrictProviderFilters(
       .sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b));
   }, [confirmedBookings, nowMs]);
 
+  const confirmedLessonBookings = useMemo(() => {
+    return confirmedBookings
+      .filter((b) => getStudentBookingSection(b.status, b) === 'CONFIRMED' && !isBookingEnded(b, nowMs))
+      .sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b));
+  }, [confirmedBookings, nowMs]);
+
   const historyBookings = useMemo(() => {
     return confirmedBookings
-      .filter((b) => {
-        if (isBookingEnded(b, nowMs)) return true;
-
-        if (
-          b.status === 'COMPLETED' ||
-          b.status === 'CANCELLED_BY_STUDENT' ||
-          b.status === 'CANCELLED_BY_PROVIDER' ||
-          b.status === 'EXPIRED' ||
-          b.status === 'PAYMENT_FAILED' ||
-          b.status === 'NO_SHOW_STUDENT' ||
-          b.status === 'NO_SHOW_PROVIDER' ||
-          b.status === 'REFUNDED'
-        ) {
-          return true;
-        }
-
-        if (b.status === 'PENDING_PAYMENT' && b.holdExpiresAt) {
-          if (new Date(b.holdExpiresAt).getTime() <= nowMs) return true;
-        }
-
-        return false;
-      })
+      .filter((b) => getStudentBookingSection(b.status, b) === 'HISTORY' || isBookingEnded(b, nowMs))
       .sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a));
   }, [confirmedBookings, nowMs]);
 
   const todayBookings = useMemo(
-    () => confirmedBookings
+    () => confirmedLessonBookings
       .filter((booking) => isBookingTodayInSaoPaulo(booking))
       .sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b)),
-    [confirmedBookings, nowMs],
+    [confirmedLessonBookings],
   );
 
   const chatBookings = useMemo(() => {
@@ -882,17 +867,17 @@ function applyStrictProviderFilters(
               <div role="tablist" aria-label="Aulas" className="grid grid-cols-3 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
                 <ButtonBase
                   role="tab"
-                  aria-selected={bookingTab === 'all'}
+                  aria-selected={bookingTab === 'confirmed'}
                   type="button"
-                  onClick={() => setBookingTab('all')}
+                  onClick={() => setBookingTab('confirmed')}
                   className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
-                    bookingTab === 'all'
+                    bookingTab === 'confirmed'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
                       : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
                   }`}
                 >
                   <CalendarIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  Todas
+                  Confirmadas
                 </ButtonBase>
                 <ButtonBase
                   role="tab"
@@ -924,21 +909,21 @@ function applyStrictProviderFilters(
                 </ButtonBase>
               </div>
 
-              {/* All bookings */}
+              {/* Confirmed bookings */}
               {bookingsError && <ErrorState message="Não foi possível carregar suas aulas." onRetry={() => setBookingsRefreshKey((value) => value + 1)} />}
               {bookingsLoading && <ContentSkeleton count={3} label="Carregando suas aulas" />}
-              {!bookingsError && !bookingsLoading && bookingTab === 'all' && (
+              {!bookingsError && !bookingsLoading && bookingTab === 'confirmed' && (
                 <div className="space-y-3">
-                  {confirmedBookings.length === 0 ? (
+                  {confirmedLessonBookings.length === 0 ? (
                     <EmptyState
-                      title="Nenhuma aula agendada"
-                      description="Encontre um instrutor ou autoescola para marcar sua próxima aula."
+                      title="Nenhuma aula confirmada"
+                      description="Você não possui aulas confirmadas no momento."
                       actionLabel="Buscar aulas"
                       actionIcon={<Search className="h-4 w-4" aria-hidden="true" />}
                       onAction={() => setActiveTab('search')}
                     />
                   ) : (
-                    [...confirmedBookings].sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b)).map((b) => (
+                    confirmedLessonBookings.map((b) => (
                       <BookingCard
                         key={b.id}
                         booking={b}

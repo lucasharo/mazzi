@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarPlus, Car, Clock, MapPin, ShieldCheck, Star } from 'lucide-react';
+import { Calendar as CalendarPlus, Car, Clock, MapPin, ShieldCheck, Star } from 'lucide-react';
 import { PublicSearchProviderResult, TransmissionType } from '../../types';
 import { formatCentsToBRL } from '../../domain/money';
 import { Modal } from '../ui/Modal';

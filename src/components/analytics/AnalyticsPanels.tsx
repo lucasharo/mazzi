@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, CalendarRange, RefreshCw, TrendingUp, Users, Car, CalendarCheck, CreditCard, Star } from 'lucide-react';
+import { BarChart3, Calendar as CalendarRange, RefreshCw, TrendingUp, Users, Car, CalendarCheck, CreditCard, Star } from 'lucide-react';
 import { dbService } from '../../lib/db-service';
 import {
   AdminAnalyticsSummary, AnalyticsPeriodPreset, ProviderAnalyticsSummary, } from '../../types';

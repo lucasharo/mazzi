@@ -3,7 +3,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Ban,
-  CalendarCheck,
+  Calendar,
   Check,
   Eye,
   EyeOff,
@@ -58,7 +58,7 @@ export function getDefaultButtonActionIcon(children: React.ReactNode): React.Rea
   if (/enviar|publicar/.test(label)) return <Send {...iconProps} />;
   if (/salvar/.test(label)) return <Save {...iconProps} />;
   if (/confirmar|aprovar|aplicar|concluir|ativar/.test(label)) return <Check {...iconProps} />;
-  if (/selecionar|escolher|horário|calendário/.test(label)) return <CalendarCheck {...iconProps} />;
+  if (/selecionar|escolher|horário|calendário/.test(label)) return <Calendar {...iconProps} />;
   if (/adicionar|cadastrar|criar|carregar mais/.test(label)) return <Plus {...iconProps} />;
   if (/continuar|avançar|próxim|ir para/.test(label)) return <ArrowRight {...iconProps} />;
   return <ArrowRight {...iconProps} />;

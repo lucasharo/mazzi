@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CalendarRange, History, RefreshCw } from 'lucide-react';
+import { Clock, Calendar as CalendarRange, History, RefreshCw } from 'lucide-react';
 import { Booking } from '../../../types';
 import { ButtonBase } from '../../../components/ui/Button';
 import { Tabs } from '../../../components/ui/Tabs';
@@ -73,7 +73,7 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
         activeTab={bookingFilterTab}
         onChange={(tab) => onFilterTabChange(tab as ProviderBookingsTabProps['bookingFilterTab'])}
         tabs={[
-          { id: 'all', label: 'Todas', icon: <CalendarRange className="h-4 w-4" /> },
+          { id: 'all', label: 'Confirmadas', icon: <CalendarRange className="h-4 w-4" /> },
           { id: 'today', label: 'Hoje', icon: <Clock className="h-4 w-4" /> },
           { id: 'history', label: 'Histórico', icon: <History className="h-4 w-4" /> },
         ]}

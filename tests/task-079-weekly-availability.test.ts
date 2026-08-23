@@ -23,6 +23,10 @@ describe('TASK-079 weekly availability editing contract', () => {
     expect(() => validateAvailabilityRule(rule({ startTime, endTime }), [])).toThrow('Horário inicial');
   });
 
+  it.each([['08:30', '18:00'], ['08:00', '18:30'], ['07:15', '12:00']])('rejects non-hour grid %s-%s', (startTime, endTime) => {
+    expect(() => validateAvailabilityRule(rule({ startTime, endTime }), [])).toThrow('Escolha horários em hora cheia');
+  });
+
   it('preserves resource fields while only changing schedule fields', () => {
     const original = rule();
     const updated = { ...original, dayOfWeek: 'TUESDAY' as const, startTime: '14:00', endTime: '18:00' };

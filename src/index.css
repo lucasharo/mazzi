@@ -107,6 +107,26 @@ body {
   justify-content: center;
 }
 
+/* Shared sticky action area for every modal form. Keep actions visible at the
+   bottom of the scroll container, matching the Filter modal footer pattern. */
+.mazzi-modal-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 1rem 1.5rem max(1rem, env(safe-area-inset-bottom));
+  background: rgb(255 255 255 / 0.96);
+  border-top: 1px solid var(--mazzi-border);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.05);
+  backdrop-filter: blur(8px);
+}
+
+.mazzi-modal-content:has(.mazzi-modal-actions) {
+  padding-bottom: 6rem;
+}
+
 @supports (padding: env(safe-area-inset-top)) {
   #root {
     padding-top: env(safe-area-inset-top);

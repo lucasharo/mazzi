@@ -1,7 +1,7 @@
 import React from 'react';
-import { Calendar as CalendarIcon, Plus, Trash2, Clock, Clock3, Ban, CheckCircle2, AlertCircle, Sliders, Sparkles, Info, Pencil, X, Power, } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Clock, Clock3, Ban, PowerOff, CheckCircle2, AlertCircle, Sliders, Sparkles, Info, Pencil, X, Power, } from 'lucide-react';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
-import { getTodayInSaoPaulo, getBusinessDateFromTimestamp, getTimeInSaoPaulo, formatDateTimeBR } from '../../../lib/date-format';
+import { getTodayInSaoPaulo, getBusinessDateFromTimestamp, getTimeInSaoPaulo, formatDateTimeBR, getDayBlockDisplayRange } from '../../../lib/date-format';
 import {
   AvailabilityRule, AvailabilityException, ServiceOffering, Vehicle, DayOfWeek, ExceptionType, ExceptionReasonCategory, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -43,9 +43,7 @@ interface ProviderScheduleTabProps {
     reasonCategory: ExceptionReasonCategory;
     reason: string;
     startDate: string;
-    startTime: string;
     endDate: string;
-    endTime: string;
     vehicleId: string;
   };
   onExceptionFormChange: (form: any) => void;
@@ -76,6 +74,11 @@ const DAY_OPTIONS: { value: DayOfWeek; label: string }[] = [
   { value: 'SATURDAY', label: 'Sábado' },
   { value: 'SUNDAY', label: 'Domingo' },
 ];
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
+  const value = `${String(hour).padStart(2, '0')}:00`;
+  return { value, label: value };
+});
 
 const BLOCK_REASON_OPTIONS: { value: ExceptionReasonCategory; label: string }[] = [
   { value: 'VACATION', label: 'Férias' },
@@ -108,7 +111,9 @@ interface ScheduleBlockCardItem {
   deleting?: boolean;
 }
 
-const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt, endAt, reason, editable, active = true, onEdit, onDelete, onDeactivate, onActivate, deleting }) => (
+const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt, endAt, reason, editable, active = true, onEdit, onDelete, onDeactivate, onActivate, deleting }) => {
+  const dayRange = kind === 'days' ? getDayBlockDisplayRange(startAt, endAt) : null;
+  return (
   <article id={`schedule-block-${id}`} className={`mazzi-card min-w-0 w-full overflow-hidden p-4 sm:p-5 text-left text-[var(--mazzi-dark)] space-y-3.5 ${!active ? 'opacity-75' : ''}`}>
     <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200">
       <div className="min-w-0 space-y-2">
@@ -123,18 +128,30 @@ const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt,
       </div>
     </div>
     <div className="space-y-1">
-      <p className="text-sm font-extrabold leading-tight text-slate-950">{formatDateTimeBR(startAt)}</p>
-      <p className="text-xs font-semibold text-slate-600">até {formatDateTimeBR(endAt)}</p>
+      {dayRange ? (
+        <div className="space-y-1">
+          <p className="text-sm font-extrabold leading-tight text-slate-950">
+            {dayRange.startDate}{dayRange.startDate !== dayRange.endDate ? ` a ${dayRange.endDate}` : ''}
+          </p>
+          <p className="text-xs font-semibold text-slate-600">{dayRange.label}</p>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm font-extrabold leading-tight text-slate-950">{formatDateTimeBR(startAt)}</p>
+          <p className="text-xs font-semibold text-slate-600">até {formatDateTimeBR(endAt)}</p>
+        </>
+      )}
       {!editable && active && <p className="text-[11px] font-semibold text-slate-500">Histórico · período iniciado</p>}
     </div>
     <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2">
-      {kind === 'days' && active && <Button variant="outline" size="sm" className="min-h-10 text-amber-700" onClick={onDeactivate} leftIcon={<Ban className="w-3.5 h-3.5" />} aria-label="Desativar bloqueio de dias">Desativar</Button>}
-      {kind === 'days' && !active && editable && <Button variant="outline" size="sm" className="min-h-10 text-emerald-700" onClick={onActivate} leftIcon={<Power className="w-3.5 h-3.5" />} aria-label="Ativar bloqueio de dias">Ativar</Button>}
       {editable && <Button variant="outline" size="sm" className="min-h-10 text-slate-600" onClick={onEdit} leftIcon={<Pencil className="w-3.5 h-3.5" />} aria-label="Editar bloqueio">Editar</Button>}
+      {kind === 'days' && active && <Button variant="dangerSoft" size="sm" className="min-h-10" onClick={onDeactivate} leftIcon={<PowerOff className="w-3.5 h-3.5" />} aria-label="Desativar bloqueio de dias">Desativar Bloqueio</Button>}
+      {kind === 'days' && !active && editable && <Button variant="outline" size="sm" className="min-h-10 text-emerald-700" onClick={onActivate} leftIcon={<Power className="w-3.5 h-3.5" />} aria-label="Ativar bloqueio de dias">Ativar bloqueio</Button>}
       {kind === 'quick' && <Button variant="dangerSoft" size="sm" className="min-h-10 disabled:opacity-40" disabled={!editable || deleting} isLoading={deleting} onClick={onDelete} leftIcon={<Trash2 className="w-3.5 h-3.5" />} aria-label="Excluir bloqueio">Excluir</Button>}
     </div>
   </article>
-);
+  );
+};
 
 export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   scheduleSubTab,
@@ -219,9 +236,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       reasonCategory: exception.reasonCategory,
       reason: exception.reason,
       startDate: getBusinessDateFromTimestamp(exception.startAt),
-      startTime: getTimeInSaoPaulo(exception.startAt),
       endDate: getBusinessDateFromTimestamp(exception.endAt),
-      endTime: getTimeInSaoPaulo(exception.endAt),
       vehicleId: exception.vehicleId || '',
       id: exception.id,
     });
@@ -283,12 +298,11 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
 
   const handleOpenCreateGlobalBlock = () => {
     setEditingGlobalBlockId(null);
-    const todaySp = getTodayInSaoPaulo();
     setGlobalBlockForm({
-      startDate: todaySp,
-      startTime: '08:00',
-      endDate: todaySp,
-      endTime: '18:00',
+      startDate: '',
+      startTime: '',
+      endDate: '',
+      endTime: '',
       reason: '',
     });
     setGlobalBlockError(null);
@@ -535,8 +549,6 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               icon={<Ban className="w-8 h-8 text-slate-400" />}
               title="Nenhum bloqueio cadastrado"
               description="Sua agenda não possui bloqueios rápidos ou bloqueios de dias programados."
-              actionLabel="Cadastrar Bloqueio"
-              onAction={onOpenAddExceptionModal}
             />
           ) : (
             <div className="space-y-3">
@@ -627,7 +639,6 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               />
             </div>
           </div>
-
           {selectedSimOffering && simDate && (
             <div className="pt-4 border-t border-slate-200 space-y-3">
               <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
@@ -677,21 +688,26 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Horário Inicial *</label>
-              <TimeInput
+              <Select
                 value={ruleForm.startTime}
-                onChange={(value) => onRuleFormChange({ ...ruleForm, startTime: value })}
+                onChange={(event) => onRuleFormChange({ ...ruleForm, startTime: event.target.value })}
+                options={HOUR_OPTIONS}
               />
             </div>
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Horário Final *</label>
-              <TimeInput
+              <Select
                 value={ruleForm.endTime}
-                onChange={(value) => onRuleFormChange({ ...ruleForm, endTime: value })}
+                onChange={(event) => onRuleFormChange({ ...ruleForm, endTime: event.target.value })}
+                options={HOUR_OPTIONS}
               />
             </div>
           </div>
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs font-medium text-sky-800">
+            Para manter a agenda organizada, escolha horários em hora cheia, como 08:00, 09:00 ou 10:00. Horários como 08:30 não são permitidos.
+          </div>
 
-          <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+          <div className="mazzi-modal-actions flex justify-end gap-2">
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddRuleModal} disabled={isSavingRule}>
               Cancelar
             </Button>
@@ -721,7 +737,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             />
             {emergencyReasonPreset === 'OUTRO' && <Input placeholder="Descreva o motivo (opcional)" value={emergencyReason} onChange={(event) => setEmergencyReason(event.target.value)} />}
           </div>
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+          <div className="mazzi-modal-actions flex justify-end gap-2">
             <Button variant="dangerSoft" size="sm" onClick={() => setIsEmergencyModalOpen(false)} disabled={isSavingEmergencyBlock}>Cancelar</Button>
             <Button variant="primary" size="sm" onClick={saveEmergencyBlock} isLoading={isSavingEmergencyBlock}>Bloquear horário</Button>
           </div>
@@ -773,7 +789,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+          <div className="mazzi-modal-actions flex justify-end gap-2">
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddExceptionModal}>
               Cancelar
             </Button>
@@ -850,7 +866,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             />
           </div>
 
-          <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+          <div className="mazzi-modal-actions flex justify-end gap-2">
             <Button
               variant="dangerSoft"
               size="sm"

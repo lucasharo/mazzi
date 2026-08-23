@@ -337,6 +337,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                                 key={slot.slot_start_at}
                                 type="button"
                                 aria-pressed={isSelected}
+                                aria-label={`Selecionar aula das ${slot.local_start_time.substring(0, 5)} até ${slot.local_end_time.substring(0, 5)}`}
                                 onClick={() => setSelectedSlot(slot)}
                                 className={`min-h-11 rounded-xl border px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                                   isSelected
@@ -345,7 +346,10 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                                 }`}
                               >
                                 <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                <span>{slot.local_start_time.substring(0, 5)}</span>
+                                <span className="flex flex-col items-start leading-tight">
+                                  <span className="font-bold">{slot.local_start_time.substring(0, 5)}</span>
+                                  <span className="text-[10px] font-medium opacity-70">até {slot.local_end_time.substring(0, 5)}</span>
+                                </span>
                               </ButtonBase>
                             );
                           })}

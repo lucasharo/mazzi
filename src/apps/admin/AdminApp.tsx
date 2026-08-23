@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import {
-  BarChart3, Bell, CalendarDays, Car, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
+  BarChart3, Bell, Calendar, Car, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { dbService } from '../../lib/db-service';
 import {
@@ -339,7 +339,7 @@ export const AdminApp: React.FC = () => {
           { id: 'providers', label: 'Prestadores', icon: UserCheck, count: providers.filter((p) => p.status === 'PENDING_REVIEW').length },
           { id: 'compliance', label: 'Compliance', icon: ShieldCheck, count: complianceDocs.filter((d) => d.status === 'UNDER_REVIEW').length },
           { id: 'vehicles', label: 'Veículos', icon: Car, count: vehicles.filter((v) => v.status === 'UNDER_REVIEW').length },
-          { id: 'bookings', label: 'Reservas', icon: CalendarDays },
+          { id: 'bookings', label: 'Reservas', icon: Calendar },
           { id: 'financial', label: 'Financeiro', icon: WalletCards },
           { id: 'analytics', label: 'Analytics', icon: BarChart3 },
           { id: 'users', label: 'Usuários & Papéis', icon: Users },

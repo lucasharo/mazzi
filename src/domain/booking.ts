@@ -365,3 +365,14 @@ export function createBookingHold(input: CreateBookingHoldInput): CreateBookingH
     isIdempotent: false,
   };
 }
+export type StudentBookingSection = 'CONFIRMED' | 'HISTORY';
+
+export function getStudentBookingSection(
+  status: string,
+  booking?: { cancelledAt?: string; cancelledBy?: string; cancellationReason?: string },
+): StudentBookingSection {
+  const normalizedStatus = String(status || '').toUpperCase();
+  const hasCancellationMetadata = Boolean(booking?.cancelledAt || booking?.cancelledBy || booking?.cancellationReason);
+  if (normalizedStatus.includes('CANCEL') || hasCancellationMetadata) return 'HISTORY';
+  return normalizedStatus === 'CONFIRMED' ? 'CONFIRMED' : 'HISTORY';
+}

@@ -65,24 +65,33 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
     <article
       id={`provider-card-${result.providerId}`}
       aria-label={`Prestador ${result.displayName}, ${providerTypeLabel}`}
-      className={`mazzi-card p-4 sm:p-5 transition-all duration-200 text-left space-y-3.5 hover:shadow-md ${
+      className={`mazzi-card relative p-4 sm:p-5 transition-all duration-200 text-left space-y-3.5 hover:shadow-md ${
         isSelected ? 'ring-2 ring-[var(--mazzi-yellow)] shadow-md' : ''
       }`}
     >
       {/* 1. Top Section: Avatar + Identity + Rating */}
-      <div className="flex items-start gap-3 sm:gap-3.5">
+      <div className="flex items-start gap-3 sm:gap-3.5 pr-1">
         {/* Avatar */}
-        <div className="mazzi-avatar h-14 w-14 sm:h-16 sm:w-16 shrink-0 text-base sm:text-lg font-bold shadow-xs ring-1 ring-black/5 relative">
+        <div className="mazzi-avatar !overflow-visible h-14 w-14 sm:h-16 sm:w-16 shrink-0 text-base sm:text-lg font-bold shadow-xs ring-1 ring-black/5 relative">
           {result.avatarUrl ? (
             <img
               src={result.avatarUrl}
               alt={`Foto de ${result.displayName}`}
-              className="h-full w-full object-cover"
+              className="h-full w-full rounded-[inherit] object-cover"
               loading="lazy"
             />
           ) : (
-            <span className="flex h-full w-full items-center justify-center bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)]" aria-hidden="true">
+            <span className="flex h-full w-full items-center justify-center rounded-[inherit] bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)]" aria-hidden="true">
               {getInitials(result.displayName)}
+            </span>
+          )}
+          {result.isVerified && (
+            <span
+              className="absolute bottom-0 right-0 z-20 inline-flex h-6 w-6 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full border-2 border-white bg-emerald-50 text-emerald-700 shadow-sm"
+              aria-label="Prestador verificado"
+              title="Verificado"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
             </span>
           )}
         </div>
@@ -93,18 +102,9 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
             <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--mazzi-muted)]">
               {isCFC ? 'Autoescola / CFC' : 'Instrutor autônomo'}
             </span>
-            {result.isVerified && (
-              <span
-                className="inline-flex items-center justify-center text-emerald-700 bg-emerald-50 p-1 rounded-full border border-emerald-200/60 shadow-2xs"
-                aria-label="Prestador verificado"
-                title="Verificado"
-              >
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
-              </span>
-            )}
           </div>
 
-          <h2 className="mt-0.5 text-base sm:text-lg font-bold text-[var(--mazzi-dark)] leading-snug break-words">
+          <h2 className="mt-5 text-base sm:mt-0 sm:text-lg font-bold text-[var(--mazzi-dark)] leading-snug break-words">
             {result.displayName}
           </h2>
 
@@ -115,7 +115,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
         </div>
 
         {/* Rating Block */}
-        <div className="shrink-0 text-right">
+        <div className="absolute right-4 top-4 shrink-0 text-right sm:right-5 sm:top-5">
           {result.ratingCount > 0 ? (
             <div
               className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[var(--mazzi-dark)] bg-[var(--mazzi-surface-soft)] px-2.5 py-1 rounded-xl border border-[var(--mazzi-border)]"
@@ -148,31 +148,31 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
       )}
 
       {/* 3. Pricing & Actions Footer */}
-      <div className="mt-3.5 pt-3 border-t border-[var(--mazzi-border)] flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
+      <div className="mt-3.5 pt-3 border-t border-[var(--mazzi-border)] flex flex-nowrap items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
           {hasMultipleOfferings ? (
-            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-slate-400">
               A partir de
             </p>
           ) : (
-            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+            <p className="text-[9px] font-medium uppercase tracking-wider text-slate-400">
               Valor por aula
             </p>
           )}
-          <p className="mt-0.5 text-base sm:text-lg font-bold text-[var(--mazzi-dark)]">
+          <p className="mt-0.5 whitespace-nowrap text-sm sm:text-base font-bold text-[var(--mazzi-dark)]">
             {formatCentsToBRL(result.startingPriceInCents)}
             {duration ? (
-              <span className="ml-1 text-xs font-normal text-slate-500">· {duration} min</span>
+              <span className="mt-0.5 block text-[10px] font-normal text-slate-500">{duration} min</span>
             ) : null}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="ml-auto flex items-center justify-end gap-2 shrink-0">
           {onViewProfile && (
             <SecondaryButton
               type="button"
               size="sm"
-              className="min-h-11 px-3.5 text-xs font-bold shadow-2xs flex items-center justify-center gap-1.5"
+              className="min-h-11 px-2.5 sm:px-3.5 text-xs font-bold shadow-2xs flex items-center justify-center gap-1.5"
               onClick={() => onViewProfile(result.providerId)}
               leftIcon={<UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />}
               aria-label={`Ver perfil detalhado de ${result.displayName}`}
@@ -183,7 +183,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
           <PrimaryButton
             type="button"
             size="sm"
-            className="min-h-11 px-4 text-xs font-bold shadow-xs flex items-center justify-center gap-1.5"
+            className="min-h-11 px-2.5 sm:px-4 text-xs font-bold shadow-xs flex items-center justify-center gap-1.5"
             onClick={handleSchedule}
             leftIcon={<Calendar className="h-4 w-4 shrink-0" aria-hidden="true" />}
             aria-label={`Agendar aula com ${result.displayName}`}
