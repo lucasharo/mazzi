@@ -8,6 +8,63 @@ export interface EmergencyBlockableSlot {
   endAt: string;
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+
+export function sortEmergencySlots(slots: EmergencyBlockableSlot[]): EmergencyBlockableSlot[] {
+  return [...slots].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+}
+
+export function isContiguousHourRange(slots: EmergencyBlockableSlot[]): boolean {
+  if (slots.length === 0) return false;
+  const ordered = sortEmergencySlots(slots);
+  const firstDate = ordered[0].date;
+  return ordered.every((slot, index) => {
+    if (slot.date !== firstDate) return false;
+    const duration = new Date(slot.endAt).getTime() - new Date(slot.startAt).getTime();
+    if (duration !== HOUR_MS) return false;
+    if (index === 0) return true;
+    const previous = ordered[index - 1];
+    return new Date(slot.startAt).getTime() - new Date(previous.startAt).getTime() === HOUR_MS
+      && previous.endAt === slot.startAt;
+  });
+}
+
+export function normalizeContiguousHourRange(slots: EmergencyBlockableSlot[]): EmergencyBlockableSlot[] | null {
+  const ordered = sortEmergencySlots(slots);
+  return isContiguousHourRange(ordered) ? ordered : null;
+}
+
+export function selectContiguousHourRange({
+  availableSlots,
+  selectedSlots,
+  clickedSlot,
+}: {
+  availableSlots: EmergencyBlockableSlot[];
+  selectedSlots: EmergencyBlockableSlot[];
+  clickedSlot: EmergencyBlockableSlot;
+}): EmergencyBlockableSlot[] {
+  const available = sortEmergencySlots(availableSlots);
+  const clickedIndex = available.findIndex((slot) => slot.startAt === clickedSlot.startAt);
+  if (clickedIndex < 0) return [clickedSlot];
+
+  const selected = normalizeContiguousHourRange(selectedSlots);
+  if (!selected) return [clickedSlot];
+  if (selected.length === 1 && selected[0].startAt === clickedSlot.startAt) return [];
+
+  const selectedIndex = selected.findIndex((slot) => slot.startAt === clickedSlot.startAt);
+  if (selectedIndex >= 0) {
+    const endpoint = Math.max(0, selectedIndex);
+    return selected.slice(0, endpoint + 1);
+  }
+
+  const anchorIndex = available.findIndex((slot) => slot.startAt === selected[0].startAt);
+  if (anchorIndex < 0) return [clickedSlot];
+  const start = Math.min(anchorIndex, clickedIndex);
+  const end = Math.max(anchorIndex, clickedIndex);
+  const range = available.slice(start, end + 1);
+  return isContiguousHourRange(range) ? range : [clickedSlot];
+}
+
 const dayNumber: Record<string, number> = { SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6 };
 const toMinutes = (value: string) => { const [h, m] = value.split(':').map(Number); return h * 60 + m; };
 const fmt = (value: number) => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;

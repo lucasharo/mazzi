@@ -15,7 +15,7 @@ import { DAY_OF_WEEK_LABELS_PT, generateAvailableSlots } from '../../../domain/a
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { ReasonChips } from '../../../components/ui/ReasonChips';
 import { DateTimeSlotPicker } from '../../../components/schedule/DateTimeSlotPicker';
-import { generateEmergencyBlockableSlots, isEmergencyBlockDurationAvailable, EmergencyBlockableSlot } from '../../../domain/emergency-block';
+import { generateEmergencyBlockableSlots, isEmergencyBlockDurationAvailable, isContiguousHourRange, normalizeContiguousHourRange, EmergencyBlockableSlot } from '../../../domain/emergency-block';
 
 interface ProviderScheduleTabProps {
   scheduleSubTab: 'rules' | 'exceptions' | 'simulator';
@@ -247,11 +247,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       setEmergencyBlockError('Selecione pelo menos uma hora livre.');
       return;
     }
+    const normalizedSlots = normalizeContiguousHourRange(emergencySelectedSlots);
+    if (!normalizedSlots || !isContiguousHourRange(normalizedSlots)) {
+      setEmergencyBlockError('Selecione horários consecutivos para criar o bloqueio.');
+      return;
+    }
     setIsSavingEmergencyBlock(true);
     try {
       await onSaveEmergencyBlock(
-        emergencySelectedSlots[0].startAt,
-        emergencySelectedSlots[emergencySelectedSlots.length - 1].endAt,
+        normalizedSlots[0].startAt,
+        normalizedSlots[normalizedSlots.length - 1].endAt,
         emergencyReason.trim() || undefined,
         emergencyEditingBlockId,
       );
