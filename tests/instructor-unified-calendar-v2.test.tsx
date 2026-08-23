@@ -79,136 +79,54 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
       onDeleteGlobalBlock: vi.fn().mockResolvedValue({ success: true }),
     };
 
-    it('A. Clicar "Novo Bloqueio Pessoal" abre o modal global (Cadastrar Bloqueio Pessoal Global)', () => {
-      render(<ProviderScheduleTab {...defaultProps} />);
-      const newBtn = screen.getByRole('button', { name: /Novo Bloqueio Pessoal/i });
+    it('A. Clicar "Bloqueio rápido" abre o seletor de horas vigente', () => {
+      render(<ProviderScheduleTab {...defaultProps} onSaveEmergencyBlock={vi.fn()} />);
+      const newBtn = screen.getByRole('button', { name: /Criar bloqueio rápido de horário/i });
       fireEvent.click(newBtn);
 
-      expect(screen.getByText('Cadastrar Bloqueio Pessoal Global')).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Bloqueio rápido' })).toBeTruthy();
+      expect(screen.getByText('Horários livres')).toBeTruthy();
     });
 
-    it('B. "Novo Bloqueio Pessoal" NÃO abre o modal de availability exceptions da autoescola', () => {
-      render(<ProviderScheduleTab {...defaultProps} />);
-      const newBtn = screen.getByRole('button', { name: /Novo Bloqueio Pessoal/i });
-      fireEvent.click(newBtn);
-
-      expect(defaultProps.onOpenAddExceptionModal).toHaveBeenCalledTimes(0);
-      expect(screen.queryByText('Cadastrar Bloqueio / Exceção')).toBeNull();
+    it('B. O bloqueio rápido não aparece para usuário que não é instrutor', () => {
+      render(<ProviderScheduleTab {...defaultProps} onSaveEmergencyBlock={vi.fn()} isInstructorUser={false} />);
+      expect(screen.queryByRole('button', { name: /Criar bloqueio rápido de horário/i })).toBeNull();
     });
 
-    it('C & D. Preencher formulário e salvar chama onSaveGlobalBlock 1x e onSaveException 0x', async () => {
-      const onSaveGlobalBlockMock = vi.fn().mockResolvedValue({ success: true });
-      const onSaveExceptionMock = vi.fn();
-
-      render(
-        <ProviderScheduleTab
-          {...defaultProps}
-          onSaveGlobalBlock={onSaveGlobalBlockMock}
-          onSaveException={onSaveExceptionMock}
-        />
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /Novo Bloqueio Pessoal/i }));
-
-      const submitBtn = screen.getByRole('button', { name: /Salvar Bloqueio Pessoal/i, hidden: true });
-      fireEvent.click(submitBtn);
-
-      expect(onSaveGlobalBlockMock).toHaveBeenCalledTimes(1);
-      expect(onSaveExceptionMock).toHaveBeenCalledTimes(0);
+    it('C. Mantém o botão de bloqueio de dias separado do fluxo rápido', () => {
+      render(<ProviderScheduleTab {...defaultProps} onSaveEmergencyBlock={vi.fn()} />);
+      expect(screen.getByRole('button', { name: /Bloqueio de dias/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Criar bloqueio rápido de horário/i })).toBeTruthy();
     });
 
-    it('F. end <= start mostra erro de validação no modal e não envia requisição', () => {
-      const onSaveGlobalBlockMock = vi.fn();
-      render(<ProviderScheduleTab {...defaultProps} onSaveGlobalBlock={onSaveGlobalBlockMock} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /Novo Bloqueio Pessoal/i }));
-
-      const dateInputs = screen.getAllByDisplayValue(/2026|08:|18:/);
-      if (dateInputs.length >= 4) {
-        fireEvent.change(dateInputs[0], { target: { value: '20/08/2026' } });
-        fireEvent.change(dateInputs[1], { target: { value: '18:00' } });
-        fireEvent.change(dateInputs[2], { target: { value: '20/08/2026' } });
-        fireEvent.change(dateInputs[3], { target: { value: '08:00' } });
-      }
-
-      const submitBtn = screen.getByRole('button', { name: /Salvar Bloqueio Pessoal/i, hidden: true });
-      fireEvent.click(submitBtn);
-
-      expect(screen.getByText('A data e hora final devem ser posteriores à data e hora inicial.')).toBeTruthy();
-      expect(onSaveGlobalBlockMock).toHaveBeenCalledTimes(0);
+    it('F. O botão rápido fica indisponível quando o calendário está em fail-closed', () => {
+      render(<ProviderScheduleTab {...defaultProps} onSaveEmergencyBlock={vi.fn()} calendarLoadError="Agenda indisponível" />);
+      expect(screen.queryByRole('button', { name: /Criar bloqueio rápido de horário/i })).toBeNull();
     });
 
-    it('G & H. Clicar Editar abre formulário com os dados do bloco e envia blockId no submit', () => {
+    it('G & H. Bloqueios globais aparecem ordenados do mais novo para o mais antigo', () => {
       const mockBlocks = [
         {
-          id: 'gb_edit_999',
-          start_at: '2026-08-20T08:00:00-03:00',
-          end_at: '2026-08-20T18:00:00-03:00',
-          reason: 'Férias de Julho',
+          id: 'gb_old', start_at: '2026-08-20T08:00:00-03:00', end_at: '2026-08-20T09:00:00-03:00', reason: 'Antigo',
+        },
+        {
+          id: 'gb_new', start_at: '2026-08-22T08:00:00-03:00', end_at: '2026-08-22T09:00:00-03:00', reason: 'Novo',
         },
       ];
-      const onSaveGlobalBlockMock = vi.fn().mockResolvedValue({ success: true });
-
-      render(
-        <ProviderScheduleTab
-          {...defaultProps}
-          instructorGlobalBlocks={mockBlocks}
-          onSaveGlobalBlock={onSaveGlobalBlockMock}
-        />
-      );
-
-      const editButtons = screen.getAllByRole('button');
-      const editBtn = editButtons.find((btn) => btn.querySelector('svg.lucide-pencil'));
-      expect(editBtn).toBeTruthy();
-      if (editBtn) fireEvent.click(editBtn);
-
-      expect(screen.getByText('Editar Bloqueio Pessoal Global')).toBeTruthy();
-      expect(screen.getByDisplayValue('Férias de Julho')).toBeTruthy();
-
-      fireEvent.click(screen.getByRole('button', { name: /Atualizar Bloqueio/i, hidden: true }));
-      expect(onSaveGlobalBlockMock).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        'Férias de Julho',
-        'gb_edit_999'
-      );
+      render(<ProviderScheduleTab {...defaultProps} instructorGlobalBlocks={mockBlocks} />);
+      const reasons = screen.getAllByText(/Novo|Antigo/).map((node) => node.textContent);
+      expect(reasons.indexOf('Novo')).toBeLessThan(reasons.indexOf('Antigo'));
     });
 
-    it('I & J. Clicar Excluir trata erro com modal fechado, exibe mensagem amigável no alerta da seção e NÃO expõe erro técnico', async () => {
+    it('I & J. Bloqueio global não expõe ações de edição ou exclusão fora do fluxo vigente', () => {
       const mockBlocks = [
         {
-          id: 'gb_del_123',
-          start_at: '2026-08-20T08:00:00-03:00',
-          end_at: '2026-08-20T18:00:00-03:00',
-          reason: 'Bloqueio Teste Exclusão',
+          id: 'gb_del_123', start_at: '2020-08-20T08:00:00-03:00', end_at: '2020-08-20T18:00:00-03:00', reason: 'Histórico',
         },
       ];
-      const onDeleteGlobalBlockMock = vi.fn().mockRejectedValue(new Error('DATABASE_CONNECTION_ERROR'));
-
-      render(
-        <ProviderScheduleTab
-          {...defaultProps}
-          instructorGlobalBlocks={mockBlocks}
-          onDeleteGlobalBlock={onDeleteGlobalBlockMock}
-        />
-      );
-
-      const deleteButtons = screen.getAllByRole('button');
-      const deleteBtn = deleteButtons.find((btn) => btn.querySelector('svg.lucide-trash-2'));
-      expect(deleteBtn).toBeTruthy();
-
-      if (deleteBtn) fireEvent.click(deleteBtn);
-      expect(onDeleteGlobalBlockMock).toHaveBeenCalledWith('gb_del_123');
-
-      // Wait for friendly alert message in the open section (modal closed)
-      await waitFor(() => {
-        const alert = screen.getByRole('alert');
-        expect(alert).toBeTruthy();
-        expect(alert.textContent).toContain('Não foi possível excluir o bloqueio pessoal. Tente novamente.');
-      });
-
-      // Assert technical exception is NOT rendered literally
-      expect(screen.queryByText(/DATABASE_CONNECTION_ERROR/)).toBeNull();
+      render(<ProviderScheduleTab {...defaultProps} instructorGlobalBlocks={mockBlocks} />);
+      expect(screen.getByText('Histórico · período iniciado')).toBeTruthy();
+      expect((screen.getByRole('button', { name: /Excluir bloqueio/i }) as HTMLButtonElement).disabled).toBe(true);
     });
 
     it('K. isInstructorUser = false oculta a seção de Bloqueios Pessoais Globais', () => {

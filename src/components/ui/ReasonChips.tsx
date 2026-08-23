@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from './Button';
 
 export interface ReasonChipOption<T extends string = string> {
   value: T;
@@ -18,16 +19,16 @@ export function ReasonChips<T extends string>({ options, value, onChange, ariaLa
       {options.map((option) => {
         const selected = value === option.value;
         return (
-          <button
+          <Button
             key={option.value}
             type="button"
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option.value)}
-            className={`rounded-full px-3 py-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${selected ? 'bg-[#f6c945] text-slate-950 shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            className={`min-h-0 rounded-full px-3 py-2 text-xs font-bold transition focus-visible:outline-amber-400 ${selected ? 'bg-[#f6c945] text-slate-950 shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
           >
             {option.label}
-          </button>
+          </Button>
         );
       })}
     </div>
