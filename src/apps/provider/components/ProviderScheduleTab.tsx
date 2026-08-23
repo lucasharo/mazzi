@@ -398,27 +398,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
         <div className="space-y-4">
           {/* INSTRUCTOR GLOBAL PERSONAL BLOCKS SECTION */}
           {isInstructorUser && (
-            <div className="p-5 rounded-3xl bg-amber-50/60 border border-amber-200/80 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                <h3 className="flex items-center gap-2 text-sm font-bold text-amber-950">
-                    <Ban className="w-4 h-4 text-amber-600" />
-                    Bloqueios Pessoais Globais
-                  </h3>
-                  <p className="text-xs text-amber-900/80 mt-0.5">
-                    Indisponividades pessoais valem para aulas particulares e para todas as autoescolas em que você estiver escalado.
-                  </p>
-                </div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleOpenCreateGlobalBlock}
-                  leftIcon={<Plus className="w-3.5 h-3.5" />}
-                >
-                  Novo Bloqueio Pessoal
-                </Button>
-              </div>
-
+            <div className="space-y-3">
               {globalBlockActionError && (
                 <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-extrabold text-rose-950 flex items-center justify-between gap-3">
                   <span>{globalBlockActionError}</span>
@@ -433,11 +413,11 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               )}
 
               {instructorGlobalBlocks && instructorGlobalBlocks.length > 0 ? (
-                <div className="space-y-2 pt-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {instructorGlobalBlocks.map((gb) => (
                     <div
                       key={gb.id}
-                      className="p-3.5 rounded-2xl bg-white border border-amber-200 shadow-xs flex items-center justify-between gap-3"
+                      className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3"
                     >
                       <div>
                       <p className="text-xs font-bold text-slate-900">
@@ -481,13 +461,6 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               )}
             </div>
           )}
-
-          <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-700 flex items-start gap-2.5">
-            <Ban className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
-            <p>
-              Os <strong>Bloqueios e Exceções</strong> têm precedência total sobre as regras semanais. Use para registrar folgas, feriados ou indisponibilidade de veículo.
-            </p>
-          </div>
 
           {availabilityExceptions.length === 0 ? (
             <EmptyState
