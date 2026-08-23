@@ -306,20 +306,22 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       <div className="flex justify-end">
         {scheduleSubTab === 'rules' && (
           <div className="flex flex-wrap justify-end gap-2">
-            {isInstructorUser && onSaveEmergencyBlock && !calendarLoadError && (
-              <Button variant="secondary" size="sm" onClick={openEmergencyBlockModal} leftIcon={<Clock3 className="w-4 h-4" />} aria-label="Criar bloqueio rápido de horário">
-                Bloqueio rápido
-              </Button>
-            )}
             <Button variant="primary" size="sm" onClick={onOpenAddRuleModal} leftIcon={<Plus className="w-4 h-4" />}>
               Nova Regra Semanal
             </Button>
           </div>
         )}
         {scheduleSubTab === 'exceptions' && (
-          <Button variant="primary" size="sm" onClick={onOpenAddExceptionModal} leftIcon={<Plus className="w-4 h-4" />}>
-            Novo Bloqueio / Exceção
-          </Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            {isInstructorUser && onSaveEmergencyBlock && !calendarLoadError && (
+              <Button variant="secondary" size="sm" onClick={openEmergencyBlockModal} leftIcon={<Clock3 className="w-4 h-4" />} aria-label="Criar bloqueio rápido de horário">
+                Bloqueio rápido
+              </Button>
+            )}
+            <Button variant="primary" size="sm" onClick={onOpenAddExceptionModal} leftIcon={<Plus className="w-4 h-4" />}>
+              Novo Bloqueio / Exceção
+            </Button>
+          </div>
         )}
       </div>
       {/* RECURRING RULES SUBTAB */}
