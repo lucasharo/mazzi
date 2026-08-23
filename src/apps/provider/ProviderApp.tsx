@@ -140,6 +140,7 @@ export const ProviderApp: React.FC = () => {
 
   const [isAddExceptionModalOpen, setIsAddExceptionModalOpen] = useState<boolean>(false);
   const [exceptionForm, setExceptionForm] = useState({
+    id: undefined as string | undefined,
     type: 'BLOCK' as ExceptionType,
     reasonCategory: 'PERSONAL' as ExceptionReasonCategory,
     reason: '',
@@ -706,6 +707,12 @@ export const ProviderApp: React.FC = () => {
   const handleCreateAvailabilityException = async () => {
     setExceptionError(null);
     try {
+      if (exceptionForm.id) {
+        const currentException = availabilityExceptions.find((exception) => exception.id === exceptionForm.id);
+        if (currentException && new Date(currentException.endAt).getTime() <= Date.now()) {
+          throw new Error('Bloqueios encerrados são históricos e não podem ser editados.');
+        }
+      }
       enforceAvailabilityOwnership({
         targetProviderId: currentProvider.id,
         actorProviderId: currentProvider.id,
@@ -719,7 +726,7 @@ export const ProviderApp: React.FC = () => {
       const endAtISO = `${exceptionForm.endDate}T${exceptionForm.endTime}:00.000-03:00`;
 
       const newException: AvailabilityException = {
-        id: `exc_${Date.now()}`,
+        id: exceptionForm.id || `exc_${Date.now()}`,
         providerId: currentProvider.id,
         type: exceptionForm.type,
         reasonCategory: exceptionForm.reasonCategory,
@@ -732,9 +739,12 @@ export const ProviderApp: React.FC = () => {
       validateAvailabilityException(newException);
 
       const savedException = await dbService.saveAvailabilityException(newException);
-      setAvailabilityExceptions((prev) => [...prev, { ...newException, id: savedException.id }]);
+      setAvailabilityExceptions((prev) => exceptionForm.id
+        ? prev.map((exception) => exception.id === exceptionForm.id ? { ...newException, id: savedException.id } : exception)
+        : [...prev, { ...newException, id: savedException.id }]);
       setIsAddExceptionModalOpen(false);
       setExceptionForm({
+        id: undefined,
         type: 'BLOCK',
         reasonCategory: 'PERSONAL',
         reason: '',
@@ -751,6 +761,10 @@ export const ProviderApp: React.FC = () => {
 
   const handleDeleteAvailabilityException = async (exceptionId: string) => {
     try {
+      const currentException = availabilityExceptions.find((exception) => exception.id === exceptionId);
+      if (currentException && new Date(currentException.endAt).getTime() <= Date.now()) {
+        throw new Error('Bloqueios encerrados são históricos e não podem ser excluídos.');
+      }
       enforceAvailabilityOwnership({
         targetProviderId: currentProvider.id,
         actorProviderId: currentProvider.id,

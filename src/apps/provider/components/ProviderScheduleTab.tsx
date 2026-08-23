@@ -141,6 +141,25 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const [emergencyBlockError, setEmergencyBlockError] = React.useState<string | null>(null);
   const [emergencySelectedDate, setEmergencySelectedDate] = React.useState('');
   const [emergencySelectedSlots, setEmergencySelectedSlots] = React.useState<EmergencyBlockableSlot[]>([]);
+  const canChangeBlock = (endAt: string) => new Date(endAt).getTime() > Date.now();
+  const sortedGlobalBlocks = React.useMemo(() => [...(instructorGlobalBlocks || [])].sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime()), [instructorGlobalBlocks]);
+  const sortedExceptions = React.useMemo(() => [...availabilityExceptions].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [availabilityExceptions]);
+
+  const handleEditException = (exception: AvailabilityException) => {
+    if (!canChangeBlock(exception.endAt)) return;
+    onExceptionFormChange({
+      type: exception.type,
+      reasonCategory: exception.reasonCategory,
+      reason: exception.reason,
+      startDate: getBusinessDateFromTimestamp(exception.startAt),
+      startTime: getTimeInSaoPaulo(exception.startAt),
+      endDate: getBusinessDateFromTimestamp(exception.endAt),
+      endTime: getTimeInSaoPaulo(exception.endAt),
+      vehicleId: exception.vehicleId || '',
+      id: exception.id,
+    });
+    onOpenAddExceptionModal();
+  };
 
   const openEmergencyBlockModal = () => {
     const firstDate = Object.keys(emergencySlotsByDate).sort()[0] || getTodayInSaoPaulo();
@@ -201,6 +220,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   };
 
   const handleOpenEditGlobalBlock = (gb: any) => {
+    if (!canChangeBlock(gb.end_at)) return;
     setEditingGlobalBlockId(gb.id);
     const startDateStr = getBusinessDateFromTimestamp(gb.start_at);
     const startTimeStr = getTimeInSaoPaulo(gb.start_at);
@@ -250,6 +270,8 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
 
   const handleDeleteGlobalBlockClick = async (blockId: string) => {
     if (!onDeleteGlobalBlock) return;
+    const block = (instructorGlobalBlocks || []).find((item) => item.id === blockId);
+    if (block && !canChangeBlock(block.end_at)) return;
     try {
       setDeletingGlobalBlockId(blockId);
       setGlobalBlockActionError(null);
@@ -425,20 +447,26 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             />
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {isInstructorUser && instructorGlobalBlocks.map((gb) => (
+              {isInstructorUser && sortedGlobalBlocks.map((gb) => {
+                const editable = canChangeBlock(gb.end_at);
+                return (
                 <div key={`global-${gb.id}`} className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3">
                   <div className="min-w-0 space-y-2">
                     <Badge variant="warning">Bloqueio rápido</Badge>
                     <p className="text-xs font-bold text-slate-900">{formatDateTimeBR(gb.start_at)} até {formatDateTimeBR(gb.end_at)}</p>
                     {gb.reason && <p className="text-xs text-slate-600 font-medium">{gb.reason}</p>}
+                    {!editable && <p className="text-[11px] font-semibold text-slate-400">Histórico · período encerrado</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100" onClick={() => handleOpenEditGlobalBlock(gb)} aria-label="Editar bloqueio rápido"><Pencil className="w-3.5 h-3.5" /></Button>
-                    {onDeleteGlobalBlock && <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50" disabled={deletingGlobalBlockId === gb.id} isLoading={deletingGlobalBlockId === gb.id} onClick={() => handleDeleteGlobalBlockClick(gb.id)} aria-label="Excluir bloqueio rápido"><Trash2 className="w-3.5 h-3.5" /></Button>}
+                    <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100 disabled:opacity-40" disabled={!editable} onClick={() => handleOpenEditGlobalBlock(gb)} aria-label="Editar bloqueio rápido"><Pencil className="w-3.5 h-3.5" /></Button>
+                    {onDeleteGlobalBlock && <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 disabled:opacity-40" disabled={!editable || deletingGlobalBlockId === gb.id} isLoading={deletingGlobalBlockId === gb.id} onClick={() => handleDeleteGlobalBlockClick(gb.id)} aria-label="Excluir bloqueio rápido"><Trash2 className="w-3.5 h-3.5" /></Button>}
                   </div>
                 </div>
-              ))}
-              {availabilityExceptions.map((exc) => (
+                );
+              })}
+              {sortedExceptions.map((exc) => {
+                const editable = canChangeBlock(exc.endAt);
+                return (
                 <div
                   key={exc.id}
                   className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3"
@@ -448,22 +476,28 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                       <Badge variant="warning">Bloqueio de dias</Badge>
                       <span className="text-xs font-bold text-slate-900">{exc.reason || 'Folga / indisponibilidade'}</span>
                     </div>
-                    <p className="text-xs text-slate-500 font-medium">
-                      De: {new Date(exc.startAt).toLocaleString('pt-BR')} até {new Date(exc.endAt).toLocaleString('pt-BR')}
-                    </p>
+                      <p className="text-xs text-slate-500 font-medium">
+                        De: {new Date(exc.startAt).toLocaleString('pt-BR')} até {new Date(exc.endAt).toLocaleString('pt-BR')}
+                        {!editable && <span className="ml-1 text-[11px] font-semibold text-slate-400">· Histórico</span>}
+                      </p>
                   </div>
 
+                  <Button variant="ghost" size="sm" onClick={() => handleEditException(exc)} disabled={!editable} className="shrink-0 text-slate-600 hover:bg-slate-100 disabled:opacity-40" aria-label="Editar bloqueio de dias">
+                    <Pencil className="w-4 h-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onDeleteException(exc.id)}
-                    className="shrink-0 text-rose-600 hover:bg-rose-50"
+                    disabled={!editable}
+                    className="shrink-0 text-rose-600 hover:bg-rose-50 disabled:opacity-40"
                     aria-label="Excluir bloqueio de dias"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
