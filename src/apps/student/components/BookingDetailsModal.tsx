@@ -360,7 +360,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </div>
 
           {/* Presence & Check-In Card */}
-          {booking.status === 'CONFIRMED' && (
+          {(booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS') && (
             <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-3 shadow-xs">
               <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
                 Status de Presença na Aula
@@ -399,7 +399,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <span className="text-xs font-bold text-slate-800 block">Check-in do Instrutor</span>
-                  <span className="text-[11px] text-slate-500 block">Status de presença do profissional</span>
+                  <span className="text-[11px] text-slate-500 block">{booking.instructorCheckedIn ? 'Presença confirmada' : 'Aguardando check-in do profissional'}</span>
                 </div>
                 {booking.instructorCheckedIn ? (
                   <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1 shrink-0">

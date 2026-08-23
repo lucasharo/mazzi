@@ -26,6 +26,12 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'A janela de check-in desta aula já terminou.';
   }
 
+  if (msg.includes('INSTRUCTOR_CHECKIN_REQUIRED')) {
+    return 'Faça seu check-in antes de iniciar a aula.';
+  }
+  if (msg.includes('STUDENT_CHECKIN_REQUIRED')) {
+    return 'O aluno precisa realizar o check-in antes do início da aula.';
+  }
   if (msg.includes('CHECKIN_REQUIRED')) {
     return 'Faça o check-in antes de iniciar a aula.';
   }

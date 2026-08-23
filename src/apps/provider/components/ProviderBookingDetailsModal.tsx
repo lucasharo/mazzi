@@ -92,7 +92,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
 
   const footer = (
     <div className="flex w-full flex-col gap-2.5">
-      {isConfirmed && booking.instructorCheckedIn && (
+      {isConfirmed && booking.instructorCheckedIn && booking.studentCheckedIn && (
         <Button
           type="button"
           variant="primary"
@@ -177,13 +177,13 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         </div>
 
         {/* Presence & check-in */}
-        {booking.status === 'CONFIRMED' && (
+        {(booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS') && (
           <div className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 shadow-xs">
             <h4 className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500"><UserCheck className="h-3.5 w-3.5" aria-hidden="true" />Status de presença na aula</h4>
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
               <div>
                 <span className="block text-xs font-bold text-slate-800">Check-in do aluno</span>
-                <span className="block text-[11px] text-slate-500">Presença confirmada no ponto de encontro</span>
+                  <span className="block text-[11px] text-slate-500">{booking.studentCheckedIn ? 'Presença confirmada no ponto de encontro' : 'Aguardando check-in do aluno'}</span>
               </div>
               {booking.studentCheckedIn ? (
                 <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800">
@@ -197,7 +197,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             <div className="flex items-center justify-between gap-2">
               <div>
                 <span className="block text-xs font-bold text-slate-800">Seu check-in</span>
-                <span className="block text-[11px] text-slate-500">Confirme sua presença para iniciar a aula</span>
+                  <span className="block text-[11px] text-slate-500">{booking.instructorCheckedIn ? 'Aguardando check-in do aluno' : 'Aguardando seu check-in'}</span>
               </div>
               {booking.instructorCheckedIn ? (
                 <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800">

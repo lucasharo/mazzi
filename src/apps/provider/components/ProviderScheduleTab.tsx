@@ -129,12 +129,9 @@ const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt,
     </div>
     <div className="space-y-1">
       {dayRange ? (
-        <div className="space-y-1">
-          <p className="text-sm font-extrabold leading-tight text-slate-950">
-            {dayRange.startDate}{dayRange.startDate !== dayRange.endDate ? ` a ${dayRange.endDate}` : ''}
-          </p>
-          <p className="text-xs font-semibold text-slate-600">{dayRange.label}</p>
-        </div>
+        <p className="text-sm font-extrabold leading-tight text-slate-950 break-words">
+          {dayRange.startDate}{dayRange.startDate !== dayRange.endDate ? ` a ${dayRange.endDate}` : ''} — {dayRange.label}
+        </p>
       ) : (
         <>
           <p className="text-sm font-extrabold leading-tight text-slate-950">{formatDateTimeBR(startAt)}</p>
