@@ -59,7 +59,7 @@ interface ProviderScheduleTabProps {
   instructorGlobalBlocks?: any[];
   onSaveGlobalBlock?: (startAt: string, endAt: string, reason?: string, blockId?: string) => Promise<void>;
   onDeleteGlobalBlock?: (blockId: string) => Promise<void>;
-  onSaveEmergencyBlock?: (startAt: string, endAt: string, reason?: string) => Promise<void>;
+  onSaveEmergencyBlock?: (startAt: string, endAt: string, reason?: string, blockId?: string) => Promise<void>;
   isInstructorUser?: boolean;
   bookings?: any[];
   calendarLoadError?: string | null;
@@ -178,6 +178,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const [emergencySelectedDate, setEmergencySelectedDate] = React.useState('');
   const [emergencySelectedSlots, setEmergencySelectedSlots] = React.useState<EmergencyBlockableSlot[]>([]);
   const [emergencyReasonPreset, setEmergencyReasonPreset] = React.useState('');
+  const [emergencyEditingBlockId, setEmergencyEditingBlockId] = React.useState<string | undefined>();
   const canChangeBlock = (endAt: string) => new Date(endAt).getTime() > Date.now();
   const sortedGlobalBlocks = React.useMemo(() => [...(instructorGlobalBlocks || [])].sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime()), [instructorGlobalBlocks]);
   const sortedExceptions = React.useMemo(() => [...availabilityExceptions].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [availabilityExceptions]);
@@ -214,6 +215,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     setEmergencySelectedSlots([]);
     setEmergencyReason('');
     setEmergencyReasonPreset('');
+    setEmergencyEditingBlockId(undefined);
     setEmergencyBlockError(null);
     setIsEmergencyModalOpen(true);
   };
@@ -231,6 +233,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
         emergencySelectedSlots[0].startAt,
         emergencySelectedSlots[emergencySelectedSlots.length - 1].endAt,
         emergencyReason.trim() || undefined,
+        emergencyEditingBlockId,
       );
       setIsEmergencyModalOpen(false);
     } catch (error: any) {
@@ -269,7 +272,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
 
   const handleOpenEditGlobalBlock = (gb: any) => {
     if (!canChangeBlock(gb.end_at)) return;
-    setEditingGlobalBlockId(gb.id);
+    const date = getBusinessDateFromTimestamp(gb.start_at);
+    const selectedSlots = (emergencySlotsByDate[date] || []).filter((slot) => new Date(slot.startAt) >= new Date(gb.start_at) && new Date(slot.endAt) <= new Date(gb.end_at));
+    setEmergencySelectedDate(date);
+    setEmergencySelectedSlots(selectedSlots);
+    setEmergencyReason(gb.reason || '');
+    setEmergencyReasonPreset('');
+    setEmergencyEditingBlockId(gb.id);
+    setEmergencyBlockError(null);
+    setIsEmergencyModalOpen(true);
+    return;
     const startDateStr = getBusinessDateFromTimestamp(gb.start_at);
     const startTimeStr = getTimeInSaoPaulo(gb.start_at);
     const endDateStr = getBusinessDateFromTimestamp(gb.end_at);
@@ -657,7 +669,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
         </div>
       </Modal>
 
-      <Modal isOpen={isEmergencyModalOpen} onClose={() => !isSavingEmergencyBlock && setIsEmergencyModalOpen(false)} title="Bloqueio rápido">
+      <Modal isOpen={isEmergencyModalOpen} onClose={() => !isSavingEmergencyBlock && setIsEmergencyModalOpen(false)} title={emergencyEditingBlockId ? 'Editar bloqueio rápido' : 'Bloqueio rápido'}>
         <div className="space-y-4 text-left">
           <p className="text-xs leading-relaxed text-slate-600">Escolha uma data e um horário realmente livre na sua agenda.</p>
           {emergencyBlockError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">{emergencyBlockError}</div>}

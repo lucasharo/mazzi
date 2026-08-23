@@ -1098,8 +1098,12 @@ export const ProviderApp: React.FC = () => {
             instructorGlobalBlocks={instructorGlobalBlocks}
             bookings={bookings}
             calendarLoadError={unifiedCalendarError}
-            onSaveEmergencyBlock={async (startAt, endAt, reason) => {
-              await dbService.createInstructorEmergencyBlock(startAt, endAt, reason);
+            onSaveEmergencyBlock={async (startAt, endAt, reason, blockId) => {
+              if (blockId) {
+                await dbService.saveInstructorGlobalBlock(startAt, endAt, reason, blockId);
+              } else {
+                await dbService.createInstructorEmergencyBlock(startAt, endAt, reason);
+              }
               setInstructorGlobalBlocks(await dbService.getMyInstructorGlobalBlocks());
             }}
             onSaveGlobalBlock={async (startAt, endAt, reason, blockId) => {
