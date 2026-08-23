@@ -102,6 +102,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   complianceTermsError,
 }) => {
   const [isInviteInstructorModalOpen, setIsInviteInstructorModalOpen] = React.useState(false);
+  const isSchool = currentProvider.type === 'DRIVING_SCHOOL';
   const eligibleSchoolInstructors = schoolInstructors.filter((instructor) => {
     const compliance = schoolInstructorSummary.find((entry) => entry.membershipId === instructor.id);
     return instructor.membershipStatus === 'ACTIVE' && instructor.isActive && compliance?.eligible === true;
@@ -126,7 +127,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           { id: 'vehicles', label: 'Veículos', icon: <Car className="h-3.5 w-3.5" /> },
           { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" /> },
           { id: 'compliance', label: 'Compliance', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
-          { id: 'memberships', label: 'Instrutores', icon: <Users className="h-3.5 w-3.5" /> },
+          ...(isSchool ? [{ id: 'memberships' as const, label: 'Instrutores', icon: <Users className="h-3.5 w-3.5" /> }] : []),
         ]}
         className="mazzi-segmented"
       />
@@ -157,7 +158,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
 
       {isRefreshing && <ContentSkeleton label="Atualizando gestão" />}
 
-      {!isRefreshing && managementSubTab === 'memberships' && (
+      {!isRefreshing && isSchool && managementSubTab === 'memberships' && (
         <SchoolMembershipPanel
           provider={currentProvider}
           isInstructor={currentProvider.type === 'INSTRUCTOR'}

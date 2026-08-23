@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CalendarClock, CalendarRange, History, RefreshCw } from 'lucide-react';
+import { Clock, CalendarRange, History, RefreshCw } from 'lucide-react';
 import { Booking } from '../../../types';
 import { ButtonBase } from '../../../components/ui/Button';
 import { Tabs } from '../../../components/ui/Tabs';
@@ -75,7 +75,6 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
         tabs={[
           { id: 'all', label: 'Todas', icon: <CalendarRange className="h-4 w-4" /> },
           { id: 'today', label: 'Hoje', icon: <Clock className="h-4 w-4" /> },
-          { id: 'upcoming', label: 'Próximas', icon: <CalendarClock className="h-4 w-4" /> },
           { id: 'history', label: 'Histórico', icon: <History className="h-4 w-4" /> },
         ]}
         className="mazzi-segmented"

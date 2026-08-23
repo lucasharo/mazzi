@@ -29,7 +29,7 @@ import { supabase } from '../../lib/supabase';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
-import { formatDateBR, formatTimeBR } from '../../lib/date-format';
+import { formatDateBR, formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
@@ -165,7 +165,7 @@ export const StudentApp: React.FC = () => {
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
   const [activeTab, setActiveTab] = useMobileAppRoute<'search' | 'bookings' | 'profile'>('student', 'search', ['search', 'bookings', 'profile']);
-  const [bookingTab, setBookingTab] = useState<'upcoming' | 'history'>('upcoming');
+  const [bookingTab, setBookingTab] = useState<'all' | 'today' | 'history'>('all');
   const [searchLocation, setSearchLocation] = useState('');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -711,6 +711,13 @@ function applyStrictProviderFilters(
       .sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a));
   }, [confirmedBookings, nowMs]);
 
+  const todayBookings = useMemo(
+    () => confirmedBookings
+      .filter((booking) => isBookingTodayInSaoPaulo(booking))
+      .sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b)),
+    [confirmedBookings, nowMs],
+  );
+
   const chatBookings = useMemo(() => {
     const upcomingStatus = new Set(['CONFIRMED', 'PENDING_PAYMENT', 'IN_PROGRESS']);
     return [...confirmedBookings].sort((a, b) => {
@@ -871,15 +878,29 @@ function applyStrictProviderFilters(
                 </ButtonBase>}
               />
 
-              {/* Filter Tabs: Hoje vs Histórico */}
-              <div role="tablist" aria-label="Aulas" className="grid grid-cols-2 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
+              {/* Filter Tabs */}
+              <div role="tablist" aria-label="Aulas" className="grid grid-cols-3 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
                 <ButtonBase
                   role="tab"
-                  aria-selected={bookingTab === 'upcoming'}
+                  aria-selected={bookingTab === 'all'}
                   type="button"
-                  onClick={() => setBookingTab('upcoming')}
+                  onClick={() => setBookingTab('all')}
                   className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
-                    bookingTab === 'upcoming'
+                    bookingTab === 'all'
+                      ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
+                      : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
+                  }`}
+                >
+                  <CalendarIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Todas
+                </ButtonBase>
+                <ButtonBase
+                  role="tab"
+                  aria-selected={bookingTab === 'today'}
+                  type="button"
+                  onClick={() => setBookingTab('today')}
+                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
+                    bookingTab === 'today'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
                       : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
                   }`}
@@ -903,12 +924,12 @@ function applyStrictProviderFilters(
                 </ButtonBase>
               </div>
 
-              {/* Upcoming Bookings Section */}
+              {/* All bookings */}
               {bookingsError && <ErrorState message="Não foi possível carregar suas aulas." onRetry={() => setBookingsRefreshKey((value) => value + 1)} />}
               {bookingsLoading && <ContentSkeleton count={3} label="Carregando suas aulas" />}
-              {!bookingsError && !bookingsLoading && bookingTab === 'upcoming' && (
+              {!bookingsError && !bookingsLoading && bookingTab === 'all' && (
                 <div className="space-y-3">
-                  {upcomingBookings.length === 0 ? (
+                  {confirmedBookings.length === 0 ? (
                     <EmptyState
                       title="Nenhuma aula agendada"
                       description="Encontre um instrutor ou autoescola para marcar sua próxima aula."
@@ -917,7 +938,7 @@ function applyStrictProviderFilters(
                       onAction={() => setActiveTab('search')}
                     />
                   ) : (
-                    upcomingBookings.map((b) => (
+                    [...confirmedBookings].sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b)).map((b) => (
                       <BookingCard
                         key={b.id}
                         booking={b}
@@ -928,6 +949,18 @@ function applyStrictProviderFilters(
                         }}
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
                       />
+                    ))
+                  )}
+                </div>
+              )}
+
+              {!bookingsError && !bookingsLoading && bookingTab === 'today' && (
+                <div className="space-y-3">
+                  {todayBookings.length === 0 ? (
+                    <EmptyState title="Nenhuma aula para hoje" description="Suas aulas de hoje aparecerão aqui." />
+                  ) : (
+                    todayBookings.map((b) => (
+                      <BookingCard key={b.id} booking={b} variant="student" onOpenChat={(bookingToChat) => { setChatOrigin('list'); setSelectedBookingForChat(bookingToChat); }} onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)} />
                     ))
                   )}
                 </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar as CalendarIcon, Plus, Trash2, Clock, Clock3, Ban, CheckCircle2, AlertCircle, Sliders, Sparkles, Info, Pencil, X, } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Clock, Clock3, Ban, CheckCircle2, AlertCircle, Sliders, Sparkles, Info, Pencil, X, Power, } from 'lucide-react';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getTodayInSaoPaulo, getBusinessDateFromTimestamp, getTimeInSaoPaulo, formatDateTimeBR } from '../../../lib/date-format';
 import {
@@ -52,6 +52,7 @@ interface ProviderScheduleTabProps {
   onSaveException: () => void;
   onDeleteException: (id: string) => void;
   onDeactivateException?: (id: string) => void;
+  onActivateException?: (id: string) => void;
   exceptionError: string | null;
   simOfferingId: string;
   onSimOfferingIdChange: (id: string) => void;
@@ -102,24 +103,37 @@ interface ScheduleBlockCardItem {
   onEdit: () => void;
   onDelete: () => void;
   onDeactivate?: () => void;
+  onActivate?: () => void;
+  active?: boolean;
   deleting?: boolean;
 }
 
-const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt, endAt, reason, editable, onEdit, onDelete, onDeactivate, deleting }) => (
-  <div key={id} className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3">
-    <div className="min-w-0 space-y-2">
+const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt, endAt, reason, editable, active = true, onEdit, onDelete, onDeactivate, onActivate, deleting }) => (
+  <article id={`schedule-block-${id}`} className={`mazzi-card min-w-0 w-full overflow-hidden p-4 sm:p-5 text-left text-[var(--mazzi-dark)] space-y-3.5 ${!active ? 'opacity-75' : ''}`}>
+    <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200">
+      <div className="min-w-0 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={kind === 'quick' ? 'warning' : 'danger'}>{kind === 'quick' ? 'Bloqueio rápido' : 'Bloqueio de dias'}</Badge>
-        {reason && <span className="text-xs font-bold text-slate-900">{reason}</span>}
+        {!active && <Badge variant="default" className="!border-slate-300 !bg-slate-100 !text-slate-700">Desativado</Badge>}
       </div>
-      <p className="text-xs font-bold text-slate-900">{formatDateTimeBR(startAt)} até {formatDateTimeBR(endAt)}</p>
-      {!editable && <p className="text-[11px] font-semibold text-slate-400">Histórico · período encerrado</p>}
+      {reason && <p className="text-sm font-bold leading-snug text-slate-900 break-words">{reason}</p>}
+      </div>
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-600 border border-amber-200/60 shadow-2xs">
+        {kind === 'quick' ? <Clock3 className="h-5 w-5" aria-hidden="true" /> : <CalendarIcon className="h-5 w-5" aria-hidden="true" />}
+      </div>
     </div>
-    <div className="flex shrink-0 items-center gap-1">
-      <Button variant="outline" size="sm" className="text-slate-600 disabled:opacity-40" disabled={!editable} onClick={onEdit} leftIcon={<Pencil className="w-3.5 h-3.5" />} aria-label="Editar bloqueio">Editar</Button>
-      {kind === 'days' ? <Button variant="outline" size="sm" className="text-amber-700" onClick={onDeactivate} leftIcon={<Ban className="w-3.5 h-3.5" />} aria-label="Desativar bloqueio de dias">Desativar</Button> : <Button variant="dangerSoft" size="sm" className="disabled:opacity-40" disabled={!editable || deleting} isLoading={deleting} onClick={onDelete} leftIcon={<Trash2 className="w-3.5 h-3.5" />} aria-label="Excluir bloqueio">Excluir</Button>}
+    <div className="space-y-1">
+      <p className="text-sm font-extrabold leading-tight text-slate-950">{formatDateTimeBR(startAt)}</p>
+      <p className="text-xs font-semibold text-slate-600">até {formatDateTimeBR(endAt)}</p>
+      {!editable && active && <p className="text-[11px] font-semibold text-slate-500">Histórico · período iniciado</p>}
     </div>
-  </div>
+    <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2">
+      {kind === 'days' && active && <Button variant="outline" size="sm" className="min-h-10 text-amber-700" onClick={onDeactivate} leftIcon={<Ban className="w-3.5 h-3.5" />} aria-label="Desativar bloqueio de dias">Desativar</Button>}
+      {kind === 'days' && !active && editable && <Button variant="outline" size="sm" className="min-h-10 text-emerald-700" onClick={onActivate} leftIcon={<Power className="w-3.5 h-3.5" />} aria-label="Ativar bloqueio de dias">Ativar</Button>}
+      {editable && <Button variant="outline" size="sm" className="min-h-10 text-slate-600" onClick={onEdit} leftIcon={<Pencil className="w-3.5 h-3.5" />} aria-label="Editar bloqueio">Editar</Button>}
+      {kind === 'quick' && <Button variant="dangerSoft" size="sm" className="min-h-10 disabled:opacity-40" disabled={!editable || deleting} isLoading={deleting} onClick={onDelete} leftIcon={<Trash2 className="w-3.5 h-3.5" />} aria-label="Excluir bloqueio">Excluir</Button>}
+    </div>
+  </article>
 );
 
 export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
@@ -148,6 +162,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   onSaveException,
   onDeleteException,
   onDeactivateException,
+  onActivateException,
   exceptionError,
   simOfferingId,
   onSimOfferingIdChange,
@@ -183,22 +198,22 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const [emergencyReasonPreset, setEmergencyReasonPreset] = React.useState('');
   const [emergencyEditingBlockId, setEmergencyEditingBlockId] = React.useState<string | undefined>();
   const [emergencyEditingSlotsByDate, setEmergencyEditingSlotsByDate] = React.useState<Record<string, EmergencyBlockableSlot[]> | null>(null);
-  const canChangeBlock = (endAt: string) => new Date(endAt).getTime() > Date.now();
+  const canChangeBlock = (startAt: string) => new Date(startAt).getTime() > Date.now();
   const sortedGlobalBlocks = React.useMemo(() => [...(instructorGlobalBlocks || [])].sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime()), [instructorGlobalBlocks]);
   const sortedExceptions = React.useMemo(() => [...availabilityExceptions].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [availabilityExceptions]);
   const blockCardItems = React.useMemo<ScheduleBlockCardItem[]>(() => [
     ...(isInstructorUser ? sortedGlobalBlocks.map((block) => ({
-      id: `global-${block.id}`, kind: 'quick' as const, startAt: block.start_at, endAt: block.end_at, reason: block.reason, editable: canChangeBlock(block.end_at),
+      id: `global-${block.id}`, kind: 'quick' as const, startAt: block.start_at, endAt: block.end_at, reason: block.reason, editable: canChangeBlock(block.start_at), active: true,
       onEdit: () => handleOpenEditGlobalBlock(block), onDelete: () => void handleDeleteGlobalBlockClick(block.id), deleting: deletingGlobalBlockId === block.id,
     })) : []),
-    ...sortedExceptions.filter((exception) => exception.isActive !== false).map((exception) => ({
-      id: exception.id, kind: 'days' as const, startAt: exception.startAt, endAt: exception.endAt, reason: exception.reason, editable: canChangeBlock(exception.endAt),
-      onEdit: () => handleEditException(exception), onDelete: () => void onDeleteException(exception.id), onDeactivate: () => onDeactivateException?.(exception.id),
+    ...sortedExceptions.map((exception) => ({
+      id: exception.id, kind: 'days' as const, startAt: exception.startAt, endAt: exception.endAt, reason: exception.reason, active: exception.isActive !== false, editable: canChangeBlock(exception.startAt),
+      onEdit: () => handleEditException(exception), onDelete: () => void onDeleteException(exception.id), onDeactivate: () => onDeactivateException?.(exception.id), onActivate: () => onActivateException?.(exception.id),
     })),
-  ].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [isInstructorUser, sortedGlobalBlocks, sortedExceptions, deletingGlobalBlockId]);
+  ].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [isInstructorUser, sortedGlobalBlocks, sortedExceptions, deletingGlobalBlockId, onActivateException]);
 
   const handleEditException = (exception: AvailabilityException) => {
-    if (!canChangeBlock(exception.endAt)) return;
+    if (!canChangeBlock(exception.startAt)) return;
     onExceptionFormChange({
       type: exception.type,
       reasonCategory: exception.reasonCategory,

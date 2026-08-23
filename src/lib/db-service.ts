@@ -712,6 +712,11 @@ export const dbService = {
     if (error) throw error;
   },
 
+  async activateAvailabilityException(id: string): Promise<void> {
+    const { error } = await sp.from('availability_exceptions').update({ is_active: true }).eq('id', id);
+    if (error) throw error;
+  },
+
   async reviewVehicle(vehicleId: string, status: 'ACTIVE' | 'INACTIVE' | 'BLOCKED', reason?: string): Promise<Vehicle> {
     const { data, error } = await sp.rpc('review_vehicle', {
       p_vehicle_id: vehicleId,

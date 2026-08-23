@@ -710,8 +710,8 @@ export const ProviderApp: React.FC = () => {
     try {
       if (exceptionForm.id) {
         const currentException = availabilityExceptions.find((exception) => exception.id === exceptionForm.id);
-        if (currentException && new Date(currentException.endAt).getTime() <= Date.now()) {
-          throw new Error('Bloqueios encerrados são históricos e não podem ser editados.');
+        if (currentException && new Date(currentException.startAt).getTime() <= Date.now()) {
+          throw new Error('Bloqueios iniciados são históricos e não podem ser editados.');
         }
       }
       enforceAvailabilityOwnership({
@@ -786,6 +786,19 @@ export const ProviderApp: React.FC = () => {
       setAvailabilityExceptions((prev) => prev.map((exception) => exception.id === exceptionId ? { ...exception, isActive: false } : exception));
     } catch (err: any) {
       alert(mapFriendlyErrorMessage(err, 'Não foi possível desativar o bloqueio.'));
+    }
+  };
+
+  const handleActivateAvailabilityException = async (exceptionId: string) => {
+    try {
+      const currentException = availabilityExceptions.find((exception) => exception.id === exceptionId);
+      if (!currentException || new Date(currentException.startAt).getTime() <= Date.now()) {
+        throw new Error('Somente bloqueios futuros podem ser ativados.');
+      }
+      await dbService.activateAvailabilityException(exceptionId);
+      setAvailabilityExceptions((prev) => prev.map((exception) => exception.id === exceptionId ? { ...exception, isActive: true } : exception));
+    } catch (err: any) {
+      alert(mapFriendlyErrorMessage(err, 'Não foi possível ativar o bloqueio.'));
     }
   };
 
@@ -1102,6 +1115,7 @@ export const ProviderApp: React.FC = () => {
             onSaveException={handleCreateAvailabilityException}
             onDeleteException={handleDeleteAvailabilityException}
             onDeactivateException={handleDeactivateAvailabilityException}
+            onActivateException={handleActivateAvailabilityException}
             exceptionError={exceptionError}
             simOfferingId={simOfferingId}
             onSimOfferingIdChange={setSimOfferingId}
