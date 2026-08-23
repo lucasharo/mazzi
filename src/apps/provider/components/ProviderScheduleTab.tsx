@@ -597,7 +597,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
 
           <div className="space-y-2">
             <label className="text-xs font-extrabold text-slate-900 block">Motivo do Bloqueio *</label>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="flex flex-wrap gap-2">
               {BLOCK_REASON_OPTIONS.map((option) => {
                 const selected = exceptionForm.reasonCategory === option.value;
                 return (
@@ -605,22 +605,25 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                     key={option.value}
                     type="button"
                     onClick={() => onExceptionFormChange({ ...exceptionForm, reasonCategory: option.value, reason: option.value === 'OTHER' ? '' : option.label })}
-                    className={`rounded-xl border p-3 text-left text-xs font-bold transition ${selected ? 'border-[#202126] bg-[#202126] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-left text-xs font-bold transition ${selected ? 'border-[#f6c945] bg-[#f6c945] text-slate-950 shadow-xs' : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-300'}`}
                     aria-pressed={selected}
                   >
+                    <span className={`grid h-3.5 w-3.5 place-items-center rounded-full border ${selected ? 'border-slate-950 bg-slate-950' : 'border-slate-500 bg-transparent'}`} aria-hidden="true">
+                      {selected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                    </span>
                     {option.label}
                   </ButtonBase>
                 );
               })}
             </div>
-            {exceptionForm.reasonCategory === 'OTHER' && (
-              <Input
-                label="Descreva o motivo"
-                value={exceptionForm.reason}
-                onChange={(e) => onExceptionFormChange({ ...exceptionForm, reason: e.target.value })}
-                placeholder="Descreva o motivo do bloqueio"
-              />
-            )}
+            <textarea
+              rows={2}
+              value={exceptionForm.reasonCategory === 'OTHER' ? exceptionForm.reason : ''}
+              onChange={(e) => onExceptionFormChange({ ...exceptionForm, reason: e.target.value })}
+              placeholder="Observações adicionais (opcional)..."
+              className="w-full resize-none rounded-2xl border border-slate-200 bg-white p-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-amber-200"
+              aria-label="Observações adicionais opcionais"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
