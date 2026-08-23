@@ -5,6 +5,7 @@ import { Button, PrimaryButton, ButtonBase } from '../../../components/ui/Button
 import { supabase } from '../../../lib/supabase';
 import { formatCentsToBRL } from '../../../domain/money';
 import { STUDENT_BOOKING_HORIZON_DAYS } from '../../../domain/availability';
+import { getTodayInSaoPaulo } from '../../../lib/date-format';
 
 // Re-export and derive horizon constants from canonical domain source of truth
 export { STUDENT_BOOKING_HORIZON_DAYS };
@@ -20,10 +21,6 @@ export type PublicSlot = {
   slot_start_at: string;
   slot_end_at?: string;
 };
-
-function dateOnlyFromDate(date: Date): string {
-  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
-}
 
 export function addDays(dateOnly: string, days: number): string {
   const [year, month, day] = dateOnly.split('-').map(Number);
@@ -100,7 +97,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
   const [windowDays, setWindowDays] = useState(INITIAL_WINDOW_DAYS);
   const [visibleMonth, setVisibleMonth] = useState<string>('');
 
-  const fromDate = useMemo(() => dateOnlyFromDate(new Date()), []);
+  const fromDate = useMemo(() => getTodayInSaoPaulo(), []);
 
   const fetchSlots = useCallback(async (daysToFetch: number, resetSelection = false) => {
     if (!offeringId) return;

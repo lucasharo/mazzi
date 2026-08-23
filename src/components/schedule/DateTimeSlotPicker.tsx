@@ -2,10 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { ButtonBase } from '../ui/Button';
 import { EmergencyBlockableSlot } from '../../domain/emergency-block';
+import { getTodayInSaoPaulo } from '../../lib/date-format';
 
 export const DateTimeSlotPicker: React.FC<{ slotsByDate: Record<string, EmergencyBlockableSlot[]>; selectedDate: string; selectedSlot?: EmergencyBlockableSlot | null; selectedSlots?: EmergencyBlockableSlot[]; selectionMode?: 'single' | 'hour-range'; onDateChange: (date: string) => void; onSlotChange?: (slot: EmergencyBlockableSlot) => void; onSlotsChange?: (slots: EmergencyBlockableSlot[]) => void; maxHorizonDays?: number; }> = ({ slotsByDate, selectedDate, selectedSlot = null, selectedSlots = [], selectionMode = 'single', onDateChange, onSlotChange, onSlotsChange, maxHorizonDays = 30 }) => {
-  const [month, setMonth] = useState(() => new Date(`${selectedDate || new Date().toISOString().slice(0, 10)}T12:00:00`));
-  const dates = useMemo(() => Array.from({ length: maxHorizonDays }, (_, index) => { const date = new Date(); date.setDate(date.getDate() + index); return date.toISOString().slice(0, 10); }), [maxHorizonDays]);
+  const businessToday = getTodayInSaoPaulo();
+  const initialDate = selectedDate || businessToday;
+  const [month, setMonth] = useState(() => new Date(`${initialDate}T12:00:00-03:00`));
+  const dates = useMemo(() => Array.from({ length: maxHorizonDays }, (_, index) => getTodayInSaoPaulo(new Date(Date.parse(`${businessToday}T12:00:00-03:00`) + index * 86400000))), [businessToday, maxHorizonDays]);
   const monthLabel = month.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const firstDay = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
