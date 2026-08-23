@@ -179,6 +179,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const [emergencySelectedSlots, setEmergencySelectedSlots] = React.useState<EmergencyBlockableSlot[]>([]);
   const [emergencyReasonPreset, setEmergencyReasonPreset] = React.useState('');
   const [emergencyEditingBlockId, setEmergencyEditingBlockId] = React.useState<string | undefined>();
+  const [emergencyEditingSlotsByDate, setEmergencyEditingSlotsByDate] = React.useState<Record<string, EmergencyBlockableSlot[]> | null>(null);
   const canChangeBlock = (endAt: string) => new Date(endAt).getTime() > Date.now();
   const sortedGlobalBlocks = React.useMemo(() => [...(instructorGlobalBlocks || [])].sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime()), [instructorGlobalBlocks]);
   const sortedExceptions = React.useMemo(() => [...availabilityExceptions].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [availabilityExceptions]);
@@ -216,6 +217,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     setEmergencyReason('');
     setEmergencyReasonPreset('');
     setEmergencyEditingBlockId(undefined);
+    setEmergencyEditingSlotsByDate(null);
     setEmergencyBlockError(null);
     setIsEmergencyModalOpen(true);
   };
@@ -273,7 +275,15 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const handleOpenEditGlobalBlock = (gb: any) => {
     if (!canChangeBlock(gb.end_at)) return;
     const date = getBusinessDateFromTimestamp(gb.start_at);
-    const selectedSlots = (emergencySlotsByDate[date] || []).filter((slot) => new Date(slot.startAt) >= new Date(gb.start_at) && new Date(slot.endAt) <= new Date(gb.end_at));
+    const editableDateSlots = generateEmergencyBlockableSlots({
+      date,
+      rules: availabilityRules,
+      bookings,
+      globalBlocks: (instructorGlobalBlocks || []).filter((block) => block.id !== gb.id),
+      exceptions: availabilityExceptions,
+    });
+    const selectedSlots = editableDateSlots.filter((slot) => new Date(slot.startAt) >= new Date(gb.start_at) && new Date(slot.endAt) <= new Date(gb.end_at));
+    setEmergencyEditingSlotsByDate({ ...emergencySlotsByDate, [date]: editableDateSlots });
     setEmergencySelectedDate(date);
     setEmergencySelectedSlots(selectedSlots);
     setEmergencyReason(gb.reason || '');
@@ -673,7 +683,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
         <div className="space-y-4 text-left">
           <p className="text-xs leading-relaxed text-slate-600">Escolha uma data e um horário realmente livre na sua agenda.</p>
           {emergencyBlockError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">{emergencyBlockError}</div>}
-          <DateTimeSlotPicker slotsByDate={emergencySlotsByDate} selectedDate={emergencySelectedDate} selectionMode="hour-range" selectedSlots={emergencySelectedSlots} onDateChange={(date) => { setEmergencySelectedDate(date); setEmergencySelectedSlots([]); }} onSlotsChange={setEmergencySelectedSlots} />
+          <DateTimeSlotPicker slotsByDate={emergencyEditingSlotsByDate || emergencySlotsByDate} selectedDate={emergencySelectedDate} selectionMode="hour-range" selectedSlots={emergencySelectedSlots} onDateChange={(date) => { setEmergencySelectedDate(date); setEmergencySelectedSlots([]); }} onSlotsChange={setEmergencySelectedSlots} />
           {emergencySelectedSlots.length > 0 && <div className="rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-700">{emergencySelectedSlots[0].startTime} às {emergencySelectedSlots[emergencySelectedSlots.length - 1].endTime} · {emergencySelectedSlots.length} {emergencySelectedSlots.length === 1 ? 'hora selecionada' : 'horas selecionadas'}</div>}
           <div className="space-y-2">
             <p className="text-xs font-extrabold uppercase tracking-wide text-slate-600">Motivo (opcional)</p>
