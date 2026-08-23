@@ -318,8 +318,8 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                 Bloqueio rápido
               </Button>
             )}
-            <Button variant="primary" size="sm" className="shrink-0 whitespace-nowrap" onClick={onOpenAddExceptionModal} leftIcon={<Plus className="w-4 h-4" />}>
-              Novo Bloqueio / Exceção
+            <Button variant="primary" size="sm" className="shrink-0 whitespace-nowrap" onClick={onOpenAddExceptionModal} leftIcon={<Ban className="w-4 h-4" />}>
+              Bloqueio de dias
             </Button>
           </div>
         )}
