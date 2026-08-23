@@ -305,20 +305,20 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       </div>
       <div className="flex justify-end">
         {scheduleSubTab === 'rules' && (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-nowrap justify-end gap-2 overflow-x-auto">
             <Button variant="primary" size="sm" onClick={onOpenAddRuleModal} leftIcon={<Plus className="w-4 h-4" />}>
               Nova Regra Semanal
             </Button>
           </div>
         )}
         {scheduleSubTab === 'exceptions' && (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-nowrap justify-end gap-2 overflow-x-auto">
             {isInstructorUser && onSaveEmergencyBlock && !calendarLoadError && (
-              <Button variant="secondary" size="sm" onClick={openEmergencyBlockModal} leftIcon={<Clock3 className="w-4 h-4" />} aria-label="Criar bloqueio rápido de horário">
+              <Button variant="secondary" size="sm" className="shrink-0 whitespace-nowrap" onClick={openEmergencyBlockModal} leftIcon={<Clock3 className="w-4 h-4" />} aria-label="Criar bloqueio rápido de horário">
                 Bloqueio rápido
               </Button>
             )}
-            <Button variant="primary" size="sm" onClick={onOpenAddExceptionModal} leftIcon={<Plus className="w-4 h-4" />}>
+            <Button variant="primary" size="sm" className="shrink-0 whitespace-nowrap" onClick={onOpenAddExceptionModal} leftIcon={<Plus className="w-4 h-4" />}>
               Novo Bloqueio / Exceção
             </Button>
           </div>
