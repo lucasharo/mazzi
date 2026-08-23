@@ -23,6 +23,12 @@ describe('Domain: Money in Cents (Anti-Float Precision)', () => {
     expect(platformFeeInCents + providerPayoutInCents).toBe(13000);
   });
 
+  it('applies the percentage to any lesson price instead of a fixed fee', () => {
+    const { platformFeeInCents, providerPayoutInCents } = calculatePlatformFeeAndPayout(9000, 10);
+    expect(platformFeeInCents).toBe(900); // R$ 9,00
+    expect(providerPayoutInCents).toBe(8100); // R$ 81,00
+  });
+
   it('handles edge case odd cent fee calculations with exact integer closure', () => {
     // R$ 125,50 -> 12550 cents -> 10% is 1255 cents
     const { platformFeeInCents, providerPayoutInCents } = calculatePlatformFeeAndPayout(12550, 10);
