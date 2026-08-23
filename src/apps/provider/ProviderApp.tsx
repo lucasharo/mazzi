@@ -1082,6 +1082,8 @@ export const ProviderApp: React.FC = () => {
             simDate={simDate}
             onSimDateChange={setSimDate}
             instructorGlobalBlocks={instructorGlobalBlocks}
+            bookings={bookings}
+            calendarLoadError={unifiedCalendarError}
             onSaveEmergencyBlock={async (startAt, endAt, reason) => {
               await dbService.createInstructorEmergencyBlock(startAt, endAt, reason);
               setInstructorGlobalBlocks(await dbService.getMyInstructorGlobalBlocks());
@@ -1096,7 +1098,7 @@ export const ProviderApp: React.FC = () => {
               const updated = await dbService.getMyInstructorGlobalBlocks();
               setInstructorGlobalBlocks(updated || []);
             }}
-            isInstructorUser={user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'))}
+            isInstructorUser={currentProvider?.type === 'INSTRUCTOR' && (user?.role === 'INSTRUCTOR' || Boolean(user?.roles?.includes('INSTRUCTOR')))}
           />
         )}
 

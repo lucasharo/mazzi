@@ -451,6 +451,7 @@ export function generateAvailableSlots(options: SlotGenerationOptions): Availabi
     availabilityRules,
     exceptions,
     existingBookings,
+    instructorGlobalBlocks = [],
   } = options;
 
   // 1. Check Provider status
@@ -642,6 +643,11 @@ export function generateAvailableSlots(options: SlotGenerationOptions): Availabi
             );
 
             if (conflictCheck.hasConflict) {
+              slotStartMin += stepMinutes + bufferMinutes;
+              continue;
+            }
+
+            if (instructorGlobalBlocks.some((block) => doTimestampRangesOverlap(startIso, endIso, block.start_at, block.end_at))) {
               slotStartMin += stepMinutes + bufferMinutes;
               continue;
             }

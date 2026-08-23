@@ -353,6 +353,7 @@ export interface SlotGenerationOptions {
   availabilityRules: AvailabilityRule[];
   exceptions: AvailabilityException[];
   existingBookings: Booking[];
+  instructorGlobalBlocks?: { start_at: string; end_at: string }[];
   actorRole?: UserRole;
 }
 

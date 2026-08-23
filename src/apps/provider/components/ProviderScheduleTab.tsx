@@ -13,6 +13,8 @@ import { Badge } from '../../../components/ui/Badge';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { DAY_OF_WEEK_LABELS_PT, generateAvailableSlots } from '../../../domain/availability';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
+import { DateTimeSlotPicker } from '../../../components/schedule/DateTimeSlotPicker';
+import { generateEmergencyBlockableSlots, isEmergencyBlockDurationAvailable, EmergencyBlockableSlot } from '../../../domain/emergency-block';
 
 interface ProviderScheduleTabProps {
   scheduleSubTab: 'rules' | 'exceptions' | 'simulator';
@@ -58,6 +60,8 @@ interface ProviderScheduleTabProps {
   onDeleteGlobalBlock?: (blockId: string) => Promise<void>;
   onSaveEmergencyBlock?: (startAt: string, endAt: string, reason?: string) => Promise<void>;
   isInstructorUser?: boolean;
+  bookings?: any[];
+  calendarLoadError?: string | null;
 }
 
 const DAY_OPTIONS: { value: DayOfWeek; label: string }[] = [
@@ -105,6 +109,8 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   onDeleteGlobalBlock,
   onSaveEmergencyBlock,
   isInstructorUser,
+  bookings = [],
+  calendarLoadError,
 }) => {
   // Dedicated state for Global Personal Blocks
   const [isAddGlobalBlockModalOpen, setIsAddGlobalBlockModalOpen] = React.useState(false);
@@ -123,19 +129,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = React.useState(false);
   const [isSavingEmergencyBlock, setIsSavingEmergencyBlock] = React.useState(false);
   const [emergencyBlockError, setEmergencyBlockError] = React.useState<string | null>(null);
-  const [emergencyBlockForm, setEmergencyBlockForm] = React.useState({
-    date: '', startTime: '08:00', endTime: '09:00', reason: '',
-  });
+  const [emergencySelectedDate, setEmergencySelectedDate] = React.useState('');
+  const [emergencySelectedSlot, setEmergencySelectedSlot] = React.useState<EmergencyBlockableSlot | null>(null);
+  const [emergencyDuration, setEmergencyDuration] = React.useState(60);
 
   const openEmergencyBlockModal = () => {
-    const now = new Date();
-    const currentTime = getTimeInSaoPaulo(now);
-    const [hours, minutes] = currentTime.split(':').map(Number);
-    const roundedMinutes = Math.ceil((hours * 60 + minutes) / 15) * 15;
-    const startMinutes = roundedMinutes >= 24 * 60 ? 23 * 60 + 45 : roundedMinutes;
-    const endMinutes = Math.min(startMinutes + 60, 23 * 60 + 59);
-    const formatTime = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-    setEmergencyBlockForm({ date: getTodayInSaoPaulo(now), startTime: formatTime(startMinutes), endTime: formatTime(endMinutes), reason: '' });
+    const firstDate = Object.keys(emergencySlotsByDate).sort()[0] || getTodayInSaoPaulo();
+    setEmergencySelectedDate(firstDate);
+    setEmergencySelectedSlot(emergencySlotsByDate[firstDate]?.[0] || null);
+    setEmergencyDuration(60);
+    setEmergencyReason('');
     setEmergencyBlockError(null);
     setIsEmergencyModalOpen(true);
   };
@@ -143,16 +146,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const saveEmergencyBlock = async () => {
     if (!onSaveEmergencyBlock || isSavingEmergencyBlock) return;
     setEmergencyBlockError(null);
-    if (!emergencyBlockForm.date || !emergencyBlockForm.startTime || !emergencyBlockForm.endTime || emergencyBlockForm.endTime <= emergencyBlockForm.startTime) {
-      setEmergencyBlockError('A hora final deve ser posterior à hora inicial.');
+    if (!emergencySelectedSlot || !isEmergencyBlockDurationAvailable(emergencySelectedSlot.startAt, emergencyDuration, emergencySlotsByDate[emergencySelectedDate] || [])) {
+      setEmergencyBlockError('Selecione um horário livre e uma duração disponível.');
       return;
     }
     setIsSavingEmergencyBlock(true);
     try {
       await onSaveEmergencyBlock(
-        `${emergencyBlockForm.date}T${emergencyBlockForm.startTime}:00.000-03:00`,
-        `${emergencyBlockForm.date}T${emergencyBlockForm.endTime}:00.000-03:00`,
-        emergencyBlockForm.reason.trim() || undefined,
+        emergencySelectedSlot.startAt,
+        new Date(new Date(emergencySelectedSlot.startAt).getTime() + emergencyDuration * 60000).toISOString(),
+        emergencyReason.trim() || undefined,
       );
       setIsEmergencyModalOpen(false);
     } catch (error: any) {
@@ -161,6 +164,19 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       setIsSavingEmergencyBlock(false);
     }
   };
+
+  const [emergencyReason, setEmergencyReason] = React.useState('');
+  const emergencySlotsByDate = React.useMemo(() => {
+    if (calendarLoadError) return {};
+    const result: Record<string, EmergencyBlockableSlot[]> = {};
+    const base = new Date(`${getTodayInSaoPaulo()}T12:00:00-03:00`);
+    for (let index = 0; index < 30; index += 1) {
+      const date = new Date(base); date.setDate(base.getDate() + index);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      result[key] = generateEmergencyBlockableSlots({ date: key, rules: availabilityRules, bookings, globalBlocks: instructorGlobalBlocks || [], exceptions: availabilityExceptions });
+    }
+    return result;
+  }, [availabilityRules, bookings, instructorGlobalBlocks, availabilityExceptions, calendarLoadError]);
 
   const handleOpenCreateGlobalBlock = () => {
     setEditingGlobalBlockId(null);
@@ -248,6 +264,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     availabilityRules,
     exceptions: availabilityExceptions,
     existingBookings: [],
+    instructorGlobalBlocks,
   }) : [];
 
   return (
@@ -291,7 +308,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       <div className="flex justify-end">
         {scheduleSubTab === 'rules' && (
           <div className="flex flex-wrap justify-end gap-2">
-            {isInstructorUser && onSaveEmergencyBlock && (
+            {isInstructorUser && onSaveEmergencyBlock && !calendarLoadError && (
               <Button variant="secondary" size="sm" onClick={openEmergencyBlockModal} leftIcon={<Clock3 className="w-4 h-4" />} aria-label="Criar bloqueio rápido de horário">
                 Bloqueio rápido
               </Button>
@@ -617,27 +634,13 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
         </div>
       </Modal>
 
-      <Modal isOpen={isEmergencyModalOpen} onClose={() => !isSavingEmergencyBlock && setIsEmergencyModalOpen(false)} title="Indisponibilizar horário">
+      <Modal isOpen={isEmergencyModalOpen} onClose={() => !isSavingEmergencyBlock && setIsEmergencyModalOpen(false)} title="Bloqueio rápido">
         <div className="space-y-4 text-left">
-          <p className="text-xs leading-relaxed text-slate-600">Use esta opção para emergências. O horário só poderá ser bloqueado se não houver aula ou reserva ativa no período selecionado.</p>
+          <p className="text-xs leading-relaxed text-slate-600">Escolha uma data e um horário realmente livre na sua agenda.</p>
           {emergencyBlockError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">{emergencyBlockError}</div>}
-          <DateInput label="Data" value={emergencyBlockForm.date} onChange={(value) => setEmergencyBlockForm((current) => ({ ...current, date: value }))} />
-          <div className="grid grid-cols-2 gap-3">
-            <TimeInput value={emergencyBlockForm.startTime} onChange={(value) => setEmergencyBlockForm((current) => ({ ...current, startTime: value }))} />
-            <TimeInput value={emergencyBlockForm.endTime} onChange={(value) => setEmergencyBlockForm((current) => ({ ...current, endTime: value }))} />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[60, 120, 240].map((duration) => (
-              <Button key={duration} type="button" variant="outline" size="sm" onClick={() => {
-                const [hours, minutes] = emergencyBlockForm.startTime.split(':').map(Number);
-                const end = Math.min(hours * 60 + minutes + duration, 23 * 60 + 59);
-                setEmergencyBlockForm((current) => ({ ...current, endTime: `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}` }));
-              }}>
-                +{duration / 60}h
-              </Button>
-            ))}
-          </div>
-          <Input label="Motivo (opcional)" placeholder="Ex: emergência pessoal, problema com veículo..." value={emergencyBlockForm.reason} onChange={(event) => setEmergencyBlockForm((current) => ({ ...current, reason: event.target.value }))} />
+          <DateTimeSlotPicker slotsByDate={emergencySlotsByDate} selectedDate={emergencySelectedDate} selectedSlot={emergencySelectedSlot} onDateChange={(date) => { setEmergencySelectedDate(date); setEmergencySelectedSlot(emergencySlotsByDate[date]?.[0] || null); }} onSlotChange={setEmergencySelectedSlot} />
+          {emergencySelectedSlot && <div className="space-y-2"><p className="text-xs font-bold text-slate-700">Duração do bloqueio</p><div className="grid grid-cols-3 gap-2">{[60, 120, 240].map((duration) => <Button key={duration} type="button" size="sm" variant={emergencyDuration === duration ? 'primary' : 'outline'} disabled={!isEmergencyBlockDurationAvailable(emergencySelectedSlot.startAt, duration, emergencySlotsByDate[emergencySelectedDate] || [])} onClick={() => setEmergencyDuration(duration)}>{duration / 60}h</Button>)}</div></div>}
+          <Input label="Motivo (opcional)" placeholder="Ex: emergência pessoal, problema com veículo..." value={emergencyReason} onChange={(event) => setEmergencyReason(event.target.value)} />
           <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
             <Button variant="dangerSoft" size="sm" onClick={() => setIsEmergencyModalOpen(false)} disabled={isSavingEmergencyBlock}>Cancelar</Button>
             <Button variant="primary" size="sm" onClick={saveEmergencyBlock} isLoading={isSavingEmergencyBlock}>Bloquear horário</Button>
