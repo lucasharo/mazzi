@@ -13,6 +13,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { DAY_OF_WEEK_LABELS_PT, generateAvailableSlots } from '../../../domain/availability';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
+import { ReasonChips } from '../../../components/ui/ReasonChips';
 import { DateTimeSlotPicker } from '../../../components/schedule/DateTimeSlotPicker';
 import { generateEmergencyBlockableSlots, isEmergencyBlockDurationAvailable, EmergencyBlockableSlot } from '../../../domain/emergency-block';
 
@@ -597,25 +598,12 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
 
           <div className="space-y-2">
             <label className="text-xs font-extrabold text-slate-900 block">Motivo do Bloqueio *</label>
-            <div className="flex flex-wrap gap-2">
-              {BLOCK_REASON_OPTIONS.map((option) => {
-                const selected = exceptionForm.reasonCategory === option.value;
-                return (
-                  <ButtonBase
-                    key={option.value}
-                    type="button"
-                    onClick={() => onExceptionFormChange({ ...exceptionForm, reasonCategory: option.value, reason: option.value === 'OTHER' ? '' : option.label })}
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-left text-xs font-bold transition ${selected ? 'border-[#f6c945] bg-[#f6c945] text-slate-950 shadow-xs' : 'border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-300'}`}
-                    aria-pressed={selected}
-                  >
-                    <span className={`grid h-3.5 w-3.5 place-items-center rounded-full border ${selected ? 'border-slate-950 bg-slate-950' : 'border-slate-500 bg-transparent'}`} aria-hidden="true">
-                      {selected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
-                    </span>
-                    {option.label}
-                  </ButtonBase>
-                );
-              })}
-            </div>
+            <ReasonChips
+              options={BLOCK_REASON_OPTIONS}
+              value={exceptionForm.reasonCategory}
+              onChange={(value) => onExceptionFormChange({ ...exceptionForm, reasonCategory: value, reason: value === 'OTHER' ? '' : BLOCK_REASON_OPTIONS.find((option) => option.value === value)?.label || '' })}
+              ariaLabel="Motivos do bloqueio"
+            />
             <textarea
               rows={2}
               value={exceptionForm.reasonCategory === 'OTHER' ? exceptionForm.reason : ''}

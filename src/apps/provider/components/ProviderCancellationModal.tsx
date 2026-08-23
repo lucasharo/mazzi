@@ -1,8 +1,9 @@
 import React from 'react';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Circle, XCircle, Info } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, XCircle, Info } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
-import { Button, ButtonBase } from '../../../components/ui/Button';
+import { Button } from '../../../components/ui/Button';
+import { ReasonChips } from '../../../components/ui/ReasonChips';
 import { ProviderCancellationReasonCode } from '../../../domain/cancellation';
 
 const PROVIDER_CANCEL_REASON_OPTIONS: { code: ProviderCancellationReasonCode; label: string }[] = [
@@ -110,26 +111,12 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
           <label className="text-xs font-extrabold text-slate-900 block">
             Motivo do Cancelamento *
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {PROVIDER_CANCEL_REASON_OPTIONS.map((opt) => {
-              const isSelected = reasonCode === opt.code;
-              return (
-                <ButtonBase
-                  type="button"
-                  key={opt.code}
-                  onClick={() => onReasonCodeChange(opt.code)}
-                  className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs font-bold text-left transition ${
-                    isSelected
-                      ? 'bg-[#202126] text-white border-[#202126] shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {isSelected ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#f6c945]" aria-hidden="true" /> : <Circle className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />}
-                  <span>{opt.label}</span>
-                </ButtonBase>
-              );
-            })}
-          </div>
+          <ReasonChips
+            options={PROVIDER_CANCEL_REASON_OPTIONS.map((option) => ({ value: option.code, label: option.label }))}
+            value={reasonCode}
+            onChange={onReasonCodeChange}
+            ariaLabel="Motivos do cancelamento"
+          />
         </div>
 
         {/* Custom Reason Text Input (Mandatory when OTHER) */}
