@@ -84,6 +84,13 @@ const BLOCK_REASON_OPTIONS: { value: ExceptionReasonCategory; label: string }[] 
   { value: 'OTHER', label: 'Outro motivo' },
 ];
 
+const QUICK_BLOCK_REASON_OPTIONS = [
+  { value: 'ALMOCO', label: 'Almoço' },
+  { value: 'EMERGENCIA_MEDICA', label: 'Emergência médica' },
+  { value: 'MOTIVOS_PESSOAIS', label: 'Motivos pessoais' },
+  { value: 'OUTRO', label: 'Outro motivo' },
+] as const;
+
 interface ScheduleBlockCardItem {
   id: string;
   kind: 'quick' | 'days';
@@ -170,6 +177,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const [emergencyBlockError, setEmergencyBlockError] = React.useState<string | null>(null);
   const [emergencySelectedDate, setEmergencySelectedDate] = React.useState('');
   const [emergencySelectedSlots, setEmergencySelectedSlots] = React.useState<EmergencyBlockableSlot[]>([]);
+  const [emergencyReasonPreset, setEmergencyReasonPreset] = React.useState('');
   const canChangeBlock = (endAt: string) => new Date(endAt).getTime() > Date.now();
   const sortedGlobalBlocks = React.useMemo(() => [...(instructorGlobalBlocks || [])].sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime()), [instructorGlobalBlocks]);
   const sortedExceptions = React.useMemo(() => [...availabilityExceptions].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [availabilityExceptions]);
@@ -205,6 +213,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     setEmergencySelectedDate(firstDate);
     setEmergencySelectedSlots([]);
     setEmergencyReason('');
+    setEmergencyReasonPreset('');
     setEmergencyBlockError(null);
     setIsEmergencyModalOpen(true);
   };
@@ -654,7 +663,19 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           {emergencyBlockError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">{emergencyBlockError}</div>}
           <DateTimeSlotPicker slotsByDate={emergencySlotsByDate} selectedDate={emergencySelectedDate} selectionMode="hour-range" selectedSlots={emergencySelectedSlots} onDateChange={(date) => { setEmergencySelectedDate(date); setEmergencySelectedSlots([]); }} onSlotsChange={setEmergencySelectedSlots} />
           {emergencySelectedSlots.length > 0 && <div className="rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-700">{emergencySelectedSlots[0].startTime} às {emergencySelectedSlots[emergencySelectedSlots.length - 1].endTime} · {emergencySelectedSlots.length} {emergencySelectedSlots.length === 1 ? 'hora selecionada' : 'horas selecionadas'}</div>}
-          <Input label="Motivo (opcional)" placeholder="Ex: emergência pessoal, problema com veículo..." value={emergencyReason} onChange={(event) => setEmergencyReason(event.target.value)} />
+          <div className="space-y-2">
+            <p className="text-xs font-extrabold uppercase tracking-wide text-slate-600">Motivo (opcional)</p>
+            <ReasonChips
+              options={QUICK_BLOCK_REASON_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+              value={emergencyReasonPreset}
+              onChange={(value) => {
+                setEmergencyReasonPreset(value);
+                setEmergencyReason(value === 'OUTRO' ? '' : QUICK_BLOCK_REASON_OPTIONS.find((option) => option.value === value)?.label || '');
+              }}
+              ariaLabel="Motivos do bloqueio rápido"
+            />
+            {emergencyReasonPreset === 'OUTRO' && <Input placeholder="Descreva o motivo (opcional)" value={emergencyReason} onChange={(event) => setEmergencyReason(event.target.value)} />}
+          </div>
           <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
             <Button variant="dangerSoft" size="sm" onClick={() => setIsEmergencyModalOpen(false)} disabled={isSavingEmergencyBlock}>Cancelar</Button>
             <Button variant="primary" size="sm" onClick={saveEmergencyBlock} isLoading={isSavingEmergencyBlock}>Bloquear horário</Button>
