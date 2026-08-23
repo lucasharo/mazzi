@@ -116,8 +116,8 @@ const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt,
       {!editable && <p className="text-[11px] font-semibold text-slate-400">Histórico · período encerrado</p>}
     </div>
     <div className="flex shrink-0 items-center gap-1">
-      <Button variant="ghost" size="sm" className="text-slate-600 hover:bg-slate-100 disabled:opacity-40" disabled={!editable} onClick={onEdit} aria-label="Editar bloqueio"><Pencil className="w-4 h-4" /></Button>
-      {kind === 'days' ? <Button variant="ghost" size="sm" className="text-amber-700 hover:bg-amber-50" onClick={onDeactivate} aria-label="Desativar bloqueio de dias">Desativar</Button> : <Button variant="ghost" size="sm" className="text-rose-600 hover:bg-rose-50 disabled:opacity-40" disabled={!editable || deleting} isLoading={deleting} onClick={onDelete} aria-label="Excluir bloqueio"><Trash2 className="w-4 h-4" /></Button>}
+      <Button variant="outline" size="sm" className="text-slate-600 disabled:opacity-40" disabled={!editable} onClick={onEdit} leftIcon={<Pencil className="w-3.5 h-3.5" />} aria-label="Editar bloqueio">Editar</Button>
+      {kind === 'days' ? <Button variant="outline" size="sm" className="text-amber-700" onClick={onDeactivate} leftIcon={<Ban className="w-3.5 h-3.5" />} aria-label="Desativar bloqueio de dias">Desativar</Button> : <Button variant="dangerSoft" size="sm" className="disabled:opacity-40" disabled={!editable || deleting} isLoading={deleting} onClick={onDelete} leftIcon={<Trash2 className="w-3.5 h-3.5" />} aria-label="Excluir bloqueio">Excluir</Button>}
     </div>
   </div>
 );
