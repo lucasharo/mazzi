@@ -101,10 +101,9 @@ const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt,
     <div className="min-w-0 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="warning">{kind === 'quick' ? 'Bloqueio rápido' : 'Bloqueio de dias'}</Badge>
-        {kind === 'days' && reason && <span className="text-xs font-bold text-slate-900">{reason}</span>}
+        {reason && <span className="text-xs font-bold text-slate-900">{reason}</span>}
       </div>
       <p className="text-xs font-bold text-slate-900">{formatDateTimeBR(startAt)} até {formatDateTimeBR(endAt)}</p>
-      {kind === 'quick' && reason && <p className="text-xs text-slate-600 font-medium">{reason}</p>}
       {!editable && <p className="text-[11px] font-semibold text-slate-400">Histórico · período encerrado</p>}
     </div>
     <div className="flex shrink-0 items-center gap-1">
