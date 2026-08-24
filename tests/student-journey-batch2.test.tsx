@@ -249,4 +249,24 @@ describe('Student Journey Batch 2 - UI/UX Pro Max Contracts', () => {
     expect(detailsMarkup).toContain('R$ 110,00');
     expect(detailsMarkup).toContain('Abrir Chat');
   });
+
+  it('BookingDetailsModal: exposes review action for a completed booking', () => {
+    const completedBooking: Booking = {
+      id: 'completed-review-booking',
+      studentId: 'std-1', providerId: 'prov-1', providerName: 'Autoescola Modelo',
+      instructorId: 'inst-1', instructorName: 'Roberto Alves', vehicleId: 'veh-1',
+      vehicleName: 'Hyundai HB20', offeringId: 'off-1', category: 'B',
+      scheduledDate: '2026-08-25', startTime: '14:00', endTime: '14:50',
+      scheduledStartAt: '2026-08-25T14:00:00Z', scheduledEndAt: '2026-08-25T14:50:00Z',
+      status: 'COMPLETED', meetingPoint: 'Rua Augusta, 1000', priceInCents: 10000,
+      platformFeeInCents: 1000, totalInCents: 11000, createdAt: '2026-08-20T10:00:00Z',
+      snapshot: { providerId: 'prov-1', providerName: 'Autoescola Modelo', providerType: 'DRIVING_SCHOOL', instructorId: 'inst-1', instructorName: 'Roberto Alves', vehicleId: 'veh-1', vehicleName: 'Hyundai HB20', transmission: 'MANUAL', category: 'B', durationMinutes: 50, priceInCents: 10000, platformFeeInCents: 1000, totalInCents: 11000, meetingPoint: 'Rua Augusta, 1000' },
+    };
+
+    const markup = renderToStaticMarkup(
+      <BookingDetailsModal isOpen={true} onClose={vi.fn()} booking={completedBooking} onReview={vi.fn()} />
+    );
+
+    expect(markup).toContain('Avaliar instrutor');
+  });
 });

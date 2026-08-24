@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, Clock, MapPin, Car, UserCheck, Building2, CreditCard, MessageSquare, AlertTriangle, XCircle, AlertCircle, ArrowLeft, CheckCircle2, Circle, } from 'lucide-react';
+import { Calendar, Clock, MapPin, Car, UserCheck, Building2, CreditCard, MessageSquare, AlertTriangle, XCircle, AlertCircle, ArrowLeft, CheckCircle2, Circle, Star, } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
@@ -21,6 +21,7 @@ export interface BookingDetailsModalProps {
   onCancelBooking?: (params: { bookingId: string; reason?: string; reasonCode?: string }) => Promise<any>;
   onBookingUpdated?: (updatedBooking: Booking) => void;
   onStudentCheckIn?: (bookingId: string) => Promise<Booking>;
+  onReview?: (booking: Booking) => void;
 }
 
 const CANCEL_REASON_CHIPS = [
@@ -38,6 +39,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onContinuePayment,
   onBookingUpdated,
   onStudentCheckIn,
+  onReview,
 }) => {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [selectedReasonChip, setSelectedReasonChip] = useState<string>('');
@@ -172,6 +174,20 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           aria-label="Finalizar pagamento desta reserva pendente"
         >
           Realizar pagamento
+        </Button>
+      )}
+
+      {isCompleted && onReview && (
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          className="w-full rounded-2xl font-bold shadow-md transition-all hover:shadow-lg"
+          onClick={() => onReview(booking)}
+          leftIcon={<Star className="h-4 w-4" aria-hidden="true" />}
+          aria-label="Avaliar instrutor"
+        >
+          Avaliar instrutor
         </Button>
       )}
 

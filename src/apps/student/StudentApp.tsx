@@ -967,7 +967,6 @@ function applyStrictProviderFilters(
                         booking={b}
                         variant="student"
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
-                        onReview={reviewsEligibilityStatus === 'SUCCESS' && !reviewedBookingIds.has(b.id) ? (bookingToReview) => setSelectedBookingForReview(bookingToReview) : undefined}
                       />
                     ))
                   )}
@@ -1223,6 +1222,9 @@ function applyStrictProviderFilters(
           setBookingsRefreshKey((k) => k + 1);
           setSelectedBookingForDetails(updated);
         }}
+        onReview={reviewsEligibilityStatus === 'SUCCESS' && selectedBookingForDetails?.status === 'COMPLETED' && !reviewedBookingIds.has(selectedBookingForDetails.id)
+          ? (bookingToReview) => setSelectedBookingForReview(bookingToReview)
+          : undefined}
         onContinuePayment={(bookingToResume) => {
           setSelectedBookingForDetails(null);
           setResumeBooking(bookingToResume);
