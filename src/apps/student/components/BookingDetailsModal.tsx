@@ -34,7 +34,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   isOpen,
   onClose,
   booking,
-  onCheckIn,
   onOpenChat,
   onContinuePayment,
   onBookingUpdated,
@@ -51,7 +50,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   useEffect(() => {
     if (!isOpen || !booking) return undefined;
-    const timer = window.setInterval(() => setCheckInNow(new Date()), 60_000);
+    // Evaluate immediately when the modal opens or the selected booking changes.
+    // The first interval tick must not be required to cross the check-in window.
+    setCheckInNow(new Date());
+    // Use a one-second cadence so the button crosses the opening boundary
+    // without requiring a reload or waiting for a coarse polling interval.
+    const timer = window.setInterval(() => setCheckInNow(new Date()), 1_000);
     return () => window.clearInterval(timer);
   }, [isOpen, booking]);
 

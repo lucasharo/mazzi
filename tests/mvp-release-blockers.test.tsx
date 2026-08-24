@@ -330,6 +330,44 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
 
       expect(screen.queryByRole('button', { name: /Fazer check-in na aula/i })).toBeNull();
     });
+
+    it('G. atravessa a janela automaticamente e bloqueia double-click durante loading', async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date('2026-08-20T11:29:50Z'));
+        const windowBooking = {
+          ...baseConfirmedBooking,
+          scheduledStartAt: '2026-08-20T12:00:00Z',
+          scheduledEndAt: '2026-08-20T12:50:00Z',
+        };
+        let resolveCheckIn!: (booking: Booking) => void;
+        const onStudentCheckIn = vi.fn(() => new Promise<Booking>((resolve) => {
+          resolveCheckIn = resolve;
+        }));
+
+        render(
+          <BookingDetailsModal
+            isOpen={true}
+            onClose={vi.fn()}
+            booking={windowBooking}
+            onStudentCheckIn={onStudentCheckIn}
+          />
+        );
+
+        const checkInButton = screen.getByRole('button', { name: /Fazer check-in na aula/i });
+        expect(checkInButton.textContent).toContain('Check-in em breve');
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(checkInButton.textContent).toContain('Fazer check-in');
+
+        fireEvent.click(checkInButton);
+        fireEvent.click(checkInButton);
+        expect(onStudentCheckIn).toHaveBeenCalledTimes(1);
+        resolveCheckIn(baseConfirmedBooking);
+        await Promise.resolve();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   // --- 7. CHECKOUT MODAL REAL SUCCESS FLOW TEST ---

@@ -286,6 +286,10 @@ export const StudentApp: React.FC = () => {
       try {
         const bookings = await dbService.getBookings();
         setConfirmedBookings(bookings);
+        setSelectedBookingForDetails((selectedBooking) => {
+          if (!selectedBooking) return selectedBooking;
+          return bookings.find((candidate) => candidate.id === selectedBooking.id) || selectedBooking;
+        });
 
         // Batch load reviewed booking IDs to avoid N+1 queries (fail-closed handling)
         const completedIds = bookings.filter((b) => b.status === 'COMPLETED').map((b) => b.id);
