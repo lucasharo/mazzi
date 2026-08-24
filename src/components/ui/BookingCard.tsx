@@ -3,13 +3,14 @@ import { Booking } from '../../types';
 import { formatDateBR, formatTimeRange } from '../../lib/date-format';
 import { formatMeetingPoint } from '../../lib/meeting-point';
 import { formatCentsToBRL } from '../../domain/money';
-import { PrimaryButton } from './Button';
+import { PrimaryButton, SecondaryButton } from './Button';
 import {
   Calendar,
   Clock,
   Car,
   ClipboardList,
   MapPin,
+  Star,
 } from 'lucide-react';
 
 import { StatusBadge } from './StatusBadge';
@@ -58,6 +59,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   booking,
   perspective = 'STUDENT',
   variant,
+  onReview,
   onViewDetails,
 }) => {
   const isInstructorPerspective = variant === 'instructor' || perspective === 'INSTRUCTOR';
@@ -162,8 +164,20 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {onViewDetails && (
+          {onReview && (
             <PrimaryButton
+              type="button"
+              size="sm"
+              className="min-h-11 px-4 text-xs font-bold shadow-xs"
+              onClick={() => onReview(booking)}
+              leftIcon={<Star className="h-4 w-4 shrink-0" aria-hidden="true" />}
+              aria-label="Avaliar instrutor"
+            >
+              Avaliar instrutor
+            </PrimaryButton>
+          )}
+          {onViewDetails && (
+            <SecondaryButton
               type="button"
               size="sm"
               className="min-h-11 px-4 text-xs font-bold shadow-xs"
@@ -172,7 +186,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
               aria-label="Ver detalhes completos da reserva"
             >
               Detalhes
-            </PrimaryButton>
+            </SecondaryButton>
           )}
         </div>
       </div>
