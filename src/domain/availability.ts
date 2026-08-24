@@ -34,6 +34,19 @@ export class AvailabilityDomainError extends Error {
 export const STUDENT_BOOKING_HORIZON_DAYS = 60;
 export const AVAILABILITY_SEARCH_HORIZON_DAYS = STUDENT_BOOKING_HORIZON_DAYS;
 
+/**
+ * Autonomous instructors share one weekly agenda across their active vehicles.
+ * Driving-school rules retain their existing resource scope when edited.
+ */
+export function normalizeWeeklyAvailabilityRuleForProvider(
+  rule: AvailabilityRule,
+  providerType: Provider['type'],
+): AvailabilityRule {
+  return providerType === 'INSTRUCTOR'
+    ? { ...rule, vehicleId: undefined }
+    : rule;
+}
+
 // Global System Configuration Defaults
 // IMPORTANT: These default values are configured for development/testing environments (DEFAULT_DEVELOPMENT_CONFIGURATION).
 // They MUST NOT be treated as rigid commercial business decisions and can be overridden dynamically at runtime.

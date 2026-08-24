@@ -42,6 +42,7 @@ import {
   validateAvailabilityRule,
   validateAvailabilityException,
   enforceAvailabilityOwnership,
+  normalizeWeeklyAvailabilityRuleForProvider,
 } from '../../domain/availability';
 import {
   performProviderCheckIn,
@@ -646,7 +647,7 @@ export const ProviderApp: React.FC = () => {
         throw new Error('A regra semanal não está mais disponível. Atualize a agenda e tente novamente.');
       }
 
-      const newRule: AvailabilityRule = originalRule
+      const draftRule: AvailabilityRule = originalRule
         ? {
           ...originalRule,
           dayOfWeek: ruleForm.dayOfWeek,
@@ -663,6 +664,8 @@ export const ProviderApp: React.FC = () => {
           timezone: 'America/Sao_Paulo',
           isActive: true,
         };
+
+      const newRule = normalizeWeeklyAvailabilityRuleForProvider(draftRule, currentProvider.type);
 
       validateAvailabilityRule(newRule, availabilityRules);
 
