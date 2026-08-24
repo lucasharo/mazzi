@@ -1,0 +1,49 @@
+name: MAZZI Database Baseline Verify
+
+on:
+  workflow_dispatch:
+
+jobs:
+  baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SUPABASE_CLI_VERSION: 2.115.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify container runtime
+        run: |
+          docker --version
+          docker info
+
+      - name: Verify Supabase CLI
+        run: npx --yes supabase@${SUPABASE_CLI_VERSION} --version
+
+      - name: Replay original migrations
+        run: |
+          npx --yes supabase@${SUPABASE_CLI_VERSION} start
+          npx --yes supabase@${SUPABASE_CLI_VERSION} db reset
+
+      - name: Capture original schema contract
+        run: |
+          mkdir -p artifacts/original
+          npx --yes supabase@${SUPABASE_CLI_VERSION} db dump --local --schema public --file artifacts/original/public-schema.sql
+          sha256sum artifacts/original/public-schema.sql | tee artifacts/original/public-schema.sha256
+
+      - name: Generate squash in isolated workspace
+        run: |
+          cp -a . /tmp/mazzi-baseline-workspace
+          cd /tmp/mazzi-baseline-workspace
+          npx --yes supabase@${SUPABASE_CLI_VERSION} migration squash --local --version 20260824130725
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/squash"
+          cp supabase/migrations/*.sql "$GITHUB_WORKSPACE/artifacts/squash/"
+          find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort
+
+      - name: Upload baseline evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mazzi-mvp-baseline-evidence
+          path: artifacts/
