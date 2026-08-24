@@ -2,6 +2,13 @@ name: MAZZI Database Baseline Verify
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/premium-ui-v2
+    paths:
+      - '.github/workflows/db-baseline-verify.yml'
+      - 'supabase/migrations/**'
+      - 'scripts/database/**'
 
 jobs:
   baseline:
@@ -32,6 +39,27 @@ jobs:
           mkdir -p artifacts/original
           npx --yes supabase@${SUPABASE_CLI_VERSION} db dump --local --schema public --file artifacts/original/public-schema.sql
           sha256sum artifacts/original/public-schema.sql | tee artifacts/original/public-schema.sha256
+
+      - name: Collect DML inventory
+        run: |
+          rg -n -i '\\b(insert|update|delete|merge|copy)\\b' supabase/migrations > artifacts/dml-inventory.txt || true
+          printf 'DML_MATCHES=' >> artifacts/dml-inventory.txt
+          rg -n -i '\\b(insert|update|delete|merge|copy)\\b' supabase/migrations | wc -l >> artifacts/dml-inventory.txt || true
+
+      - name: Collect object inventory
+        run: |
+          cat > /tmp/object-inventory.sql <<'SQL'
+          select 'public_tables' as metric, count(*)::text as value from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r'
+          union all select 'public_columns', count(*)::text from information_schema.columns where table_schema='public'
+          union all select 'constraints', count(*)::text from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='public'
+          union all select 'indexes', count(*)::text from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='i'
+          union all select 'functions', count(*)::text from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'
+          union all select 'security_definer_functions', count(*)::text from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef
+          union all select 'triggers', count(*)::text from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and not t.tgisinternal
+          union all select 'rls_tables', count(*)::text from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity
+          union all select 'policies', count(*)::text from pg_policies where schemaname='public';
+          SQL
+          npx --yes supabase@${SUPABASE_CLI_VERSION} db query --local --file /tmp/object-inventory.sql > artifacts/object-inventory.txt
 
       - name: Generate squash in isolated workspace
         run: |
