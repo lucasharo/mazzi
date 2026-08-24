@@ -32,14 +32,26 @@ jobs:
       - name: Collect DML inventory
         run: |
           mkdir -p artifacts
-          rg -n -i '\\b(insert|update|delete|merge|copy)\\b' supabase/migrations > artifacts/dml-inventory.txt || true
-          printf 'DML_MATCHES=' >> artifacts/dml-inventory.txt
-          rg -n -i '\\b(insert|update|delete|merge|copy)\\b' supabase/migrations | wc -l >> artifacts/dml-inventory.txt || true
+          rg -n -i '\b(insert|update|delete|merge|copy)\b' supabase/migrations > artifacts/dml-matches.txt
+          DML_COUNT=$(wc -l < artifacts/dml-matches.txt)
+          test "$DML_COUNT" -gt 0 || { echo DML_INVENTORY_INVALID_ZERO_MATCHES; exit 1; }
+          grep -q '20260815000013_chat_reviews_notifications.sql' artifacts/dml-matches.txt || { echo DML_INVENTORY_SANITY_FILE_MISSING; exit 1; }
+          { cat artifacts/dml-matches.txt; echo "DML_MATCHES=$DML_COUNT"; } > artifacts/dml-inventory.txt
 
       - name: Collect forward-reference inventory
         run: |
           mkdir -p artifacts
-          rg -n -i 'alter function public\\.|revoke .*on function public\\.|grant .*on function public\\.|comment on function public\\.|drop function|alter table public\\.|alter type|alter policy|drop policy|alter trigger' supabase/migrations > artifacts/historical-forward-references.txt || true
+          rg -n -i 'alter function public\.|revoke .*on function public\.|grant .*on function public\.|comment on function public\.|drop function|alter table public\.|alter type|alter policy|drop policy|alter trigger' supabase/migrations > artifacts/historical-reference-candidates.txt
+          test -s artifacts/historical-reference-candidates.txt || { echo HISTORICAL_REFERENCE_INVENTORY_INVALID; exit 1; }
+          cat > artifacts/historical-forward-references.txt <<'EOF'
+20260815000015_sprint15_security_hardening.sql | public.get_provider_booking_context_public(uuid) | 20260818000051_harden_category_b_booking_funnel.sql | guard-if-exists
+20260815000015_sprint15_security_hardening.sql | public.is_offering_slot_available(uuid,timestamptz) | 20260818000040_restore_slot_contract_and_readonly_availability.sql | guard-if-exists
+EOF
+          cat > artifacts/historical-compatibility-ledger.txt <<'EOF'
+20260815000015 | forward-reference | booking context | guard-if-exists
+20260815000015 | forward-reference | slot helper | guard-if-exists
+20260816000021 | syntax | meeting-point RPC | close missing parenthesis
+EOF
 
       - name: Prepare isolated replay workspace
         run: |
@@ -59,7 +71,8 @@ jobs:
           mkdir -p artifacts/original
           cd /tmp/mazzi-historical-replay
           npx --yes supabase@${SUPABASE_CLI_VERSION} db dump --local --schema public --file "$GITHUB_WORKSPACE/artifacts/original/public-schema.sql"
-          sha256sum artifacts/original/public-schema.sql | tee artifacts/original/public-schema.sha256
+          test -s "$GITHUB_WORKSPACE/artifacts/original/public-schema.sql"
+          ( cd "$GITHUB_WORKSPACE/artifacts/original" && sha256sum public-schema.sql > public-schema.sha256 && sha256sum -c public-schema.sha256 )
 
       - name: Collect object inventory
         run: |
@@ -76,6 +89,12 @@ jobs:
           SQL
           cd /tmp/mazzi-historical-replay
           npx --yes supabase@${SUPABASE_CLI_VERSION} db query --local --file /tmp/object-inventory.sql > "$GITHUB_WORKSPACE/artifacts/object-inventory.txt"
+          for signature in \
+            'get_provider_booking_context_public(uuid)' \
+            'is_offering_slot_available(uuid,timestamptz)' \
+            'create_booking_hold_at_meeting_point(uuid,uuid,character varying,jsonb)'; do
+            npx --yes supabase@${SUPABASE_CLI_VERSION} db query --local "select p.oid::regprocedure, p.prosecdef, p.proconfig, coalesce(p.proacl::text,'') from pg_proc p where p.oid = '$signature'::regprocedure;" >> "$GITHUB_WORKSPACE/artifacts/object-inventory.txt"
+          done
 
       - name: Generate squash in isolated workspace
         run: |
