@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, Clock, MapPin, Car, UserCheck, Building2, CreditCard, MessageSquare, AlertTriangle, XCircle, AlertCircle, ArrowLeft, CheckCircle2, Circle, } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
@@ -10,6 +10,7 @@ import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { dbService } from '../../../lib/db-service';
 import { calculateCancellationPolicy } from '../../../domain/cancellation';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
+import { getCheckInAvailability } from '../../../domain/checkin';
 
 export interface BookingDetailsModalProps {
   isOpen: boolean;
@@ -46,6 +47,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
+  const [checkInNow, setCheckInNow] = useState(() => new Date());
+
+  useEffect(() => {
+    if (!isOpen || !booking) return undefined;
+    const timer = window.setInterval(() => setCheckInNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [isOpen, booking]);
 
   if (!booking) return null;
 
@@ -85,6 +93,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const isUpcoming = (booking.status === 'CONFIRMED' || (isPendingPayment && isHoldValid)) && !isExpired && !isLessonEnded;
   const isCancelled = booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER';
   const isCompleted = booking.status === 'COMPLETED';
+  const checkInAvailability = getCheckInAvailability({
+    scheduledStartAt: booking.scheduledStartAt,
+    status: booking.status,
+    alreadyCheckedIn: Boolean(booking.studentCheckedIn),
+    now: checkInNow,
+  });
 
   const meetingPoint = formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint);
   const start = booking.scheduledStartAt || (booking.scheduledDate && booking.startTime ? `${booking.scheduledDate}T${booking.startTime}:00` : '');
@@ -385,15 +399,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     variant="primary"
                     size="sm"
                     isLoading={isCheckingIn}
-                    disabled={isCheckingIn || !onStudentCheckIn}
+                    disabled={isCheckingIn || !onStudentCheckIn || !checkInAvailability.canCheckIn}
                     onClick={handleStudentCheckInAction}
                     leftIcon={<UserCheck className="w-3.5 h-3.5" aria-hidden="true" />}
                     aria-label="Fazer check-in na aula"
                   >
-                    Fazer check-in
+                    {checkInAvailability.canCheckIn ? 'Fazer check-in' : 'Check-in em breve'}
                   </Button>
                 )}
               </div>
+              {!booking.studentCheckedIn && !checkInAvailability.canCheckIn && checkInAvailability.opensAt && (
+                <p className="text-[11px] font-semibold text-slate-500">Check-in disponível a partir de {formatTimeBR(checkInAvailability.opensAt)}</p>
+              )}
 
               {/* Instructor Check-In Row */}
               <div className="flex items-center justify-between gap-2">

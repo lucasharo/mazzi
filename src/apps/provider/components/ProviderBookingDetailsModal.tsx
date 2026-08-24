@@ -22,6 +22,8 @@ import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { formatCentsToBRL } from '../../../domain/money';
 import { calculateLessonDurationMinutes, formatTransmissionLabel } from '../../../lib/date-format';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
+import { getCheckInAvailability } from '../../../domain/checkin';
+import { formatTimeBR } from '../../../lib/date-format';
 
 interface ProviderBookingDetailsModalProps {
   isOpen: boolean;
@@ -50,6 +52,13 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
 }) => {
   const [isCheckingIn, setIsCheckingIn] = React.useState(false);
   const [checkInError, setCheckInError] = React.useState<string | null>(null);
+  const [checkInNow, setCheckInNow] = React.useState(() => new Date());
+
+  React.useEffect(() => {
+    if (!isOpen || !booking) return undefined;
+    const timer = window.setInterval(() => setCheckInNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [isOpen, booking]);
 
   if (!booking) return null;
 
@@ -76,6 +85,12 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const canCancel = canCancelBooking
     ? canCancelBooking(booking)
     : isConfirmed && !booking.instructorCheckedIn;
+  const checkInAvailability = getCheckInAvailability({
+    scheduledStartAt: booking.scheduledStartAt,
+    status: booking.status,
+    alreadyCheckedIn: Boolean(booking.instructorCheckedIn),
+    now: checkInNow,
+  });
 
   const handleCheckIn = async () => {
     setIsCheckingIn(true);
@@ -210,15 +225,18 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
                   variant="primary"
                   size="sm"
                   isLoading={isCheckingIn}
-                  disabled={isCheckingIn}
+                    disabled={isCheckingIn || !checkInAvailability.canCheckIn}
                   onClick={handleCheckIn}
                   leftIcon={<UserCheck className="h-3.5 w-3.5" aria-hidden="true" />}
                   aria-label="Fazer check-in na aula"
                 >
-                  Fazer check-in
+                  {checkInAvailability.canCheckIn ? 'Fazer check-in' : 'Check-in em breve'}
                 </Button>
               )}
             </div>
+            {!booking.instructorCheckedIn && !checkInAvailability.canCheckIn && checkInAvailability.opensAt && (
+              <p className="text-[11px] font-semibold text-slate-500">Aguardando abertura do check-in · disponível a partir de {formatTimeBR(checkInAvailability.opensAt)}</p>
+            )}
             {checkInError && (
               <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-800">
                 <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />

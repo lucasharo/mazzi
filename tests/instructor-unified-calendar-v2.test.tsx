@@ -318,6 +318,7 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
         scheduledDate: '20/08/2026',
         startTime: '09:00',
         endTime: '10:00',
+        scheduledStartAt: '2026-08-20T09:00:00-03:00',
         category: 'B',
       };
       const privateProvider = { id: 'p_carlos_private', type: 'INSTRUCTOR' };
@@ -368,6 +369,7 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
         scheduledDate: '20/08/2026',
         startTime: '09:00',
         endTime: '10:00',
+        scheduledStartAt: '2026-08-20T09:00:00-03:00',
         category: 'B',
       };
 
