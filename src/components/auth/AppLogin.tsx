@@ -31,6 +31,7 @@ type Screen =
   | 'signup'
   | 'forgot'
   | 'signup_otp'
+  | 'instructor_onboarding'
   | 'recovery_otp'
   | 'reset_password'
   | 'email_confirmation'
@@ -73,7 +74,19 @@ export function formatAuthError(errorMsg: string): string {
     return 'O CPF informado é inválido.';
   }
   if (lower.includes('minimum_age_violation')) {
-    return 'Para utilizar o MAZZI, você precisa ter pelo menos 18 anos.';
+    return 'Você precisa ter pelo menos 18 anos para se cadastrar como instrutor.';
+  }
+  if (lower.includes('cpf_required_or_invalid') || lower.includes('cpf_invalid')) {
+    return 'Informe um CPF válido para continuar seu cadastro profissional.';
+  }
+  if (lower.includes('phone_required')) {
+    return 'Informe um celular válido para continuar.';
+  }
+  if (lower.includes('user_not_active')) {
+    return 'Sua conta ainda não está pronta para concluir este cadastro. Tente novamente em instantes.';
+  }
+  if (lower.includes('auth_required') || lower.includes('auth_session_unavailable')) {
+    return 'Sua sessão expirou. Entre novamente para continuar.';
   }
   if (lower.includes('network') || lower.includes('failed to fetch')) {
     return 'Falha de conexão com o servidor. Verifique sua internet e tente novamente.';
@@ -84,8 +97,11 @@ export function formatAuthError(errorMsg: string): string {
 export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   const {
     signIn,
-    signUpStudent,
+    signUpPublicAccount,
+    user,
     onboardInstructor,
+    beginInstructorOnboarding,
+    cancelInstructorOnboarding,
     beginPasswordRecovery,
     completePasswordRecovery,
     error: contextError,
@@ -172,6 +188,20 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     setErrors({});
     setOtp('');
     setScreen(next);
+  };
+
+  const tryCompleteInstructorOnboarding = async () => {
+    try {
+      await onboardInstructor();
+      return true;
+    } catch (caught: any) {
+      setFeedback({
+        tone: 'error',
+        message: formatAuthError(caught instanceof Error ? caught.message : 'Não foi possível concluir seu cadastro profissional.'),
+      });
+      setScreen('instructor_onboarding');
+      return false;
+    }
   };
 
   // 1. SUBMIT LOGIN
@@ -280,8 +310,10 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     setErrors({});
 
     setIsSubmitting(true);
+    const instructorSignup = kind === 'instructor';
+    if (instructorSignup) beginInstructorOnboarding();
     try {
-      const { session } = await signUpStudent({
+      const { session } = await signUpPublicAccount({
         email: email.trim(),
         password,
         name: name.trim(),
@@ -297,12 +329,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         // Requires 6-digit OTP verification
         goTo('signup_otp');
       } else {
-        if (kind === 'instructor') {
-          await onboardInstructor();
+        if (instructorSignup) {
+          const completed = await tryCompleteInstructorOnboarding();
+          if (!completed) return;
         }
         setFeedback({ tone: 'success', message: 'Conta criada com sucesso.' });
       }
     } catch (caught: any) {
+      if (instructorSignup) cancelInstructorOnboarding();
       setFeedback({
         tone: 'error',
         message: formatAuthError(caught instanceof Error ? caught.message : 'Não foi possível criar sua conta.'),
@@ -334,7 +368,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       if (password) {
         await signIn(otpEmail, password);
         if (kind === 'instructor') {
-          await onboardInstructor();
+          const completed = await tryCompleteInstructorOnboarding();
+          if (!completed) return;
         }
       } else {
         goTo('login');
@@ -515,6 +550,32 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   );
 
   const brandTag = kind === 'instructor' ? 'MAZZI PRO' : kind === 'admin' ? 'MAZZI ADMIN' : 'MAZZI';
+
+  if (screen === 'instructor_onboarding') {
+    return shell(
+      <div className="space-y-6 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)] shadow-xs">
+          <Sparkles className="h-7 w-7 text-amber-600" aria-hidden="true" />
+        </div>
+        <div className="space-y-2">
+          <p className="mazzi-eyebrow">MAZZI PRO</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--mazzi-dark)] tracking-tight">Finalizar cadastro profissional</h1>
+          <p className="text-sm text-slate-600">Sua conta foi criada. Conclua o credenciamento para acessar o portal do instrutor.</p>
+        </div>
+        {activeError && <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200/60 text-xs font-semibold text-rose-700">{activeError}</div>}
+        <PrimaryButton type="button" size="sm" className="w-full font-bold shadow-xs cursor-pointer" disabled={isLoading} loading={isLoading} onClick={async () => {
+          setIsSubmitting(true);
+          await tryCompleteInstructorOnboarding();
+          setIsSubmitting(false);
+        }}>
+          {isLoading ? 'Concluindo…' : 'Continuar cadastro profissional'}
+        </PrimaryButton>
+        <SecondaryButton type="button" size="sm" className="w-full cursor-pointer" onClick={() => { cancelInstructorOnboarding(); goTo('login'); }}>
+          Voltar para o login
+        </SecondaryButton>
+      </div>
+    );
+  }
 
   // ==========================================
   // SCREEN: SIGNUP OTP VERIFICATION
@@ -878,7 +939,9 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             Criar conta
           </h1>
           <p className="text-sm text-slate-600">
-            Preencha seus dados para começar suas aulas no MAZZI.
+            {kind === 'instructor'
+              ? 'Cadastre seus dados para começar seu credenciamento como instrutor no MAZZI.'
+              : 'Preencha seus dados para começar suas aulas no MAZZI.'}
           </p>
         </div>
 
@@ -1009,7 +1072,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             disabled={isLoading}
             loading={isLoading}
           >
-            {isLoading ? 'Criando conta…' : 'Criar conta'}
+            {isLoading ? 'Criando conta…' : kind === 'instructor' ? 'Criar conta profissional' : 'Criar conta'}
           </PrimaryButton>
 
           <p className="text-center text-xs text-slate-500 pt-2">
@@ -1121,16 +1184,23 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
           {isLoading ? 'Entrando…' : 'Entrar'}
         </PrimaryButton>
 
-        {kind === 'student' && (
+        {kind !== 'admin' && (
           <p className="text-center text-xs text-slate-600 pt-2">
-            Ainda não tem conta?{' '}
+            {kind === 'instructor' ? 'Ainda não é parceiro?' : 'Ainda não tem conta?'}{' '}
             <ButtonBase
               type="button"
-              onClick={() => goTo('signup')}
+              onClick={() => {
+                if (kind === 'instructor' && user?.roles.includes('STUDENT')) {
+                  beginInstructorOnboarding();
+                  goTo('instructor_onboarding');
+                } else {
+                  goTo('signup');
+                }
+              }}
               className="inline-flex cursor-pointer items-center gap-1.5 font-bold text-amber-700 underline underline-offset-2 hover:text-amber-800"
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
-              Criar conta
+              {kind === 'instructor' ? (user?.roles.includes('STUDENT') ? 'Ativar perfil profissional' : 'Quero ser instrutor') : 'Criar conta'}
             </ButtonBase>
           </p>
         )}

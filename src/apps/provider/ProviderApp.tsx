@@ -235,7 +235,10 @@ export const ProviderApp: React.FC = () => {
   // Sync active user role and load real workspace data
   useEffect(() => {
     if (user?.roles && user.roles.length > 0) {
-      setCurrentRole(user.roles[0]);
+      const professionalRole = user.roles.find((role) =>
+        ['INSTRUCTOR', 'SCHOOL_ADMIN', 'SCHOOL_STAFF'].includes(role)
+      );
+      setCurrentRole(professionalRole || user.roles[0]);
     }
   }, [user]);
 

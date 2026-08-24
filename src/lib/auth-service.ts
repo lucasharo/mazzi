@@ -24,6 +24,7 @@ export interface AuthSessionState {
   permissions: AppPermission[];
   isAuthenticated: boolean;
   recoveryInProgress: boolean;
+  isInstructorOnboarding: boolean;
   isLoading: boolean;
   error: string | null;
 }
@@ -64,7 +65,7 @@ export function buildAuthContext(session: AuthSessionState): AuthContext | null 
  * Sign up a new Student (Public standard flow)
  * Default role is strictly STUDENT. Admin/Support roles cannot be selected.
  */
-export async function signUpStudent({ email, password, name, phone, cpf, birthDate }: SignUpParams) {
+export async function signUpPublicAccount({ email, password, name, phone, cpf, birthDate }: SignUpParams) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -85,6 +86,9 @@ export async function signUpStudent({ email, password, name, phone, cpf, birthDa
 
   return data;
 }
+
+/** Backward-compatible name for the student public signup flow. */
+export const signUpStudent = signUpPublicAccount;
 
 /**
  * Completes the authenticated instructor onboarding without accepting a role

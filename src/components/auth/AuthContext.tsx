@@ -7,12 +7,15 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { UserRole } from '../../types';
 import { AppPermission, resolveUserPermissions } from '../../domain/rbac';
 import { AuthSessionState } from '../../lib/auth-service';
-import { onboardInstructor as onboardInstructorService, signInWithEmail, signUpStudent as signUpStudentService, type SignUpParams } from '../../lib/auth-service';
+import { onboardInstructor as onboardInstructorService, signInWithEmail, signUpPublicAccount as signUpPublicAccountService, type SignUpParams } from '../../lib/auth-service';
 import { supabase } from '../../lib/supabase';
 
 interface AuthContextType extends AuthSessionState {
   signIn: (email: string, password: string) => Promise<void>;
-  signUpStudent: (params: SignUpParams) => ReturnType<typeof signUpStudentService>;
+  signUpPublicAccount: (params: SignUpParams) => ReturnType<typeof signUpPublicAccountService>;
+  signUpStudent: (params: SignUpParams) => ReturnType<typeof signUpPublicAccountService>;
+  beginInstructorOnboarding: () => void;
+  cancelInstructorOnboarding: () => void;
   onboardInstructor: () => Promise<Awaited<ReturnType<typeof onboardInstructorService>>>;
   logout: () => Promise<void>;
   beginPasswordRecovery: () => void;
@@ -28,11 +31,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     permissions: [],
     isAuthenticated: false,
     recoveryInProgress: false,
+    isInstructorOnboarding: false,
     isLoading: true,
     error: null,
   });
 
   const recoveryInProgressRef = useRef(false);
+  const instructorOnboardingRef = useRef(false);
 
   const beginPasswordRecovery = () => {
     recoveryInProgressRef.current = true;
@@ -42,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       permissions: [],
       isAuthenticated: false,
       recoveryInProgress: true,
+      isInstructorOnboarding: false,
       isLoading: false,
       error: null,
     }));
@@ -55,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       permissions: [],
       isAuthenticated: false,
       recoveryInProgress: false,
+      isInstructorOnboarding: false,
       isLoading: false,
       error: null,
     });
@@ -68,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         permissions: [],
         isAuthenticated: false,
         recoveryInProgress: true,
+        isInstructorOnboarding: instructorOnboardingRef.current,
         isLoading: false,
         error: null,
       }));
@@ -80,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         permissions: [],
         isAuthenticated: false,
         recoveryInProgress: false,
+        isInstructorOnboarding: instructorOnboardingRef.current,
         isLoading: false,
         error: null,
       });
@@ -107,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           permissions: [],
           isAuthenticated: false,
           recoveryInProgress: false,
+          isInstructorOnboarding: false,
           isLoading: false,
           error: 'Sua sessão expirou. Entre novamente.',
         });
@@ -145,6 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             user: null,
             permissions: [],
             isAuthenticated: false,
+            recoveryInProgress: false,
+            isInstructorOnboarding: false,
             isLoading: false,
             error: 'Perfil não provisionado para este usuário. Contate o suporte.',
           });
@@ -262,6 +274,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         permissions,
         isAuthenticated: true,
         recoveryInProgress: false,
+        isInstructorOnboarding: instructorOnboardingRef.current,
         isLoading: false,
         error: null,
       });
@@ -272,6 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         permissions: [],
         isAuthenticated: false,
         recoveryInProgress: false,
+        isInstructorOnboarding: instructorOnboardingRef.current,
         isLoading: false,
         error: err.message || 'Erro ao carregar sessão',
       });
@@ -309,18 +323,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUpStudent = (params: SignUpParams) => signUpStudentService(params);
+  const beginInstructorOnboarding = () => {
+    instructorOnboardingRef.current = true;
+    setAuthState((prev) => ({ ...prev, isInstructorOnboarding: true, error: null }));
+  };
+
+  const cancelInstructorOnboarding = () => {
+    instructorOnboardingRef.current = false;
+    setAuthState((prev) => ({ ...prev, isInstructorOnboarding: false }));
+  };
+
+  const signUpPublicAccount = (params: SignUpParams) => signUpPublicAccountService(params);
+  const signUpStudent = (params: SignUpParams) => signUpPublicAccountService(params);
   const onboardInstructor = async () => {
-    const result = await onboardInstructorService();
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session?.user) {
-      throw new Error('AUTH_SESSION_UNAVAILABLE: Não foi possível reidratar a sessão do instrutor.');
+    try {
+      const result = await onboardInstructorService();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session?.user) {
+        throw new Error('AUTH_SESSION_UNAVAILABLE: Não foi possível reidratar a sessão do instrutor.');
+      }
+      instructorOnboardingRef.current = false;
+      await handleSession(session);
+      return result;
+    } catch (error) {
+      setAuthState((prev) => ({ ...prev, isInstructorOnboarding: true, isLoading: false }));
+      throw error;
     }
-    await handleSession(session);
-    return result;
   };
 
   const logout = async () => {
+    instructorOnboardingRef.current = false;
     setAuthState(prev => ({ ...prev, isLoading: true }));
     try {
       await supabase.auth.signOut();
@@ -331,6 +363,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user: null,
         permissions: [],
         isAuthenticated: false,
+        recoveryInProgress: false,
+        isInstructorOnboarding: false,
         isLoading: false,
         error: null,
       });
@@ -346,7 +380,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         ...authState,
         signIn,
+        signUpPublicAccount,
         signUpStudent,
+        beginInstructorOnboarding,
+        cancelInstructorOnboarding,
         onboardInstructor,
         logout,
         beginPasswordRecovery,
