@@ -846,12 +846,11 @@ export const ProviderApp: React.FC = () => {
       const targetVehicle = vehicles.find((v) => v.id === vehicleId);
       if (!targetVehicle) return;
 
-      const nextStatus = targetVehicle.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-      if (nextStatus === 'ACTIVE') {
-        validateVehicleActivationPermission(targetVehicle, currentRole);
+      if (targetVehicle.status !== 'ACTIVE') {
+        throw new Error('A reativação do veículo depende de nova aprovação administrativa.');
       }
 
-      const savedVehicle = await dbService.saveVehicle({ ...targetVehicle, status: nextStatus });
+      const savedVehicle = await dbService.deactivateVehicle(vehicleId);
       setVehicles((prev) => prev.map((vehicle) => (vehicle.id === vehicleId ? savedVehicle : vehicle)));
     } catch (err: any) {
       alert(mapFriendlyErrorMessage(err, 'Ação de ativação do veículo não permitida.'));

@@ -20,27 +20,8 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
   });
 
   describe('1. saveVehicle Contract', () => {
-    it('executes INSERT with new generated UUID when vehicle.id is a draft string (veh_...)', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: '11111111-2222-3333-4444-555555555555',
-            provider_id: 'prov-123',
-            brand: 'Honda',
-            model: 'City',
-            year: 2024,
-            license_plate: 'ABC1D23',
-            category: 'B',
-            vehicle_type: 'CAR',
-            transmission: 'MANUAL',
-            status: 'ACTIVE',
-          },
-          error: null,
-        }),
-      });
-
-      const insertMock = vi.fn().mockReturnValue({ select: selectMock });
-      (supabase.from as any).mockReturnValue({ insert: insertMock });
+    it('uses provider_save_vehicle RPC for a new vehicle and ignores client status', async () => {
+      (supabase.rpc as any).mockResolvedValue({ data: { id: '11111111-2222-3333-4444-555555555555', status: 'PENDING' }, error: null });
 
       const result = await dbService.saveVehicle({
         id: 'veh_1771489000_abcde',
@@ -55,36 +36,14 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
         status: 'ACTIVE',
       });
 
-      expect(supabase.from).toHaveBeenCalledWith('vehicles');
-      expect(insertMock).toHaveBeenCalled();
-      const insertedRow = insertMock.mock.calls[0][0];
-      expect(isUuid(insertedRow.id)).toBe(true);
-      expect(insertedRow.brand).toBe('Honda');
+      expect(supabase.rpc).toHaveBeenCalledWith('provider_save_vehicle', expect.objectContaining({ p_vehicle_id: null, p_brand: 'Honda' }));
+      expect((supabase.from as any)).not.toHaveBeenCalled();
       expect(result.id).toBe('11111111-2222-3333-4444-555555555555');
+      expect(result.status).toBe('PENDING');
     });
 
-    it('executes UPDATE when vehicle.id is a valid UUID', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: '11111111-2222-3333-4444-555555555555',
-            provider_id: 'prov-123',
-            brand: 'Honda',
-            model: 'Fit',
-            year: 2024,
-            license_plate: 'ABC1D23',
-            category: 'B',
-            vehicle_type: 'CAR',
-            transmission: 'MANUAL',
-            status: 'ACTIVE',
-          },
-          error: null,
-        }),
-      });
-
-      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
-      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
-      (supabase.from as any).mockReturnValue({ update: updateMock });
+    it('uses provider_save_vehicle RPC for an existing vehicle', async () => {
+      (supabase.rpc as any).mockResolvedValue({ data: { id: '11111111-2222-3333-4444-555555555555', model: 'Fit' }, error: null });
 
       const result = await dbService.saveVehicle({
         id: '11111111-2222-3333-4444-555555555555',
@@ -98,123 +57,20 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
         transmission: 'MANUAL',
       });
 
-      expect(supabase.from).toHaveBeenCalledWith('vehicles');
-      expect(updateMock).toHaveBeenCalled();
-      expect(eqMock).toHaveBeenCalledWith('id', '11111111-2222-3333-4444-555555555555');
+      expect(supabase.rpc).toHaveBeenCalledWith('provider_save_vehicle', expect.objectContaining({ p_vehicle_id: '11111111-2222-3333-4444-555555555555' }));
       expect(result.model).toBe('Fit');
     });
 
-    it('sets status to PENDING for new vehicle when status is undefined', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: { id: '11111111-2222-3333-4444-555555555555', status: 'PENDING' },
-          error: null,
-        }),
-      });
-      const insertMock = vi.fn().mockReturnValue({ select: selectMock });
-      (supabase.from as any).mockReturnValue({ insert: insertMock });
-
-      await dbService.saveVehicle({
-        providerId: 'prov-123',
-        brand: 'Toyota',
-        model: 'Yaris',
-        year: 2024,
-        licensePlate: 'XYZ9876',
-        category: 'B',
-        vehicleType: 'CAR',
-        transmission: 'MANUAL',
-      });
-
-      const insertedRow = insertMock.mock.calls[0][0];
-      expect(insertedRow.status).toBe('PENDING');
-      expect(insertedRow.has_dual_pedal).toBeUndefined();
-    });
-
-    it('omits status and preserves existing status on partial update when status is undefined', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: { id: '11111111-2222-3333-4444-555555555555', status: 'INACTIVE', color: 'Azul' },
-          error: null,
-        }),
-      });
-      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
-      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
-      (supabase.from as any).mockReturnValue({ update: updateMock });
-
-      await dbService.saveVehicle({
-        id: '11111111-2222-3333-4444-555555555555',
-        color: 'Azul',
-      });
-
-      const updatedRow = updateMock.mock.calls[0][0];
-      expect(updatedRow.status).toBeUndefined();
-    });
-
-    it('explicitly sends has_dual_pedal false when passed as false', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: { id: '11111111-2222-3333-4444-555555555555', has_dual_pedal: false },
-          error: null,
-        }),
-      });
-      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
-      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
-      (supabase.from as any).mockReturnValue({ update: updateMock });
-
-      await dbService.saveVehicle({
-        id: '11111111-2222-3333-4444-555555555555',
-        hasDualPedal: false,
-      } as any);
-
-      const updatedRow = updateMock.mock.calls[0][0];
-      expect(updatedRow.has_dual_pedal).toBe(false);
-    });
-
-    it('omits provider_id, photos and renavam on partial vehicle update when undefined', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: { id: '11111111-2222-3333-4444-555555555555', color: 'Verde' },
-          error: null,
-        }),
-      });
-      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
-      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
-      (supabase.from as any).mockReturnValue({ update: updateMock });
-
-      await dbService.saveVehicle({
-        id: '11111111-2222-3333-4444-555555555555',
-        color: 'Verde',
-      });
-
-      const updatedRow = updateMock.mock.calls[0][0];
-      expect(updatedRow.provider_id).toBeUndefined();
-      expect(updatedRow.photos).toBeUndefined();
-      expect(updatedRow.renavam).toBeUndefined();
-      expect(updatedRow.color).toBe('Verde');
+    it('sends lifecycle fields to the authoritative RPC', async () => {
+      (supabase.rpc as any).mockResolvedValue({ data: { id: '11111111-2222-3333-4444-555555555555', has_dual_pedal: false, color: 'Verde' }, error: null });
+      await dbService.saveVehicle({ id: '11111111-2222-3333-4444-555555555555', color: 'Verde', hasDualPedal: false } as any);
+      expect(supabase.rpc).toHaveBeenCalledWith('provider_save_vehicle', expect.objectContaining({ p_has_dual_pedal: false, p_color: 'Verde' }));
     });
   });
 
   describe('2. saveOffering Contract', () => {
-    it('executes INSERT with new generated UUID when offering.id is draft string (off_...)', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: '22222222-3333-4444-5555-666666666666',
-            provider_id: 'prov-123',
-            vehicle_id: '11111111-2222-3333-4444-555555555555',
-            category: 'B',
-            transmission: 'MANUAL',
-            duration_minutes: 50,
-            price_in_cents: 9500,
-            status: 'ACTIVE',
-            is_active: true,
-          },
-          error: null,
-        }),
-      });
-
-      const insertMock = vi.fn().mockReturnValue({ select: selectMock });
-      (supabase.from as any).mockReturnValue({ insert: insertMock });
+    it('uses provider_save_service_offering RPC for create', async () => {
+      (supabase.rpc as any).mockResolvedValue({ data: { id: '22222222-3333-4444-5555-666666666666', price_in_cents: 9500, status: 'ACTIVE', is_active: true }, error: null });
 
       const result = await dbService.saveOffering({
         id: 'off_123456',
@@ -226,41 +82,19 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
         status: 'ACTIVE',
       });
 
-      expect(supabase.from).toHaveBeenCalledWith('service_offerings');
-      expect(insertMock).toHaveBeenCalled();
-      const insertedRow = insertMock.mock.calls[0][0];
-      expect(isUuid(insertedRow.id)).toBe(true);
-      expect(insertedRow.price_in_cents).toBe(9500);
+      expect(supabase.rpc).toHaveBeenCalledWith('provider_save_service_offering', expect.objectContaining({ p_offering_id: null, p_price_in_cents: 9500, p_active: true }));
       expect(result.id).toBe('22222222-3333-4444-5555-666666666666');
     });
 
-    it('executes TRUE PATCH update on offering without overwriting transmission or status when undefined', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: '22222222-3333-4444-5555-666666666666',
-            price_in_cents: 12000,
-          },
-          error: null,
-        }),
-      });
-
-      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
-      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
-      (supabase.from as any).mockReturnValue({ update: updateMock });
+    it('uses provider_save_service_offering RPC for update', async () => {
+      (supabase.rpc as any).mockResolvedValue({ data: { id: '22222222-3333-4444-5555-666666666666', price_in_cents: 12000 }, error: null });
 
       await dbService.saveOffering({
         id: '22222222-3333-4444-5555-666666666666',
         priceInCents: 12000,
       });
 
-      expect(supabase.from).toHaveBeenCalledWith('service_offerings');
-      expect(updateMock).toHaveBeenCalled();
-      const updatedRow = updateMock.mock.calls[0][0];
-      expect(updatedRow.provider_id).toBeUndefined();
-      expect(updatedRow.transmission).toBeUndefined();
-      expect(updatedRow.status).toBeUndefined();
-      expect(updatedRow.price_in_cents).toBe(12000);
+      expect(supabase.rpc).toHaveBeenCalledWith('provider_save_service_offering', expect.objectContaining({ p_offering_id: '22222222-3333-4444-5555-666666666666', p_price_in_cents: 12000 }));
     });
   });
 
