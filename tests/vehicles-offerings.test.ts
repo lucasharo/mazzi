@@ -11,6 +11,7 @@ import {
   enforceOfferingOwnership,
   validateVehicleActivationPermission,
   validateOfferingActivationPermission,
+  validateOfferingData,
   isVehicleAwaitingAdminReview,
 } from '../src/domain/vehicles-offerings';
 import { Provider, Vehicle, ServiceOffering } from '../src/types';
@@ -150,6 +151,27 @@ describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
         priceInCents: 9500,
       })
     ).toThrowError(/duração.*50 minutos/i);
+  });
+
+  it('derives category and transmission from the selected vehicle without a manual fallback', () => {
+    const automaticVehicle = { ...activeVehicle, id: 'city', brand: 'Honda', model: 'City', transmission: 'AUTOMATIC' as const };
+    const manualVehicle = { ...activeVehicle, id: 'byd', brand: 'BYD', model: 'Song', transmission: 'MANUAL' as const };
+
+    const automaticOffering = createServiceOffering({
+      providerId: 'prov_100', instructorId: 'inst_100', vehicle: automaticVehicle, category: 'B', durationMinutes: 50, priceInCents: 9500,
+    });
+    const manualOffering = createServiceOffering({
+      providerId: 'prov_100', instructorId: 'inst_100', vehicle: manualVehicle, category: 'B', durationMinutes: 50, priceInCents: 9500,
+    });
+
+    expect(automaticOffering.vehicleId).toBe('city');
+    expect(automaticOffering.category).toBe('B');
+    expect(automaticOffering.transmission).toBe('AUTOMATIC');
+    expect(manualOffering.vehicleId).toBe('byd');
+    expect(manualOffering.transmission).toBe('MANUAL');
+    expect(automaticOffering.durationMinutes).toBe(50);
+    expect(automaticOffering.priceInCents).toBe(9500);
+    expect(() => validateOfferingData({ providerId: 'prov_100', vehicleId: 'city', category: 'B', durationMinutes: 50, priceInCents: 9500 })).toThrowError(/Transmissão da oferta/);
   });
 
   it('keeps browser currency masking aligned with integer cents', () => {

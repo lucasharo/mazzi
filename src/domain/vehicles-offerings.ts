@@ -468,6 +468,14 @@ export function validateOfferingData(data: Partial<ServiceOffering>): void {
       400
     );
   }
+
+  if (!data.transmission || !['MANUAL', 'AUTOMATIC', 'NOT_APPLICABLE'].includes(data.transmission)) {
+    throw new OfferingDomainError(
+      'Transmissão da oferta deve ser herdada do veículo selecionado.',
+      'OFFERING_TRANSMISSION_REQUIRED',
+      400,
+    );
+  }
 }
 
 /**
@@ -515,7 +523,8 @@ export function createServiceOffering(params: {
         off.providerId === params.providerId &&
         off.instructorId === params.instructorId &&
         off.vehicleId === params.vehicle.id &&
-        off.category === params.category &&
+        off.category === params.vehicle.category &&
+        off.transmission === params.vehicle.transmission &&
         off.durationMinutes === params.durationMinutes &&
         off.status === 'ACTIVE'
     );
@@ -533,7 +542,8 @@ export function createServiceOffering(params: {
     providerId: params.providerId,
     instructorId: params.instructorId,
     vehicleId: params.vehicle.id,
-    category: params.category,
+    category: params.vehicle.category,
+    transmission: params.vehicle.transmission,
     durationMinutes: params.durationMinutes,
     priceInCents: params.priceInCents,
     status: 'ACTIVE',

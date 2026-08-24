@@ -79,6 +79,10 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'Informe um preço válido em Reais (Ex: R$ 95,00).';
   }
 
+  if (msg.includes('OFFERING_VEHICLE_ATTRIBUTES_MISMATCH')) {
+    return 'Os dados da oferta não correspondem ao veículo selecionado. Atualize a tela e tente novamente.';
+  }
+
   if (msg.includes('SERVICE_RADIUS_INVALID')) {
     return 'O raio de atendimento deve ser um valor entre 1 e 100 km.';
   }
