@@ -107,7 +107,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             <div aria-busy="true" className="space-y-3 p-4"><div className="h-4 w-1/2 animate-pulse rounded bg-slate-100" /><div className="h-12 animate-pulse rounded-2xl bg-slate-100" /></div>
           ) : existingReview ? (
             <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
-              <p className="font-black text-emerald-900">Avaliação já enviada</p>
+              <p className="font-black text-emerald-900">Avaliação enviada</p>
               <p className="text-xs text-emerald-800 mt-1">
                 Nota {existingReview.ratingOverall}/5
                 {existingReview.comment ? ` — ${existingReview.comment}` : ''}

@@ -79,7 +79,7 @@ describe('ReviewModal explicit rating contract', () => {
     vi.spyOn(dbService, 'getReviewForBooking').mockResolvedValue(submittedReview(4));
     render(<ReviewModal booking={booking} isOpen={true} onClose={vi.fn()} />);
 
-    expect(await screen.findByText('Avaliação já enviada')).toBeTruthy();
+    expect(await screen.findByText('Avaliação enviada')).toBeTruthy();
     expect(screen.getByText('Nota 4/5')).toBeTruthy();
   });
 });
