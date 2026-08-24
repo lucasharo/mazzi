@@ -52,6 +52,7 @@ jobs:
           20260815000015 | forward-reference | slot helper | guard-if-exists
           20260816000021 | syntax | meeting-point RPC | close missing parenthesis
           20260818000032 | replay-ledger | supabase_migrations.schema_migrations | omit redundant ledger DML managed by runner
+          20260818000033 | replay-ledger | supabase_migrations.schema_migrations | omit redundant ledger DML managed by runner
           EOF
 
       - name: Prepare isolated replay workspace
