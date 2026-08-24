@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { dbService, isUuid } from '../src/lib/db-service';
+import { dbService } from '../src/lib/db-service';
 import { supabase } from '../src/lib/supabase';
 
 // Mock Supabase client for service contract verification
@@ -99,24 +99,8 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
   });
 
   describe('3. saveAvailabilityRule & saveAvailabilityException Contract', () => {
-    it('executes INSERT for draft rule id (rule_...)', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: '33333333-4444-5555-6666-777777777777',
-            provider_id: 'prov-123',
-            day_of_week: 1,
-            start_time: '08:00',
-            end_time: '12:00',
-            timezone: 'America/Sao_Paulo',
-            is_active: true,
-          },
-          error: null,
-        }),
-      });
-
-      const insertMock = vi.fn().mockReturnValue({ select: selectMock });
-      (supabase.from as any).mockReturnValue({ insert: insertMock });
+    it('uses provider_save_availability_rule RPC for a draft rule id', async () => {
+      (supabase.rpc as any).mockResolvedValue({ data: { id: '33333333-4444-5555-6666-777777777777', is_active: true }, error: null });
 
       const result = await dbService.saveAvailabilityRule({
         id: 'rule_123',
@@ -127,9 +111,12 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
         isActive: true,
       });
 
-      expect(supabase.from).toHaveBeenCalledWith('availabilities');
-      expect(insertMock).toHaveBeenCalled();
-      expect(isUuid(insertMock.mock.calls[0][0].id)).toBe(true);
+      expect(supabase.rpc).toHaveBeenCalledWith('provider_save_availability_rule', expect.objectContaining({
+        p_id: null,
+        p_provider_id: 'prov-123',
+        p_start_time: '08:00',
+        p_end_time: '12:00',
+      }));
     });
 
     it('uses the provider exception mutation RPC for a draft exception', async () => {

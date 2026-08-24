@@ -414,27 +414,23 @@ export const dbService = {
 
   async saveAvailabilityRule(rule: Omit<any, 'id'> & { id?: string }): Promise<any> {
     const isUuid = (val?: string) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
-    const isNew = !rule.id || !isUuid(rule.id);
-    const row = {
-      provider_id: rule.providerId,
-      instructor_id: rule.instructorId || null,
-      vehicle_id: rule.vehicleId || null,
-      day_of_week: rule.dayOfWeekNumber,
-      start_time: rule.startTime,
-      end_time: rule.endTime,
-      timezone: rule.timezone || 'America/Sao_Paulo',
-      is_active: rule.isActive,
-    };
-    const query = isNew
-      ? sp.from('availabilities').insert({ ...row, id: crypto.randomUUID() })
-      : sp.from('availabilities').update(row).eq('id', rule.id).eq('provider_id', rule.providerId);
-    const { data, error } = await query.select().single();
+    const { data, error } = await sp.rpc('provider_save_availability_rule', {
+      p_id: rule.id && isUuid(rule.id) ? rule.id : null,
+      p_provider_id: rule.providerId,
+      p_instructor_id: rule.instructorId || null,
+      p_vehicle_id: rule.vehicleId || null,
+      p_day_of_week: rule.dayOfWeekNumber,
+      p_start_time: rule.startTime,
+      p_end_time: rule.endTime,
+      p_timezone: rule.timezone || 'America/Sao_Paulo',
+      p_is_active: rule.isActive !== false,
+    });
     if (error) throw error;
     return data;
   },
 
   async deleteAvailabilityRule(id: string): Promise<void> {
-    const { error } = await sp.from('availabilities').delete().eq('id', id);
+    const { error } = await sp.rpc('provider_delete_availability_rule', { p_id: id });
     if (error) throw error;
   },
 
