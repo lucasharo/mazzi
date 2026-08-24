@@ -14,6 +14,8 @@ const ledger33Path = path.join(workspace, 'supabase', 'migrations', '20260818000
 const ledger33Original = fs.readFileSync(ledger33Path, 'utf8').replaceAll('\r\n', '\n');
 const repair48Path = path.join(workspace, 'supabase', 'migrations', '20260818000048_remediate_student_overlapping_bookings.sql');
 const repair48Original = fs.readFileSync(repair48Path, 'utf8').replaceAll('\r\n', '\n');
+const repair49Path = path.join(workspace, 'supabase', 'migrations', '20260818000049_prevent_student_booking_overlap.sql');
+const repair49Original = fs.readFileSync(repair49Path, 'utf8').replaceAll('\r\n', '\n');
 
 const bookingReference = `alter function public.get_provider_booking_context_public(uuid)\n  set search_path = public, pg_temp;`;
 const bookingGuard = `do $compat$\nbegin\n  if to_regprocedure('public.get_provider_booking_context_public(uuid)') is not null then\n    alter function public.get_provider_booking_context_public(uuid)\n      set search_path = public, pg_temp;\n  end if;\nend\n$compat$;`;
@@ -26,6 +28,8 @@ const ledgerRepair = `INSERT INTO supabase_migrations.schema_migrations (version
 const ledgerNoop = `-- Historical ledger reconciliation is managed by the replay runner in this temporary workspace.`;
 const ledger33Repair = `INSERT INTO supabase_migrations.schema_migrations (version, name, statements)\nVALUES (\n  '20260818000033',\n  'disable_email_account_enumeration',\n  ARRAY[\n    'DROP FUNCTION IF EXISTS public.check_user_email_exists(TEXT);'\n  ]\n)\nON CONFLICT (version) DO NOTHING;`;
 const repair48Marker = `-- ONE_TIME_REPAIR intentionally omitted from empty-database compatibility replay.\n-- Historical execution preserved by Git tag pre-mvp-database-baseline.`;
+const duplicateConstraintRepair = `-- 1. Data Safety Guard: Fail migration if active blocking student overlaps exist in database\nDO $$\nBEGIN\n  IF EXISTS (\n    SELECT 1\n    FROM public.bookings a\n    JOIN public.bookings b\n      ON a.student_id = b.student_id\n     AND a.id < b.id\n     AND a.slot_range && b.slot_range\n    WHERE a.status IN ('PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS')\n      AND b.status IN ('PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS')\n  ) THEN\n    RAISE EXCEPTION 'STUDENT_OVERLAP_EXISTING_DATA: Cannot add exclude_student_overlapping_bookings constraint while overlapping student bookings exist in database.'\n      USING ERRCODE = '23P01';\n  END IF;\nEND $$;\n\n-- 2. Add Exclusion Constraint for Student Overlapping Bookings\nALTER TABLE public.bookings\n  ADD CONSTRAINT exclude_student_overlapping_bookings\n  EXCLUDE USING gist (\n    student_id WITH =,\n    slot_range WITH &&\n  )\n  WHERE (status IN ('PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS'));`;
+const duplicateConstraintMarker = `-- Constraint already created with the same definition by migration 20260818000041.`;
 
 if (original.split(bookingReference).length !== 2) throw new Error('Expected booking forward reference not found exactly once');
 if (original.split(slotReferences).length !== 2) throw new Error('Expected slot forward references not found exactly once');
@@ -44,22 +48,28 @@ if (ledger33Original.split(ledger33Repair).length !== 2) {
 if (!repair48Original.includes('REMEDIATION_PRECONDITION_FAILED') || !repair48Original.includes('f3e4d43a')) {
   throw new Error('Expected migration 48 one-time repair markers were not found');
 }
+if (repair49Original.split(duplicateConstraintRepair).length !== 2) {
+  throw new Error('Expected migration 49 duplicate constraint block was not found exactly once');
+}
 
 const patched = original.replace(bookingReference, bookingGuard).replace(slotReferences, slotGuard);
 const meetingPointPatched = meetingPointOriginal.replace(brokenCoordinateValidation, fixedCoordinateValidation);
 const ledgerPatched = ledgerOriginal.replace(ledgerRepair, ledgerNoop);
 const ledger33Patched = ledger33Original.replace(ledger33Repair, ledgerNoop);
 const repair48Patched = repair48Marker + '\n';
+const repair49Patched = repair49Original.replace(duplicateConstraintRepair, duplicateConstraintMarker);
 fs.writeFileSync(migrationPath, patched);
 fs.writeFileSync(meetingPointPath, meetingPointPatched);
 fs.writeFileSync(ledgerPath, ledgerPatched);
 fs.writeFileSync(ledger33Path, ledger33Patched);
 fs.writeFileSync(repair48Path, repair48Patched);
-console.log(JSON.stringify({ patches: 6, repairs: [
+fs.writeFileSync(repair49Path, repair49Patched);
+console.log(JSON.stringify({ patches: 7, repairs: [
   { migration: '20260815000015_sprint15_security_hardening.sql', type: 'forward_reference', object: 'get_provider_booking_context_public(uuid)', change: 'guard-if-exists' },
   { migration: '20260815000015_sprint15_security_hardening.sql', type: 'forward_reference', object: 'is_offering_slot_available(uuid,timestamptz)', change: 'guard-if-exists' },
   { migration: '20260816000021_student_booking_options.sql', type: 'syntax_repair', object: 'create_booking_hold_at_meeting_point(uuid,uuid,varchar,jsonb)', change: 'close missing IF parenthesis' },
   { migration: '20260818000032_harden_update_my_profile_and_reconcile_migrations.sql', type: 'replay_ledger', object: 'supabase_migrations.schema_migrations', change: 'omit redundant ledger DML managed by runner' },
   { migration: '20260818000033_disable_email_account_enumeration.sql', type: 'replay_ledger', object: 'supabase_migrations.schema_migrations', change: 'omit redundant ledger DML managed by runner' },
-  { migration: '20260818000048_remediate_student_overlapping_bookings.sql', type: 'one-time-repair', object: 'student overlap remediation', change: 'omit on empty replay' }
+  { migration: '20260818000048_remediate_student_overlapping_bookings.sql', type: 'one-time-repair', object: 'student overlap remediation', change: 'omit on empty replay' },
+  { migration: '20260818000049_prevent_student_booking_overlap.sql', type: 'duplicate-schema-drift', object: 'exclude_student_overlapping_bookings', change: 'preserve definition from migration 41' }
 ] }));

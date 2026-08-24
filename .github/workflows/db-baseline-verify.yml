@@ -54,6 +54,7 @@ jobs:
           20260818000032 | replay-ledger | supabase_migrations.schema_migrations | omit redundant ledger DML managed by runner
           20260818000033 | replay-ledger | supabase_migrations.schema_migrations | omit redundant ledger DML managed by runner
           20260818000048 | one-time-repair | student overlap remediation | omit on empty replay
+          20260818000049 | duplicate-schema-drift | exclude_student_overlapping_bookings | preserve definition from migration 41
           EOF
 
       - name: Classify historical DML
