@@ -118,6 +118,21 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
   if (msg.includes('SLOT_NO_LONGER_AVAILABLE')) {
     return 'Esse horário não está mais disponível. Escolha outro horário.';
   }
+  if (msg.includes('ACTIVE_STUDENT_BOOKING')) {
+    return 'Finalize ou aguarde suas aulas ativas antes de migrar para o MAZZI PRO.';
+  }
+  if (msg.includes('PENDING_STUDENT_PAYMENT')) {
+    return 'Existe um pagamento de aula pendente. Conclua ou aguarde a expiração antes de migrar.';
+  }
+  if (msg.includes('STUDENT_DISPUTE_OPEN')) {
+    return 'Existe uma contestação de aula em aberto. Resolva-a antes de migrar.';
+  }
+  if (msg.includes('IDENTITY_INCOMPLETE')) {
+    return 'Complete seus dados de identidade antes de migrar para o MAZZI PRO.';
+  }
+  if (msg.includes('STUDENT_TO_PRO_ROLE_CONFLICT')) {
+    return 'Esta conta possui uma função incompatível com a migração para o MAZZI PRO.';
+  }
 
   // 6. Technical Error Check & Fallback Guard
   const isTechnicalMsg =

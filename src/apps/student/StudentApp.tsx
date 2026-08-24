@@ -33,6 +33,7 @@ import { formatDateBR, formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
+import { StudentProMigrationCard } from './components/StudentProMigrationCard';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { maskCpf } from '../../utils/cpf';
 import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
@@ -1186,6 +1187,8 @@ function applyStrictProviderFilters(
                   <span className="text-[11px] font-semibold text-white/60">Aulas Agendadas</span>
                 </div>
               </div>
+
+              <StudentProMigrationCard />
 
               <div className="border-t border-[var(--mazzi-border)] pt-4">
                 <Button variant="ghost" size="sm" className="w-full text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void logout(); }}>

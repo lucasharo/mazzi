@@ -104,6 +104,28 @@ export async function onboardInstructor() {
   return data;
 }
 
+export interface StudentToProMigrationStatus {
+  student_profile_active: boolean;
+  instructor_role_active: boolean;
+  provider_id: string | null;
+  provider_status: string | null;
+  can_migrate: boolean;
+  blockers: string[];
+  active_booking_count: number;
+}
+
+export async function getStudentToProMigrationStatus(): Promise<StudentToProMigrationStatus> {
+  const { data, error } = await supabase.rpc('get_my_student_to_pro_migration_status');
+  if (error) throw new Error(error.message);
+  return data as StudentToProMigrationStatus;
+}
+
+export async function migrateStudentProfileToInstructor() {
+  const { data, error } = await supabase.rpc('migrate_my_student_profile_to_instructor');
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 /**
  * Verify 6-digit OTP for email confirmation (Signup)
  */

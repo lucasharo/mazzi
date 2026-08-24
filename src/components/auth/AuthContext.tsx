@@ -7,7 +7,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { UserRole } from '../../types';
 import { AppPermission, resolveUserPermissions } from '../../domain/rbac';
 import { AuthSessionState } from '../../lib/auth-service';
-import { onboardInstructor as onboardInstructorService, signInWithEmail, signUpPublicAccount as signUpPublicAccountService, type SignUpParams } from '../../lib/auth-service';
+import { onboardInstructor as onboardInstructorService, getStudentToProMigrationStatus as getStudentToProMigrationStatusService, migrateStudentProfileToInstructor as migrateStudentProfileToInstructorService, signInWithEmail, signUpPublicAccount as signUpPublicAccountService, type SignUpParams, type StudentToProMigrationStatus } from '../../lib/auth-service';
 import { supabase } from '../../lib/supabase';
 
 interface AuthContextType extends AuthSessionState {
@@ -17,6 +17,8 @@ interface AuthContextType extends AuthSessionState {
   beginInstructorOnboarding: () => void;
   cancelInstructorOnboarding: () => void;
   onboardInstructor: () => Promise<Awaited<ReturnType<typeof onboardInstructorService>>>;
+  getStudentToProMigrationStatus: () => Promise<StudentToProMigrationStatus>;
+  migrateStudentProfileToInstructor: () => Promise<Awaited<ReturnType<typeof migrateStudentProfileToInstructorService>>>;
   logout: () => Promise<void>;
   beginPasswordRecovery: () => void;
   completePasswordRecovery: () => Promise<void>;
@@ -351,6 +353,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const getStudentToProMigrationStatus = () => getStudentToProMigrationStatusService();
+  const migrateStudentProfileToInstructor = async () => {
+    const result = await migrateStudentProfileToInstructorService();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session?.user) throw new Error('AUTH_SESSION_UNAVAILABLE: Não foi possível reidratar sua sessão.');
+    await handleSession(session);
+    return result;
+  };
+
   const logout = async () => {
     instructorOnboardingRef.current = false;
     setAuthState(prev => ({ ...prev, isLoading: true }));
@@ -385,6 +396,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         beginInstructorOnboarding,
         cancelInstructorOnboarding,
         onboardInstructor,
+        getStudentToProMigrationStatus,
+        migrateStudentProfileToInstructor,
         logout,
         beginPasswordRecovery,
         completePasswordRecovery,
