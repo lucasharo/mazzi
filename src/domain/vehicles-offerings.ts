@@ -20,6 +20,11 @@ import {
 /** Duração única de aula disponível no MVP, conforme a hora-aula do CONTRAN. */
 export const MVP_LESSON_DURATION_MINUTES = 50;
 
+/** States that require an administrator review before the vehicle can be offered. */
+export function isVehicleAwaitingAdminReview(status: VehicleStatus): boolean {
+  return status === 'PENDING' || status === 'UNDER_REVIEW';
+}
+
 export class VehicleDomainError extends Error {
   constructor(
     message: string,

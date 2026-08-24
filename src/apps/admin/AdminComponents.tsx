@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/Badge';
 import { formatCentsToBRL } from '../../domain/money';
 import { PlatformConfiguration } from '../../domain/platform-config';
 import { AuthContext } from '../../domain/rbac';
+import { isVehicleAwaitingAdminReview } from '../../domain/vehicles-offerings';
 
 // Utility for masking plates
 export function formatMaskedPlate(plate: string, isExpanded: boolean): string {
@@ -56,7 +57,7 @@ export const DashboardTab: React.FC<{
   const pendingReviewProviders = providers.filter((p) => p.status === 'PENDING_REVIEW').length;
   const pendingDocs = complianceDocs.filter((d) => d.status === 'UNDER_REVIEW').length;
   const expiringDocsCount = complianceDocs.filter((d) => d.status === 'EXPIRED').length;
-  const vehiclesUnderReview = vehicles.filter((v) => v.status === 'UNDER_REVIEW').length;
+  const vehiclesUnderReview = vehicles.filter((v) => isVehicleAwaitingAdminReview(v.status)).length;
   
   const todayParts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Sao_Paulo',
@@ -911,7 +912,9 @@ export const VehiclesTab: React.FC<{
   const [actionType, setActionType] = useState<'REJECT' | 'BLOCK' | null>(null);
   const [reason, setReason] = useState<string>('');
 
-  const filteredVehicles = vehicles.filter((v) => filterStatus === 'ALL' || v.status === filterStatus);
+  const filteredVehicles = vehicles.filter((v) => filterStatus === 'AWAITING_REVIEW'
+    ? isVehicleAwaitingAdminReview(v.status)
+    : filterStatus === 'ALL' || v.status === filterStatus);
   const selectedVeh = vehicles.find((v) => v.id === selectedVehId) || filteredVehicles[0];
   const selectedVehProvider = selectedVeh ? providers.find((p) => p.id === selectedVeh.providerId) : null;
 
@@ -940,7 +943,9 @@ export const VehiclesTab: React.FC<{
             }}
             className="w-full text-xs rounded-xl border-slate-200 bg-white p-2 border"
           >
-            <option value="UNDER_REVIEW">Em Revisão ({vehicles.filter(v => v.status === 'UNDER_REVIEW').length})</option>
+            <option value="AWAITING_REVIEW">Aguardando aprovação ({vehicles.filter(v => isVehicleAwaitingAdminReview(v.status)).length})</option>
+            <option value="PENDING">Pendente novo ({vehicles.filter(v => v.status === 'PENDING').length})</option>
+            <option value="UNDER_REVIEW">Em revisão ({vehicles.filter(v => v.status === 'UNDER_REVIEW').length})</option>
             <option value="ACTIVE">Ativos ({vehicles.filter(v => v.status === 'ACTIVE').length})</option>
             <option value="BLOCKED">Bloqueados ({vehicles.filter(v => v.status === 'BLOCKED').length})</option>
             <option value="INACTIVE">Inativos ({vehicles.filter(v => v.status === 'INACTIVE').length})</option>
@@ -1032,7 +1037,7 @@ export const VehiclesTab: React.FC<{
             )}
 
             {/* Ações Homologação */}
-            {selectedVeh.status === 'UNDER_REVIEW' && (
+            {isVehicleAwaitingAdminReview(selectedVeh.status) && (
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                 <div>
                   <h4 className="font-extrabold text-xs text-slate-900 uppercase">Ações Administrativas da Frota</h4>

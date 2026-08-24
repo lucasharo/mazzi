@@ -11,11 +11,20 @@ import {
   enforceOfferingOwnership,
   validateVehicleActivationPermission,
   validateOfferingActivationPermission,
+  isVehicleAwaitingAdminReview,
 } from '../src/domain/vehicles-offerings';
 import { Provider, Vehicle, ServiceOffering } from '../src/types';
 import { maskBRLInput } from '../src/lib/input-masks';
 
 describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
+  it('classifies new and material-review vehicles in the admin approval queue', () => {
+    expect(isVehicleAwaitingAdminReview('PENDING')).toBe(true);
+    expect(isVehicleAwaitingAdminReview('UNDER_REVIEW')).toBe(true);
+    expect(isVehicleAwaitingAdminReview('ACTIVE')).toBe(false);
+    expect(isVehicleAwaitingAdminReview('INACTIVE')).toBe(false);
+    expect(isVehicleAwaitingAdminReview('BLOCKED')).toBe(false);
+  });
+
   const mockProvider: Provider = {
     id: 'prov_100',
     type: 'INSTRUCTOR',

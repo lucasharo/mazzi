@@ -27,6 +27,7 @@ import {
   evaluateProviderEligibility,
   DEFAULT_COMPLIANCE_REQUIREMENTS,
 } from '../../domain/compliance';
+import { isVehicleAwaitingAdminReview } from '../../domain/vehicles-offerings';
 
 // Modular components import
 import {
@@ -338,7 +339,7 @@ export const AdminApp: React.FC = () => {
           { id: 'dashboard', label: 'Visão Geral', icon: LayoutDashboard },
           { id: 'providers', label: 'Prestadores', icon: UserCheck, count: providers.filter((p) => p.status === 'PENDING_REVIEW').length },
           { id: 'compliance', label: 'Compliance', icon: ShieldCheck, count: complianceDocs.filter((d) => d.status === 'UNDER_REVIEW').length },
-          { id: 'vehicles', label: 'Veículos', icon: Car, count: vehicles.filter((v) => v.status === 'UNDER_REVIEW').length },
+          { id: 'vehicles', label: 'Veículos', icon: Car, count: vehicles.filter((v) => isVehicleAwaitingAdminReview(v.status)).length },
           { id: 'bookings', label: 'Reservas', icon: Calendar },
           { id: 'financial', label: 'Financeiro', icon: WalletCards },
           { id: 'analytics', label: 'Analytics', icon: BarChart3 },
