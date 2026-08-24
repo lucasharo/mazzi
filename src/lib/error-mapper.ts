@@ -108,6 +108,12 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
   if (msg.includes('EMERGENCY_BLOCK_INVALID_RANGE')) {
     return 'A hora final deve ser posterior à hora inicial.';
   }
+  if (msg.includes('AVAILABILITY_BLOCK_BOOKING_CONFLICT')) {
+    return 'Existe uma aula ou reserva ativa em um dos dias selecionados. Ajuste o período antes de criar o bloqueio.';
+  }
+  if (msg.includes('SLOT_NO_LONGER_AVAILABLE')) {
+    return 'Esse horário não está mais disponível. Escolha outro horário.';
+  }
 
   // 6. Technical Error Check & Fallback Guard
   const isTechnicalMsg =

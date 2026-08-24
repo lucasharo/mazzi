@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { generateEmergencyBlockableSlots } from '../src/domain/emergency-block';
 
 const root = process.cwd();
-const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20260824020000_task_091_exception_active_and_override_parity.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20260824010806_task_091_exception_active_and_override_parity.sql'), 'utf8');
 const date = '2026-08-26';
 const now = new Date('2026-08-20T12:00:00-03:00');
 const rule = { isActive: true, dayOfWeekNumber: 3, startTime: '08:00', endTime: '18:00' };

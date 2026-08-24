@@ -452,16 +452,24 @@ export const dbService = {
       end_at: exception.endAt,
       is_active: exception.isActive !== false,
     };
-    const query = isNew
-      ? sp.from('availability_exceptions').insert({ ...row, id: crypto.randomUUID() })
-      : sp.from('availability_exceptions').update(row).eq('id', exception.id);
-    const { data, error } = await query.select().single();
+    const { data, error } = await sp.rpc('provider_save_availability_exception', {
+      p_id: isNew ? null : exception.id,
+      p_provider_id: row.provider_id,
+      p_instructor_id: row.instructor_id,
+      p_vehicle_id: row.vehicle_id,
+      p_type: row.type,
+      p_reason_category: row.reason_category,
+      p_reason: row.reason,
+      p_start_at: row.start_at,
+      p_end_at: row.end_at,
+      p_is_active: row.is_active,
+    });
     if (error) throw error;
-    return data;
+    return Array.isArray(data) ? data[0] : data;
   },
 
   async deleteAvailabilityException(id: string): Promise<void> {
-    const { error } = await sp.from('availability_exceptions').delete().eq('id', id);
+    const { error } = await sp.rpc('provider_delete_availability_exception', { p_id: id });
     if (error) throw error;
   },
 
@@ -708,12 +716,12 @@ export const dbService = {
   },
 
   async deactivateAvailabilityException(id: string): Promise<void> {
-    const { error } = await sp.from('availability_exceptions').update({ is_active: false }).eq('id', id);
+    const { error } = await sp.rpc('provider_set_availability_exception_active', { p_id: id, p_is_active: false });
     if (error) throw error;
   },
 
   async activateAvailabilityException(id: string): Promise<void> {
-    const { error } = await sp.from('availability_exceptions').update({ is_active: true }).eq('id', id);
+    const { error } = await sp.rpc('provider_set_availability_exception_active', { p_id: id, p_is_active: true });
     if (error) throw error;
   },
 

@@ -298,24 +298,11 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
       expect(isUuid(insertMock.mock.calls[0][0].id)).toBe(true);
     });
 
-    it('executes INSERT for draft exception id (exc_...)', async () => {
-      const selectMock = vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: '44444444-5555-6666-7777-888888888888',
-            provider_id: 'prov-123',
-            type: 'BLOCK',
-            reason_category: 'PERSONAL',
-            reason: 'Folga médica',
-            start_at: '2026-08-20T08:00:00.000-03:00',
-            end_at: '2026-08-20T12:00:00.000-03:00',
-          },
-          error: null,
-        }),
+    it('uses the provider exception mutation RPC for a draft exception', async () => {
+      (supabase.rpc as any).mockResolvedValue({
+        data: [{ id: '44444444-5555-6666-7777-888888888888', provider_id: 'prov-123', type: 'BLOCK' }],
+        error: null,
       });
-
-      const insertMock = vi.fn().mockReturnValue({ select: selectMock });
-      (supabase.from as any).mockReturnValue({ insert: insertMock });
 
       const result = await dbService.saveAvailabilityException({
         id: 'exc_456',
@@ -327,9 +314,11 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
         endAt: '2026-08-20T12:00:00.000-03:00',
       });
 
-      expect(supabase.from).toHaveBeenCalledWith('availability_exceptions');
-      expect(insertMock).toHaveBeenCalled();
-      expect(isUuid(insertMock.mock.calls[0][0].id)).toBe(true);
+      expect(supabase.rpc).toHaveBeenCalledWith('provider_save_availability_exception', expect.objectContaining({
+        p_id: null,
+        p_provider_id: 'prov-123',
+        p_type: 'BLOCK',
+      }));
     });
   });
 
