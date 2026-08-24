@@ -479,6 +479,30 @@ export function doesDocumentSatisfyRequirement(
   return documentType === requirementType;
 }
 
+/** USER_GLOBAL is deliberately a closed set; provider and contextual documents
+ * must never be promoted into the instructor's global compliance scope. */
+export const USER_GLOBAL_COMPLIANCE_DOCUMENT_TYPES = new Set([
+  'CNH_EAR',
+  'CREDENTIAL_DETRAN',
+  'CREDENTIAL_DETRAN_SP',
+  'CRIMINAL_BACKGROUND',
+]);
+
+export function doesComplianceDocumentApplyToProvider(
+  document: ComplianceDocument,
+  provider: Provider,
+): boolean {
+  if (document.scope === 'PROVIDER') {
+    return document.providerId === provider.id;
+  }
+  if (document.scope === 'USER_GLOBAL') {
+    return provider.type === 'INSTRUCTOR'
+      && document.userId === provider.userId
+      && USER_GLOBAL_COMPLIANCE_DOCUMENT_TYPES.has(document.type);
+  }
+  return false;
+}
+
 function documentTimestamp(document: ComplianceDocument): number {
   const timestamp = new Date(document.uploadedAt).getTime();
   return Number.isNaN(timestamp) ? 0 : timestamp;
@@ -522,12 +546,7 @@ export function evaluateProviderEligibility(
   const approvedDocuments: ComplianceDocument[] = [];
   const ineligibilityReasons: string[] = [];
 
-  const scopedDocuments = documents.filter((doc) =>
-    doc.providerId === provider.id ||
-    (provider.type === 'INSTRUCTOR' &&
-      doc.scope === 'USER_GLOBAL' &&
-      doc.userId === provider.userId)
-  );
+  const scopedDocuments = documents.filter((doc) => doesComplianceDocumentApplyToProvider(doc, provider));
 
   // Evaluate each requirement independently. Historical submissions are not
   // blockers when a newer approved, non-expired submission satisfies the same

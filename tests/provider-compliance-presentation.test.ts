@@ -7,7 +7,7 @@ const provider: Provider = { id: 'provider-1', userId: 'user-1', name: 'Instruto
 const requirement = DEFAULT_COMPLIANCE_REQUIREMENTS.find((item) => item.providerType === 'INSTRUCTOR' && item.isMandatory) || DEFAULT_COMPLIANCE_REQUIREMENTS.find((item) => item.providerType === 'INSTRUCTOR');
 const at = new Date('2026-08-22T00:00:00Z');
 function doc(status: ComplianceDocument['status'], uploadedAt = '2026-08-20T00:00:00Z', expiresAt = '2027-08-20T00:00:00Z'): ComplianceDocument {
-  return { id: `${status}-${uploadedAt}`, providerId: provider.id, type: requirement!.documentType, title: requirement!.title, status, fileName: 'document.pdf', storagePath: 'document.pdf', uploadedAt, expiresAt };
+  return { id: `${status}-${uploadedAt}`, providerId: provider.id, scope: 'PROVIDER', type: requirement!.documentType, title: requirement!.title, status, fileName: 'document.pdf', storagePath: 'document.pdf', uploadedAt, expiresAt };
 }
 function presentation(statuses: ComplianceDocument['status'][], providerStatus: Provider['status'] = 'ACTIVE', expiresAt?: string) {
   const current = { ...provider, status: providerStatus };

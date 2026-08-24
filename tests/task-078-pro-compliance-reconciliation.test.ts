@@ -5,7 +5,7 @@ import { ComplianceDocument, ComplianceRequirement, Provider } from '../src/type
 const provider: Provider = { id: 'provider-1', userId: 'user-1', name: 'Instrutor', type: 'INSTRUCTOR', status: 'ACTIVE', ratingAverage: 5, ratingCount: 1, neighborhood: 'Pinheiros', city: 'São Paulo', state: 'SP', categories: ['B'], transmissions: ['MANUAL'], startingPriceInCents: 14500, isVerified: true };
 const requirement: ComplianceRequirement = { id: 'req-cnh', country: 'BR', jurisdiction: 'FEDERAL', providerType: 'INSTRUCTOR', documentType: 'CNH_EAR', title: 'CNH com EAR', description: 'Teste', isMandatory: true, sourceType: 'FEDERAL_LAW', sourceReference: 'Teste', regulatoryStatus: 'OFFICIALLY_VALIDATED', effectiveFrom: '2026-01-01T00:00:00Z' };
 const at = '2026-08-22T00:00:00Z';
-function doc(overrides: Partial<ComplianceDocument>): ComplianceDocument { return { id: crypto.randomUUID(), providerId: provider.id, type: 'CNH_EAR', title: 'CNH com EAR', status: 'PENDING', fileName: 'document.pdf', storagePath: 'document.pdf', uploadedAt: '2026-08-20T00:00:00Z', expiresAt: '2027-08-20T00:00:00Z', ...overrides }; }
+function doc(overrides: Partial<ComplianceDocument>): ComplianceDocument { return { id: crypto.randomUUID(), providerId: provider.id, scope: 'PROVIDER', type: 'CNH_EAR', title: 'CNH com EAR', status: 'PENDING', fileName: 'document.pdf', storagePath: 'document.pdf', uploadedAt: '2026-08-20T00:00:00Z', expiresAt: '2027-08-20T00:00:00Z', ...overrides }; }
 function evaluate(documents: ComplianceDocument[]) { return evaluateProviderEligibility(provider, documents, [requirement], new Date(at)); }
 
 describe('TASK-078 PRO compliance reconciliation', () => {

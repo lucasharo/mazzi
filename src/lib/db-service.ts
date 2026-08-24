@@ -1362,35 +1362,30 @@ export const dbService = {
   },
 
   async saveComplianceDoc(doc: Partial<ComplianceDocument> & { scope?: 'USER_GLOBAL' | 'PROVIDER' | 'MEMBERSHIP' | 'VEHICLE' }): Promise<ComplianceDocument> {
-    const isNew = !doc.id;
-    const dbRow = {
-      provider_id: doc.providerId,
-      user_id: doc.userId || null,
-      document_type: doc.type as any,
-      storage_path: doc.storagePath,
-      status: doc.status || 'PENDING',
-      rejection_reason: doc.rejectionReason || null,
-      scope: doc.scope || (doc.providerId ? 'PROVIDER' : 'USER_GLOBAL'),
-    };
-
-    if (isNew) {
-      const { data, error } = await sp
-        .from('compliance_documents')
-        .insert({ ...dbRow, id: crypto.randomUUID() })
-        .select()
-        .single();
-      if (error) throw error;
-      return mapComplianceFromDb(data);
-    } else {
-      const { data, error } = await sp
-        .from('compliance_documents')
-        .update(dbRow)
-        .eq('id', doc.id!)
-        .select()
-        .single();
+    const scope = doc.scope || (doc.providerId ? 'PROVIDER' : 'USER_GLOBAL');
+    if (scope === 'USER_GLOBAL') {
+      return this.submitMyGlobalComplianceDocument(doc.type!, doc.storagePath!, doc.expiresAt);
+    }
+    if (scope !== 'PROVIDER' || !doc.providerId || !doc.type || !doc.storagePath) {
+      throw new Error('COMPLIANCE_SUBMISSION_SCOPE_UNSUPPORTED');
+    }
+    if (doc.type === 'MAZZI_TERMS_ACCEPTANCE') {
+      const version = doc.storagePath.match(/^acceptance:\/\/mazzi-ethics\/(.+)$/)?.[1] || 'v1';
+      const { data, error } = await sp.rpc('provider_accept_mazzi_terms', {
+        p_provider_id: doc.providerId,
+        p_terms_version: version,
+      });
       if (error) throw error;
       return mapComplianceFromDb(data);
     }
+    const { data, error } = await sp.rpc('provider_submit_compliance_document', {
+      p_provider_id: doc.providerId,
+      p_document_type: doc.type,
+      p_storage_path: doc.storagePath,
+      p_expires_at: doc.expiresAt || null,
+    });
+    if (error) throw error;
+    return mapComplianceFromDb(data);
   },
 
   async listMyGlobalCompliance(): Promise<ComplianceDocument[]> {

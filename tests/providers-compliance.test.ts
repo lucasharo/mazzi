@@ -435,6 +435,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
     const validCnh: ComplianceDocument = {
       id: 'doc_cnh',
       providerId: 'prov_inst_1',
+      scope: 'PROVIDER',
       type: 'CNH_EAR',
       title: 'CNH EAR',
       status: 'APPROVED',
@@ -447,6 +448,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
     const validCredencial: ComplianceDocument = {
       id: 'doc_cred',
       providerId: 'prov_inst_1',
+      scope: 'PROVIDER',
       type: 'CREDENTIAL_DETRAN',
       title: 'Credencial DETRAN',
       status: 'APPROVED',
@@ -459,6 +461,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
     const validAntecedentes: ComplianceDocument = {
       id: 'doc_ant',
       providerId: 'prov_inst_1',
+      scope: 'PROVIDER',
       type: 'CRIMINAL_BACKGROUND',
       title: 'Certidão Antecedentes',
       status: 'APPROVED',
@@ -471,6 +474,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
     const validCredencialSp: ComplianceDocument = {
       id: 'doc_cred_sp',
       providerId: 'prov_inst_1',
+      scope: 'PROVIDER',
       type: 'CREDENTIAL_DETRAN_SP',
       title: 'Credencial DETRAN-SP',
       status: 'APPROVED',
@@ -483,6 +487,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
     const validTermoMazzi: ComplianceDocument = {
       id: 'doc_termo',
       providerId: 'prov_inst_1',
+      scope: 'PROVIDER',
       type: 'MAZZI_TERMS_ACCEPTANCE',
       title: 'Termo de Conduta MAZZI',
       status: 'APPROVED',
@@ -561,6 +566,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
       {
         id: 'doc_1',
         providerId: 'prov_pending_1',
+        scope: 'PROVIDER',
         type: 'CNH_EAR',
         title: 'CNH EAR',
         status: 'APPROVED',
@@ -572,6 +578,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
       {
         id: 'doc_2',
         providerId: 'prov_pending_1',
+        scope: 'PROVIDER',
         type: 'CREDENTIAL_DETRAN',
         title: 'Credencial DETRAN',
         status: 'APPROVED',
@@ -583,6 +590,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
       {
         id: 'doc_3',
         providerId: 'prov_pending_1',
+        scope: 'PROVIDER',
         type: 'CRIMINAL_BACKGROUND',
         title: 'Antecedentes',
         status: 'APPROVED',
@@ -594,6 +602,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
       {
         id: 'doc_4',
         providerId: 'prov_pending_1',
+        scope: 'PROVIDER',
         type: 'CREDENTIAL_DETRAN_SP',
         title: 'Credencial DETRAN-SP',
         status: 'APPROVED',
@@ -605,6 +614,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
       {
         id: 'doc_5',
         providerId: 'prov_pending_1',
+        scope: 'PROVIDER',
         type: 'MAZZI_TERMS_ACCEPTANCE',
         title: 'Termo de Conduta MAZZI',
         status: 'APPROVED',

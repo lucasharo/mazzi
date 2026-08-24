@@ -23,8 +23,8 @@ describe('compliance document type alignment', () => {
     }
   });
 
-  it('persists the canonical type and only normalizes legacy CNH on read', () => {
-    expect(dbService).toContain('document_type: doc.type as any');
+  it('submits the canonical type through the secure RPC and only normalizes legacy CNH on read', () => {
+    expect(dbService).toContain("p_document_type: doc.type");
     expect(dbService).toContain("row.document_type === 'CNH' ? 'CNH_EAR' : row.document_type");
   });
 });
