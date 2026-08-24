@@ -44,14 +44,14 @@ jobs:
           rg -n -i 'alter function public\.|revoke .*on function public\.|grant .*on function public\.|comment on function public\.|drop function|alter table public\.|alter type|alter policy|drop policy|alter trigger' supabase/migrations > artifacts/historical-reference-candidates.txt
           test -s artifacts/historical-reference-candidates.txt || { echo HISTORICAL_REFERENCE_INVENTORY_INVALID; exit 1; }
           cat > artifacts/historical-forward-references.txt <<'EOF'
-20260815000015_sprint15_security_hardening.sql | public.get_provider_booking_context_public(uuid) | 20260818000051_harden_category_b_booking_funnel.sql | guard-if-exists
-20260815000015_sprint15_security_hardening.sql | public.is_offering_slot_available(uuid,timestamptz) | 20260818000040_restore_slot_contract_and_readonly_availability.sql | guard-if-exists
-EOF
+          20260815000015_sprint15_security_hardening.sql | public.get_provider_booking_context_public(uuid) | 20260818000051_harden_category_b_booking_funnel.sql | guard-if-exists
+          20260815000015_sprint15_security_hardening.sql | public.is_offering_slot_available(uuid,timestamptz) | 20260818000040_restore_slot_contract_and_readonly_availability.sql | guard-if-exists
+          EOF
           cat > artifacts/historical-compatibility-ledger.txt <<'EOF'
-20260815000015 | forward-reference | booking context | guard-if-exists
-20260815000015 | forward-reference | slot helper | guard-if-exists
-20260816000021 | syntax | meeting-point RPC | close missing parenthesis
-EOF
+          20260815000015 | forward-reference | booking context | guard-if-exists
+          20260815000015 | forward-reference | slot helper | guard-if-exists
+          20260816000021 | syntax | meeting-point RPC | close missing parenthesis
+          EOF
 
       - name: Prepare isolated replay workspace
         run: |
