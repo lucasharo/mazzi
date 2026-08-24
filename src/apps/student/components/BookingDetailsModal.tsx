@@ -177,27 +177,27 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </Button>
       )}
 
-      {isCompleted && onReview && (
-        <Button
-          type="button"
-          variant="primary"
-          size="sm"
-          className="w-full rounded-2xl font-bold shadow-md transition-all hover:shadow-lg"
-          onClick={() => onReview(booking)}
-          leftIcon={<Star className="h-4 w-4" aria-hidden="true" />}
-          aria-label="Avaliar instrutor"
-        >
-          Avaliar instrutor
-        </Button>
-      )}
-
       <div className="flex w-full items-center gap-3">
+        {isCompleted && onReview && (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className={`${onOpenChat ? 'w-1/2' : 'w-full'} rounded-2xl font-bold shadow-md transition-all hover:shadow-lg`}
+            onClick={() => onReview(booking)}
+            leftIcon={<Star className="h-4 w-4" aria-hidden="true" />}
+            aria-label="Avaliar instrutor"
+          >
+            Avaliar instrutor
+          </Button>
+        )}
+
         {onOpenChat && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className={`${isUpcoming ? 'w-1/2' : 'w-full'} rounded-2xl border-slate-200 bg-white font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md`}
+            className={`${isUpcoming || (isCompleted && onReview) ? 'w-1/2' : 'w-full'} rounded-2xl border-slate-200 bg-white font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md`}
             onClick={() => onOpenChat(booking)}
             leftIcon={<MessageSquare className="h-4 w-4 text-slate-600" aria-hidden="true" />}
             aria-label="Abrir conversa no chat sobre esta reserva"
