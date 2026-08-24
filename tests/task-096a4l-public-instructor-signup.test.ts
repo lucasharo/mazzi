@@ -9,7 +9,7 @@ const authService = fs.readFileSync(path.join(root, 'src/lib/auth-service.ts'), 
 const instructorRoot = fs.readFileSync(path.join(root, 'src/entrypoints/instructor/InstructorRoot.tsx'), 'utf8');
 const providerApp = fs.readFileSync(path.join(root, 'src/apps/provider/ProviderApp.tsx'), 'utf8');
 const signupIdentityMigration = fs.readFileSync(
-  path.join(root, 'supabase/migrations/20260824193652_persist_public_signup_identity.sql'),
+  path.join(root, 'supabase/migrations/20260824225359_20260824193652_persist_public_signup_identity.sql'),
   'utf8',
 );
 
