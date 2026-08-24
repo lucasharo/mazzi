@@ -3,7 +3,7 @@ import { Booking } from '../../types';
 import { formatDateBR, formatTimeRange } from '../../lib/date-format';
 import { formatMeetingPoint } from '../../lib/meeting-point';
 import { formatCentsToBRL } from '../../domain/money';
-import { PrimaryButton, SecondaryButton } from './Button';
+import { PrimaryButton } from './Button';
 import {
   Calendar,
   Clock,
@@ -177,7 +177,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
             </PrimaryButton>
           )}
           {onViewDetails && (
-            <SecondaryButton
+            <PrimaryButton
               type="button"
               size="sm"
               className="min-h-11 px-4 text-xs font-bold shadow-xs"
@@ -186,7 +186,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
               aria-label="Ver detalhes completos da reserva"
             >
               Detalhes
-            </SecondaryButton>
+            </PrimaryButton>
           )}
         </div>
       </div>
