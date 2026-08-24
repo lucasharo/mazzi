@@ -73,7 +73,7 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
 
-        <div className={`mazzi-modal-content p-6 overflow-y-auto flex-1 min-h-0 ${footer ? 'pb-0' : ''}`}>{children}</div>
+        <div className={`mazzi-modal-content p-6 overflow-y-auto flex-1 min-h-0 ${footer ? 'pb-28' : ''}`}>{children}</div>
 
         {footer && <ModalActionFooter align="right">{footer}</ModalActionFooter>}
       </div>
