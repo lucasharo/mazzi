@@ -29,22 +29,37 @@ jobs:
       - name: Verify Supabase CLI
         run: npx --yes supabase@${SUPABASE_CLI_VERSION} --version
 
-      - name: Replay original migrations
+      - name: Collect DML inventory
         run: |
-          npx --yes supabase@${SUPABASE_CLI_VERSION} start
-          npx --yes supabase@${SUPABASE_CLI_VERSION} db reset
+          mkdir -p artifacts
+          rg -n -i '\\b(insert|update|delete|merge|copy)\\b' supabase/migrations > artifacts/dml-inventory.txt || true
+          printf 'DML_MATCHES=' >> artifacts/dml-inventory.txt
+          rg -n -i '\\b(insert|update|delete|merge|copy)\\b' supabase/migrations | wc -l >> artifacts/dml-inventory.txt || true
+
+      - name: Collect forward-reference inventory
+        run: |
+          mkdir -p artifacts
+          rg -n -i 'alter function public\\.|revoke .*on function public\\.|grant .*on function public\\.|comment on function public\\.|drop function|alter table public\\.|alter type|alter policy|drop policy|alter trigger' supabase/migrations > artifacts/historical-forward-references.txt || true
+
+      - name: Prepare isolated replay workspace
+        run: |
+          rm -rf /tmp/mazzi-historical-replay
+          cp -a . /tmp/mazzi-historical-replay
+          node scripts/database/prepare-historical-replay.mjs /tmp/mazzi-historical-replay | tee artifacts/replay-compatibility.json
+
+      - name: Replay compatible historical migrations
+        run: |
+          set -o pipefail
+          cd /tmp/mazzi-historical-replay
+          npx --yes supabase@${SUPABASE_CLI_VERSION} start 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/historical-replay.log"
+          npx --yes supabase@${SUPABASE_CLI_VERSION} db reset 2>&1 | tee -a "$GITHUB_WORKSPACE/artifacts/historical-replay.log"
 
       - name: Capture original schema contract
         run: |
           mkdir -p artifacts/original
-          npx --yes supabase@${SUPABASE_CLI_VERSION} db dump --local --schema public --file artifacts/original/public-schema.sql
+          cd /tmp/mazzi-historical-replay
+          npx --yes supabase@${SUPABASE_CLI_VERSION} db dump --local --schema public --file "$GITHUB_WORKSPACE/artifacts/original/public-schema.sql"
           sha256sum artifacts/original/public-schema.sql | tee artifacts/original/public-schema.sha256
-
-      - name: Collect DML inventory
-        run: |
-          rg -n -i '\\b(insert|update|delete|merge|copy)\\b' supabase/migrations > artifacts/dml-inventory.txt || true
-          printf 'DML_MATCHES=' >> artifacts/dml-inventory.txt
-          rg -n -i '\\b(insert|update|delete|merge|copy)\\b' supabase/migrations | wc -l >> artifacts/dml-inventory.txt || true
 
       - name: Collect object inventory
         run: |
@@ -59,11 +74,12 @@ jobs:
           union all select 'rls_tables', count(*)::text from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity
           union all select 'policies', count(*)::text from pg_policies where schemaname='public';
           SQL
-          npx --yes supabase@${SUPABASE_CLI_VERSION} db query --local --file /tmp/object-inventory.sql > artifacts/object-inventory.txt
+          cd /tmp/mazzi-historical-replay
+          npx --yes supabase@${SUPABASE_CLI_VERSION} db query --local --file /tmp/object-inventory.sql > "$GITHUB_WORKSPACE/artifacts/object-inventory.txt"
 
       - name: Generate squash in isolated workspace
         run: |
-          cp -a . /tmp/mazzi-baseline-workspace
+          cp -a /tmp/mazzi-historical-replay /tmp/mazzi-baseline-workspace
           cd /tmp/mazzi-baseline-workspace
           npx --yes supabase@${SUPABASE_CLI_VERSION} migration squash --local --version 20260824130725
           mkdir -p "$GITHUB_WORKSPACE/artifacts/squash"
@@ -71,6 +87,7 @@ jobs:
           find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort
 
       - name: Upload baseline evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mazzi-mvp-baseline-evidence
