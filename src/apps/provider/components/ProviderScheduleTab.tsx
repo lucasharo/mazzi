@@ -288,10 +288,11 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     for (let index = 0; index < 30; index += 1) {
       const date = new Date(base); date.setDate(base.getDate() + index);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      result[key] = generateEmergencyBlockableSlots({ date: key, rules: availabilityRules, bookings, globalBlocks: instructorGlobalBlocks || [], exceptions: availabilityExceptions });
+      const scheduleOffering = offerings.find((offering) => offering.instructorId) || offerings[0];
+      result[key] = generateEmergencyBlockableSlots({ date: key, rules: availabilityRules, bookings, globalBlocks: instructorGlobalBlocks || [], exceptions: availabilityExceptions, providerId: scheduleOffering?.providerId, instructorId: scheduleOffering?.instructorId });
     }
     return result;
-  }, [availabilityRules, bookings, instructorGlobalBlocks, availabilityExceptions, calendarLoadError]);
+  }, [availabilityRules, bookings, instructorGlobalBlocks, availabilityExceptions, offerings, calendarLoadError]);
 
   const handleOpenCreateGlobalBlock = () => {
     setEditingGlobalBlockId(null);
@@ -315,6 +316,8 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       bookings,
       globalBlocks: (instructorGlobalBlocks || []).filter((block) => block.id !== gb.id),
       exceptions: availabilityExceptions,
+      providerId: offerings[0]?.providerId,
+      instructorId: offerings.find((offering) => offering.instructorId)?.instructorId,
     });
     const selectedSlots = editableDateSlots.filter((slot) => new Date(slot.startAt) >= new Date(gb.start_at) && new Date(slot.endAt) <= new Date(gb.end_at));
     setEmergencyEditingSlotsByDate({ ...emergencySlotsByDate, [date]: editableDateSlots });

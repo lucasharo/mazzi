@@ -69,23 +69,47 @@ const dayNumber: Record<string, number> = { SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WE
 const toMinutes = (value: string) => { const [h, m] = value.split(':').map(Number); return h * 60 + m; };
 const fmt = (value: number) => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
 
-export function generateEmergencyBlockableSlots({ date, rules, bookings, globalBlocks, exceptions, now = new Date() }: {
+export function generateEmergencyBlockableSlots({ date, rules, bookings, globalBlocks, exceptions, providerId, instructorId, vehicleId, now = new Date() }: {
   date: string;
   rules: any[];
   bookings?: any[];
   globalBlocks?: any[];
   exceptions?: any[];
+  providerId?: string;
+  instructorId?: string;
+  vehicleId?: string;
   now?: Date;
 }): EmergencyBlockableSlot[] {
   const weekday = new Date(`${date}T12:00:00-03:00`).getDay();
   const activeBookings = bookings || [];
   const activeGlobalBlocks = globalBlocks || [];
-  const activeExceptions = exceptions || [];
+  const activeExceptions = (exceptions || []).filter((exception) => exception.isActive !== false && exception.is_active !== false);
+  const scopedException = (exception: any) => (
+    (!providerId || !exception.providerId || exception.providerId === providerId) &&
+    (!instructorId || !exception.instructorId || exception.instructorId === instructorId) &&
+    (!vehicleId || !exception.vehicleId || exception.vehicleId === vehicleId)
+  );
   const matchingRules = rules.filter((rule) => rule.isActive && (rule.dayOfWeekNumber === weekday || dayNumber[rule.dayOfWeek] === weekday));
+  const dayStart = new Date(`${date}T00:00:00.000-03:00`);
+  const dayEnd = new Date(`${date}T24:00:00.000-03:00`);
+  const overrideWindows = activeExceptions
+    .filter((exception) => exception.type === 'AVAILABLE_OVERRIDE' && scopedException(exception))
+    .map((exception) => ({
+      start: new Date(Math.max(new Date(exception.startAt || exception.start_at).getTime(), dayStart.getTime())),
+      end: new Date(Math.min(new Date(exception.endAt || exception.end_at).getTime(), dayEnd.getTime())),
+    }))
+    .filter((window) => window.start < window.end);
   const slots: EmergencyBlockableSlot[] = [];
-  for (const rule of matchingRules) {
-    const firstHour = Math.ceil(toMinutes(rule.startTime) / 60) * 60;
-    for (let minute = firstHour; minute + 60 <= toMinutes(rule.endTime); minute += 60) {
+  const windows = [
+    ...matchingRules.map((rule) => ({ startMinute: Math.ceil(toMinutes(rule.startTime) / 60) * 60, endMinute: toMinutes(rule.endTime) })),
+    ...overrideWindows.map((window) => ({
+      startMinute: Math.max(0, Math.ceil((window.start.getTime() - dayStart.getTime()) / 60000 / 60) * 60),
+      endMinute: Math.min(24 * 60, Math.floor((window.end.getTime() - dayStart.getTime()) / 60000)),
+    })),
+  ];
+  const seenStarts = new Set<string>();
+  for (const window of windows) {
+    for (let minute = window.startMinute; minute + 60 <= window.endMinute; minute += 60) {
       const startTime = fmt(minute); const endTime = fmt(minute + 60);
       const startAt = `${date}T${startTime}:00.000-03:00`; const endAt = `${date}T${endTime}:00.000-03:00`;
       const start = new Date(startAt); const end = new Date(endAt);
@@ -97,8 +121,11 @@ export function generateEmergencyBlockableSlots({ date, rules, bookings, globalB
         return overlaps(new Date(booking.scheduledStartAt), new Date(booking.scheduledEndAt));
       });
       const blocked = activeGlobalBlocks.some((block) => overlaps(new Date(block.start_at), new Date(block.end_at)));
-      const exceptionBlocked = activeExceptions.some((exception) => exception.type === 'BLOCK' && overlaps(new Date(exception.startAt), new Date(exception.endAt)));
-      if (!bookingConflict && !blocked && !exceptionBlocked) slots.push({ date, startTime, endTime, startAt, endAt });
+      const exceptionBlocked = activeExceptions.some((exception) => scopedException(exception) && exception.type === 'BLOCK' && overlaps(new Date(exception.startAt || exception.start_at), new Date(exception.endAt || exception.end_at)));
+      if (!bookingConflict && !blocked && !exceptionBlocked && !seenStarts.has(startAt)) {
+        seenStarts.add(startAt);
+        slots.push({ date, startTime, endTime, startAt, endAt });
+      }
     }
   }
   return slots;
