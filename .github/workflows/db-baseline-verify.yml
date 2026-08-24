@@ -53,6 +53,40 @@ jobs:
           20260816000021 | syntax | meeting-point RPC | close missing parenthesis
           20260818000032 | replay-ledger | supabase_migrations.schema_migrations | omit redundant ledger DML managed by runner
           20260818000033 | replay-ledger | supabase_migrations.schema_migrations | omit redundant ledger DML managed by runner
+          20260818000048 | one-time-repair | student overlap remediation | omit on empty replay
+          EOF
+
+      - name: Classify historical DML
+        run: |
+          cat > artifacts/dml-classification.csv <<'EOF'
+          migration,category,reason,replay_action
+          20260818000048_remediate_student_overlapping_bookings.sql,ONE_TIME_REPAIR,hard-coded live bookings/payments and remediation preconditions,OMIT_TEMP_REPLAY
+          20260818000032_harden_update_my_profile_and_reconcile_migrations.sql,MIGRATION_LEDGER_METADATA,ledger reconciliation only,OMIT_TEMP_REPLAY
+          20260818000033_disable_email_account_enumeration.sql,MIGRATION_LEDGER_METADATA,ledger reconciliation only,OMIT_TEMP_REPLAY
+          EOF
+          while IFS= read -r file; do
+            if ! grep -q "$file" artifacts/dml-classification.csv; then
+              echo "$file,MIXED_SCHEMA_AND_DATA,DML occurs in schema function or trigger body,KEEP_SCHEMA_AND_FUNCTION_BODIES" >> artifacts/dml-classification.csv
+            fi
+          done < <(grep -oE 'supabase/migrations/[0-9]+_[^: ]+\.sql' artifacts/dml-matches.txt | sed 's#supabase/migrations/##' | sort -u)
+
+      - name: Create reference data plan
+        run: |
+          cat > artifacts/reference-data-plan.md <<'EOF'
+          # MAZZI MVP reference data plan
+
+          | Table/config | Source migrations | Replay policy |
+          |---|---|---|
+          | compliance_requirements | 20260814000004, 20260814000005 | preserve required catalog/config rows |
+          | platform_configurations | 20260815000010 and later config migrations | preserve required platform settings |
+          | permissions/catalogs | 20260814000002, 20260814000003 | preserve RBAC catalog rows |
+          | scheduling settings | 20260816000020 and scheduling migrations | preserve required scheduling configuration |
+          | fee configuration | 20260815000010, 20260823031751, 20260823050139 | preserve percentage fee rules |
+          | cancellation configuration | 20260818000034 through 20260818000037 | preserve required cancellation rules |
+
+          Operational users, providers, vehicles, offerings, availability, bookings,
+          quotes, payments, messages, reviews, notifications, and compliance documents
+          are mutable instance data and are excluded from the future baseline.
           EOF
 
       - name: Prepare isolated replay workspace
