@@ -8,6 +8,10 @@ const authContext = fs.readFileSync(path.join(root, 'src/components/auth/AuthCon
 const authService = fs.readFileSync(path.join(root, 'src/lib/auth-service.ts'), 'utf8');
 const instructorRoot = fs.readFileSync(path.join(root, 'src/entrypoints/instructor/InstructorRoot.tsx'), 'utf8');
 const providerApp = fs.readFileSync(path.join(root, 'src/apps/provider/ProviderApp.tsx'), 'utf8');
+const signupIdentityMigration = fs.readFileSync(
+  path.join(root, 'supabase/migrations/20260824193652_persist_public_signup_identity.sql'),
+  'utf8',
+);
 
 describe('TASK-096A4L secure public instructor signup', () => {
   it('exposes a professional CTA only in the PRO login and preserves student signup', () => {
@@ -48,5 +52,41 @@ describe('TASK-096A4L secure public instructor signup', () => {
     expect(appLogin).toContain('Continuar cadastro profissional');
     expect(instructorRoot).toContain('<ProviderApp />');
     expect(authService).toContain('onboard_my_instructor');
+  });
+
+  it('persists public signup identity without trusting metadata roles', () => {
+    expect(signupIdentityMigration).toContain('CREATE OR REPLACE FUNCTION public.handle_new_auth_user()');
+    expect(signupIdentityMigration).toContain('SECURITY DEFINER');
+    expect(signupIdentityMigration).toContain('SET search_path = public, pg_temp');
+    expect(signupIdentityMigration).toContain('regexp_replace(COALESCE(NEW.raw_user_meta_data->>\'cpf\', \'\'), \'\\D\', \'\', \'g\')');
+    expect(signupIdentityMigration).toContain('v_birth_date := v_birth_date_text::DATE');
+    expect(signupIdentityMigration).toContain('cpf,');
+    expect(signupIdentityMigration).toContain('birth_date,');
+    expect(signupIdentityMigration).toContain("'STUDENT',");
+    expect(signupIdentityMigration).toContain("'STUDENT'\n  )");
+    expect(signupIdentityMigration).not.toContain("raw_user_meta_data->>'role'");
+    expect(signupIdentityMigration).toContain('REVOKE ALL ON FUNCTION public.handle_new_auth_user() FROM PUBLIC');
+    expect(signupIdentityMigration).toContain('REVOKE ALL ON FUNCTION public.handle_new_auth_user() FROM anon');
+    expect(signupIdentityMigration).toContain('REVOKE ALL ON FUNCTION public.handle_new_auth_user() FROM authenticated');
+  });
+
+  it('keeps the canonical validation and onboarding authority contracts', () => {
+    const identityMigration = fs.readFileSync(
+      path.join(root, 'supabase/migrations/20260817000029_add_user_cpf_and_birth_date.sql'),
+      'utf8',
+    );
+    const onboardingMigration = fs.readFileSync(
+      path.join(root, 'supabase/migrations/20260822133649_instructor_onboarding_and_security_cleanup.sql'),
+      'utf8',
+    );
+
+    expect(identityMigration).toContain('public.validate_cpf');
+    expect(identityMigration).toContain('birth_date DATE');
+    expect(onboardingMigration).toContain('public.onboard_my_instructor()');
+    expect(onboardingMigration).toContain("'INSTRUCTOR'::public.user_role");
+    expect(onboardingMigration).toContain("'DRAFT'::public.provider_status");
+    expect(onboardingMigration).toContain('v_user.cpf');
+    expect(onboardingMigration).toContain('v_user.birth_date');
+    expect(onboardingMigration).toContain('v_user.phone');
   });
 });
