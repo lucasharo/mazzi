@@ -57,7 +57,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : ariaLabel || 'Janela de diálogo'}
         tabIndex={-1}
-        className={`relative w-full ${sizeStyles[size]} bg-white rounded-3xl shadow-xl border border-[var(--mazzi-border)] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150 text-left`}
+        className={`relative w-full ${sizeStyles[size]} mb-4 bg-white rounded-3xl shadow-xl border border-[var(--mazzi-border)] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150 text-left`}
       >
         {title && (
           <div className="px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between">
