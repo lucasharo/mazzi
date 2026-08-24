@@ -177,7 +177,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </Button>
       )}
 
-      <div className="flex w-full items-center gap-3 px-2 sm:px-3">
+      <div className="flex w-full items-center gap-3">
         {isCompleted && onReview && (
           <Button
             type="button"
