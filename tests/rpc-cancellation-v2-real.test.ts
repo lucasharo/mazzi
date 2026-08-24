@@ -189,5 +189,5 @@ describe('Real Supabase RPC cancel_booking_v2 Final Security & Order Tests', () 
       await student1Client.auth.signOut({ scope: 'local' });
       await student2Client.auth.signOut({ scope: 'local' });
     }
-  });
+  }, 15_000);
 });
