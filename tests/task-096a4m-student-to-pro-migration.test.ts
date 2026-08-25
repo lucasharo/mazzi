@@ -128,6 +128,21 @@ describe('TASK-096A4M — Student to MAZZI PRO migration contract', () => {
     expect(migration).not.toContain('provider_payment_accounts');
   });
 
+  it('preserves the exact three-argument confirm-payment signature without defaults', () => {
+    const returnsIndex = confirmBody.indexOf('RETURNS');
+    const signature = confirmBody.slice(
+      confirmBody.indexOf('CREATE OR REPLACE FUNCTION public.confirm_booking_payment'),
+      returnsIndex,
+    );
+
+    expect(returnsIndex).toBeGreaterThan(-1);
+    expect(signature).toContain('p_payment_id UUID');
+    expect(signature).toContain('p_external_payment_id VARCHAR');
+    expect(signature).toContain('p_paid_at TIMESTAMPTZ');
+    expect(signature).not.toContain('DEFAULT');
+    expect(signature.match(/p_[a-z_]+\s+(?:UUID|VARCHAR|TIMESTAMPTZ)/g)).toHaveLength(3);
+  });
+
   it('orders authentication, student lock/assert, and payment lookup in confirm-payment', () => {
     const auth = confirmBody.indexOf('v_uid := auth.uid()');
     const lock = confirmBody.indexOf('PERFORM public.lock_student_profile(v_uid);');

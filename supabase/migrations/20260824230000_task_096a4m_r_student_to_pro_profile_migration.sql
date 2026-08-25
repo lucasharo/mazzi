@@ -399,8 +399,8 @@ GRANT EXECUTE ON FUNCTION public.create_booking_payment(UUID, public.payment_met
 
 CREATE OR REPLACE FUNCTION public.confirm_booking_payment(
   p_payment_id UUID,
-  p_external_payment_id VARCHAR DEFAULT NULL,
-  p_paid_at TIMESTAMPTZ DEFAULT NOW()
+  p_external_payment_id VARCHAR,
+  p_paid_at TIMESTAMPTZ
 )
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp AS $$
