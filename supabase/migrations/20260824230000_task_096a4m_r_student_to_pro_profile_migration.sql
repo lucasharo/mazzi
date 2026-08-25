@@ -405,38 +405,108 @@ CREATE OR REPLACE FUNCTION public.confirm_booking_payment(
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp AS $$
 DECLARE
-  v_uid UUID := auth.uid(); v_payment RECORD; v_booking RECORD;
+  v_uid UUID;
+  v_payment RECORD;
+  v_booking RECORD;
+  v_now TIMESTAMPTZ := NOW();
+  v_paid_at TIMESTAMPTZ;
 BEGIN
-  IF v_uid IS NULL THEN RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '28000'; END IF;
+  v_uid := auth.uid();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'AUTHENTICATION_REQUIRED' USING ERRCODE = '42501';
+  END IF;
+
   PERFORM public.lock_student_profile(v_uid);
   PERFORM public.assert_current_user_student();
-  SELECT * INTO v_payment FROM public.payments WHERE id = p_payment_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Pagamento % não encontrado.', p_payment_id; END IF;
-  SELECT * INTO v_booking FROM public.bookings WHERE id = v_payment.booking_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Reserva % associada ao pagamento não encontrada.', v_payment.booking_id; END IF;
-  IF v_booking.student_id <> v_uid THEN RAISE EXCEPTION 'CROSS_STUDENT_PAYMENT_ACCESS_DENIED' USING ERRCODE = '42501'; END IF;
-  IF v_payment.status = 'PAID' AND v_booking.status = 'CONFIRMED' THEN
-    RETURN jsonb_build_object('success', true, 'already_paid', true, 'is_late_payment', false, 'refund_pending', false, 'booking_id', v_booking.id, 'payment_id', v_payment.id, 'status', 'CONFIRMED');
+  IF p_external_payment_id IS NULL OR BTRIM(p_external_payment_id) = '' THEN
+    RAISE EXCEPTION 'EXTERNAL_PAYMENT_ID_REQUIRED' USING ERRCODE = '22023';
   END IF;
-  IF v_booking.status IN ('EXPIRED', 'CANCELLED_BY_STUDENT', 'CANCELLED_BY_PROVIDER') THEN
-    UPDATE public.payments SET status = 'PAID', paid_at = p_paid_at, external_transaction_id = COALESCE(p_external_payment_id, external_transaction_id), metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{auto_refund_required}', 'true'::jsonb), updated_at = NOW() WHERE id = v_payment.id;
-    INSERT INTO public.financial_events (event_type, booking_id, payment_id, provider_id, student_id, amount_in_cents, platform_fee_in_cents, provider_amount_in_cents, metadata)
-    VALUES ('PAYMENT_PAID', v_booking.id, v_payment.id, v_payment.provider_id, v_payment.student_id, v_payment.amount_in_cents, 0, 0, jsonb_build_object('late_payment_on_expired_booking', true, 'booking_status', v_booking.status));
-    INSERT INTO public.audit_logs (actor_id, action, entity_type, entity_id, new_value, ip_address, user_agent, severity, created_at)
-    VALUES (v_booking.student_id, 'BOOKING_LATE_PAYMENT', 'BOOKINGS', v_booking.id, jsonb_build_object('booking_id', v_booking.id, 'payment_id', v_payment.id, 'booking_status', v_booking.status), '127.0.0.1', 'PostgreSQL Trigger (SECURITY DEFINER)', 'WARNING', NOW());
-    RETURN jsonb_build_object('success', true, 'already_paid', false, 'is_late_payment', true, 'refund_pending', true, 'booking_id', v_booking.id, 'payment_id', v_payment.id, 'status', v_booking.status);
+
+  SELECT * INTO v_payment
+  FROM public.payments
+  WHERE id = p_payment_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'PAYMENT_NOT_FOUND' USING ERRCODE = 'P0002';
   END IF;
-  UPDATE public.payments SET status = 'PAID', paid_at = p_paid_at, external_transaction_id = COALESCE(p_external_payment_id, external_transaction_id), updated_at = NOW() WHERE id = v_payment.id;
-  UPDATE public.bookings SET status = 'CONFIRMED', confirmed_at = p_paid_at, updated_at = NOW() WHERE id = v_booking.id;
-  INSERT INTO public.financial_events (event_type, booking_id, payment_id, provider_id, student_id, amount_in_cents, platform_fee_in_cents, provider_amount_in_cents)
-  VALUES ('PAYMENT_PAID', v_booking.id, v_payment.id, v_payment.provider_id, v_payment.student_id, v_payment.amount_in_cents, v_payment.platform_fee_in_cents, v_payment.provider_amount_in_cents);
-  INSERT INTO public.financial_events (event_type, booking_id, payment_id, provider_id, amount_in_cents, platform_fee_in_cents, provider_amount_in_cents)
-  VALUES ('PLATFORM_FEE_RECORDED', v_booking.id, v_payment.id, v_payment.provider_id, v_payment.platform_fee_in_cents, v_payment.platform_fee_in_cents, 0);
-  INSERT INTO public.financial_events (event_type, booking_id, payment_id, provider_id, amount_in_cents, platform_fee_in_cents, provider_amount_in_cents)
-  VALUES ('PAYOUT_AVAILABLE', v_booking.id, v_payment.id, v_payment.provider_id, v_payment.provider_amount_in_cents, 0, v_payment.provider_amount_in_cents);
-  INSERT INTO public.audit_logs (actor_id, action, entity_type, entity_id, new_value, ip_address, user_agent, severity, created_at)
-  VALUES (v_booking.student_id, 'BOOKING_PAYMENT_CONFIRM', 'BOOKINGS', v_booking.id, jsonb_build_object('booking_id', v_booking.id, 'payment_id', v_payment.id, 'booking_status', 'CONFIRMED'), '127.0.0.1', 'PostgreSQL Trigger (SECURITY DEFINER)', 'INFO', NOW());
-  RETURN jsonb_build_object('success', true, 'already_paid', false, 'is_late_payment', false, 'refund_pending', false, 'booking_id', v_booking.id, 'payment_id', v_payment.id, 'status', 'CONFIRMED');
+
+  SELECT * INTO v_booking
+  FROM public.bookings
+  WHERE id = v_payment.booking_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'BOOKING_NOT_FOUND' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_booking.student_id <> v_uid THEN
+    RAISE EXCEPTION 'CROSS_STUDENT_PAYMENT_ACCESS_DENIED' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_payment.gateway_provider <> 'fake_payment_gateway' THEN
+    RAISE EXCEPTION 'REAL_PAYMENT_GATEWAY_CONFIRMATION_REQUIRES_TRUSTED_BACKEND' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_payment.amount_in_cents <> v_booking.total_in_cents THEN
+    RAISE EXCEPTION 'PAYMENT_AMOUNT_MISMATCH' USING ERRCODE = '22000';
+  END IF;
+
+  IF v_payment.status = 'PAID' THEN
+    IF v_payment.external_transaction_id = p_external_payment_id THEN
+      RETURN jsonb_build_object(
+        'success', true,
+        'is_idempotent', true,
+        'payment_id', v_payment.id,
+        'booking_id', v_booking.id,
+        'payment_status', 'PAID',
+        'booking_status', v_booking.status,
+        'paid_at', v_payment.paid_at,
+        'confirmed_at', v_booking.confirmed_at
+      );
+    END IF;
+    RAISE EXCEPTION 'PAYMENT_ALREADY_CONFIRMED_WITH_DIFFERENT_EXTERNAL_ID' USING ERRCODE = '23505';
+  END IF;
+
+  IF v_payment.status NOT IN ('PENDING', 'AUTHORIZED') THEN
+    RAISE EXCEPTION 'PAYMENT_NOT_CONFIRMABLE' USING ERRCODE = '22000';
+  END IF;
+
+  IF v_booking.status <> 'PENDING_PAYMENT' THEN
+    RAISE EXCEPTION 'BOOKING_NOT_PENDING_PAYMENT' USING ERRCODE = '22000';
+  END IF;
+
+  IF v_booking.hold_expires_at IS NOT NULL AND v_booking.hold_expires_at <= v_now THEN
+    UPDATE public.bookings
+    SET status = 'EXPIRED',
+        expired_at = COALESCE(expired_at, v_now),
+        updated_at = v_now
+    WHERE id = v_booking.id;
+    RAISE EXCEPTION 'BOOKING_HOLD_EXPIRED' USING ERRCODE = '22000';
+  END IF;
+
+  v_paid_at := COALESCE(p_paid_at, v_now);
+  UPDATE public.payments
+  SET status = 'PAID',
+      external_transaction_id = p_external_payment_id,
+      paid_at = v_paid_at,
+      updated_at = v_now
+  WHERE id = v_payment.id;
+
+  UPDATE public.bookings
+  SET status = 'CONFIRMED',
+      confirmed_at = COALESCE(confirmed_at, v_paid_at),
+      updated_at = v_now
+  WHERE id = v_booking.id;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'is_idempotent', false,
+    'payment_id', v_payment.id,
+    'booking_id', v_booking.id,
+    'payment_status', 'PAID',
+    'booking_status', 'CONFIRMED',
+    'paid_at', v_paid_at,
+    'confirmed_at', COALESCE(v_booking.confirmed_at, v_paid_at)
+  );
 END; $$;
 
 REVOKE ALL ON FUNCTION public.confirm_booking_payment(UUID, VARCHAR, TIMESTAMPTZ) FROM PUBLIC, anon;

@@ -15,6 +15,9 @@ const studentRoot = readFileSync(resolve(process.cwd(), 'src/entrypoints/student
 
 const legacyMigrationPath = resolve(process.cwd(), 'supabase/migrations/20260824202040_task_096a4m_student_to_pro_profile_migration.sql');
 const finalMigrationPath = resolve(process.cwd(), 'supabase/migrations/20260824230000_task_096a4m_r_student_to_pro_profile_migration.sql');
+const confirmStart = migration.indexOf('CREATE OR REPLACE FUNCTION public.confirm_booking_payment');
+const confirmEnd = migration.indexOf('$$;', confirmStart) + 3;
+const confirmBody = migration.slice(confirmStart, confirmEnd);
 
 describe('TASK-096A4M — Student to MAZZI PRO migration contract', () => {
   it('uses the final migration version without retaining the pre-LIVE-ledger filename', () => {
@@ -86,6 +89,55 @@ describe('TASK-096A4M — Student to MAZZI PRO migration contract', () => {
     expect(canonicalCheckIn).toContain("'Check-in do aluno já realizado anteriormente.'");
     expect(canonicalPayments).toContain('CREATE OR REPLACE FUNCTION public.create_booking_payment');
     expect(canonicalReviews).toContain('CREATE OR REPLACE FUNCTION public.create_review_for_booking');
+  });
+
+  it('preserves the current confirm-payment contract and excludes retired financial dependencies', () => {
+    expect(confirmStart).toBeGreaterThan(-1);
+    expect(confirmEnd).toBeGreaterThan(confirmStart);
+
+    for (const contract of [
+      'EXTERNAL_PAYMENT_ID_REQUIRED',
+      'PAYMENT_NOT_FOUND',
+      'BOOKING_NOT_FOUND',
+      'CROSS_STUDENT_PAYMENT_ACCESS_DENIED',
+      'REAL_PAYMENT_GATEWAY_CONFIRMATION_REQUIRES_TRUSTED_BACKEND',
+      'PAYMENT_AMOUNT_MISMATCH',
+      'PAYMENT_ALREADY_CONFIRMED_WITH_DIFFERENT_EXTERNAL_ID',
+      'PAYMENT_NOT_CONFIRMABLE',
+      'BOOKING_NOT_PENDING_PAYMENT',
+      'BOOKING_HOLD_EXPIRED',
+      'is_idempotent',
+      'payment_status',
+      'booking_status',
+    ]) expect(confirmBody).toContain(contract);
+
+    for (const forbidden of [
+      'financial_events',
+      'payment_webhook_events',
+      'provider_payment_accounts',
+      'process_booking_refund',
+      'auto_refund_required',
+      'PAYOUT_AVAILABLE',
+      'PLATFORM_FEE_RECORDED',
+      'supabase_gateway',
+      'PARTIALLY_REFUNDED',
+    ]) expect(confirmBody).not.toContain(forbidden);
+
+    expect(migration).not.toContain('public.financial_events');
+    expect(migration).not.toContain('payment_webhook_events');
+    expect(migration).not.toContain('provider_payment_accounts');
+  });
+
+  it('orders authentication, student lock/assert, and payment lookup in confirm-payment', () => {
+    const auth = confirmBody.indexOf('v_uid := auth.uid()');
+    const lock = confirmBody.indexOf('PERFORM public.lock_student_profile(v_uid);');
+    const assertStudent = confirmBody.indexOf('PERFORM public.assert_current_user_student();');
+    const paymentLookup = confirmBody.indexOf('SELECT * INTO v_payment');
+
+    expect(auth).toBeGreaterThan(-1);
+    expect(lock).toBeGreaterThan(auth);
+    expect(assertStudent).toBeGreaterThan(lock);
+    expect(paymentLookup).toBeGreaterThan(assertStudent);
   });
 
   it('proves lock -> assert -> operational decision order for payment and review races', () => {
