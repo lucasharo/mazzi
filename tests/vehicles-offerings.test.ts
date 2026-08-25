@@ -153,6 +153,32 @@ describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
     ).toThrowError(/duração.*50 minutos/i);
   });
 
+  it('keeps offerings prepared by a non-active provider inactive until backend approval', () => {
+    const draftOffering = createServiceOffering({
+      providerId: 'prov_100',
+      instructorId: 'inst_draft',
+      vehicle: activeVehicle,
+      category: 'B',
+      durationMinutes: 50,
+      priceInCents: 9500,
+      initialStatus: 'INACTIVE',
+    });
+
+    expect(draftOffering.status).toBe('INACTIVE');
+
+    const activeOffering = createServiceOffering({
+      providerId: 'prov_100',
+      instructorId: 'inst_active',
+      vehicle: activeVehicle,
+      category: 'B',
+      durationMinutes: 50,
+      priceInCents: 9500,
+      initialStatus: 'ACTIVE',
+    });
+
+    expect(activeOffering.status).toBe('ACTIVE');
+  });
+
   it('derives category and transmission from the selected vehicle without a manual fallback', () => {
     const automaticVehicle = { ...activeVehicle, id: 'city', brand: 'Honda', model: 'City', transmission: 'AUTOMATIC' as const };
     const manualVehicle = { ...activeVehicle, id: 'byd', brand: 'BYD', model: 'Song', transmission: 'MANUAL' as const };

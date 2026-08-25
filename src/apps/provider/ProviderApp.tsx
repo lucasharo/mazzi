@@ -229,6 +229,7 @@ export const ProviderApp: React.FC = () => {
     priceInBrl: '95',
   });
   const [offeringError, setOfferingError] = useState<string | null>(null);
+  const [offeringNotice, setOfferingNotice] = useState<string | null>(null);
 
   const [unifiedCalendarError, setUnifiedCalendarError] = useState<string | null>(null);
   const [instructorGlobalBlocks, setInstructorGlobalBlocks] = useState<any[]>([]);
@@ -872,13 +873,8 @@ export const ProviderApp: React.FC = () => {
   // Offering Handlers
   const handleCreateOffering = async () => {
     setOfferingError(null);
+    setOfferingNotice(null);
     try {
-      if (currentProvider.status !== 'ACTIVE') {
-        throw new Error(
-          `OFFERING_PROVIDER_NOT_ACTIVE: o cadastro está '${currentProvider.status}'. Aguarde a aprovação do prestador antes de publicar ofertas.`
-        );
-      }
-
       const vehicle = vehicles.find((v) => v.id === offeringForm.vehicleId);
       if (!vehicle) {
         throw new Error('Selecione um veículo válido para a oferta.');
@@ -910,11 +906,15 @@ export const ProviderApp: React.FC = () => {
         category: vehicle.category,
         durationMinutes: Number(offeringForm.durationMinutes),
         priceInCents,
+        initialStatus: currentProvider.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
         existingOfferings: offerings,
       });
 
       const savedOffering = await dbService.saveOffering(newOffering);
       setOfferings((prev) => [...prev, savedOffering]);
+      if (savedOffering.status !== 'ACTIVE') {
+        setOfferingNotice('Oferta cadastrada como inativa. Ela só poderá ser publicada após a aprovação do prestador.');
+      }
       setIsAddOfferingModalOpen(false);
       setOfferingForm({
         vehicleId: '',
@@ -1222,6 +1222,7 @@ status: 'IN_REVIEW',
             onSaveOffering={handleCreateOffering}
             onToggleOfferingStatus={handleToggleOfferingStatus}
             offeringError={offeringError}
+            offeringNotice={offeringNotice}
             onUploadDocClick={(type) => setUploadModalDocType(type)}
             onAcceptComplianceTerms={() => void handleAcceptComplianceTerms()}
             isAcceptingComplianceTerms={isAcceptingComplianceTerms}

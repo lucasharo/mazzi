@@ -16,10 +16,10 @@ describe('provider offering and compliance reconciliation contracts', () => {
     expect(dbService).toContain("sp.rpc('provider_save_service_offering'");
   });
 
-  it('blocks an offering submission in the UI before a non-active provider reaches the RPC', () => {
-    expect(providerApp).toContain("currentProvider.status !== 'ACTIVE'");
-    expect(providerApp).toContain('OFFERING_PROVIDER_NOT_ACTIVE');
-    expect(managementTab).toContain("currentProvider.status !== 'ACTIVE'");
+  it('allows a non-active provider to prepare an inactive offering while keeping publication blocked', () => {
+    expect(providerApp).toContain("initialStatus: currentProvider.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE'");
+    expect(providerApp).toContain('onToggleOfferingStatus');
+    expect(managementTab).not.toContain("disabled={currentProvider.status !== 'ACTIVE'");
     expect(managementTab).toContain('Status atual:');
   });
 
@@ -38,6 +38,7 @@ describe('provider offering and compliance reconciliation contracts', () => {
     expect(errorMapper).toContain('OFFERING_PROVIDER_NOT_ACTIVE');
     expect(errorMapper).toContain('OFFERING_VEHICLE_NOT_ACTIVE');
     expect(errorMapper).toContain('OFFERING_INSTRUCTOR_NOT_ELIGIBLE');
+    expect(errorMapper).toContain('DUPLICATE_ACTIVE_OFFERING');
   });
 
   it('defines the canonical global document types', () => {

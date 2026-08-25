@@ -63,6 +63,7 @@ interface ProviderManagementTabProps {
   onSaveOffering: () => void;
   onToggleOfferingStatus: (offeringId: string) => void;
   offeringError: string | null;
+  offeringNotice?: string | null;
   onUploadDocClick: (docType: string) => void;
   onAcceptComplianceTerms: () => void;
   isAcceptingComplianceTerms?: boolean;
@@ -96,6 +97,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   onSaveOffering,
   onToggleOfferingStatus,
   offeringError,
+  offeringNotice,
   onUploadDocClick,
   onAcceptComplianceTerms,
   isAcceptingComplianceTerms = false,
@@ -143,7 +145,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             variant="primary"
             size="sm"
             onClick={onOpenAddOfferingModal}
-            disabled={currentProvider.status !== 'ACTIVE' || (currentProvider.type === 'DRIVING_SCHOOL' && eligibleSchoolInstructors.length === 0)}
+            disabled={currentProvider.type === 'DRIVING_SCHOOL' && eligibleSchoolInstructors.length === 0}
             leftIcon={<Plus className="w-4 h-4" />}
           >
             Cadastrar Oferta
@@ -159,6 +161,12 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       {!isRefreshing && managementSubTab === 'offerings' && currentProvider.status !== 'ACTIVE' && (
         <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
           As ofertas só podem ser publicadas depois que o cadastro do prestador for aprovado. Status atual: <strong>{currentProvider.status}</strong>.
+        </div>
+      )}
+
+      {!isRefreshing && managementSubTab === 'offerings' && offeringNotice && (
+        <div role="status" className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-medium text-sky-900">
+          {offeringNotice}
         </div>
       )}
 

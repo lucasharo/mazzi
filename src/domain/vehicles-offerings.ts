@@ -488,6 +488,7 @@ export function createServiceOffering(params: {
   category: VehicleCategory;
   durationMinutes: number;
   priceInCents: number;
+  initialStatus?: 'ACTIVE' | 'INACTIVE';
   existingOfferings?: ServiceOffering[];
 }): ServiceOffering {
   if (!params.instructorId || typeof params.instructorId !== 'string') {
@@ -546,7 +547,7 @@ export function createServiceOffering(params: {
     transmission: params.vehicle.transmission,
     durationMinutes: params.durationMinutes,
     priceInCents: params.priceInCents,
-    status: 'ACTIVE',
+    status: params.initialStatus ?? 'ACTIVE',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

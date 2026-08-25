@@ -95,6 +95,10 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'O instrutor selecionado ainda não está elegível para esta oferta. Verifique o vínculo e os documentos de compliance.';
   }
 
+  if (msg.includes('DUPLICATE_ACTIVE_OFFERING') || msg.includes('DUPLICATE_OFFERING_EXISTS')) {
+    return 'Já existe uma oferta ativa para este veículo, categoria e transmissão.';
+  }
+
   if (msg.includes('SERVICE_RADIUS_INVALID')) {
     return 'O raio de atendimento deve ser um valor entre 1 e 100 km.';
   }
