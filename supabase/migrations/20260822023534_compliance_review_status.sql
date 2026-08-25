@@ -1,0 +1,2 @@
+-- Historical compatibility step retained as a no-op.
+-- The canonical review state is introduced by the later status migration.

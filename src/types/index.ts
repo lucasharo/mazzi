@@ -29,7 +29,7 @@ export type TransmissionType = 'MANUAL' | 'AUTOMATIC' | 'NOT_APPLICABLE';
 export type VehicleStatus =
   | 'DRAFT'
   | 'PENDING'
-  | 'UNDER_REVIEW'
+  | 'IN_REVIEW'
   | 'ACTIVE'
   | 'INACTIVE'
   | 'EXPIRED'
@@ -61,10 +61,9 @@ export type PayoutStatus =
 
 export type DocumentStatus =
   | 'PENDING'
-  | 'UNDER_REVIEW'
+  | 'IN_REVIEW'
   | 'APPROVED'
-  | 'REJECTED'
-  | 'EXPIRED';
+  | 'REJECTED';
 
 export type PaymentMethodType = 'PIX' | 'CREDIT_CARD';
 
@@ -178,6 +177,7 @@ export interface ComplianceDocument {
   providerId: string;
   providerName?: string;
   userId?: string;
+  membershipId?: string;
   scope?: 'USER_GLOBAL' | 'PROVIDER' | 'MEMBERSHIP' | 'VEHICLE';
   type: string;
   title: string;

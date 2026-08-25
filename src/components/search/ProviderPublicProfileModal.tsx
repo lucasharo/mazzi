@@ -43,8 +43,24 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
   const offerings = result.publicOfferings || [];
   const availableCategories = Array.from(new Set(offerings.map((o) => o.category).filter(Boolean)));
 
+  const footer = (
+    <PrimaryButton
+      type="button"
+      size="sm"
+      className="w-full font-bold shadow-xs"
+      onClick={() => {
+        onClose();
+        onSelectSlotToBook?.(result.providerId);
+      }}
+      leftIcon={<CalendarPlus className="h-4 w-4 shrink-0" aria-hidden="true" />}
+      aria-label={`Agendar aula com ${result.displayName}`}
+    >
+      Agendar aula
+    </PrimaryButton>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Perfil do Prestador" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Perfil do Prestador" size="md" footer={footer}>
       <div className="space-y-6 text-left">
         {/* Header / Identity */}
         <section className="text-center" aria-label="Identificação do prestador">
@@ -208,20 +224,6 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
           )}
         </section>
 
-        {/* CTA Action */}
-        <PrimaryButton
-          type="button"
-          size="sm"
-          className="w-full font-bold shadow-xs"
-          onClick={() => {
-            onClose();
-            onSelectSlotToBook?.(result.providerId);
-          }}
-          leftIcon={<CalendarPlus className="h-4 w-4 shrink-0" aria-hidden="true" />}
-          aria-label={`Agendar aula com ${result.displayName}`}
-        >
-          Agendar aula
-        </PrimaryButton>
       </div>
     </Modal>
   );

@@ -6,6 +6,7 @@ import {
   AvailabilityRule, AvailabilityException, ServiceOffering, Vehicle, DayOfWeek, ExceptionType, ExceptionReasonCategory, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
+import { ModalActionFooter } from '../../../components/ui/ModalActionFooter';
 import { Input } from '../../../components/ui/Input';
 import { DateInput, TimeInput } from '../../../components/ui/DateTimeInput';
 import { Select } from '../../../components/ui/Select';
@@ -404,6 +405,27 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     instructorGlobalBlocks,
   }) : [];
 
+  const recurringRuleFooter = (
+    <>
+      <Button variant="dangerSoft" size="sm" onClick={onCloseAddRuleModal} disabled={isSavingRule}>Cancelar</Button>
+      <Button variant="primary" size="sm" onClick={onSaveRule} isLoading={isSavingRule}>
+        {editingRuleId ? 'Salvar Alterações' : 'Salvar Regra'}
+      </Button>
+    </>
+  );
+  const emergencyBlockFooter = (
+    <>
+      <Button variant="dangerSoft" size="sm" onClick={() => setIsEmergencyModalOpen(false)} disabled={isSavingEmergencyBlock}>Cancelar</Button>
+      <Button variant="primary" size="sm" onClick={saveEmergencyBlock} isLoading={isSavingEmergencyBlock}>Bloquear horário</Button>
+    </>
+  );
+  const exceptionFooter = (
+    <>
+      <Button variant="dangerSoft" size="sm" onClick={onCloseAddExceptionModal}>Cancelar</Button>
+      <Button variant="primary" size="sm" onClick={onSaveException}>Salvar Bloqueio</Button>
+    </>
+  );
+
   return (
     <div className="space-y-6 text-left">
       {/* Header */}
@@ -667,7 +689,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       )}
 
       {/* ADD RECURRING RULE MODAL */}
-      <Modal isOpen={isAddRuleModalOpen} onClose={onCloseAddRuleModal} title={editingRuleId ? 'Editar Regra Semanal' : 'Cadastrar Regra Semanal'}>
+      <Modal isOpen={isAddRuleModalOpen} onClose={onCloseAddRuleModal} title={editingRuleId ? 'Editar Regra Semanal' : 'Cadastrar Regra Semanal'} footer={recurringRuleFooter}>
         <div className="space-y-4 text-left">
           {ruleError && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
@@ -707,18 +729,10 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             Para manter a agenda organizada, escolha horários em hora cheia, como 08:00, 09:00 ou 10:00. Horários como 08:30 não são permitidos.
           </div>
 
-          <div className="mazzi-modal-actions flex justify-end gap-2">
-            <Button variant="dangerSoft" size="sm" onClick={onCloseAddRuleModal} disabled={isSavingRule}>
-              Cancelar
-            </Button>
-            <Button variant="primary" size="sm" onClick={onSaveRule} isLoading={isSavingRule}>
-              {editingRuleId ? 'Salvar Alterações' : 'Salvar Regra'}
-            </Button>
-          </div>
         </div>
       </Modal>
 
-      <Modal isOpen={isEmergencyModalOpen} onClose={() => !isSavingEmergencyBlock && setIsEmergencyModalOpen(false)} title={emergencyEditingBlockId ? 'Editar bloqueio rápido' : 'Bloqueio rápido'}>
+      <Modal isOpen={isEmergencyModalOpen} onClose={() => !isSavingEmergencyBlock && setIsEmergencyModalOpen(false)} title={emergencyEditingBlockId ? 'Editar bloqueio rápido' : 'Bloqueio rápido'} footer={emergencyBlockFooter}>
         <div className="space-y-4 text-left">
           <p className="text-xs leading-relaxed text-slate-600">Escolha uma data e um horário realmente livre na sua agenda.</p>
           {emergencyBlockError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">{emergencyBlockError}</div>}
@@ -737,15 +751,11 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             />
             {emergencyReasonPreset === 'OUTRO' && <Input placeholder="Descreva o motivo (opcional)" value={emergencyReason} onChange={(event) => setEmergencyReason(event.target.value)} />}
           </div>
-          <div className="mazzi-modal-actions flex justify-end gap-2">
-            <Button variant="dangerSoft" size="sm" onClick={() => setIsEmergencyModalOpen(false)} disabled={isSavingEmergencyBlock}>Cancelar</Button>
-            <Button variant="primary" size="sm" onClick={saveEmergencyBlock} isLoading={isSavingEmergencyBlock}>Bloquear horário</Button>
-          </div>
         </div>
       </Modal>
 
       {/* ADD EXCEPTION MODAL */}
-      <Modal isOpen={isAddExceptionModalOpen} onClose={onCloseAddExceptionModal} title="Cadastrar Bloqueio / Exceção">
+      <Modal isOpen={isAddExceptionModalOpen} onClose={onCloseAddExceptionModal} title="Cadastrar Bloqueio / Exceção" footer={exceptionFooter}>
         <div className="space-y-4 text-left">
           {exceptionError && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
@@ -789,14 +799,6 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             </div>
           </div>
 
-          <div className="mazzi-modal-actions flex justify-end gap-2">
-            <Button variant="dangerSoft" size="sm" onClick={onCloseAddExceptionModal}>
-              Cancelar
-            </Button>
-            <Button variant="primary" size="sm" onClick={onSaveException}>
-              Salvar Bloqueio
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -866,7 +868,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             />
           </div>
 
-          <div className="mazzi-modal-actions flex justify-end gap-2">
+          <ModalActionFooter>
             <Button
               variant="dangerSoft"
               size="sm"
@@ -887,7 +889,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
             >
               {editingGlobalBlockId ? 'Atualizar Bloqueio' : 'Salvar Bloqueio Pessoal'}
             </Button>
-          </div>
+          </ModalActionFooter>
         </div>
       </Modal>
     </div>

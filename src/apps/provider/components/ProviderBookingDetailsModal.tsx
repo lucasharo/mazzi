@@ -141,7 +141,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           leftIcon={<MessageSquare className="h-4 w-4 text-slate-500" aria-hidden="true" />}
           aria-label="Abrir conversa no chat sobre esta reserva"
         >
-          Abrir Chat
+          Mensagens
         </SecondaryButton>
         {canCancel && (
           <Button

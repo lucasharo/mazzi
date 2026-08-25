@@ -271,7 +271,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           <span>Alertas da Operação MAZZI Pro:</span>
         </div>
         <ul className="list-disc pl-5 space-y-1 text-amber-800 font-medium">
-          {providerDocs.some((d) => d.status === 'PENDING' || d.status === 'UNDER_REVIEW') && (
+{providerDocs.some((d) => d.status === 'PENDING' || d.status === 'IN_REVIEW') && (
             <li>Você possui documentos aguardando análise de compliance.</li>
           )}
           {providerVehicles.length === 0 && (

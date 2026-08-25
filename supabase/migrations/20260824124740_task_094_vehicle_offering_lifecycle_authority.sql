@@ -69,7 +69,7 @@ BEGIN
       renavam=coalesce(p_renavam, renavam), category=coalesce(p_category, category), vehicle_type=coalesce(p_vehicle_type, vehicle_type),
       transmission=coalesce(p_transmission, transmission), has_dual_pedal=coalesce(p_has_dual_pedal, has_dual_pedal),
       has_dashcam=coalesce(p_has_dashcam, has_dashcam), color=coalesce(p_color, color), photos=coalesce(p_photos, photos),
-      status=CASE WHEN v_material_changed AND status IN ('ACTIVE','INACTIVE') THEN 'UNDER_REVIEW' ELSE status END,
+      status=CASE WHEN v_material_changed AND status IN ('ACTIVE','INACTIVE') THEN 'IN_REVIEW' ELSE status END,
       updated_at=now()
     WHERE id=p_vehicle_id RETURNING * INTO v_vehicle;
   END IF;

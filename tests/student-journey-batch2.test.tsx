@@ -247,7 +247,7 @@ describe('Student Journey Batch 2 - UI/UX Pro Max Contracts', () => {
     expect(detailsMarkup).toContain('R$ 100,00');
     expect(detailsMarkup).toContain('R$ 10,00');
     expect(detailsMarkup).toContain('R$ 110,00');
-    expect(detailsMarkup).toContain('Abrir Chat');
+    expect(detailsMarkup).toContain('Mensagens');
   });
 
   it('BookingDetailsModal: exposes review action for a completed booking', () => {

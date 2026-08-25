@@ -28,7 +28,7 @@ describe('TASK-077A static contracts', () => {
 
   it('uses an explicit Admin compliance projection without exposing storage paths', () => {
     expect(dbService).toContain('async getAdminComplianceDocs()');
-    expect(dbService).toContain('id,provider_id,user_id,document_type,status,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
+    expect(dbService).toContain('id,provider_id,user_id,membership_id,scope,document_type,status,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
     expect(dbService).not.toMatch(/getAdminComplianceDocs[\s\S]*?select\('\*'\)/);
     expect(adminApp).toContain('dbService.getAdminComplianceDocs()');
     expect(adminComponents).not.toContain('StoragePath');

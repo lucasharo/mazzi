@@ -43,7 +43,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
           return { label: 'Não aprovado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
         case 'APPROVED':
           return { label: 'Aprovado', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' };
-        case 'UNDER_REVIEW':
+        case 'IN_REVIEW':
           return { label: 'Em análise', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-800', dot: 'bg-blue-500' };
         case 'PENDING':
           return { label: 'Pendente', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', dot: 'bg-orange-500' };
@@ -85,7 +85,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'APPROVED':
         return { label: 'Ativo / Verificado', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' };
       case 'PENDING_REVIEW':
-      case 'UNDER_REVIEW':
+      case 'IN_REVIEW':
         return { label: 'Em Análise', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', dot: 'bg-amber-500' };
       case 'DRAFT':
       case 'PENDING':

@@ -143,7 +143,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             variant="primary"
             size="sm"
             onClick={onOpenAddOfferingModal}
-            disabled={currentProvider.type === 'DRIVING_SCHOOL' && eligibleSchoolInstructors.length === 0}
+            disabled={currentProvider.status !== 'ACTIVE' || (currentProvider.type === 'DRIVING_SCHOOL' && eligibleSchoolInstructors.length === 0)}
             leftIcon={<Plus className="w-4 h-4" />}
           >
             Cadastrar Oferta
@@ -155,6 +155,12 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           </Button>
         )}
       </div>
+
+      {!isRefreshing && managementSubTab === 'offerings' && currentProvider.status !== 'ACTIVE' && (
+        <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
+          As ofertas só podem ser publicadas depois que o cadastro do prestador for aprovado. Status atual: <strong>{currentProvider.status}</strong>.
+        </div>
+      )}
 
       {isRefreshing && <ContentSkeleton label="Atualizando gestão" />}
 
@@ -311,7 +317,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                 .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
               const doc = docsForRequirement[0];
               const isTermsAcceptance = req.documentType === 'MAZZI_TERMS_ACCEPTANCE';
-              const canResubmit = doc?.status === 'REJECTED' || doc?.status === 'EXPIRED';
+const canResubmit = doc?.status === 'REJECTED';
               return (
                 <div
                   key={req.id}

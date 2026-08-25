@@ -508,7 +508,7 @@ export const DesignSystemShowcase: React.FC = () => {
                           Ghost Action
                         </Button>
                         <Button variant="outline" size="md" leftIcon={<MessageSquare className="w-4 h-4 text-slate-600" />}>
-                          Abrir Chat
+                          Mensagens
                         </Button>
                       </div>
                     </div>
@@ -759,7 +759,7 @@ export const DesignSystemShowcase: React.FC = () => {
                         className="w-1/2 min-h-[44px] font-bold text-slate-800 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 text-xs"
                         leftIcon={<MessageSquare className="w-4 h-4 text-slate-600" />}
                       >
-                        Abrir Chat
+                        Mensagens
                       </Button>
                       <Button
                         type="button"

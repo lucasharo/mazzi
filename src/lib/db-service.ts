@@ -27,6 +27,7 @@ import {
   AnalyticsPeriodPreset,
   PublicSearchProviderResult,
 } from '../types';
+import { normalizeComplianceStatus } from '../domain/compliance-status';
 import { formatDateBR, formatTimeBR } from './date-format';
 import { formatMeetingPoint } from './meeting-point';
 
@@ -193,12 +194,13 @@ export function mapComplianceFromDb(row: any): ComplianceDocument {
     id: row.id,
     providerId: row.provider_id || '',
     userId: row.user_id || undefined,
+    membershipId: row.membership_id || undefined,
     scope: row.scope || undefined,
     type: documentType,
     title: row.document_type === 'CNH' || row.document_type === 'CNH_EAR'
       ? 'Carteira Nacional de Habilitação com EAR'
       : row.document_type,
-    status: row.status,
+    status: normalizeComplianceStatus(row.status),
     fileName: row.storage_path ? row.storage_path.split('/').pop() || 'document.pdf' : 'document.pdf',
     storagePath: row.storage_path || '',
     uploadedAt: row.created_at,
@@ -1278,7 +1280,7 @@ export const dbService = {
   async getAdminComplianceDocs(): Promise<ComplianceDocument[]> {
     const { data, error } = await sp
       .from('compliance_documents')
-      .select('id,provider_id,user_id,document_type,status,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
+      .select('id,provider_id,user_id,membership_id,scope,document_type,status,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
     if (error) throw error;
     return (data || []).map(mapComplianceFromDb);
   },

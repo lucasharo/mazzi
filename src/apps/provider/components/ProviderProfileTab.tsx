@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pencil, Save, } from 'lucide-react';
-import { Provider, UserRole } from '../../../types';
+import { ComplianceDocument, Provider, UserRole } from '../../../types';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
@@ -8,9 +8,12 @@ import { ProfilePhotoPicker } from '../../../components/profile/ProfilePhotoPick
 
 import { maskBrazilianPhone } from '../../../lib/input-masks';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
+import { evaluateProviderEligibility } from '../../../domain/compliance';
+import { resolveComplianceDocumentStatus } from '../../../domain/provider-compliance-presentation';
 
 interface ProviderProfileTabProps {
   currentProvider: Provider;
+  complianceDocs: ComplianceDocument[];
   currentRole: UserRole;
   userName?: string;
   userEmail?: string;
@@ -35,6 +38,7 @@ interface ProviderProfileTabProps {
 
 export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
   currentProvider,
+  complianceDocs,
   currentRole,
   userName,
   userEmail,
@@ -49,6 +53,10 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
   onLogout,
 }) => {
   const isSchool = currentProvider.type === 'DRIVING_SCHOOL' || currentRole === 'SCHOOL_STAFF';
+  const complianceEligibility = evaluateProviderEligibility(currentProvider, complianceDocs);
+  const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility);
+  const profileStatus = currentProvider.status === 'ACTIVE' ? currentProvider.status : complianceStatus;
+  const profileStatusDomain = currentProvider.status === 'ACTIVE' ? undefined : 'compliance' as const;
 
   return (
     <div className="space-y-5 text-left">
@@ -71,7 +79,12 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
         <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">{currentProvider.name || userName || 'Instrutor'}</h3>
         <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{userEmail || 'E-mail não informado'}</p>
         <div className="mt-3 flex justify-center">
-          <StatusBadge status={currentProvider.status} />
+          <StatusBadge status={profileStatus} domain={profileStatusDomain} />
+          {currentProvider.status !== 'ACTIVE' && (
+            <p className="mt-2 text-[11px] text-[var(--mazzi-muted)]">
+              Cadastro operacional: {currentProvider.status === 'DRAFT' ? 'Pendente de ativação' : currentProvider.status}
+            </p>
+          )}
         </div>
       </div>
 

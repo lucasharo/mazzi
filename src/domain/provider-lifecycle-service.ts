@@ -158,7 +158,7 @@ export function uploadProviderComplianceDocument(
     userId: actor.userId,
     type: docType,
     title,
-    status: 'UNDER_REVIEW',
+    status: 'IN_REVIEW',
     fileName: fileMeta.filename,
     storagePath,
     fileSize: fileMeta.sizeInBytes,

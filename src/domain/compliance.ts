@@ -576,10 +576,10 @@ export function evaluateProviderEligibility(
     if (latest.status === 'REJECTED') {
       rejectedDocuments.push(latest);
       ineligibilityReasons.push(`Documento '${latest.title}' foi rejeitado: ${latest.rejectionReason || 'Correção necessária'}.`);
-    } else if (latest.status === 'PENDING' || latest.status === 'UNDER_REVIEW') {
+    } else if (latest.status === 'PENDING' || latest.status === 'IN_REVIEW') {
       pendingDocuments.push(latest);
       ineligibilityReasons.push(`Documento '${latest.title}' ainda está em análise.`);
-    } else if (latest.status === 'EXPIRED' || isComplianceDocumentExpired(latest, referenceDate)) {
+    } else if (isComplianceDocumentExpired(latest, referenceDate)) {
       expiredDocuments.push(latest);
       ineligibilityReasons.push(`Documento '${latest.title}' está vencido (expirou em ${latest.expiresAt || 'data não informada'}).`);
     } else {

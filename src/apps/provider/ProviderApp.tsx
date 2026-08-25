@@ -30,6 +30,7 @@ import { NotificationsPanel } from '../../components/notifications/Notifications
 import { ProviderAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
 import {
   DEFAULT_COMPLIANCE_REQUIREMENTS,
+  USER_GLOBAL_COMPLIANCE_DOCUMENT_TYPES,
 } from '../../domain/compliance';
 import {
   createVehicleDraft,
@@ -101,7 +102,7 @@ export const ProviderApp: React.FC = () => {
   const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'management', 'profile']);
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
   const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance' | 'memberships'>('vehicles');
-  const [bookingFilterTab, setBookingFilterTab] = useState<'all' | 'today' | 'upcoming' | 'history'>('all');
+  const [bookingFilterTab, setBookingFilterTab] = useState<'upcoming' | 'today' | 'history'>('upcoming');
   const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions' | 'simulator'>('rules');
 
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -470,16 +471,21 @@ export const ProviderApp: React.FC = () => {
     const ended = isLessonEnded(b);
 
     if (bookingFilterTab === 'today') {
-      return getStudentBookingSection(b.status, b) === 'CONFIRMED' && !ended && isBookingTodayInSaoPaulo(b);
+      return (
+        (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'PENDING_PAYMENT') &&
+        !ended &&
+        isBookingTodayInSaoPaulo(b)
+      );
     }
     if (bookingFilterTab === 'upcoming') {
       if (ended || b.status === 'EXPIRED') return false;
+      if (isBookingTodayInSaoPaulo(b)) return false;
       return b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'PENDING_PAYMENT';
     }
     if (bookingFilterTab === 'history') {
       return getStudentBookingSection(b.status, b) === 'HISTORY' || ended;
     }
-    return getStudentBookingSection(b.status, b) === 'CONFIRMED';
+    return false;
   });
 
   const getOrCreateSession = (b: Booking): LessonSession => {
@@ -867,6 +873,12 @@ export const ProviderApp: React.FC = () => {
   const handleCreateOffering = async () => {
     setOfferingError(null);
     try {
+      if (currentProvider.status !== 'ACTIVE') {
+        throw new Error(
+          `OFFERING_PROVIDER_NOT_ACTIVE: o cadastro está '${currentProvider.status}'. Aguarde a aprovação do prestador antes de publicar ofertas.`
+        );
+      }
+
       const vehicle = vehicles.find((v) => v.id === offeringForm.vehicleId);
       if (!vehicle) {
         throw new Error('Selecione um veículo válido para a oferta.');
@@ -985,7 +997,10 @@ export const ProviderApp: React.FC = () => {
     setComplianceUploadError(null);
     const documentId = crypto.randomUUID();
     const safeFileName = selectedComplianceFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    // Storage remains private and uses the provider-owned folder policy. The
+    // compliance RPC, not the client payload, decides row ownership and scope.
     const storagePath = `providers/${currentProvider.id}/compliance/${documentId}/${safeFileName}`;
+    const isGlobalDocument = USER_GLOBAL_COMPLIANCE_DOCUMENT_TYPES.has(uploadModalDocType);
 
     try {
       const { error: uploadError } = await supabase.storage
@@ -997,11 +1012,11 @@ export const ProviderApp: React.FC = () => {
       if (uploadError) throw uploadError;
 
       await dbService.saveComplianceDoc({
-        providerId: currentProvider.id,
-        userId: user.id,
+        providerId: isGlobalDocument ? undefined : currentProvider.id,
         type: uploadModalDocType,
         storagePath,
-        status: 'UNDER_REVIEW',
+status: 'IN_REVIEW',
+        scope: isGlobalDocument ? 'USER_GLOBAL' : 'PROVIDER',
       });
 
       setSelectedComplianceFile(null);
@@ -1024,7 +1039,6 @@ export const ProviderApp: React.FC = () => {
     try {
       await dbService.saveComplianceDoc({
         providerId: currentProvider.id,
-        userId: user.id,
         type: 'MAZZI_TERMS_ACCEPTANCE',
         storagePath: 'acceptance://mazzi-ethics/v1',
         status: 'APPROVED',
@@ -1219,6 +1233,7 @@ export const ProviderApp: React.FC = () => {
         {activeTab === 'profile' && (
           <ProviderProfileTab
             currentProvider={currentProvider}
+            complianceDocs={complianceDocs}
             currentRole={currentRole}
             userName={user?.name}
             userEmail={user?.email}

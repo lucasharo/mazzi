@@ -20,7 +20,7 @@ import { maskBRLInput } from '../src/lib/input-masks';
 describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
   it('classifies new and material-review vehicles in the admin approval queue', () => {
     expect(isVehicleAwaitingAdminReview('PENDING')).toBe(true);
-    expect(isVehicleAwaitingAdminReview('UNDER_REVIEW')).toBe(true);
+    expect(isVehicleAwaitingAdminReview('IN_REVIEW')).toBe(true);
     expect(isVehicleAwaitingAdminReview('ACTIVE')).toBe(false);
     expect(isVehicleAwaitingAdminReview('INACTIVE')).toBe(false);
     expect(isVehicleAwaitingAdminReview('BLOCKED')).toBe(false);
@@ -220,9 +220,9 @@ describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
     ).toThrowError(/SUPPORT não possui permissão/i);
   });
 
-  it('denies direct vehicle activation by provider from DRAFT or UNDER_REVIEW state', () => {
+  it('denies direct vehicle activation by provider from DRAFT or IN_REVIEW state', () => {
     const draftVehicle = { ...activeVehicle, status: 'DRAFT' as const };
-    const underReviewVehicle = { ...activeVehicle, status: 'UNDER_REVIEW' as const };
+    const underReviewVehicle = { ...activeVehicle, status: 'IN_REVIEW' as const };
 
     expect(() => validateVehicleActivationPermission(draftVehicle, 'INSTRUCTOR')).toThrowError(
       /Prestadores não podem ativar diretamente/i

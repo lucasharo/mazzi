@@ -24,7 +24,7 @@ describe('TASK-094 vehicle and offering lifecycle authority', () => {
   it('makes lifecycle authority and offering gates server-side', () => {
     expect(migration).toContain("'PENDING'");
     expect(migration).toContain('BLOCKED_VEHICLE_MUTATION_DENIED');
-    expect(migration).toContain("status IN ('ACTIVE','INACTIVE') THEN 'UNDER_REVIEW'");
+    expect(migration).toContain("status IN ('ACTIVE','INACTIVE') THEN 'IN_REVIEW'");
     expect(migration).toContain('OFFERING_PROVIDER_NOT_ACTIVE');
     expect(migration).toContain('OFFERING_VEHICLE_NOT_ACTIVE');
     expect(migration).toContain('OFFERING_INSTRUCTOR_NOT_ELIGIBLE');

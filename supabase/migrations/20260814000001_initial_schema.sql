@@ -52,7 +52,7 @@ CREATE TYPE vehicle_transmission AS ENUM (
 
 CREATE TYPE vehicle_status AS ENUM (
   'PENDING',
-  'UNDER_REVIEW',
+  'IN_REVIEW',
   'ACTIVE',
   'INACTIVE',
   'EXPIRED',

@@ -20,7 +20,7 @@ export type ProviderType = 'INSTRUCTOR' | 'DRIVING_SCHOOL';
 export type ProviderStatus = 'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'REJECTED';
 export type VehicleCategory = 'A' | 'B';
 export type VehicleTransmission = 'MANUAL' | 'AUTOMATIC';
-export type VehicleStatus = 'PENDING' | 'UNDER_REVIEW' | 'ACTIVE' | 'INACTIVE' | 'EXPIRED' | 'BLOCKED';
+export type VehicleStatus = 'PENDING' | 'IN_REVIEW' | 'ACTIVE' | 'INACTIVE' | 'EXPIRED' | 'BLOCKED';
 export type ComplianceDocType =
   | 'CNH'
   | 'CREDENTIAL_DETRAN'
@@ -29,7 +29,7 @@ export type ComplianceDocType =
   | 'CRIMINAL_BACKGROUND'
   | 'CONTRACT_SOCIAL'
   | 'CFC_ALVARA';
-export type ComplianceStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+export type ComplianceStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED';
 export type BookingStatus =
   | 'DRAFT'
   | 'PENDING_PAYMENT'

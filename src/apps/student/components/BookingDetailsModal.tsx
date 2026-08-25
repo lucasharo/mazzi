@@ -202,7 +202,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             leftIcon={<MessageSquare className="h-4 w-4 text-slate-600" aria-hidden="true" />}
             aria-label="Abrir conversa no chat sobre esta reserva"
           >
-            {isCancelled ? 'Ver Chat' : 'Abrir Chat'}
+            Mensagens
           </Button>
         )}
 

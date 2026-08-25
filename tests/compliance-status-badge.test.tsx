@@ -10,10 +10,9 @@ describe('global compliance status badge', () => {
     ['SUPERSEDED', 'Pendente', 'bg-orange-50'],
     ['INACTIVE', 'Não aprovado', 'bg-rose-50'],
     ['APPROVED', 'Aprovado', 'bg-emerald-50'],
-    ['UNDER_REVIEW', 'Em análise', 'bg-blue-50'],
+['IN_REVIEW', 'Em análise', 'bg-blue-50'],
     ['PENDING', 'Pendente', 'bg-orange-50'],
     ['REJECTED', 'Não aprovado', 'bg-rose-50'],
-    ['EXPIRED', 'Não aprovado', 'bg-rose-50'],
   ])('maps %s to the shared semantic state', (status, label, color) => {
     const markup = renderToStaticMarkup(
       <StatusBadge status={status} domain="compliance" />,

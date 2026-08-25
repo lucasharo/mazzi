@@ -33,11 +33,11 @@ import { formatDateBR, formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
-import { StudentProMigrationCard } from './components/StudentProMigrationCard';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { maskCpf } from '../../utils/cpf';
 import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
 import { useMobileAppRoute } from '../../lib/mobile-app-router';
+import { StudentProMigrationCard } from './components/StudentProMigrationCard';
 
 export const MAX_MAP_RESULTS = 50;
 
@@ -676,6 +676,7 @@ function applyStrictProviderFilters(
     return confirmedBookings
       .filter((b) => {
         if (isBookingEnded(b, nowMs)) return false;
+        if (isBookingTodayInSaoPaulo(b)) return false;
 
         if (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') return true;
 
@@ -691,7 +692,10 @@ function applyStrictProviderFilters(
 
   const confirmedLessonBookings = useMemo(() => {
     return confirmedBookings
-      .filter((b) => getStudentBookingSection(b.status, b) === 'CONFIRMED' && !isBookingEnded(b, nowMs))
+      .filter((b) =>
+        (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'PENDING_PAYMENT') &&
+        !isBookingEnded(b, nowMs),
+      )
       .sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b));
   }, [confirmedBookings, nowMs]);
 
@@ -882,7 +886,7 @@ function applyStrictProviderFilters(
                   }`}
                 >
                   <CalendarIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  Confirmadas
+                  Próximas
                 </ButtonBase>
                 <ButtonBase
                   role="tab"
@@ -919,7 +923,7 @@ function applyStrictProviderFilters(
               {bookingsLoading && <ContentSkeleton count={3} label="Carregando suas aulas" />}
               {!bookingsError && !bookingsLoading && bookingTab === 'confirmed' && (
                 <div className="space-y-3">
-                  {confirmedLessonBookings.length === 0 ? (
+                  {upcomingBookings.length === 0 ? (
                     <EmptyState
                       title="Nenhuma aula confirmada"
                       description="Você não possui aulas confirmadas no momento."
@@ -928,7 +932,7 @@ function applyStrictProviderFilters(
                       onAction={() => setActiveTab('search')}
                     />
                   ) : (
-                    confirmedLessonBookings.map((b) => (
+                    upcomingBookings.map((b) => (
                       <BookingCard
                         key={b.id}
                         booking={b}

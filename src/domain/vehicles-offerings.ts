@@ -22,7 +22,7 @@ export const MVP_LESSON_DURATION_MINUTES = 50;
 
 /** States that require an administrator review before the vehicle can be offered. */
 export function isVehicleAwaitingAdminReview(status: VehicleStatus): boolean {
-  return status === 'PENDING' || status === 'UNDER_REVIEW';
+return status === 'PENDING' || status === 'IN_REVIEW';
 }
 
 export class VehicleDomainError extends Error {
@@ -54,12 +54,12 @@ export const ALLOWED_VEHICLE_STATUS_TRANSITIONS: Record<
   VehicleStatus,
   readonly VehicleStatus[]
 > = {
-  DRAFT: ['UNDER_REVIEW', 'BLOCKED'],
-  PENDING: ['UNDER_REVIEW', 'BLOCKED'],
-  UNDER_REVIEW: ['ACTIVE', 'INACTIVE', 'BLOCKED'],
+DRAFT: ['IN_REVIEW', 'BLOCKED'],
+PENDING: ['IN_REVIEW', 'BLOCKED'],
+IN_REVIEW: ['ACTIVE', 'INACTIVE', 'BLOCKED'],
   ACTIVE: ['INACTIVE', 'EXPIRED', 'BLOCKED'],
-  INACTIVE: ['UNDER_REVIEW', 'ACTIVE', 'BLOCKED'],
-  EXPIRED: ['UNDER_REVIEW', 'BLOCKED'],
+INACTIVE: ['IN_REVIEW', 'ACTIVE', 'BLOCKED'],
+EXPIRED: ['IN_REVIEW', 'BLOCKED'],
   BLOCKED: [], // Terminal administrative lockdown
 };
 
@@ -344,7 +344,7 @@ export function validateVehicleData(data: Partial<Vehicle>): void {
 }
 
 /**
- * Creates a new Vehicle record in PENDING or UNDER_REVIEW status.
+* Creates a new Vehicle record in PENDING or IN_REVIEW status.
  */
 export function createVehicleDraft(params: {
   providerId: string;
@@ -369,7 +369,7 @@ export function createVehicleDraft(params: {
     );
   }
 
-  const initialStatus: VehicleStatus = params.autoSubmitForReview ? 'UNDER_REVIEW' : 'PENDING';
+const initialStatus: VehicleStatus = params.autoSubmitForReview ? 'IN_REVIEW' : 'PENDING';
 
   const vehicle: Vehicle = {
     id: `veh_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -711,8 +711,8 @@ export function enforceOfferingOwnership(
 
 /**
  * Enforces permissions and rules for activating a vehicle.
- * Providers CANNOT activate a vehicle in DRAFT, PENDING, or UNDER_REVIEW status directly.
- * Status transition DRAFT/UNDER_REVIEW -> ACTIVE requires platform review/approval.
+* Providers CANNOT activate a vehicle in DRAFT, PENDING, or IN_REVIEW status directly.
+* Status transition DRAFT/IN_REVIEW -> ACTIVE requires platform review/approval.
  */
 export function validateVehicleActivationPermission(
   currentVehicle: Vehicle,
@@ -726,7 +726,7 @@ export function validateVehicleActivationPermission(
     );
   }
 
-  if (currentVehicle.status === 'DRAFT' || currentVehicle.status === 'PENDING' || currentVehicle.status === 'UNDER_REVIEW') {
+if (currentVehicle.status === 'DRAFT' || currentVehicle.status === 'PENDING' || currentVehicle.status === 'IN_REVIEW') {
     if (actorRole !== 'PLATFORM_ADMIN') {
       throw new VehicleDomainError(
         `Prestadores não podem ativar diretamente um veículo em estado '${currentVehicle.status}'. O veículo deve passar pelo fluxo de homologação/review.`,

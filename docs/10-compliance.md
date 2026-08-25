@@ -74,7 +74,7 @@ O compliance global do instrutor é separado do compliance do vínculo com uma a
   1. O documento passa para o status `REJECTED`, registrando `rejectionReason`, `reviewedBy` e `reviewedAt`.
   2. O prestador permanece no status `PENDING_REVIEW` (ou `DRAFT`), com o motor de elegibilidade retornando `isEligible = false`.
   3. A interface do prestador exibe o alerta de **"Ação Necessária: Reenviar Documento Rejeitado"**, detalhando a justificativa apontada pela moderação.
-  4. O prestador pode enviar uma nova versão do documento, que substituirá o anterior e retornará para a fila de análise (`UNDER_REVIEW`).
+4. O prestador pode enviar uma nova versão do documento, que substituirá o anterior e retornará para a fila de análise (`IN_REVIEW`).
 
 ---
 
@@ -99,7 +99,7 @@ A camada de compliance conta com suíte automatizada cobrindo:
   1. O documento passa para o status `REJECTED`, registrando `rejectionReason`, `reviewedBy` e `reviewedAt`.
   2. O prestador permanece no status `PENDING_REVIEW` (ou `DRAFT`), com o motor de elegibilidade retornando `isEligible = false`.
   3. A interface do prestador exibe o alerta de **"Ação Necessária: Reenviar Documento Rejeitado"**, detalhando a justificativa apontada pela moderação.
-  4. O prestador pode enviar uma nova versão do documento, que substituirá o anterior e retornará para a fila de análise (`UNDER_REVIEW`).
+4. O prestador pode enviar uma nova versão do documento, que substituirá o anterior e retornará para a fila de análise (`IN_REVIEW`).
 
 ---
 

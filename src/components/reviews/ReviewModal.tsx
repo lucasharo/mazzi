@@ -79,8 +79,25 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     }
   };
 
+  const footer = booking && !loading && !existingReview ? (
+    <>
+      <Button variant="outline" size="sm" onClick={onClose}>
+        Fechar
+      </Button>
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={handleSubmit}
+        isLoading={submitting}
+        disabled={booking.status !== 'COMPLETED' || rating < 1 || rating > 5}
+      >
+        Enviar avaliação
+      </Button>
+    </>
+  ) : undefined;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Avaliar aula concluída" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Avaliar aula concluída" size="md" footer={footer}>
       {!booking ? null : (
         <div className="space-y-5 text-sm">
           <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -137,20 +154,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 />
               </div>
 
-              <div className="mazzi-modal-actions flex justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={onClose}>
-                  Fechar
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleSubmit}
-                  isLoading={submitting}
-                  disabled={booking.status !== 'COMPLETED' || rating < 1 || rating > 5}
-                >
-                  Enviar avaliação
-                </Button>
-              </div>
             </>
           )}
         </div>

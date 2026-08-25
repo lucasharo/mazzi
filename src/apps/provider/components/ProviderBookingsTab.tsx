@@ -9,8 +9,8 @@ import { BookingCard } from '../../../components/ui/BookingCard';
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 
 interface ProviderBookingsTabProps {
-  bookingFilterTab: 'all' | 'today' | 'upcoming' | 'history';
-  onFilterTabChange: (tab: 'all' | 'today' | 'upcoming' | 'history') => void;
+  bookingFilterTab: 'upcoming' | 'today' | 'history';
+  onFilterTabChange: (tab: 'upcoming' | 'today' | 'history') => void;
   filteredBookings: Booking[];
   actionSuccessMessage: string | null;
   actionErrorMessage: string | null;
@@ -73,7 +73,7 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
         activeTab={bookingFilterTab}
         onChange={(tab) => onFilterTabChange(tab as ProviderBookingsTabProps['bookingFilterTab'])}
         tabs={[
-          { id: 'all', label: 'Confirmadas', icon: <CalendarRange className="h-4 w-4" /> },
+          { id: 'upcoming', label: 'Próximas', icon: <CalendarRange className="h-4 w-4" /> },
           { id: 'today', label: 'Hoje', icon: <Clock className="h-4 w-4" /> },
           { id: 'history', label: 'Histórico', icon: <History className="h-4 w-4" /> },
         ]}

@@ -83,6 +83,18 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'Os dados da oferta não correspondem ao veículo selecionado. Atualize a tela e tente novamente.';
   }
 
+  if (msg.includes('OFFERING_PROVIDER_NOT_ACTIVE')) {
+    return 'O cadastro do prestador ainda não está aprovado. Conclua o onboarding e aguarde a validação administrativa para publicar ofertas.';
+  }
+
+  if (msg.includes('OFFERING_VEHICLE_NOT_ACTIVE')) {
+    return 'O veículo selecionado ainda não está aprovado. Aguarde a validação administrativa antes de publicar esta oferta.';
+  }
+
+  if (msg.includes('OFFERING_INSTRUCTOR_NOT_ELIGIBLE')) {
+    return 'O instrutor selecionado ainda não está elegível para esta oferta. Verifique o vínculo e os documentos de compliance.';
+  }
+
   if (msg.includes('SERVICE_RADIUS_INVALID')) {
     return 'O raio de atendimento deve ser um valor entre 1 e 100 km.';
   }

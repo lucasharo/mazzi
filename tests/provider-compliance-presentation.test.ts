@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Provider, ComplianceDocument } from '../src/types';
 import { evaluateProviderEligibility, DEFAULT_COMPLIANCE_REQUIREMENTS } from '../src/domain/compliance';
-import { resolveProviderCompliancePresentation } from '../src/domain/provider-compliance-presentation';
+import { resolveComplianceDocumentStatus, resolveProviderCompliancePresentation } from '../src/domain/provider-compliance-presentation';
 
 const provider: Provider = { id: 'provider-1', userId: 'user-1', name: 'Instrutor', type: 'INSTRUCTOR', status: 'ACTIVE', ratingAverage: 5, ratingCount: 1, neighborhood: 'Pinheiros', city: 'São Paulo', state: 'SP', categories: ['B'], transmissions: ['MANUAL'], startingPriceInCents: 14500, isVerified: true };
 const requirement = DEFAULT_COMPLIANCE_REQUIREMENTS.find((item) => item.providerType === 'INSTRUCTOR' && item.isMandatory) || DEFAULT_COMPLIANCE_REQUIREMENTS.find((item) => item.providerType === 'INSTRUCTOR');
@@ -18,9 +18,9 @@ function presentation(statuses: ComplianceDocument['status'][], providerStatus: 
 describe('PRO compliance presentation precedence', () => {
   it('shows verified only when ACTIVE is eligible', () => expect(presentation(['APPROVED'])).toMatchObject({ status: 'ACTIVE', verified: true, title: 'Credenciamento Ativo • Verificado pela MAZZI' }));
   it('maps effective pending, rejected, expired and missing documents distinctly', () => {
-    expect(presentation(['PENDING']).status).toBe('UNDER_REVIEW');
+expect(presentation(['PENDING']).status).toBe('IN_REVIEW');
     expect(presentation(['REJECTED']).status).toBe('REJECTED');
-    expect(presentation(['APPROVED'], 'ACTIVE', '2026-08-01T00:00:00Z').status).toBe('EXPIRED');
+    expect(presentation(['APPROVED'], 'ACTIVE', '2026-08-01T00:00:00Z').status).toBe('REJECTED');
     expect(presentation([])).toMatchObject({ status: 'PENDING', title: 'Documentação pendente para verificação' });
   });
   it('prioritizes provider operational states and renders one title', () => {
@@ -41,5 +41,12 @@ describe('PRO compliance presentation precedence', () => {
     const result = resolveProviderCompliancePresentation(current, eligibility);
     expect(result.verified).toBe(true);
     expect(result.status).not.toBe('EXPIRED');
+  });
+
+  it('keeps approved compliance distinct from a non-active provider lifecycle', () => {
+    const current = { ...provider, status: 'DRAFT' as const };
+    const eligibility = evaluateProviderEligibility(current, [doc('APPROVED')], [requirement!], at);
+    expect(resolveComplianceDocumentStatus(eligibility)).toBe('APPROVED');
+    expect(current.status).toBe('DRAFT');
   });
 });

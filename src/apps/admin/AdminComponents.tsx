@@ -55,8 +55,8 @@ export const DashboardTab: React.FC<{
   // Compute real metrics
   const activeProviders = providers.filter((p) => p.status === 'ACTIVE').length;
   const pendingReviewProviders = providers.filter((p) => p.status === 'PENDING_REVIEW').length;
-  const pendingDocs = complianceDocs.filter((d) => d.status === 'UNDER_REVIEW').length;
-  const expiringDocsCount = complianceDocs.filter((d) => d.status === 'EXPIRED').length;
+const pendingDocs = complianceDocs.filter((d) => d.status === 'PENDING' || d.status === 'IN_REVIEW').length;
+const expiringDocsCount = complianceDocs.filter((d) => d.expiresAt && new Date(d.expiresAt).getTime() < Date.now()).length;
   const vehiclesUnderReview = vehicles.filter((v) => isVehicleAwaitingAdminReview(v.status)).length;
   
   const todayParts = new Intl.DateTimeFormat('en-US', {
@@ -302,7 +302,10 @@ export const ProvidersTab: React.FC<{
   const [reasonText, setReasonText] = useState<string>('');
 
   const selectedProv = providers.find((p) => p.id === selectedProvId) || providers[0];
-  const selectedProvDocs = selectedProv ? complianceDocs.filter((d) => d.providerId === selectedProv.id) : [];
+  const selectedProvDocs = selectedProv ? complianceDocs.filter((d) =>
+    d.providerId === selectedProv.id ||
+    (selectedProv.type === 'INSTRUCTOR' && d.scope === 'USER_GLOBAL' && d.userId === selectedProv.userId)
+  ) : [];
   const selectedProvVehicles = selectedProv ? vehicles.filter((v) => v.providerId === selectedProv.id) : [];
   const selectedProvLogs = selectedProv ? auditLogs.filter((log) => log.entityId === selectedProv.id || log.previousValue?.includes(selectedProv.id) || log.newValue?.includes(selectedProv.id)) : [];
 
@@ -706,12 +709,17 @@ export const ComplianceTab: React.FC<{
   onApproveDoc: (doc: ComplianceDocument) => void;
   onRejectDoc: (doc: ComplianceDocument, reason: string) => void;
 }> = ({ complianceDocs, actor, onApproveDoc, onRejectDoc }) => {
-  const [filterStatus, setFilterStatus] = useState<string>('UNDER_REVIEW');
+  const [filterStatus, setFilterStatus] = useState<string>('PENDING');
   const [selectedDocId, setSelectedDocId] = useState<string>('');
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
 
-  const filteredDocs = complianceDocs.filter((d) => filterStatus === 'ALL' || d.status === filterStatus);
+  const filteredDocs = complianceDocs.filter((d) =>
+    filterStatus === 'ALL'
+      || (filterStatus === 'PENDING' ? d.status === 'PENDING' || d.status === 'IN_REVIEW' : filterStatus === 'EXPIRED'
+        ? Boolean(d.expiresAt && new Date(d.expiresAt).getTime() < Date.now())
+        : d.status === filterStatus)
+  );
   const selectedDoc = complianceDocs.find((d) => d.id === selectedDocId) || filteredDocs[0];
 
   const handleApprove = (doc: ComplianceDocument) => {
@@ -725,7 +733,7 @@ export const ComplianceTab: React.FC<{
     setRejectionReason('');
   };
 
-  const expiringDocs = complianceDocs.filter((d) => d.status === 'EXPIRED');
+  const expiringDocs = complianceDocs.filter((d) => d.expiresAt && new Date(d.expiresAt).getTime() < Date.now());
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
@@ -741,10 +749,10 @@ export const ComplianceTab: React.FC<{
             }}
             className="w-full text-xs rounded-xl border-slate-200 bg-white p-2 border"
           >
-            <option value="UNDER_REVIEW">Em Análise ({complianceDocs.filter(d => d.status === 'UNDER_REVIEW').length})</option>
+<option value="PENDING">Pendente ({complianceDocs.filter(d => d.status === 'PENDING' || d.status === 'IN_REVIEW').length})</option>
             <option value="APPROVED">Aprovados ({complianceDocs.filter(d => d.status === 'APPROVED').length})</option>
             <option value="REJECTED">Rejeitados ({complianceDocs.filter(d => d.status === 'REJECTED').length})</option>
-            <option value="EXPIRED">Expirados ({complianceDocs.filter(d => d.status === 'EXPIRED').length})</option>
+            <option value="EXPIRED">Expirados ({complianceDocs.filter(d => d.expiresAt && new Date(d.expiresAt).getTime() < Date.now()).length})</option>
             <option value="ALL">Todos os Documentos ({complianceDocs.length})</option>
           </select>
         </div>
@@ -776,7 +784,7 @@ export const ComplianceTab: React.FC<{
                 >
                   <div className="flex items-start justify-between gap-1">
                     <span className="font-bold line-clamp-1">{doc.title}</span>
-                    <StatusBadge status={doc.status} domain="compliance" />
+<StatusBadge status={doc.status} domain="compliance" />
                   </div>
                   <p className={`text-[11px] mt-1 truncate opacity-80`}>Prestador: {doc.providerName || 'N/A'}</p>
                   <p className={`text-[10px] mt-0.5 font-mono opacity-60`}>Enviado em: {new Date(doc.uploadedAt).toLocaleDateString()}</p>
@@ -797,7 +805,7 @@ export const ComplianceTab: React.FC<{
                   <h3 className="text-base font-black text-slate-900">{selectedDoc.title}</h3>
                   <p className="text-[11px] text-slate-500">ID de Auditoria do Arquivo: <span className="font-mono text-indigo-600 font-bold">{selectedDoc.id}</span></p>
                 </div>
-                <StatusBadge status={selectedDoc.status} />
+<StatusBadge status={selectedDoc.status} domain="compliance" />
               </div>
               <div className="text-[11px] text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4">
                 <p>Prestador: <strong>{selectedDoc.providerName || 'Não informado'}</strong></p>
@@ -818,7 +826,7 @@ export const ComplianceTab: React.FC<{
             )}
 
             {/* Controles de Aprovação */}
-            {selectedDoc.status === 'UNDER_REVIEW' && (
+{(selectedDoc.status === 'PENDING' || selectedDoc.status === 'IN_REVIEW') && (
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
                 <div>
                   <h4 className="font-extrabold text-xs text-slate-900 uppercase">Parecer de Análise Regulatória</h4>
@@ -904,7 +912,7 @@ export const VehiclesTab: React.FC<{
   onRejectVehicle: (veh: Vehicle, reason: string) => void;
   onBlockVehicle: (veh: Vehicle, reason: string) => void;
 }> = ({ vehicles, providers, onApproveVehicle, onRejectVehicle, onBlockVehicle }) => {
-  const [filterStatus, setFilterStatus] = useState<string>('UNDER_REVIEW');
+const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
   const [selectedVehId, setSelectedVehId] = useState<string>('');
   const [showFullPlate, setShowFullPlate] = useState<boolean>(false);
   
@@ -945,7 +953,7 @@ export const VehiclesTab: React.FC<{
           >
             <option value="AWAITING_REVIEW">Aguardando aprovação ({vehicles.filter(v => isVehicleAwaitingAdminReview(v.status)).length})</option>
             <option value="PENDING">Pendente novo ({vehicles.filter(v => v.status === 'PENDING').length})</option>
-            <option value="UNDER_REVIEW">Em revisão ({vehicles.filter(v => v.status === 'UNDER_REVIEW').length})</option>
+<option value="IN_REVIEW">Em revisão ({vehicles.filter(v => v.status === 'IN_REVIEW').length})</option>
             <option value="ACTIVE">Ativos ({vehicles.filter(v => v.status === 'ACTIVE').length})</option>
             <option value="BLOCKED">Bloqueados ({vehicles.filter(v => v.status === 'BLOCKED').length})</option>
             <option value="INACTIVE">Inativos ({vehicles.filter(v => v.status === 'INACTIVE').length})</option>

@@ -21,9 +21,11 @@ describe('Student booking sections', () => {
     expect(getStudentBookingSection(status)).toBe('HISTORY');
   });
 
-  it('routes only CONFIRMED to Confirmadas', () => {
+  it('keeps the domain section conservative while the UI places in-progress lessons in Hoje', () => {
     expect(getStudentBookingSection('CONFIRMED')).toBe('CONFIRMED');
     expect(getStudentBookingSection('IN_PROGRESS')).not.toBe('CONFIRMED');
+    expect(studentApp).toContain("b.status === 'IN_PROGRESS'");
+    expect(studentApp).toContain("bookingTab === 'today'");
   });
 
   it('routes a legacy confirmed payload with cancellation metadata to history', () => {
@@ -36,10 +38,10 @@ describe('Student booking sections', () => {
     expect(studentApp).toContain("isBookingEnded(b, nowMs)");
   });
 
-  it('uses the Confirmadas title, exact status filter, history complement, and coherent empty state', () => {
-    expect(studentApp).toContain('Confirmadas');
+  it('uses the Próximas title, excludes today from that list, and preserves history filtering', () => {
+    expect(studentApp).toContain('Próximas');
     expect(studentApp).not.toContain('Todas');
-    expect(studentApp).toContain("getStudentBookingSection(b.status, b) === 'CONFIRMED'");
+    expect(studentApp).toContain('isBookingTodayInSaoPaulo(b)');
     expect(studentApp).toContain("getStudentBookingSection(b.status, b) === 'HISTORY'");
     expect(studentApp).toContain('Você não possui aulas confirmadas no momento.');
   });
