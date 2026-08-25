@@ -5,7 +5,7 @@ import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../../com
 import { Input } from '../../../components/ui/Input';
 import { ProfilePhotoPicker } from '../../../components/profile/ProfilePhotoPicker';
 import { ComplianceStatusAlert } from '../../../components/ui/ComplianceStatusAlert';
-import { AddressAutocomplete } from '../../../components/search/AddressAutocomplete';
+import { ProviderAddressForm, ProviderAddressFormValue } from '../../../components/provider/ProviderAddressForm';
 
 import { maskBrazilianPhone } from '../../../lib/input-masks';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
@@ -32,6 +32,8 @@ interface ProviderProfileTabProps {
     serviceRadiusKm: number;
     bio: string;
     addressLine1: string;
+    houseNumber: string;
+    complement: string;
     postalCode: string;
     address?: ProviderAddress;
   };
@@ -139,68 +141,11 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-neighborhood">Bairro / região</label>
-                <Input
-                  id="provider-profile-neighborhood"
-                  className="rounded-2xl"
-                  value={profileForm.neighborhood}
-                  onChange={(e) => onProfileFormChange({ ...profileForm, neighborhood: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-city">Cidade</label>
-                <Input
-                  id="provider-profile-city"
-                  className="rounded-2xl"
-                  value={profileForm.city}
-                  onChange={(e) => onProfileFormChange({ ...profileForm, city: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-address">Endereço operacional</label>
-              <AddressAutocomplete
-                value={profileForm.address?.formatted || profileForm.addressLine1}
-                ariaLabel="Endereço operacional"
-                onChange={(value) => onProfileFormChange({ ...profileForm, addressLine1: value, address: undefined })}
-                onSelect={(suggestion) => onProfileFormChange({
-                  ...profileForm,
-                  addressLine1: suggestion.addressLine1 || suggestion.formattedAddress,
-                  postalCode: suggestion.postalCode || '',
-                  neighborhood: suggestion.neighborhood || profileForm.neighborhood,
-                  city: suggestion.city || profileForm.city,
-                  state: suggestion.stateCode || suggestion.state || profileForm.state,
-                  address: {
-                    formatted: suggestion.formattedAddress,
-                    addressLine1: suggestion.addressLine1,
-                    addressLine2: suggestion.addressLine2,
-                    street: suggestion.street,
-                    houseNumber: suggestion.houseNumber,
-                    neighborhood: suggestion.neighborhood,
-                    city: suggestion.city,
-                    state: suggestion.state,
-                    stateCode: suggestion.stateCode,
-                    postalCode: suggestion.postalCode,
-                    country: suggestion.country,
-                    countryCode: suggestion.countryCode,
-                    latitude: suggestion.latitude,
-                    longitude: suggestion.longitude,
-                    placeId: suggestion.placeId,
-                    source: 'GEOAPIFY',
-                  },
-                })}
-                inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] outline-none focus:border-[var(--mazzi-yellow)] focus:ring-2 focus:ring-[var(--mazzi-focus-glow)]"
-              />
-              <p className="mt-1 text-[11px] text-[var(--mazzi-muted)]">Selecione uma sugestão para salvar a localização com coordenadas.</p>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-postal-code">CEP</label>
-              <Input id="provider-profile-postal-code" className="rounded-2xl" value={profileForm.postalCode} onChange={(e) => onProfileFormChange({ ...profileForm, postalCode: e.target.value })} />
-            </div>
+            <ProviderAddressForm
+              idPrefix="provider-profile"
+              value={profileForm as ProviderAddressFormValue}
+              onChange={onProfileFormChange}
+            />
 
             <div>
               <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-radius">Raio de atendimento (km)</label>

@@ -71,7 +71,7 @@ export function mapProviderFromDb(row: any): Provider {
     neighborhood: row.neighborhood || '',
     city: row.city || '',
     state: row.state || undefined,
-    address: row.address || undefined,
+    address: row.address ? { ...row.address, postalCode: row.address.postalCode || row.postal_code || undefined } : (row.postal_code ? { postalCode: row.postal_code, source: 'LEGACY' as const } : undefined),
     latitude: row.latitude == null ? undefined : Number(row.latitude),
     longitude: row.longitude == null ? undefined : Number(row.longitude),
     serviceRadiusKm: row.service_radius_km || 5,

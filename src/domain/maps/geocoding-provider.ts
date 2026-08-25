@@ -36,6 +36,16 @@ export interface GeocodingOptions {
   signal?: AbortSignal;
 }
 
+export interface StructuredGeocodingAddress {
+  street: string;
+  houseNumber: string;
+  postalCode: string;
+  city: string;
+  stateCode: string;
+  countryCode?: string;
+  proximity?: { longitude: number; latitude: number };
+}
+
 export interface GeocodingProvider {
   id: string;
   name: string;
@@ -43,6 +53,7 @@ export interface GeocodingProvider {
   statusTag: string;
   autocomplete?(query: string, options?: GeocodingOptions): Promise<LocationSuggestion[]>;
   geocode(addressQuery: string): Promise<GeocodingLocationResult[]>;
+  geocodeStructuredAddress?(address: StructuredGeocodingAddress, signal?: AbortSignal): Promise<LocationSuggestion[]>;
   reverseGeocode(latitude: number, longitude: number): Promise<GeocodingLocationResult>;
 }
 
@@ -179,6 +190,12 @@ export class GeoapifyGeocodingProvider implements GeocodingProvider {
 
   geocode(addressQuery: string): Promise<LocationSuggestion[]> {
     return this.request('search', { text: addressQuery, filter: 'countrycode:br', lang: 'pt', limit: '5' });
+  }
+
+  geocodeStructuredAddress(address: StructuredGeocodingAddress, signal?: AbortSignal): Promise<LocationSuggestion[]> {
+    const params: Record<string, string> = { street: address.street, housenumber: address.houseNumber, postcode: address.postalCode, city: address.city, state: address.stateCode, country: address.countryCode || 'br', filter: 'countrycode:br', lang: 'pt', limit: '5' };
+    if (address.proximity) params.bias = `proximity:${address.proximity.longitude},${address.proximity.latitude}`;
+    return this.request('search', params, signal);
   }
 
   async reverseGeocode(latitude: number, longitude: number): Promise<LocationSuggestion> {

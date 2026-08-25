@@ -58,6 +58,7 @@ import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
 import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
 import { useMobileAppRoute } from '../../lib/mobile-app-router';
+import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
 
 import { ProviderHeader } from './components/ProviderHeader';
 import { ProviderBottomNav, ProviderTabId } from './components/ProviderBottomNav';
@@ -181,6 +182,8 @@ export const ProviderApp: React.FC = () => {
     serviceRadiusKm: 6,
     bio: '',
     addressLine1: '',
+    houseNumber: '',
+    complement: '',
     postalCode: '',
     address: undefined,
   });
@@ -204,6 +207,11 @@ export const ProviderApp: React.FC = () => {
     state: 'SP',
     serviceRadiusKm: 6,
     bio: '',
+    addressLine1: '',
+    houseNumber: '',
+    complement: '',
+    postalCode: '',
+    address: undefined,
   });
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
 
@@ -959,7 +967,18 @@ export const ProviderApp: React.FC = () => {
     const cleanNeighborhood = profileForm.neighborhood.trim();
     const cleanCity = profileForm.city.trim();
     const cleanBio = profileForm.bio.trim();
-    const cleanAddress = profileForm.address ? { ...profileForm.address, complement: profileForm.address.complement?.trim() || undefined } : (cleanNeighborhood || cleanCity ? { addressLine1: profileForm.addressLine1.trim(), neighborhood: cleanNeighborhood, city: cleanCity, state: cleanState, postalCode: profileForm.postalCode.trim(), source: 'LEGACY' as const } : null);
+    let cleanAddress = profileForm.address ? { ...profileForm.address, complement: profileForm.complement.trim() || undefined } : null;
+    if (profileForm.address?.source !== 'LEGACY' && profileForm.addressLine1.trim() && profileForm.houseNumber.trim() && profileForm.postalCode.trim()) {
+      try {
+        cleanAddress = await resolveProviderAddress({ street: profileForm.addressLine1.trim(), houseNumber: profileForm.houseNumber.trim(), postalCode: profileForm.postalCode.replace(/\D/g, ''), city: cleanCity, stateCode: cleanState, countryCode: 'br' });
+        cleanAddress.complement = profileForm.complement.trim() || undefined;
+      } catch (error) {
+        setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível confirmar o endereço. Selecione um endereço manualmente ou revise o CEP e o número.'));
+        return;
+      }
+    } else if (cleanNeighborhood || cleanCity) {
+      cleanAddress = { addressLine1: profileForm.addressLine1.trim(), neighborhood: cleanNeighborhood, city: cleanCity, state: cleanState, postalCode: profileForm.postalCode.trim(), source: 'LEGACY' as const };
+    }
 
     try {
       await dbService.updateMyProfile(
@@ -978,7 +997,7 @@ export const ProviderApp: React.FC = () => {
         address: cleanAddress,
         latitude: cleanAddress?.latitude ?? null,
         longitude: cleanAddress?.longitude ?? null,
-        postalCode: profileForm.postalCode,
+        postalCode: profileForm.postalCode.replace(/\D/g, ''),
       });
     } catch (error: any) {
       setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o perfil do prestador.'));
@@ -1264,6 +1283,8 @@ status: 'IN_REVIEW',
                   serviceRadiusKm: currentProvider.serviceRadiusKm || 6,
                   bio: currentProvider.bio || '',
                   addressLine1: currentProvider.address?.addressLine1 || currentProvider.address?.formatted || '',
+                  houseNumber: currentProvider.address?.houseNumber || '',
+                  complement: currentProvider.address?.complement || '',
                   postalCode: currentProvider.address?.postalCode || '',
                   address: currentProvider.address,
                 });
