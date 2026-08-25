@@ -141,6 +141,7 @@ describe('TASK-096A4M — Student to MAZZI PRO migration contract', () => {
     expect(signature).toContain('p_paid_at TIMESTAMPTZ');
     expect(signature).not.toContain('DEFAULT');
     expect(signature.match(/p_[a-z_]+\s+(?:UUID|VARCHAR|TIMESTAMPTZ)/g)).toHaveLength(3);
+    expect(migration).toContain('DROP FUNCTION IF EXISTS public.confirm_booking_payment(UUID, VARCHAR, TIMESTAMPTZ);');
   });
 
   it('orders authentication, student lock/assert, and payment lookup in confirm-payment', () => {

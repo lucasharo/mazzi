@@ -397,6 +397,8 @@ END; $$;
 REVOKE ALL ON FUNCTION public.create_booking_payment(UUID, public.payment_method, VARCHAR, VARCHAR) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_booking_payment(UUID, public.payment_method, VARCHAR, VARCHAR) TO authenticated, service_role;
 
+DROP FUNCTION IF EXISTS public.confirm_booking_payment(UUID, VARCHAR, TIMESTAMPTZ);
+
 CREATE OR REPLACE FUNCTION public.confirm_booking_payment(
   p_payment_id UUID,
   p_external_payment_id VARCHAR,
