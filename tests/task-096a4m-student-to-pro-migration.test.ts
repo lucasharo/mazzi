@@ -186,9 +186,10 @@ describe('TASK-096A4M — Student to MAZZI PRO migration contract', () => {
     expect(authContext).toContain('getStudentToProMigrationStatus');
     expect(authContext).toContain('migrateStudentProfileToInstructor');
     expect(studentCard).toContain('Ativar perfil profissional');
-    expect(studentCard).toContain('Migrar para MAZZI PRO');
-    expect(studentCard).toContain('Confirmar migração');
-    expect(studentRoot).toContain('Seu perfil de aluno está desativado.');
-    expect(studentRoot).toContain('Use esta mesma conta no MAZZI PRO');
+    expect(studentCard).not.toContain('Migrar para MAZZI PRO');
+    expect(studentCard).not.toContain('Confirmar migração');
+    expect(studentCard).toContain('Seu perfil profissional já está ativo');
+    expect(studentRoot).toContain('Acesse o MAZZI PRO');
+    expect(studentRoot).toContain('Esta conta possui apenas um perfil profissional.');
   });
 });

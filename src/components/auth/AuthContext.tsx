@@ -229,15 +229,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 2. Fetch active provider details or school details if any (only for instructors or school admins)
       let providerId: string | undefined;
+      let providerStatus: string | undefined;
       let schoolId: string | undefined;
 
       if (profile && roles.some((role) => ['INSTRUCTOR', 'SCHOOL_ADMIN', 'SCHOOL_STAFF'].includes(role))) {
         const { data: prov } = await sp
           .from('providers')
-          .select('id')
+          .select('id,status')
           .eq('user_id', profile.id)
           .maybeSingle();
-        if (prov) providerId = prov.id;
+        if (prov) {
+          providerId = prov.id;
+          providerStatus = prov.status;
+        }
 
         const { data: staff } = await sp
           .from('driving_school_staff')
@@ -257,6 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roles,
         status: (profile?.status || 'ACTIVE') as any,
         providerId,
+        providerStatus,
         schoolId,
       };
 

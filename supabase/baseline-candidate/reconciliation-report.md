@@ -20,6 +20,14 @@ Baseline candidate status: CANONICAL / ALIGNED for the R10D/R11 domains.
 Supabase DEV reference date: 2026-08-25.
 Covered through migration: `20260825172601_enforce_provider_offering_lifecycle_consistency`.
 
+## Multi-role self-booking contract
+
+The baseline candidate includes the forward-only `20260825211702_prevent_student_self_booking`
+contract. It centralizes authenticated identity conflict resolution and applies it to
+public search, provider booking context, available slots, quote creation, and booking
+hold creation. Anonymous search remains executable, while driving-school offerings
+assigned to another instructor remain eligible for a Student who is only a school member.
+
 ## Validation status
 
 The schema candidate remains separate from the active migration tree and contains no operational user/provider/booking/payment data. The reference-data file contains only the non-PII canonical terms requirement. Fresh-database replay was not run because Docker is unavailable and is not a gate for this task.

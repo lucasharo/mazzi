@@ -19,6 +19,7 @@ export interface AuthSessionState {
     status: 'ACTIVE' | 'PENDING_VERIFICATION' | 'SUSPENDED' | 'BLOCKED';
     avatarUrl?: string;
     providerId?: string;
+    providerStatus?: string;
     schoolId?: string;
   } | null;
   permissions: AppPermission[];
