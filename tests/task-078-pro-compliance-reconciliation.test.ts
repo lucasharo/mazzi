@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { doesDocumentSatisfyRequirement, evaluateProviderEligibility } from '../src/domain/compliance';
+import { resolveComplianceDocumentStatus } from '../src/domain/provider-compliance-presentation';
 import { ComplianceDocument, ComplianceRequirement, Provider } from '../src/types';
 
 const provider: Provider = { id: 'provider-1', userId: 'user-1', name: 'Instrutor', type: 'INSTRUCTOR', status: 'ACTIVE', ratingAverage: 5, ratingCount: 1, neighborhood: 'Pinheiros', city: 'São Paulo', state: 'SP', categories: ['B'], transmissions: ['MANUAL'], startingPriceInCents: 14500, isVerified: true };
@@ -19,4 +20,8 @@ describe('TASK-078 PRO compliance reconciliation', () => {
   it('does not count duplicate approved files as duplicate requirements', () => { const result = evaluate([doc({ id: 'approved-1', status: 'APPROVED' }), doc({ id: 'approved-2', status: 'APPROVED', uploadedAt: '2026-08-21T00:00:00Z' })]); expect(result.approvedCount).toBe(1); expect(result.approvedDocuments).toHaveLength(1); });
   it('accepts legacy aliases for CNH and DETRAN credentials', () => { expect(doesDocumentSatisfyRequirement('CNH', 'CNH_EAR')).toBe(true); expect(doesDocumentSatisfyRequirement('CREDENTIAL_DETRAN', 'CREDENTIAL_DETRAN_SP')).toBe(true); expect(doesDocumentSatisfyRequirement('OTHER', 'CNH_EAR')).toBe(false); });
   it('includes only the instructor matching USER_GLOBAL documents', () => { const globalApproved = doc({ id: 'global-cnh', providerId: '', userId: provider.userId, scope: 'USER_GLOBAL', status: 'APPROVED' }); expect(evaluate([globalApproved]).isEligible).toBe(true); expect(evaluate([{ ...globalApproved, id: 'other-user', userId: 'other-user' }]).isEligible).toBe(false); });
+  it('shows PENDING for files not submitted and IN_REVIEW only after upload', () => {
+    expect(resolveComplianceDocumentStatus(evaluate([doc({ status: 'PENDING' })]))).toBe('PENDING');
+    expect(resolveComplianceDocumentStatus(evaluate([doc({ status: 'IN_REVIEW' })]))).toBe('IN_REVIEW');
+  });
 });

@@ -17,9 +17,10 @@ export function resolveComplianceDocumentStatus(
   eligibility: ProviderEligibilityResult,
 ): DocumentStatus {
   if (eligibility.isEligible) return 'APPROVED';
-  if (eligibility.pendingDocuments.length > 0) return 'IN_REVIEW';
   if (eligibility.rejectedDocuments.length > 0) return 'REJECTED';
   if (eligibility.expiredDocuments.length > 0) return 'REJECTED';
+  if (eligibility.pendingSubmissionDocuments.length > 0 || eligibility.missingRequirements.length > 0) return 'PENDING';
+  if (eligibility.inReviewDocuments.length > 0) return 'IN_REVIEW';
   return 'PENDING';
 }
 
@@ -42,9 +43,6 @@ export function resolveProviderCompliancePresentation(
   if (provider.status === 'ACTIVE' && eligibility.isEligible) {
     return { status: 'ACTIVE', title: 'Credenciamento Ativo • Verificado pela MAZZI', description: 'Suas ofertas e horários estão visíveis para agendamentos de alunos em São Paulo.', verified: true };
   }
-  if (eligibility.pendingDocuments.length > 0) {
-    return { status: 'IN_REVIEW', title: 'Documentos em análise pelo Compliance', description: 'Os documentos enviados estão em análise pela equipe de Compliance.', verified: false };
-  }
   if (eligibility.rejectedDocuments.length > 0) {
     return { status: 'REJECTED', title: 'Documentos rejeitados: correção necessária', description: 'Corrija e envie novamente os documentos rejeitados para concluir a verificação.', verified: false };
   }
@@ -53,6 +51,12 @@ export function resolveProviderCompliancePresentation(
   }
   if (eligibility.missingRequirements.length > 0) {
     return { status: 'PENDING', title: 'Documentação pendente para verificação', description: 'Envie e aguarde a aprovação de todos os documentos obrigatórios para receber o selo de verificação.', verified: false };
+  }
+  if (eligibility.pendingSubmissionDocuments.length > 0) {
+    return { status: 'PENDING', title: 'Documentação pendente para verificação', description: 'Envie e aguarde a aprovação de todos os documentos obrigatórios para receber o selo de verificação.', verified: false };
+  }
+  if (eligibility.inReviewDocuments.length > 0) {
+    return { status: 'IN_REVIEW', title: 'Documentos em análise pelo Compliance', description: 'Os documentos enviados estão em análise pela equipe de Compliance.', verified: false };
   }
   return { status: 'PENDING', title: 'Documentação pendente para verificação', description: 'A verificação do cadastro ainda não foi concluída.', verified: false };
 }

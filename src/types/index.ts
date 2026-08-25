@@ -119,6 +119,27 @@ export interface Provider {
   suspendedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  address?: ProviderAddress;
+}
+
+export interface ProviderAddress {
+  formatted?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  street?: string;
+  houseNumber?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  stateCode?: string;
+  postalCode?: string;
+  country?: string;
+  countryCode?: string;
+  latitude?: number;
+  longitude?: number;
+  placeId?: string;
+  source?: 'GEOAPIFY' | 'LEGACY';
+  complement?: string;
 }
 
 export type ComplianceDocCategory =

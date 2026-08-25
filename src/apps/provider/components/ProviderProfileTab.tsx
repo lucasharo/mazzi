@@ -1,10 +1,11 @@
 import React from 'react';
 import { Pencil, Save, } from 'lucide-react';
-import { ComplianceDocument, Provider, UserRole } from '../../../types';
+import { ComplianceDocument, Provider, ProviderAddress, UserRole } from '../../../types';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { ProfilePhotoPicker } from '../../../components/profile/ProfilePhotoPicker';
+import { ComplianceStatusAlert } from '../../../components/ui/ComplianceStatusAlert';
+import { AddressAutocomplete } from '../../../components/search/AddressAutocomplete';
 
 import { maskBrazilianPhone } from '../../../lib/input-masks';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
@@ -30,6 +31,9 @@ interface ProviderProfileTabProps {
     state: string;
     serviceRadiusKm: number;
     bio: string;
+    addressLine1: string;
+    postalCode: string;
+    address?: ProviderAddress;
   };
   onProfileFormChange: (form: any) => void;
   onSaveProfile: () => void;
@@ -55,8 +59,6 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
   const isSchool = currentProvider.type === 'DRIVING_SCHOOL' || currentRole === 'SCHOOL_STAFF';
   const complianceEligibility = evaluateProviderEligibility(currentProvider, complianceDocs);
   const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility);
-  const profileStatus = currentProvider.status === 'ACTIVE' ? currentProvider.status : complianceStatus;
-  const profileStatusDomain = currentProvider.status === 'ACTIVE' ? undefined : 'compliance' as const;
 
   return (
     <div className="space-y-5 text-left">
@@ -78,15 +80,11 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
         </div>
         <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">{currentProvider.name || userName || 'Instrutor'}</h3>
         <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{userEmail || 'E-mail não informado'}</p>
-        <div className="mt-3 flex justify-center">
-          <StatusBadge status={profileStatus} domain={profileStatusDomain} />
-          {currentProvider.status !== 'ACTIVE' && (
-            <p className="mt-2 text-[11px] text-[var(--mazzi-muted)]">
-              Cadastro operacional: {currentProvider.status === 'DRAFT' ? 'Pendente de ativação' : currentProvider.status}
-            </p>
-          )}
-        </div>
       </div>
+
+      <ComplianceStatusAlert
+        status={complianceStatus}
+      />
 
       {/* Main Profile Card */}
       <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
@@ -160,6 +158,48 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
                   onChange={(e) => onProfileFormChange({ ...profileForm, city: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-address">Endereço operacional</label>
+              <AddressAutocomplete
+                value={profileForm.address?.formatted || profileForm.addressLine1}
+                ariaLabel="Endereço operacional"
+                onChange={(value) => onProfileFormChange({ ...profileForm, addressLine1: value, address: undefined })}
+                onSelect={(suggestion) => onProfileFormChange({
+                  ...profileForm,
+                  addressLine1: suggestion.addressLine1 || suggestion.formattedAddress,
+                  postalCode: suggestion.postalCode || '',
+                  neighborhood: suggestion.neighborhood || profileForm.neighborhood,
+                  city: suggestion.city || profileForm.city,
+                  state: suggestion.stateCode || suggestion.state || profileForm.state,
+                  address: {
+                    formatted: suggestion.formattedAddress,
+                    addressLine1: suggestion.addressLine1,
+                    addressLine2: suggestion.addressLine2,
+                    street: suggestion.street,
+                    houseNumber: suggestion.houseNumber,
+                    neighborhood: suggestion.neighborhood,
+                    city: suggestion.city,
+                    state: suggestion.state,
+                    stateCode: suggestion.stateCode,
+                    postalCode: suggestion.postalCode,
+                    country: suggestion.country,
+                    countryCode: suggestion.countryCode,
+                    latitude: suggestion.latitude,
+                    longitude: suggestion.longitude,
+                    placeId: suggestion.placeId,
+                    source: 'GEOAPIFY',
+                  },
+                })}
+                inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] outline-none focus:border-[var(--mazzi-yellow)] focus:ring-2 focus:ring-[var(--mazzi-focus-glow)]"
+              />
+              <p className="mt-1 text-[11px] text-[var(--mazzi-muted)]">Selecione uma sugestão para salvar a localização com coordenadas.</p>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-postal-code">CEP</label>
+              <Input id="provider-profile-postal-code" className="rounded-2xl" value={profileForm.postalCode} onChange={(e) => onProfileFormChange({ ...profileForm, postalCode: e.target.value })} />
             </div>
 
             <div>

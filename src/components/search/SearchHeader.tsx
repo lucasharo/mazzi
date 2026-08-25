@@ -3,8 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Navigation, Search } from 'lucide-react';
 import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
-import { geocodeAddress } from '../../lib/geocoding';
 import { trackSearchAnalytics } from './SearchAnalytics';
+import { AddressAutocomplete } from './AddressAutocomplete';
 
 export interface SearchHeaderProps {
   searchRequest: SearchRequest;
@@ -13,6 +13,7 @@ export interface SearchHeaderProps {
   currentLocationName?: string;
   currentLocation?: { lat: number; lng: number };
   onLocationResolved?: (addressName: string, lat: number, lng: number) => void;
+  onLocationCleared?: () => void;
 }
 
 export const SearchHeader: React.FC<SearchHeaderProps> = ({
@@ -22,10 +23,12 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   currentLocationName = '',
   currentLocation,
   onLocationResolved,
+  onLocationCleared,
 }) => {
   const [addressInput, setAddressInput] = useState(currentLocationName);
   const [isLocating, setIsLocating] = useState(false);
   const skipNextLocationNameSync = useRef(false);
+  const selectedAddressRef = useRef(false);
 
   useEffect(() => {
     if (skipNextLocationNameSync.current) {
@@ -57,24 +60,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
   const handleAddressSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const query = addressInput.trim();
-    if (!query) return;
-    try {
-      const best = await geocodeAddress(query);
-      setAddressInput(best.displayName);
-      onLocationResolved?.(best.displayName, best.latitude, best.longitude);
-      onUpdateSearch({ latitude: best.latitude, longitude: best.longitude });
-    } catch (error) {
-      console.warn('Address geocoding failed:', error);
-      const [fallback] = await activeGeocodingProvider.geocode(query);
-      if (fallback) {
-        setAddressInput(fallback.formattedAddress);
-        onLocationResolved?.(fallback.formattedAddress, fallback.latitude, fallback.longitude);
-        onUpdateSearch({ latitude: fallback.latitude, longitude: fallback.longitude });
-      }
-    } finally {
-      onPerformSearch();
-    }
+    if (selectedAddressRef.current) onPerformSearch();
   };
 
   return (
@@ -95,13 +81,31 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             <span className="block text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--mazzi-muted)]">
               Localização
             </span>
-            <input
-              type="text"
-              aria-label="Endereço para buscar instrutores"
+            <AddressAutocomplete
               value={addressInput}
-              onChange={(event) => setAddressInput(event.target.value)}
-              placeholder="Sua localização atual"
-              className="mt-0.5 sm:mt-1 w-full min-h-[32px] bg-transparent text-sm font-extrabold text-[var(--mazzi-dark)] outline-none placeholder:text-slate-400 focus:outline-none"
+              ariaLabel="Buscar endereço ou local"
+              placeholder="Digite um endereço, bairro ou local"
+              className="mt-0.5 sm:mt-1"
+              proximity={currentLocation ? { longitude: currentLocation.lng, latitude: currentLocation.lat } : undefined}
+              inputClassName="min-h-[32px] bg-transparent pr-7 text-sm font-extrabold text-[var(--mazzi-dark)] outline-none placeholder:text-slate-400 focus:outline-none"
+              onChange={(value) => {
+                selectedAddressRef.current = false;
+                setAddressInput(value);
+                if (!value.trim()) {
+                  onUpdateSearch({ latitude: undefined, longitude: undefined });
+                  onLocationCleared?.();
+                } else {
+                  onUpdateSearch({ latitude: undefined, longitude: undefined });
+                }
+              }}
+              onSelect={(suggestion) => {
+                selectedAddressRef.current = true;
+                skipNextLocationNameSync.current = true;
+                onLocationResolved?.(suggestion.formattedAddress, suggestion.latitude, suggestion.longitude);
+                onUpdateSearch({ latitude: suggestion.latitude, longitude: suggestion.longitude, page: 1 });
+                onPerformSearch();
+                trackSearchAnalytics({ eventType: 'SEARCH_PERFORMED', regionLabel: suggestion.formattedAddress, category: searchRequest.category });
+              }}
             />
           </label>
           <ButtonBase

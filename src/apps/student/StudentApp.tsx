@@ -748,6 +748,10 @@ function applyStrictProviderFilters(
                   setSearchLocation(addr);
                   setSearchedLocation({ lat, lng, label: addr });
                 }}
+                onLocationCleared={() => {
+                  setSearchLocation('');
+                  setSearchedLocation(undefined);
+                }}
               />
 
               <section aria-labelledby="student-results-title" className="mt-8">

@@ -71,6 +71,9 @@ export function mapProviderFromDb(row: any): Provider {
     neighborhood: row.neighborhood || '',
     city: row.city || '',
     state: row.state || undefined,
+    address: row.address || undefined,
+    latitude: row.latitude == null ? undefined : Number(row.latitude),
+    longitude: row.longitude == null ? undefined : Number(row.longitude),
     serviceRadiusKm: row.service_radius_km || 5,
     categories,
     transmissions,
@@ -802,9 +805,13 @@ export const dbService = {
       state?: string;
       serviceRadiusKm?: number;
       bio?: string;
+      address?: Record<string, unknown> | null;
+      latitude?: number | null;
+      longitude?: number | null;
+      postalCode?: string;
     }
   ): Promise<void> {
-    const { error: rpcError } = await sp.rpc('update_provider_profile', {
+    const rpcPayload: Record<string, unknown> = {
       p_provider_id: providerId,
       p_name: profileData.name !== undefined ? profileData.name.trim() : null,
       p_public_contact: profileData.publicContact !== undefined ? profileData.publicContact.trim() : null,
@@ -813,7 +820,12 @@ export const dbService = {
       p_state: profileData.state !== undefined ? profileData.state.toUpperCase().trim() : null,
       p_service_radius_km: profileData.serviceRadiusKm !== undefined ? profileData.serviceRadiusKm : null,
       p_bio: profileData.bio !== undefined ? profileData.bio.trim() : null,
-    });
+    };
+    if (profileData.address !== undefined) rpcPayload.p_address = profileData.address;
+    if (profileData.latitude !== undefined) rpcPayload.p_latitude = profileData.latitude;
+    if (profileData.longitude !== undefined) rpcPayload.p_longitude = profileData.longitude;
+    if (profileData.postalCode !== undefined) rpcPayload.p_postal_code = profileData.postalCode.trim();
+    const { error: rpcError } = await sp.rpc('update_provider_profile', rpcPayload);
 
     if (rpcError) {
       if (rpcError.code === 'PGRST202' || rpcError.code === '42883' || rpcError.message?.includes('function public.update_provider_profile') || rpcError.message?.includes('Could not find')) {

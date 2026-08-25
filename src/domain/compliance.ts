@@ -461,6 +461,8 @@ export interface ProviderEligibilityResult {
   rejectedDocuments: ComplianceDocument[];
   expiredDocuments: ComplianceDocument[];
   pendingDocuments: ComplianceDocument[];
+  pendingSubmissionDocuments: ComplianceDocument[];
+  inReviewDocuments: ComplianceDocument[];
   approvedDocuments: ComplianceDocument[];
   ineligibilityReasons: string[];
 }
@@ -543,6 +545,8 @@ export function evaluateProviderEligibility(
   const rejectedDocuments: ComplianceDocument[] = [];
   const expiredDocuments: ComplianceDocument[] = [];
   const pendingDocuments: ComplianceDocument[] = [];
+  const pendingSubmissionDocuments: ComplianceDocument[] = [];
+  const inReviewDocuments: ComplianceDocument[] = [];
   const approvedDocuments: ComplianceDocument[] = [];
   const ineligibilityReasons: string[] = [];
 
@@ -578,6 +582,8 @@ export function evaluateProviderEligibility(
       ineligibilityReasons.push(`Documento '${latest.title}' foi rejeitado: ${latest.rejectionReason || 'Correção necessária'}.`);
     } else if (latest.status === 'PENDING' || latest.status === 'IN_REVIEW') {
       pendingDocuments.push(latest);
+      if (latest.status === 'PENDING') pendingSubmissionDocuments.push(latest);
+      if (latest.status === 'IN_REVIEW') inReviewDocuments.push(latest);
       ineligibilityReasons.push(`Documento '${latest.title}' ainda está em análise.`);
     } else if (isComplianceDocumentExpired(latest, referenceDate)) {
       expiredDocuments.push(latest);
@@ -601,6 +607,8 @@ export function evaluateProviderEligibility(
     rejectedDocuments,
     expiredDocuments,
     pendingDocuments,
+    pendingSubmissionDocuments,
+    inReviewDocuments,
     approvedDocuments,
     ineligibilityReasons,
   };

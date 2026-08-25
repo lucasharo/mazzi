@@ -180,6 +180,9 @@ export const ProviderApp: React.FC = () => {
     state: 'SP',
     serviceRadiusKm: 6,
     bio: '',
+    addressLine1: '',
+    postalCode: '',
+    address: undefined,
   });
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
 
@@ -956,6 +959,7 @@ export const ProviderApp: React.FC = () => {
     const cleanNeighborhood = profileForm.neighborhood.trim();
     const cleanCity = profileForm.city.trim();
     const cleanBio = profileForm.bio.trim();
+    const cleanAddress = profileForm.address ? { ...profileForm.address, complement: profileForm.address.complement?.trim() || undefined } : (cleanNeighborhood || cleanCity ? { addressLine1: profileForm.addressLine1.trim(), neighborhood: cleanNeighborhood, city: cleanCity, state: cleanState, postalCode: profileForm.postalCode.trim(), source: 'LEGACY' as const } : null);
 
     try {
       await dbService.updateMyProfile(
@@ -971,6 +975,10 @@ export const ProviderApp: React.FC = () => {
         state: cleanState,
         serviceRadiusKm: radiusKm,
         bio: cleanBio,
+        address: cleanAddress,
+        latitude: cleanAddress?.latitude ?? null,
+        longitude: cleanAddress?.longitude ?? null,
+        postalCode: profileForm.postalCode,
       });
     } catch (error: any) {
       setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o perfil do prestador.'));
@@ -1255,6 +1263,9 @@ status: 'IN_REVIEW',
                   state: currentProvider.state || 'SP',
                   serviceRadiusKm: currentProvider.serviceRadiusKm || 6,
                   bio: currentProvider.bio || '',
+                  addressLine1: currentProvider.address?.addressLine1 || currentProvider.address?.formatted || '',
+                  postalCode: currentProvider.address?.postalCode || '',
+                  address: currentProvider.address,
                 });
               }
               setIsEditingProfile((prev) => !prev);

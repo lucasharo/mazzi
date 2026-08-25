@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, ShieldCheck, AlertCircle, AlertTriangle, ArrowRight, Star, Calendar, SlidersHorizontal, Plus, } from 'lucide-react';
+import { Clock, AlertTriangle, ArrowRight, Star, Calendar, SlidersHorizontal, Plus, } from 'lucide-react';
 import { Provider, Booking, ComplianceDocument, Vehicle } from '../../../types';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Badge } from '../../../components/ui/Badge';
@@ -7,9 +7,10 @@ import { Button, ButtonBase } from '../../../components/ui/Button';
 import { ObjectEmptyState } from '../../../components/ui/ObjectEmptyState';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
-import { evaluateProviderEligibility, getVerificationBadgeTooltip } from '../../../domain/compliance';
-import { resolveProviderCompliancePresentation } from '../../../domain/provider-compliance-presentation';
+import { evaluateProviderEligibility } from '../../../domain/compliance';
+import { resolveComplianceDocumentStatus } from '../../../domain/provider-compliance-presentation';
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
+import { ComplianceStatusAlert } from '../../../components/ui/ComplianceStatusAlert';
 
 interface ProviderDashboardTabProps {
   currentProvider: Provider;
@@ -42,7 +43,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   isRefreshing = false,
 }) => {
   const complianceEligibility = evaluateProviderEligibility(currentProvider, providerDocs);
-  const compliancePresentation = resolveProviderCompliancePresentation(currentProvider, complianceEligibility);
+  const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility);
 
   return (
     <div className="space-y-6 text-left">
@@ -68,46 +69,8 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         </div>
       )}
 
-      {/* Compliance / Status Banner */}
-      {!isRefreshing && <div
-        className="mazzi-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-                compliancePresentation.verified
-                ? 'bg-emerald-500 text-white'
-                : 'bg-amber-400 text-slate-950'
-          }`}
-        >
-            {compliancePresentation.verified ? (
-              <ShieldCheck className="w-5 h-5" />
-            ) : (
-              <AlertCircle className="w-5 h-5" />
-            )}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-bold text-slate-900">
-                {compliancePresentation.title}
-              </h4>
-              {currentProvider.isVerified && currentProvider.status !== 'ACTIVE' && (
-                <span
-                  title={getVerificationBadgeTooltip()}
-                  className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800"
-                >
-                  <ShieldCheck className="w-3 h-3 text-emerald-700" />
-                  Verificado
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-600 mt-0.5">
-              {compliancePresentation.description}
-            </p>
-          </div>
-        </div>
-        {!compliancePresentation.verified && <StatusBadge status={compliancePresentation.status} />}
-      </div>}
+      {/* Compliance status: shared with the PRO profile */}
+      {!isRefreshing && <ComplianceStatusAlert status={complianceStatus} />}
 
       {!isRefreshing && !calendarLoadError && (
         <>

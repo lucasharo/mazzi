@@ -20,6 +20,15 @@ Baseline candidate status: CANONICAL / ALIGNED for the R10D/R11 domains.
 Supabase DEV reference date: 2026-08-25.
 Covered through migration: `20260825172601_enforce_provider_offering_lifecycle_consistency`.
 
+## Geoapify location contract
+
+DEV migration `20260825223009_geoapify_provider_address` was applied forward-only.
+It adds `providers.address` (JSONB) and `providers.postal_code`, and replaces the
+legacy eight-argument `update_provider_profile` contract with the twelve-argument
+authenticated SECURITY DEFINER function that persists normalized address data and
+exact provider latitude/longitude. Public search continues to use the existing
+public coordinate projection; exact coordinates are not added to public RPC output.
+
 ## Multi-role self-booking contract
 
 The baseline candidate includes the forward-only `20260825211702_prevent_student_self_booking`

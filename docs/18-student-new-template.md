@@ -18,7 +18,7 @@ As referências Taxi App UI Kit (Wannathis) e Free Taxi Kit (Egor Mi) foram usad
 
 ## Busca
 
-- localização manual e `navigator.geolocation` continuam ativos;
+- localização manual usa o adapter Geoapify (Autocomplete/forward/reverse) quando `VITE_GEOAPIFY_API_KEY` está configurada; `navigator.geolocation` continua ativo;
 - o marcador do endereço pesquisado continua sendo responsabilidade do mapa;
 - o MVP do aluno expõe somente Categoria B;
 - chips rápidos usam transmissão, `radiusMeters` e `maxPriceInCents`;
@@ -39,7 +39,7 @@ GEOCODING_PRODUCTION_READY = NO
 AVATAR_STORAGE_PRODUCTION_READY = NO
 ```
 
-O pagamento continua `FakePaymentGateway` de desenvolvimento, o geocoder é o adapter de desenvolvimento e avatares continuam em Data URL/base64 nesta fase. Nenhuma migration ou dependência nova foi adicionada.
+O pagamento continua `FakePaymentGateway` de desenvolvimento. O Geoapify é o provider canônico de geocoding para beta; sem chave, testes/dev isolado usam somente o adapter de desenvolvimento. Avatares continuam em Data URL/base64 nesta fase.
 
 ## FASE 2 — Perfil e agendamento
 

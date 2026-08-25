@@ -1,8 +1,7 @@
 // ============================================================================
 // MAZZI PLATFORM — GEOCODING PROVIDER ABSTRACTION
 // Isolates address resolution and reverse-geocoding behind an explicit interface.
-// Production requires a dedicated paid/managed geocoding provider (e.g. Google Maps, Mapbox).
-// Public free APIs (like public Nominatim) MUST NOT be hardcoded as production dependencies.
+// Geoapify is the managed geocoding provider for the MVP/beta runtime.
 // ============================================================================
 
 import { PENDING_DECISIONS } from '../../types';
@@ -16,6 +15,25 @@ export interface GeocodingLocationResult {
   longitude: number;
   postalCode?: string;
   placeId?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  name?: string;
+  street?: string;
+  houseNumber?: string;
+  district?: string;
+  stateCode?: string;
+  country?: string;
+  countryCode?: string;
+  resultType?: string;
+  source?: 'GEOAPIFY' | 'DEVELOPMENT';
+}
+
+export type LocationSuggestion = GeocodingLocationResult;
+
+export interface GeocodingOptions {
+  proximity?: { longitude: number; latitude: number };
+  limit?: number;
+  signal?: AbortSignal;
 }
 
 export interface GeocodingProvider {
@@ -23,6 +41,7 @@ export interface GeocodingProvider {
   name: string;
   isProductionReady: boolean;
   statusTag: string;
+  autocomplete?(query: string, options?: GeocodingOptions): Promise<LocationSuggestion[]>;
   geocode(addressQuery: string): Promise<GeocodingLocationResult[]>;
   reverseGeocode(latitude: number, longitude: number): Promise<GeocodingLocationResult>;
 }
@@ -62,6 +81,7 @@ export class DevelopmentGeocodingAdapter implements GeocodingProvider {
             latitude: val.lat,
             longitude: val.lng,
             placeId: `dev_place_${key}`,
+            source: 'DEVELOPMENT',
           },
         ];
       }
@@ -76,7 +96,8 @@ export class DevelopmentGeocodingAdapter implements GeocodingProvider {
         state: 'SP',
         latitude: -23.5505,
         longitude: -46.6333,
-        placeId: 'dev_place_sp_center',
+      placeId: 'dev_place_sp_center',
+      source: 'DEVELOPMENT',
       },
     ];
   }
@@ -90,8 +111,84 @@ export class DevelopmentGeocodingAdapter implements GeocodingProvider {
       latitude,
       longitude,
       placeId: 'dev_reverse_place',
+      source: 'DEVELOPMENT',
     };
   }
 }
 
-export const activeGeocodingProvider: GeocodingProvider = new DevelopmentGeocodingAdapter();
+function normalizeGeoapifyFeature(feature: any): LocationSuggestion | null {
+  const props = feature?.properties || {};
+  const latitude = Number(props.lat ?? feature?.geometry?.coordinates?.[1]);
+  const longitude = Number(props.lon ?? feature?.geometry?.coordinates?.[0]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !props.formatted) return null;
+  return {
+    formattedAddress: String(props.formatted),
+    addressLine1: props.address_line1 || undefined,
+    addressLine2: props.address_line2 || undefined,
+    name: props.name || undefined,
+    neighborhood: props.suburb || props.district || props.city_district || '',
+    district: props.district || undefined,
+    city: props.city || props.town || props.village || '',
+    state: props.state || '',
+    stateCode: props.state_code || undefined,
+    postalCode: props.postcode || undefined,
+    country: props.country || undefined,
+    countryCode: props.country_code || undefined,
+    street: props.street || undefined,
+    houseNumber: props.housenumber || undefined,
+    latitude,
+    longitude,
+    placeId: props.place_id || undefined,
+    resultType: props.result_type || undefined,
+    source: 'GEOAPIFY',
+  };
+}
+
+export class GeoapifyGeocodingProvider implements GeocodingProvider {
+  public id = 'geoapify';
+  public name = 'Geoapify';
+  public isProductionReady = true;
+  public statusTag = 'GEOAPIFY_CONFIGURED';
+  private readonly apiKey: string;
+  private readonly baseUrl = 'https://api.geoapify.com/v1/geocode';
+
+  constructor(apiKey = String(import.meta.env.VITE_GEOAPIFY_API_KEY || '').trim()) {
+    this.apiKey = apiKey;
+  }
+
+  private async request(path: string, params: Record<string, string>, signal?: AbortSignal): Promise<LocationSuggestion[]> {
+    if (!this.apiKey) throw new Error('GEOAPIFY_API_KEY_MISSING');
+    const query = new URLSearchParams({ ...params, apiKey: this.apiKey, format: 'json' });
+    const response = await fetch(`${this.baseUrl}/${path}?${query.toString()}`, { signal, headers: { Accept: 'application/json' } });
+    if (response.status === 429) throw new Error('GEOAPIFY_RATE_LIMIT');
+    if (!response.ok) throw new Error('GEOAPIFY_UNAVAILABLE');
+    const body = await response.json() as { results?: any[] };
+    return (body.results || []).map(normalizeGeoapifyFeature).filter(Boolean) as LocationSuggestion[];
+  }
+
+  autocomplete(query: string, options: GeocodingOptions = {}): Promise<LocationSuggestion[]> {
+    const params: Record<string, string> = {
+      text: query,
+      filter: 'countrycode:br',
+      lang: 'pt',
+      limit: String(Math.min(Math.max(options.limit || 6, 5), 8)),
+    };
+    if (options.proximity) params.bias = `proximity:${options.proximity.longitude},${options.proximity.latitude}`;
+    return this.request('autocomplete', params, options.signal);
+  }
+
+  geocode(addressQuery: string): Promise<LocationSuggestion[]> {
+    return this.request('search', { text: addressQuery, filter: 'countrycode:br', lang: 'pt', limit: '5' });
+  }
+
+  async reverseGeocode(latitude: number, longitude: number): Promise<LocationSuggestion> {
+    const [result] = await this.request('reverse', { lat: String(latitude), lon: String(longitude), lang: 'pt', limit: '1' });
+    if (!result) throw new Error('ADDRESS_NOT_FOUND');
+    return result;
+  }
+}
+
+const geoapifyKey = String(import.meta.env.VITE_GEOAPIFY_API_KEY || '').trim();
+export const activeGeocodingProvider: GeocodingProvider = geoapifyKey
+  ? new GeoapifyGeocodingProvider(geoapifyKey)
+  : new DevelopmentGeocodingAdapter();

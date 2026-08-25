@@ -18,7 +18,7 @@ function presentation(statuses: ComplianceDocument['status'][], providerStatus: 
 describe('PRO compliance presentation precedence', () => {
   it('shows verified only when ACTIVE is eligible', () => expect(presentation(['APPROVED'])).toMatchObject({ status: 'ACTIVE', verified: true, title: 'Credenciamento Ativo • Verificado pela MAZZI' }));
   it('maps effective pending, rejected, expired and missing documents distinctly', () => {
-expect(presentation(['PENDING']).status).toBe('IN_REVIEW');
+    expect(presentation(['PENDING']).status).toBe('PENDING');
     expect(presentation(['REJECTED']).status).toBe('REJECTED');
     expect(presentation(['APPROVED'], 'ACTIVE', '2026-08-01T00:00:00Z').status).toBe('REJECTED');
     expect(presentation([])).toMatchObject({ status: 'PENDING', title: 'Documentação pendente para verificação' });
