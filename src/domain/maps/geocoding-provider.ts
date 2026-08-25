@@ -173,8 +173,9 @@ export class GeoapifyGeocodingProvider implements GeocodingProvider {
     const response = await fetch(`${this.baseUrl}/${path}?${query.toString()}`, { signal, headers: { Accept: 'application/json' } });
     if (response.status === 429) throw new Error('GEOAPIFY_RATE_LIMIT');
     if (!response.ok) throw new Error('GEOAPIFY_UNAVAILABLE');
-    const body = await response.json() as { results?: any[] };
-    return (body.results || []).map(normalizeGeoapifyFeature).filter(Boolean) as LocationSuggestion[];
+    const body = await response.json() as { results?: any[]; features?: any[] };
+    const records = body.results || body.features || [];
+    return records.map(normalizeGeoapifyFeature).filter(Boolean) as LocationSuggestion[];
   }
 
   autocomplete(query: string, options: GeocodingOptions = {}): Promise<LocationSuggestion[]> {

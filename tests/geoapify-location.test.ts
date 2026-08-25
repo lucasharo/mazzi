@@ -5,7 +5,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('Geoapify location adapter', () => {
   it('requests Brazilian autocomplete with Portuguese language and lng,lat proximity', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ results: [{ properties: {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ features: [{ properties: {
       formatted: 'Avenida Paulista, 1000, São Paulo - SP', address_line1: 'Avenida Paulista, 1000', address_line2: 'Bela Vista, São Paulo - SP', street: 'Avenida Paulista', housenumber: '1000', suburb: 'Bela Vista', city: 'São Paulo', state: 'São Paulo', state_code: 'SP', postcode: '01310-100', country_code: 'br', lat: -23.56, lon: -46.65, place_id: 'place-1', result_type: 'building',
     } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
 
