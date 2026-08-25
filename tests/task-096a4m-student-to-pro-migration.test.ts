@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const migration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260824230000_task_096a4m_r_student_to_pro_profile_migration.sql'), 'utf8');
+const migration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260825030830_task_096a4m_r_student_to_pro_profile_migration.sql'), 'utf8');
 const canonicalQuote = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260823050139_task_081_correct_marketplace_fee_split.sql'), 'utf8');
 const canonicalHold = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260824021413_task_092_atomic_schedule_mutations.sql'), 'utf8');
 const canonicalCheckIn = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260823220956_require_both_checkins_and_extend_checkin_window.sql'), 'utf8');
@@ -14,7 +14,7 @@ const studentCard = readFileSync(resolve(process.cwd(), 'src/apps/student/compon
 const studentRoot = readFileSync(resolve(process.cwd(), 'src/entrypoints/student/StudentRoot.tsx'), 'utf8');
 
 const legacyMigrationPath = resolve(process.cwd(), 'supabase/migrations/20260824202040_task_096a4m_student_to_pro_profile_migration.sql');
-const finalMigrationPath = resolve(process.cwd(), 'supabase/migrations/20260824230000_task_096a4m_r_student_to_pro_profile_migration.sql');
+const finalMigrationPath = resolve(process.cwd(), 'supabase/migrations/20260825030830_task_096a4m_r_student_to_pro_profile_migration.sql');
 const confirmStart = migration.indexOf('CREATE OR REPLACE FUNCTION public.confirm_booking_payment');
 const confirmEnd = migration.indexOf('$$;', confirmStart) + 3;
 const confirmBody = migration.slice(confirmStart, confirmEnd);
