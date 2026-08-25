@@ -10059,7 +10059,6 @@ GRANT ALL ON FUNCTION "public"."get_provider_booking_context_public"("p_provider
 
 
 REVOKE ALL ON FUNCTION "public"."get_public_vehicle_catalog"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_public_vehicle_catalog"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_public_vehicle_catalog"() TO "authenticated";
 
 
@@ -14241,15 +14240,22 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."providers_public_v
 
 
 
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."public_vehicles" TO "anon";
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."public_vehicles" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."public_vehicles" TO "service_role";
 
 
 
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."public_service_offerings" TO "anon";
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."public_service_offerings" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."public_service_offerings" TO "service_role";
+
+
+REVOKE ALL ON FUNCTION "public"."enforce_booking_schedule_exceptions"() FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."enforce_booking_schedule_exceptions"() FROM "anon";
+REVOKE ALL ON FUNCTION "public"."enforce_booking_schedule_exceptions"() FROM "authenticated";
+REVOKE ALL ON FUNCTION "public"."enforce_schedule_lock_on_availability"() FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."enforce_schedule_lock_on_availability"() FROM "anon";
+REVOKE ALL ON FUNCTION "public"."enforce_schedule_lock_on_availability"() FROM "authenticated";
+REVOKE ALL ON FUNCTION "public"."validate_availability_resource_scope"() FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."validate_availability_resource_scope"() FROM "anon";
+REVOKE ALL ON FUNCTION "public"."validate_availability_resource_scope"() FROM "authenticated";
 
 
 
