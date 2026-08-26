@@ -712,6 +712,8 @@ export type NotificationType =
   | 'REVIEW_AVAILABLE'
   | 'REVIEW_RECEIVED';
 
+export type NotificationAppContext = 'STUDENT' | 'PRO' | 'ADMIN';
+
 export interface Notification {
   id: string;
   userId: string;
@@ -723,6 +725,7 @@ export interface Notification {
   isRead: boolean;
   createdAt: string;
   readAt?: string;
+  appContext?: NotificationAppContext;
 }
 
 // ==========================================

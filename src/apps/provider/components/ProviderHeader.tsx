@@ -37,6 +37,7 @@ export const ProviderHeader: React.FC<ProviderHeaderProps> = ({
           onOpenNotifications={onOpenNotifications}
           onRefresh={onRefreshWorkspace}
           isRefreshing={isRefreshing}
+          appContext="PRO"
         />
       </div>
     </header>

@@ -326,7 +326,7 @@ export const AdminApp: React.FC = () => {
           title="Notificações"
           className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-white hover:bg-white/15"
         >
-          <NotificationIndicator className="h-full w-full items-center justify-center">
+          <NotificationIndicator appContext="ADMIN" className="h-full w-full items-center justify-center">
             <Bell className="h-5 w-5" aria-hidden="true" />
           </NotificationIndicator>
         </ButtonBase>
@@ -509,7 +509,7 @@ export const AdminApp: React.FC = () => {
         )}
       </main>
       <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações MAZZI Admin">
-        <NotificationsPanel />
+        <NotificationsPanel appContext="ADMIN" />
       </Modal>
     </div>
   );

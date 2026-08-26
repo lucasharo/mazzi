@@ -16,7 +16,7 @@ import { ProviderAddressForm } from '../provider/ProviderAddressForm';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../utils/cpf';
 import { formatDateMask, toISODateString, validateBirthDate } from '../../utils/age';
 import { formatPhone, isValidPhone, normalizePhone } from '../../utils/phone';
-import { maskCnpj, normalizeDocument } from '../../lib/input-masks';
+import { isValidCnpj, maskCnpj, normalizeDocument } from '../../lib/input-masks';
 import {
   ArrowLeft,
   AlertCircle,
@@ -53,6 +53,12 @@ type Feedback = { tone: 'error' | 'success'; message: string };
 export function formatAuthError(errorMsg: string): string {
   if (!errorMsg) return 'Ocorreu um erro. Tente novamente.';
   const lower = errorMsg.toLowerCase();
+  if (lower.includes('cnpj_invalid')) {
+    return 'Informe um CNPJ válido para continuar.';
+  }
+  if (lower.includes('cnpj_already_registered')) {
+    return 'Este CNPJ já está cadastrado no MAZZI.';
+  }
   if (
     lower.includes('invalid login credentials') ||
     lower.includes('invalid_credentials') ||
@@ -281,6 +287,9 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
   const tryCompleteSchoolOnboarding = async () => {
     try {
+      if (!isValidCnpj(schoolCnpj)) {
+        throw new Error('CNPJ_INVALID');
+      }
       const validation = validateProviderAddressForm(schoolAddress);
       if (!validation.valid) throw new Error(validation.reason || 'Confirme o endereço operacional da autoescola.');
       let resolvedAddress = schoolAddress.address;

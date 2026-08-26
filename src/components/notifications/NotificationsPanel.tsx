@@ -7,11 +7,12 @@ import { dbService } from '../../lib/db-service';
 import { formatDateTimeBR } from '../../lib/date-format';
 import { NOTIFICATIONS_CHANGED } from '../ui/NotificationIndicator';
 
-export const NotificationsPanel: React.FC = () => {
+export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification['appContext']> }> = ({ appContext }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.isRead).length,
@@ -22,7 +23,7 @@ export const NotificationsPanel: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const rows = await dbService.getMyNotifications();
+      const rows = await dbService.getMyNotifications(appContext);
       setNotifications(rows);
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') console.error('Failed to load notifications:', err);
@@ -36,7 +37,7 @@ export const NotificationsPanel: React.FC = () => {
 
   useEffect(() => {
     void loadNotifications();
-  }, []);
+  }, [appContext]);
 
   const markAsRead = async (notificationId: string) => {
     setMarkingId(notificationId);
@@ -59,6 +60,23 @@ export const NotificationsPanel: React.FC = () => {
     }
   };
 
+  const markAllAsRead = async () => {
+    if (unreadCount === 0) return;
+    setIsMarkingAll(true);
+    setError(null);
+    try {
+      await dbService.markAllNotificationsAsRead(appContext);
+      const readAt = new Date().toISOString();
+      setNotifications((prev) => prev.map((notification) => ({ ...notification, isRead: true, readAt })));
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production') console.error('Failed to mark all notifications as read:', err);
+      setError('Não foi possível marcar as notificações como lidas.');
+    } finally {
+      setIsMarkingAll(false);
+    }
+  };
+
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 p-4">
@@ -76,14 +94,16 @@ export const NotificationsPanel: React.FC = () => {
             <p className="text-[11px] text-slate-500">Atualizações importantes sobre suas aulas</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={loadNotifications}
-          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-        >
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-1">
+          {unreadCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={markAllAsRead} isLoading={isMarkingAll} leftIcon={<Check className="w-3.5 h-3.5" />}>
+              Ler todas
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={loadNotifications} leftIcon={<RefreshCw className="w-3.5 h-3.5" />}>
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {error && (

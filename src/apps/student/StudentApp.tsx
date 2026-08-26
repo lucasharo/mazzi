@@ -765,6 +765,7 @@ function applyStrictProviderFilters(
                 onOpenNotifications={() => setIsNotificationsOpen(true)}
                 onRefresh={() => setSearchRefreshKey((value) => value + 1)}
                 isRefreshing={searchLoading}
+                appContext="STUDENT"
               />
               {/* Search Header */}
               <SearchHeader
@@ -1218,7 +1219,7 @@ function applyStrictProviderFilters(
         />
 
       <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações" size="md">
-        <NotificationsPanel />
+        <NotificationsPanel appContext="STUDENT" />
       </Modal>
 
       {/* Booking Details Modal */}

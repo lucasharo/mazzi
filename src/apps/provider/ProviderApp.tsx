@@ -881,7 +881,7 @@ export const ProviderApp: React.FC = () => {
       const savedVehicle = await dbService.deactivateVehicle(vehicleId);
       setVehicles((prev) => prev.map((vehicle) => (vehicle.id === vehicleId ? savedVehicle : vehicle)));
     } catch (err: any) {
-      alert(mapFriendlyErrorMessage(err, 'Ação de ativação do veículo não permitida.'));
+      setVehicleError(mapFriendlyErrorMessage(err, 'Ação de ativação do veículo não permitida.'));
     }
   };
 
@@ -959,7 +959,7 @@ export const ProviderApp: React.FC = () => {
       const savedOffering = await dbService.saveOffering({ ...targetOffering, status: nextStatus });
       setOfferings((prev) => prev.map((offering) => (offering.id === offeringId ? savedOffering : offering)));
     } catch (err: any) {
-      alert(mapFriendlyErrorMessage(err, 'Ação de ativação da oferta não permitida.'));
+      setOfferingError(mapFriendlyErrorMessage(err, 'Ação de ativação da oferta não permitida.'));
     }
   };
 
@@ -1423,7 +1423,7 @@ status: 'IN_REVIEW',
           title="Notificações MAZZI Pro"
         >
           <div className="max-h-[460px] overflow-y-auto">
-            <NotificationsPanel />
+            <NotificationsPanel appContext="PRO" />
           </div>
         </Modal>
       )}

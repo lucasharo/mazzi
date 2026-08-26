@@ -1,22 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { dbService } from '../../lib/db-service';
+import { Notification } from '../../types';
 
 const NOTIFICATIONS_CHANGED_EVENT = 'mazzi:notifications-changed';
 
 export interface NotificationIndicatorProps {
   children: React.ReactNode;
   className?: string;
+  appContext: NonNullable<Notification['appContext']>;
 }
 
 /** Shared unread counter for notification buttons across the three PWAs. */
-export const NotificationIndicator: React.FC<NotificationIndicatorProps> = ({ children, className = '' }) => {
+export const NotificationIndicator: React.FC<NotificationIndicatorProps> = ({ children, className = '', appContext }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     let active = true;
     const loadUnreadCount = async () => {
       try {
-        const count = await dbService.getMyUnreadNotificationCount();
+        const count = await dbService.getMyUnreadNotificationCount(appContext);
         if (active) setUnreadCount(count);
       } catch {
         if (active) setUnreadCount(0);
@@ -30,7 +32,7 @@ export const NotificationIndicator: React.FC<NotificationIndicatorProps> = ({ ch
       active = false;
       window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, handleNotificationsChanged);
     };
-  }, []);
+  }, [appContext]);
 
   return (
     <span className={`relative inline-flex shrink-0 ${className}`}>

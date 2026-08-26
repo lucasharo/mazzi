@@ -2,6 +2,7 @@ import { ButtonBase } from './Button';
 import React from 'react';
 import { Bell, RefreshCw } from 'lucide-react';
 import { NotificationIndicator } from './NotificationIndicator';
+import type { Notification } from '../../types';
 
 interface AppHomeHeaderProps {
   eyebrow: string;
@@ -11,6 +12,7 @@ interface AppHomeHeaderProps {
   onOpenNotifications: () => void;
   onRefresh: () => void;
   isRefreshing?: boolean;
+  appContext?: NonNullable<Notification['appContext']>;
 }
 
 /** Canonical home header shared by the MAZZI mobile apps. */
@@ -22,6 +24,7 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
   onOpenNotifications,
   onRefresh,
   isRefreshing = false,
+  appContext = 'PRO',
 }) => (
   <header data-component="app-home-header" className="flex items-start justify-between gap-4">
     <div className="min-w-0 space-y-1">
@@ -45,7 +48,7 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
         title="Notificações"
         aria-label="Abrir notificações"
       >
-        <NotificationIndicator className="h-full w-full items-center justify-center">
+        <NotificationIndicator appContext={appContext} className="h-full w-full items-center justify-center">
           <Bell className="h-5 w-5" aria-hidden="true" />
         </NotificationIndicator>
       </ButtonBase>

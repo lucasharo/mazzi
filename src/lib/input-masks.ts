@@ -60,6 +60,22 @@ export function normalizeDocument(value: string = ''): string {
   return digitsOnly(value);
 }
 
+/** Validates a Brazilian CNPJ after stripping presentation characters. */
+export function isValidCnpj(value: string = ''): boolean {
+  const cnpj = digitsOnly(value);
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+
+  const calculateDigit = (base: string, weights: number[]) => {
+    const total = base.split('').reduce((sum, digit, index) => sum + Number(digit) * weights[index], 0);
+    const remainder = total % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  const first = calculateDigit(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const second = calculateDigit(cnpj.slice(0, 12) + first, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return cnpj === `${cnpj.slice(0, 12)}${first}${second}`;
+}
+
 /** Formats vehicle plate to Mercosul (ABC1D23) or Legacy (ABC-1234 / ABC1234) */
 export function maskVehiclePlate(value: string = ''): string {
   const clean = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);

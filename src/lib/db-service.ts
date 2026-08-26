@@ -331,6 +331,7 @@ export function mapNotificationFromDb(row: any): Notification {
     isRead: Boolean(row.is_read),
     createdAt: row.created_at,
     readAt: row.read_at || undefined,
+    appContext: row.app_context || 'PRO',
   };
 }
 
@@ -1173,10 +1174,11 @@ export const dbService = {
     return data ? mapReviewFromDb(data) : null;
   },
 
-  async getMyNotifications(): Promise<Notification[]> {
+  async getMyNotifications(appContext: NonNullable<Notification['appContext']>): Promise<Notification[]> {
     const { data, error } = await sp
       .from('notifications')
       .select('*')
+      .eq('app_context', appContext)
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) throw error;
@@ -1221,10 +1223,11 @@ export const dbService = {
     return data;
   },
 
-  async getMyUnreadNotificationCount(): Promise<number> {
+  async getMyUnreadNotificationCount(appContext: NonNullable<Notification['appContext']>): Promise<number> {
     const { count, error } = await sp
       .from('notifications')
       .select('id', { count: 'exact', head: true })
+      .eq('app_context', appContext)
       .eq('is_read', false);
     if (error) throw error;
     return count || 0;
@@ -1235,6 +1238,15 @@ export const dbService = {
       .from('notifications')
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('id', notificationId);
+    if (error) throw error;
+  },
+
+  async markAllNotificationsAsRead(appContext: NonNullable<Notification['appContext']>): Promise<void> {
+    const { error } = await sp
+      .from('notifications')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('app_context', appContext)
+      .eq('is_read', false);
     if (error) throw error;
   },
 
