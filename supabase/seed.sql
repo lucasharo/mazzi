@@ -131,7 +131,7 @@ VALUES
     'DRIVING_SCHOOL',
     'Centro de Formação de Condutores Paulista Ltda',
     'Autoescola Paulista - Bela Vista',
-    '12345678000199',
+    '12345678000195',
     'ACTIVE',
     'Tradicional CFC da região central com pista de treinamento e frota renovada com ar-condicionado.',
     4.88,
