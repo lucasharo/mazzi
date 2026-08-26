@@ -21,6 +21,7 @@ export interface AuthSessionState {
     providerId?: string;
     providerStatus?: string;
     schoolId?: string;
+    professionalPath?: 'instructor' | 'school';
   } | null;
   permissions: AppPermission[];
   isAuthenticated: boolean;
@@ -37,6 +38,7 @@ export interface SignUpParams {
   phone: string;
   cpf: string;
   birthDate: string; // YYYY-MM-DD
+  professionalPath?: 'instructor' | 'school';
 }
 
 export interface SignInParams {
@@ -66,7 +68,7 @@ export function buildAuthContext(session: AuthSessionState): AuthContext | null 
  * Sign up a new Student (Public standard flow)
  * Default role is strictly STUDENT. Admin/Support roles cannot be selected.
  */
-export async function signUpPublicAccount({ email, password, name, phone, cpf, birthDate }: SignUpParams) {
+export async function signUpPublicAccount({ email, password, name, phone, cpf, birthDate, professionalPath }: SignUpParams) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -77,6 +79,7 @@ export async function signUpPublicAccount({ email, password, name, phone, cpf, b
         cpf,
         birth_date: birthDate,
         role: 'STUDENT', // Hardcoded default public signup
+        professional_path: professionalPath,
       },
     },
   });

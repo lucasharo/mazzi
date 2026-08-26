@@ -62,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const recoveryInProgressRef = useRef(false);
   const instructorOnboardingRef = useRef(hasPendingInstructorOnboarding());
+  const inFlightSessionHydrationRef = useRef<{ userId: string; promise: Promise<void> } | null>(null);
 
   const beginPasswordRecovery = () => {
     recoveryInProgressRef.current = true;
@@ -91,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const handleSession = async (session: any) => {
+  const hydrateSession = async (session: any) => {
     if (recoveryInProgressRef.current) {
       setAuthState(prev => ({
         ...prev,
@@ -293,6 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         providerId,
         providerStatus,
         schoolId,
+        professionalPath: user.user_metadata?.professional_path === 'school' ? 'school' : user.user_metadata?.professional_path === 'instructor' ? 'instructor' : undefined,
       };
 
       const permissions = Array.from(
@@ -329,6 +331,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const handleSession = async (session: any) => {
+    const userId = session?.user?.id as string | undefined;
+    if (!userId) {
+      await hydrateSession(session);
+      return;
+    }
+
+    const inFlight = inFlightSessionHydrationRef.current;
+    if (inFlight?.userId === userId) {
+      await inFlight.promise;
+      return;
+    }
+
+    const promise = hydrateSession(session);
+    inFlightSessionHydrationRef.current = { userId, promise };
+    try {
+      await promise;
+    } finally {
+      if (inFlightSessionHydrationRef.current?.promise === promise) {
+        inFlightSessionHydrationRef.current = null;
+      }
+    }
+  };
+
   useEffect(() => {
     // 1. Check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -351,9 +377,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      const { user } = await signInWithEmail({ email, password });
+      const { user, session } = await signInWithEmail({ email, password });
       if (!user) throw new Error('A autenticação não retornou um usuário válido.');
-      await handleSession({ user });
+      await handleSession(session || { user });
     } catch (err: any) {
       setAuthState(prev => ({ ...prev, isLoading: false, error: err?.message || 'Falha ao autenticar.' }));
       throw err;

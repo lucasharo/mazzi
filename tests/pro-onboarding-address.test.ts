@@ -62,7 +62,7 @@ describe('PRO onboarding canonical address contract', () => {
       city: 'São Paulo',
       state: 'SP',
       postalCode: '04459300',
-      address: { ...value.address, complement: 'Casa 2' },
+      address: { ...value.address, postalCode: '04459300', complement: 'Casa 2' },
       latitude: -23.695757,
       longitude: -46.672569,
     });

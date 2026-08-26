@@ -16,7 +16,7 @@ const signupIdentityMigration = fs.readFileSync(
 describe('TASK-096A4L secure public instructor signup', () => {
   it('exposes a professional CTA only in the PRO login and preserves student signup', () => {
     expect(appLogin).toContain("kind !== 'admin'");
-    expect(appLogin).toContain('Quero ser instrutor');
+    expect(appLogin).toContain('Quero ser parceiro MAZZI');
     expect(appLogin).toContain("kind === 'student'");
     expect(appLogin).toContain("'Entrar no MAZZI'");
     expect(appLogin).not.toContain("kind === 'admin' &&");
@@ -40,7 +40,9 @@ describe('TASK-096A4L secure public instructor signup', () => {
     expect(authContext).toContain('await handleSession(session)');
     expect(authContext).not.toContain("rpc('onboard_my_instructor', {");
     expect(instructorRoot).toContain('auth.isInstructorOnboarding');
-    expect(instructorRoot).toContain("auth.user?.roles.includes('STUDENT')");
+    expect(instructorRoot).toContain("['INSTRUCTOR', 'SCHOOL_ADMIN', 'SCHOOL_STAFF'].includes(role)");
+    expect(instructorRoot).toContain('<AppLogin kind="instructor" />');
+    expect(instructorRoot).not.toContain("auth.user?.roles.includes('STUDENT')");
   });
 
   it('uses an explicit professional role in PRO instead of roles[0]', () => {

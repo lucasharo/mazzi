@@ -3,6 +3,7 @@
  * Ensures OTP token lengths, regex patterns, and timeouts stay 100% aligned.
  */
 
-export const AUTH_OTP_LENGTH = 8;
-export const AUTH_OTP_REGEX = /^\d{8}$/;
+export const AUTH_OTP_LENGTH = 6;
+export const AUTH_OTP_REGEX = /^\d{6}$/;
 export const AUTH_OTP_CLEAN_REGEX = /\D/g;
+export const AUTH_OTP_RESEND_COOLDOWN_SECONDS = 60;

@@ -27,8 +27,35 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 }) => {
   const [addressInput, setAddressInput] = useState(currentLocationName);
   const [isLocating, setIsLocating] = useState(false);
+  const [isAddressFocused, setIsAddressFocused] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const skipNextLocationNameSync = useRef(false);
   const selectedAddressRef = useRef(false);
+
+  useEffect(() => {
+    if (!isAddressFocused || typeof window === 'undefined') {
+      setIsKeyboardOpen(false);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const updateKeyboardState = () => {
+      const isMobileViewport = window.matchMedia?.('(max-width: 767px)').matches ?? false;
+      const keyboardHeight = window.innerHeight - viewport.height;
+      setIsKeyboardOpen(isMobileViewport && keyboardHeight > 120);
+    };
+
+    updateKeyboardState();
+    viewport.addEventListener('resize', updateKeyboardState);
+    viewport.addEventListener('scroll', updateKeyboardState);
+
+    return () => {
+      viewport.removeEventListener('resize', updateKeyboardState);
+      viewport.removeEventListener('scroll', updateKeyboardState);
+    };
+  }, [isAddressFocused]);
 
   useEffect(() => {
     if (skipNextLocationNameSync.current) {
@@ -65,7 +92,11 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
 
   return (
     <section className="space-y-4" aria-label="Buscar aulas">
-      <form onSubmit={handleAddressSubmit} className="mazzi-card p-3 sm:p-4 focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)] focus-within:ring-offset-2 transition-all">
+      <form
+        onSubmit={handleAddressSubmit}
+        data-keyboard-pinned={isKeyboardOpen || undefined}
+        className={`mazzi-card p-3 sm:p-4 focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)] focus-within:ring-offset-2 transition-all ${isKeyboardOpen ? 'fixed inset-x-3 top-3 z-[70] mx-auto max-w-lg shadow-[0_14px_32px_rgba(16,24,40,0.18)]' : ''}`}
+      >
         <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 sm:gap-3">
           <ButtonBase
             type="button"
@@ -87,7 +118,13 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
               placeholder="Digite um endereço, bairro ou local"
               className="mt-0.5 sm:mt-1"
               proximity={currentLocation ? { longitude: currentLocation.lng, latitude: currentLocation.lat } : undefined}
+              dropdownAlignment="viewport"
               inputClassName="min-h-[32px] bg-transparent pr-7 text-sm font-extrabold text-[var(--mazzi-dark)] outline-none placeholder:text-slate-400 focus:outline-none"
+              onFocus={() => setIsAddressFocused(true)}
+              onBlur={() => {
+                setIsAddressFocused(false);
+                setIsKeyboardOpen(false);
+              }}
               onChange={(value) => {
                 selectedAddressRef.current = false;
                 setAddressInput(value);

@@ -18,7 +18,9 @@ vi.mock('../src/components/auth/AuthContext', () => ({
 }));
 
 vi.mock('../src/components/auth/AppLogin', () => ({
-  AppLogin: ({ kind }: { kind: string }) => <div data-testid={`login-${kind}`}>login-{kind}</div>,
+  AppLogin: ({ kind, initialScreen }: { kind: string; initialScreen?: string }) => (
+    <div data-testid={`login-${kind}`} data-screen={initialScreen}>login-{kind}</div>
+  ),
 }));
 
 vi.mock('../src/components/auth/AccessDenied', () => ({
@@ -80,5 +82,13 @@ describe('TASK-064E — recovery isolation in all application gates', () => {
     render(<Root />);
 
     expect(screen.getByTestId(appTestId)).not.toBeNull();
+  });
+
+  it('does not ask an authenticated account to choose a professional path at login', () => {
+    auth.user = { roles: ['STUDENT'] };
+
+    render(<InstructorRoot />);
+
+    expect(screen.queryByText('Como você quer atuar no MAZZI?')).toBeNull();
   });
 });

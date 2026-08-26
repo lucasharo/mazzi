@@ -23,6 +23,18 @@ describe('accessible UI primitives', () => {
     }
   });
 
+  it('keeps modal chrome outside programmatic scrolling', () => {
+    const markup = renderToStaticMarkup(
+      <Modal isOpen onClose={vi.fn()} title="Editar perfil" footer={<Button>Salvar</Button>}>
+        Conteúdo longo
+      </Modal>,
+    );
+
+    expect(markup).toContain('overflow-clip');
+    expect(markup).toContain('mazzi-modal-content p-6 overflow-y-auto');
+    expect(markup).not.toContain('overflow-hidden flex flex-col max-h-[90vh]');
+  });
+
   it('associates stable input labels and accessible error messages', () => {
     const markup = renderToStaticMarkup(
       <Input id="email" label="E-mail" error="Informe um e-mail válido" defaultValue="inválido" />,

@@ -24,6 +24,8 @@ export const Select: React.FC<SelectProps> = ({
   const listboxId = `${selectId}-options`;
   const messageId = `${selectId}-message`;
   const rootRef = useRef<HTMLDivElement>(null);
+  const typeaheadBufferRef = useRef('');
+  const typeaheadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialValue = String(value ?? defaultValue ?? options[0]?.value ?? '');
   const [internalValue, setInternalValue] = useState(initialValue);
   const [isOpen, setIsOpen] = useState(false);
@@ -48,6 +50,10 @@ export const Select: React.FC<SelectProps> = ({
     };
   }, [isOpen]);
 
+  useEffect(() => () => {
+    if (typeaheadTimerRef.current) window.clearTimeout(typeaheadTimerRef.current);
+  }, []);
+
   const chooseOption = (option: SelectOption) => {
     if (disabled || option.disabled) return;
     setInternalValue(option.value);
@@ -63,6 +69,36 @@ export const Select: React.FC<SelectProps> = ({
       return;
     }
     if (event.key === 'Escape') { setIsOpen(false); return; }
+
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey && /\S/.test(event.key)) {
+      event.preventDefault();
+      const normalizedKey = event.key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const nextBuffer = `${typeaheadBufferRef.current}${normalizedKey}`;
+      const normalizedLabel = (label: string) => label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const matchingOption = options.find((option) => {
+        if (option.disabled || !option.value) return false;
+        const label = normalizedLabel(option.label);
+        return label.startsWith(nextBuffer) || label.split(/\s+/).some((word) => word.startsWith(nextBuffer));
+      }) || options.find((option) => {
+        if (option.disabled || !option.value) return false;
+        const label = normalizedLabel(option.label);
+        return label.startsWith(normalizedKey) || label.split(/\s+/).some((word) => word.startsWith(normalizedKey));
+      });
+
+      typeaheadBufferRef.current = matchingOption ? nextBuffer : normalizedKey;
+      if (typeaheadTimerRef.current) window.clearTimeout(typeaheadTimerRef.current);
+      typeaheadTimerRef.current = window.setTimeout(() => {
+        typeaheadBufferRef.current = '';
+        typeaheadTimerRef.current = null;
+      }, 700);
+
+      if (matchingOption) {
+        chooseOption(matchingOption);
+        setIsOpen(true);
+      }
+      return;
+    }
+
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
     const step = event.key === 'ArrowDown' ? 1 : -1;

@@ -64,6 +64,7 @@ export function mapProviderFromDb(row: any): Provider {
     legalName: row.legal_name || undefined,
     documentNumber: row.document_number || undefined,
     phone: row.phone || undefined,
+    commercialEmail: row.commercial_email || undefined,
     type: row.type,
     status: row.status,
     ratingAverage: row.rating_average == null ? 0 : Number(row.rating_average),
@@ -800,7 +801,9 @@ export const dbService = {
     providerId: string,
     profileData: {
       name?: string;
+      legalName?: string;
       publicContact?: string;
+      commercialEmail?: string;
       neighborhood?: string;
       city?: string;
       state?: string;
@@ -815,7 +818,9 @@ export const dbService = {
     const rpcPayload: Record<string, unknown> = {
       p_provider_id: providerId,
       p_name: profileData.name !== undefined ? profileData.name.trim() : null,
+      p_legal_name: profileData.legalName !== undefined ? profileData.legalName.trim() : null,
       p_public_contact: profileData.publicContact !== undefined ? profileData.publicContact.trim() : null,
+      p_commercial_email: profileData.commercialEmail !== undefined ? profileData.commercialEmail.trim() : null,
       p_neighborhood: profileData.neighborhood !== undefined ? profileData.neighborhood.trim() : null,
       p_city: profileData.city !== undefined ? profileData.city.trim() : null,
       p_state: profileData.state !== undefined ? profileData.state.toUpperCase().trim() : null,

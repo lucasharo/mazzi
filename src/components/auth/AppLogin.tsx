@@ -7,7 +7,7 @@ import { Input, PasswordInput } from '../ui/Input';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { OtpInput } from '../ui/OtpInput';
-import { AUTH_OTP_LENGTH } from '../../lib/auth-constants';
+import { AUTH_OTP_LENGTH, AUTH_OTP_RESEND_COOLDOWN_SECONDS } from '../../lib/auth-constants';
 import { dbService } from '../../lib/db-service';
 import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
@@ -49,6 +49,45 @@ type Screen =
   | 'expired_link';
 
 type Feedback = { tone: 'error' | 'success'; message: string };
+type ProfessionalPath = 'instructor' | 'school';
+
+const PENDING_PROFESSIONAL_PATH_KEY = 'mazzi_pending_professional_path';
+
+function readPendingProfessionalPath(): ProfessionalPath | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const value = window.localStorage.getItem(PENDING_PROFESSIONAL_PATH_KEY);
+    return value === 'instructor' || value === 'school' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function writePendingProfessionalPath(path: ProfessionalPath): void {
+  try {
+    window.localStorage.setItem(PENDING_PROFESSIONAL_PATH_KEY, path);
+  } catch {
+    // A blocked local storage must not prevent the signup flow.
+  }
+}
+
+function clearPendingProfessionalPath(): void {
+  try {
+    window.localStorage.removeItem(PENDING_PROFESSIONAL_PATH_KEY);
+  } catch {
+    // Best effort only; this value is used for UX routing, not authorization.
+  }
+}
+
+function requiresEmailConfirmation(errorMsg: string): boolean {
+  const lower = errorMsg.toLowerCase();
+  return (
+    lower.includes('email not confirmed') ||
+    lower.includes('email_not_confirmed') ||
+    lower.includes('e-mail ainda não foi confirmado') ||
+    lower.includes('email ainda não foi confirmado')
+  );
+}
 
 export function formatAuthError(errorMsg: string): string {
   if (!errorMsg) return 'Ocorreu um erro. Tente novamente.';
@@ -59,6 +98,30 @@ export function formatAuthError(errorMsg: string): string {
   if (lower.includes('cnpj_already_registered')) {
     return 'Este CNPJ já está cadastrado no MAZZI.';
   }
+  if (lower.includes('school_phone_invalid')) {
+    return 'Informe um telefone comercial válido, com DDD.';
+  }
+  if (lower.includes('school_email_invalid')) {
+    return 'Informe um e-mail comercial válido.';
+  }
+  if (lower.includes('school_name_required')) {
+    return 'Informe a razão social e o nome fantasia da autoescola.';
+  }
+  if (lower.includes('school_address_invalid')) {
+    return 'Preencha um CEP, cidade e UF válidos para a autoescola.';
+  }
+  if (lower.includes('school_location_not_confirmed') || lower.includes('school_location_invalid')) {
+    return 'Confirme a localização operacional da autoescola no endereço informado.';
+  }
+  if (lower.includes('cnpj_already_registered') || lower.includes('23505')) {
+    return 'Este CNPJ já está vinculado a outra autoescola.';
+  }
+  if (lower.includes('permission denied') || lower.includes('42501')) {
+    return 'Sua conta não tem permissão para concluir este cadastro. Entre novamente e tente de novo.';
+  }
+  if (lower.includes('pgrst202') || lower.includes('function') && lower.includes('does not exist')) {
+    return 'O cadastro da autoescola está temporariamente indisponível. Tente novamente em instantes.';
+  }
   if (
     lower.includes('invalid login credentials') ||
     lower.includes('invalid_credentials') ||
@@ -66,7 +129,7 @@ export function formatAuthError(errorMsg: string): string {
   ) {
     return 'E-mail ou senha incorretos. Confira seus dados e tente novamente.';
   }
-  if (lower.includes('email not confirmed') || lower.includes('email_not_confirmed')) {
+  if (requiresEmailConfirmation(errorMsg)) {
     return `Seu e-mail ainda não foi confirmado. Digite o código de ${AUTH_OTP_LENGTH} dígitos enviado.`;
   }
   if (lower.includes('user already registered') || lower.includes('already exists') || lower.includes('user already exists')) {
@@ -77,6 +140,10 @@ export function formatAuthError(errorMsg: string): string {
   }
   if (lower.includes('invalid token') || lower.includes('token is invalid') || lower.includes('invalid otp')) {
     return 'Código inválido. Confira e tente novamente.';
+  }
+  if (lower.includes('for security purposes') && lower.includes('request this after')) {
+    const seconds = errorMsg.match(/after\s+(\d+)\s+seconds?/i)?.[1];
+    return `Para sua segurança, aguarde ${seconds ? `${seconds} segundos` : 'alguns instantes'} antes de solicitar um novo código.`;
   }
   if (lower.includes('over_email_send_rate_limit') || lower.includes('rate limit') || lower.includes('rate_limit') || lower.includes('too many requests')) {
     return 'Você solicitou códigos recentemente. Aguarde alguns instantes para tentar novamente.';
@@ -108,10 +175,39 @@ export function formatAuthError(errorMsg: string): string {
   if (lower.includes('network') || lower.includes('failed to fetch')) {
     return 'Falha de conexão com o servidor. Verifique sua internet e tente novamente.';
   }
-  return errorMsg;
+  return 'Não foi possível concluir esta ação agora. Tente novamente em instantes.';
 }
 
-export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
+type ProfessionalPathOptionProps = {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
+};
+
+function ProfessionalPathOption({ icon, title, description, onClick }: ProfessionalPathOptionProps) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="h-auto min-h-[104px] w-full items-center justify-start gap-3 whitespace-normal rounded-3xl px-4 py-4 text-left"
+      contentClassName="flex-1 whitespace-normal"
+      leftIcon={
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700">
+          {icon}
+        </span>
+      }
+      onClick={onClick}
+    >
+      <span className="block min-w-0 text-left">
+        <strong className="block text-sm leading-tight text-[var(--mazzi-dark)]">{title}</strong>
+        <span className="mt-1 block break-words text-xs font-normal leading-relaxed text-slate-600">{description}</span>
+      </span>
+    </Button>
+  );
+}
+
+export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> = ({ kind, initialScreen = 'login' }) => {
   const {
     signIn,
     signUpPublicAccount,
@@ -124,11 +220,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     isInstructorOnboarding,
     beginPasswordRecovery,
     completePasswordRecovery,
+    logout,
     error: contextError,
     isLoading: isContextLoading,
   } = useAuth();
-  const [screen, setScreen] = useState<Screen>('login');
-  const [professionalPath, setProfessionalPath] = useState<'instructor' | 'school'>('instructor');
+  const [screen, setScreen] = useState<Screen>(initialScreen);
+  const [professionalPath, setProfessionalPath] = useState<ProfessionalPath>(
+    () => readPendingProfessionalPath() || 'instructor',
+  );
   const [onboardingAddress, setOnboardingAddress] = useState<ProviderAddressFormValue>({
     addressLine1: '',
     houseNumber: '',
@@ -164,6 +263,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   // OTP State
   const [otp, setOtp] = useState('');
   const [otpEmail, setOtpEmail] = useState('');
+  const [signupOtpOrigin, setSignupOtpOrigin] = useState<'signup' | 'login'>('signup');
+  const [dismissedUnconfirmedEmail, setDismissedUnconfirmedEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -185,6 +286,33 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       setScreen('instructor_onboarding');
     }
   }, [isInstructorOnboarding, kind, screen, user?.roles]);
+
+  useEffect(() => {
+    if (kind !== 'instructor' || screen !== 'login' || !user?.roles.includes('STUDENT')) return;
+    const pendingPath = readPendingProfessionalPath() || user.professionalPath;
+    if (pendingPath === 'school') {
+      setProfessionalPath('school');
+      setScreen('school_onboarding');
+      return;
+    }
+    // An authenticated Student account in the PRO entrypoint has already
+    // passed login. Continue to professional onboarding instead of looping
+    // back to the login screen when the old local path is unavailable.
+    setProfessionalPath('instructor');
+    if (!isInstructorOnboarding) beginInstructorOnboarding();
+    setScreen('instructor_onboarding');
+  }, [beginInstructorOnboarding, isInstructorOnboarding, kind, screen, user?.roles]);
+
+  useEffect(() => {
+    if (dismissedUnconfirmedEmail || screen !== 'login' || !contextError || !email.trim() || !requiresEmailConfirmation(contextError)) return;
+    setOtpEmail(email.trim());
+    setSignupOtpOrigin('login');
+    setResendCooldown(AUTH_OTP_RESEND_COOLDOWN_SECONDS);
+    setFeedback({ tone: 'success', message: `Confirme o código de ${AUTH_OTP_LENGTH} dígitos enviado para o seu e-mail.` });
+    setErrors({});
+    setOtp('');
+    setScreen('signup_otp');
+  }, [contextError, dismissedUnconfirmedEmail, email, screen]);
 
   // Countdown timer for OTP resend cooldown
   useEffect(() => {
@@ -266,7 +394,10 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         throw new Error('Confirme seu endereço profissional selecionando um endereço localizado.');
       }
 
-      const confirmedAddressValue = { ...onboardingAddress, address: resolvedAddress };
+      const confirmedAddressValue = {
+        ...onboardingAddress,
+        address: resolvedAddress ? { ...resolvedAddress, locationConfirmed: true } : resolvedAddress,
+      };
       setOnboardingAddress(confirmedAddressValue);
       const onboardingResult = await onboardInstructor({ keepOnboarding: true });
       const providerId = onboardingResult?.provider_id || user?.providerId;
@@ -274,6 +405,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
       await dbService.updateProviderProfile(providerId, buildProviderAddressPayload(confirmedAddressValue));
       completeInstructorOnboarding();
+      clearPendingProfessionalPath();
       return true;
     } catch (caught: any) {
       setFeedback({
@@ -287,11 +419,20 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
   const tryCompleteSchoolOnboarding = async () => {
     try {
+      const contactEmail = schoolEmail.trim() || user?.email?.trim() || email.trim();
       if (!isValidCnpj(schoolCnpj)) {
         throw new Error('CNPJ_INVALID');
       }
       const validation = validateProviderAddressForm(schoolAddress);
-      if (!validation.valid) throw new Error(validation.reason || 'Confirme o endereço operacional da autoescola.');
+      const canResolveStandardAddress = validation.mode === 'STANDARD_ADDRESS'
+        && schoolAddress.addressLine1.trim()
+        && schoolAddress.houseNumber.trim()
+        && schoolAddress.postalCode.trim()
+        && schoolAddress.city.trim()
+        && schoolAddress.state.trim();
+      if (!validation.valid && !canResolveStandardAddress) {
+        throw new Error(validation.reason || 'Confirme o endereço operacional da autoescola.');
+      }
       let resolvedAddress = schoolAddress.address;
       if (validation.mode === 'STANDARD_ADDRESS' && resolvedAddress?.source !== 'GEOAPIFY') {
         resolvedAddress = await resolveProviderAddress({
@@ -303,18 +444,39 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       if (!resolvedAddress || resolvedAddress.latitude == null || resolvedAddress.longitude == null) {
         throw new Error('Confirme o endereço operacional selecionando um endereço localizado.');
       }
-      if (!schoolLegalName.trim() || !schoolTradeName.trim() || !schoolEmail.trim() || !isValidPhone(normalizePhone(schoolPhone))) {
-        throw new Error('Preencha razão social, nome fantasia, e-mail comercial e telefone válido.');
+      const resolvedValidation = validateProviderAddressForm({
+        ...schoolAddress,
+        address: { ...resolvedAddress, locationConfirmed: true },
+      });
+      if (!resolvedValidation.valid) {
+        throw new Error(resolvedValidation.reason || 'Confirme o endereço operacional da autoescola.');
       }
-      const payload = buildProviderAddressPayload({ ...schoolAddress, address: resolvedAddress });
+      if (!schoolLegalName.trim() || !schoolTradeName.trim() || !isValidPhone(normalizePhone(schoolPhone))) {
+        throw new Error('Preencha razão social, nome fantasia e telefone válido.');
+      }
+      if (!/^\S+@\S+\.\S+$/.test(contactEmail)) {
+        throw new Error('Informe um e-mail válido para contato.');
+      }
+      const payload = buildProviderAddressPayload({
+        ...schoolAddress,
+        address: resolvedAddress ? { ...resolvedAddress, locationConfirmed: true } : resolvedAddress,
+      });
       await onboardDrivingSchool({
         cnpj: normalizeDocument(schoolCnpj), legalName: schoolLegalName.trim(), tradeName: schoolTradeName.trim(),
-        phone: normalizePhone(schoolPhone), commercialEmail: schoolEmail.trim(), postalCode: schoolAddress.postalCode.replace(/\D/g, ''),
+        phone: normalizePhone(schoolPhone), commercialEmail: contactEmail, postalCode: schoolAddress.postalCode.replace(/\D/g, ''),
         address: payload.address as Record<string, unknown>, latitude: payload.latitude!, longitude: payload.longitude!,
       });
+      clearPendingProfessionalPath();
       goTo('login');
       return true;
     } catch (caught: any) {
+      console.error('[MAZZI] school onboarding failed', {
+        error: caught,
+        message: caught instanceof Error ? caught.message : caught?.message,
+        code: caught?.code,
+        details: caught?.details,
+        hint: caught?.hint,
+      });
       setFeedback({ tone: 'error', message: formatAuthError(caught instanceof Error ? caught.message : 'Não foi possível concluir o cadastro da autoescola.') });
       setScreen('school_onboarding');
       return false;
@@ -325,6 +487,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   const submitLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setFeedback(null);
+    setDismissedUnconfirmedEmail(false);
     const newErrors: Record<string, string> = {};
 
     if (!email.trim()) {
@@ -347,9 +510,19 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     try {
       await signIn(email.trim(), password);
     } catch (caught: any) {
+      const rawMessage = caught instanceof Error ? caught.message : 'Falha ao autenticar.';
+      if (requiresEmailConfirmation(rawMessage)) {
+        setDismissedUnconfirmedEmail(false);
+        setOtpEmail(email.trim());
+        setSignupOtpOrigin('login');
+        setResendCooldown(AUTH_OTP_RESEND_COOLDOWN_SECONDS);
+        goTo('signup_otp');
+        setFeedback({ tone: 'success', message: `Confirme o código de ${AUTH_OTP_LENGTH} dígitos enviado para o seu e-mail.` });
+        return;
+      }
       setFeedback({
         tone: 'error',
-        message: formatAuthError(caught instanceof Error ? caught.message : 'Falha ao autenticar.'),
+        message: formatAuthError(rawMessage),
       });
     } finally {
       setIsSubmitting(false);
@@ -437,13 +610,15 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         phone: cleanPhone,
         cpf: cleanCpf,
         birthDate: isoBirthDate!,
+        professionalPath,
       });
 
       setOtpEmail(email.trim());
-      setResendCooldown(45);
+      setResendCooldown(AUTH_OTP_RESEND_COOLDOWN_SECONDS);
 
       if (!session) {
         // Requires 6-digit OTP verification
+        setSignupOtpOrigin('signup');
         goTo('signup_otp');
       } else {
         if (kind === 'instructor') {
@@ -509,7 +684,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     setIsSubmitting(true);
     try {
       await resendSignupOtp(otpEmail);
-      setResendCooldown(45);
+      setResendCooldown(AUTH_OTP_RESEND_COOLDOWN_SECONDS);
       setFeedback({ tone: 'success', message: 'Novo código de confirmação enviado para seu e-mail.' });
     } catch (caught: any) {
       setFeedback({
@@ -552,7 +727,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       }
 
       setOtpEmail(email.trim());
-      setResendCooldown(45);
+      setResendCooldown(AUTH_OTP_RESEND_COOLDOWN_SECONDS);
       goTo('recovery_otp');
       setFeedback({
         tone: 'success',
@@ -672,26 +847,36 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     return (
       <Modal isOpen onClose={() => goTo('login')} title="Como você quer atuar no MAZZI?" size="sm">
         <div className="space-y-3">
-          <Button type="button" variant="outline" className="w-full justify-start text-left" leftIcon={<UserPlus className="h-5 w-5" aria-hidden="true" />} onClick={() => {
-            setProfessionalPath('instructor');
-            if (user) { beginInstructorOnboarding(); goTo('instructor_onboarding'); } else goTo('signup');
-          }}>
-            <span><strong className="block">Sou instrutor autônomo</strong><span className="block text-xs font-normal text-slate-500">Atendo alunos com o meu próprio perfil profissional.</span></span>
-          </Button>
-          <Button type="button" variant="outline" className="w-full justify-start text-left" leftIcon={<Building2 className="h-5 w-5" aria-hidden="true" />} onClick={() => {
-            setProfessionalPath('school');
-            goTo(user ? 'school_onboarding' : 'signup');
-          }}>
-            <span><strong className="block">Represento uma Autoescola / CFC</strong><span className="block text-xs font-normal text-slate-500">Crio o espaço da autoescola e me torno seu administrador responsável.</span></span>
-          </Button>
+          <ProfessionalPathOption
+            icon={<UserPlus className="h-5 w-5" aria-hidden="true" />}
+            title="Sou instrutor autônomo"
+            description="Atendo alunos com o meu próprio perfil profissional."
+            onClick={() => {
+              setProfessionalPath('instructor');
+              writePendingProfessionalPath('instructor');
+              if (user) { beginInstructorOnboarding(); goTo('instructor_onboarding'); } else goTo('signup');
+            }}
+          />
+          <ProfessionalPathOption
+            icon={<Building2 className="h-5 w-5" aria-hidden="true" />}
+            title="Represento uma Autoescola / CFC"
+            description="Crio o espaço da autoescola e me torno seu administrador responsável."
+            onClick={() => {
+              setProfessionalPath('school');
+              writePendingProfessionalPath('school');
+              goTo(user ? 'school_onboarding' : 'signup');
+            }}
+          />
         </div>
       </Modal>
     );
   }
 
   if (screen === 'instructor_onboarding') {
-    const leaveOnboarding = () => {
+    const leaveOnboarding = async () => {
       cancelInstructorOnboarding();
+      clearPendingProfessionalPath();
+      await logout();
       goTo('login');
     };
 
@@ -743,7 +928,11 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   }
 
   if (screen === 'school_onboarding') {
-    const leaveOnboarding = () => goTo('login');
+    const leaveOnboarding = async () => {
+      clearPendingProfessionalPath();
+      await logout();
+      goTo('login');
+    };
     return (
       <Modal isOpen onClose={leaveOnboarding} title="Cadastrar Autoescola / CFC" size="lg" footer={<>
         <Button type="button" variant="dangerSoft" size="sm" leftIcon={<CircleX className="h-4 w-4" aria-hidden="true" />} onClick={leaveOnboarding}>Cancelar</Button>
@@ -758,7 +947,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
           </div>
           <Input label="Razão social *" value={schoolLegalName} onChange={(event) => setSchoolLegalName(event.target.value)} placeholder="Razão social da autoescola" />
           <Input label="Nome fantasia *" value={schoolTradeName} onChange={(event) => setSchoolTradeName(event.target.value)} placeholder="Como os alunos conhecem a autoescola" />
-          <Input label="E-mail comercial *" value={schoolEmail} onChange={(event) => setSchoolEmail(event.target.value)} inputMode="email" placeholder="contato@autoescola.com.br" />
+          <Input label="E-mail para contato (opcional)" value={schoolEmail} onChange={(event) => setSchoolEmail(event.target.value)} inputMode="email" placeholder={email || 'contato@autoescola.com.br'} />
           <ProviderAddressForm idPrefix="driving-school-onboarding" value={schoolAddress} onChange={setSchoolAddress} />
         </div>
       </Modal>
@@ -841,11 +1030,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
             <ButtonBase
               type="button"
-              onClick={() => goTo('signup')}
+              onClick={() => {
+                if (signupOtpOrigin === 'login') setDismissedUnconfirmedEmail(true);
+                goTo(signupOtpOrigin === 'login' ? 'login' : 'signup');
+              }}
               className="inline-flex cursor-pointer items-center gap-1.5 py-1 text-xs font-semibold text-slate-500 transition hover:text-slate-800"
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-              Alterar e-mail ou dados
+              {signupOtpOrigin === 'login' ? 'Voltar para o login' : 'Alterar e-mail ou dados'}
             </ButtonBase>
           </div>
         </form>
@@ -1128,7 +1320,9 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
           </h1>
           <p className="text-sm text-slate-600">
             {kind === 'instructor'
-              ? 'Cadastre seus dados para começar seu credenciamento como instrutor no MAZZI.'
+              ? professionalPath === 'school'
+                ? 'Crie sua conta como responsável pela Autoescola/CFC. Na próxima etapa, você cadastrará os dados da empresa e o endereço operacional.'
+                : 'Cadastre seus dados para começar seu credenciamento como instrutor no MAZZI.'
               : 'Preencha seus dados para começar suas aulas no MAZZI.'}
           </p>
         </div>
@@ -1144,9 +1338,17 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         )}
 
         <form noValidate onSubmit={submitSignup} className="space-y-4">
+          {kind === 'instructor' && professionalPath === 'school' && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200/70 bg-[var(--mazzi-yellow-soft)] p-3 text-xs leading-relaxed text-slate-700">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
+                <Building2 className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <p><strong className="text-[var(--mazzi-dark)]">Você será a pessoa responsável pela autoescola.</strong> Depois de criar sua conta, informe CNPJ, razão social e endereço operacional da empresa.</p>
+            </div>
+          )}
           <Input
             id="signup-name"
-            label="Nome completo"
+            label={kind === 'instructor' && professionalPath === 'school' ? 'Nome completo do responsável' : 'Nome completo'}
             placeholder="Como no documento oficial"
             value={name}
             onChange={(e) => {
@@ -1387,7 +1589,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
               className="inline-flex cursor-pointer items-center gap-1.5 font-bold text-amber-700 underline underline-offset-2 hover:text-amber-800"
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
-              {kind === 'instructor' ? 'Quero ser instrutor ou representar uma autoescola' : 'Criar conta'}
+              {kind === 'instructor' ? 'Quero ser parceiro MAZZI' : 'Criar conta'}
             </ButtonBase>
           </p>
         )}

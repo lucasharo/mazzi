@@ -154,6 +154,11 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'Você não pode contratar uma aula com o seu próprio perfil profissional.';
   }
 
+  if (msg.toLowerCase().includes('for security purposes') && msg.toLowerCase().includes('request this after')) {
+    const seconds = msg.match(/after\s+(\d+)\s+seconds?/i)?.[1];
+    return `Para sua segurança, aguarde ${seconds ? `${seconds} segundos` : 'alguns instantes'} antes de tentar novamente.`;
+  }
+
   // 6. Technical Error Check & Fallback Guard
   const isTechnicalMsg =
     /^[A-Z0-9_]+$/.test(msg.trim()) ||
@@ -170,7 +175,9 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     msg.includes('NETWORK') ||
     msg.includes('FETCH_ERROR');
 
-  if (!isTechnicalMsg && msg && !msg.includes('{') && !msg.includes('}')) {
+  const isUntranslatedMessage = /\b(?:the|this|that|for|security|request|after|seconds?|failed|error|invalid|permission|not found|unable|could not|please|try again)\b/i.test(msg);
+
+  if (!isTechnicalMsg && !isUntranslatedMessage && msg && !msg.includes('{') && !msg.includes('}')) {
     return msg;
   }
 

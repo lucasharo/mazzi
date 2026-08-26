@@ -1780,15 +1780,16 @@ export const SettingsTab: React.FC<{
   const isAuthorized = actor.roles.includes('PLATFORM_ADMIN');
 
   // Input states locally managed
-  const [fee, setFee] = useState<number>(config.platformFeeDefaultPercentage);
-  const [horizon, setHorizon] = useState<number>(config.availabilityHorizonDays);
-  const [quoteExp, setQuoteExp] = useState<number>(config.quoteExpirationMinutes);
-  const [minNotice, setMinNotice] = useState<number>(config.minimumBookingNoticeHours);
-  const [safetyPeriod, setSafetyPeriod] = useState<number>(config.payoutSafetyPeriodHours);
-  const [radius, setRadius] = useState<number>(config.searchRadiusDefaultsKm);
+  const [fee, setFee] = useState<number | ''>(config.platformFeeDefaultPercentage);
+  const [horizon, setHorizon] = useState<number | ''>(config.availabilityHorizonDays);
+  const [quoteExp, setQuoteExp] = useState<number | ''>(config.quoteExpirationMinutes);
+  const [minNotice, setMinNotice] = useState<number | ''>(config.minimumBookingNoticeHours);
+  const [safetyPeriod, setSafetyPeriod] = useState<number | ''>(config.payoutSafetyPeriodHours);
+  const [radius, setRadius] = useState<number | ''>(config.searchRadiusDefaultsKm);
 
   const handleSave = () => {
     if (!isAuthorized) return;
+    if ([fee, horizon, quoteExp, minNotice, safetyPeriod, radius].some((value) => value === '')) return;
     onUpdateConfig({
       platformFeeDefaultPercentage: fee,
       availabilityHorizonDays: horizon,
@@ -1824,7 +1825,7 @@ export const SettingsTab: React.FC<{
             <Input
               type="number"
               value={fee}
-              onChange={(e) => setFee(Number(e.target.value))}
+              onChange={(e) => setFee(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
               className="text-xs"
             />
@@ -1836,7 +1837,7 @@ export const SettingsTab: React.FC<{
             <Input
               type="number"
               value={horizon}
-              onChange={(e) => setHorizon(Number(e.target.value))}
+              onChange={(e) => setHorizon(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
               className="text-xs"
             />
@@ -1848,7 +1849,7 @@ export const SettingsTab: React.FC<{
             <Input
               type="number"
               value={quoteExp}
-              onChange={(e) => setQuoteExp(Number(e.target.value))}
+              onChange={(e) => setQuoteExp(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
               className="text-xs"
             />
@@ -1860,7 +1861,7 @@ export const SettingsTab: React.FC<{
             <Input
               type="number"
               value={minNotice}
-              onChange={(e) => setMinNotice(Number(e.target.value))}
+              onChange={(e) => setMinNotice(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
               className="text-xs"
             />
@@ -1872,7 +1873,7 @@ export const SettingsTab: React.FC<{
             <Input
               type="number"
               value={safetyPeriod}
-              onChange={(e) => setSafetyPeriod(Number(e.target.value))}
+              onChange={(e) => setSafetyPeriod(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
               className="text-xs"
             />
@@ -1884,7 +1885,7 @@ export const SettingsTab: React.FC<{
             <Input
               type="number"
               value={radius}
-              onChange={(e) => setRadius(Number(e.target.value))}
+              onChange={(e) => setRadius(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
               className="text-xs"
             />

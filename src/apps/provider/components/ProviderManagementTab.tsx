@@ -19,6 +19,7 @@ import { Tabs } from '../../../components/ui/Tabs';
 import { SchoolMembershipPanel } from './SchoolMembershipPanel';
 import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../../lib/db-service';
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
+import { VehicleCatalogPicker } from '../../../components/vehicles/VehicleCatalogPicker';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
@@ -37,7 +38,7 @@ interface ProviderManagementTabProps {
   vehicleForm: {
     brand: string;
     model: string;
-    year: number;
+    year: number | '';
     licensePlate: string;
     category: VehicleCategory;
     vehicleType: VehicleType;
@@ -389,34 +390,15 @@ const canResubmit = doc?.status === 'REJECTED';
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Marca *</label>
-              <Input
-                value={vehicleForm.brand}
-                onChange={(e) => onVehicleFormChange({ ...vehicleForm, brand: e.target.value })}
-                placeholder="Ex: Volkswagen, Honda"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Modelo *</label>
-              <Input
-                value={vehicleForm.model}
-                onChange={(e) => onVehicleFormChange({ ...vehicleForm, model: e.target.value })}
-                placeholder="Ex: Polo, CG 160"
-              />
-            </div>
-          </div>
+          <VehicleCatalogPicker
+            vehicleType={vehicleForm.vehicleType}
+            brand={vehicleForm.brand}
+            model={vehicleForm.model}
+            year={vehicleForm.year}
+            onChange={({ brand, model, year }) => onVehicleFormChange({ ...vehicleForm, brand, model, year })}
+          />
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Ano *</label>
-              <Input
-                type="number"
-                value={vehicleForm.year}
-                onChange={(e) => onVehicleFormChange({ ...vehicleForm, year: Number(e.target.value) })}
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="text-xs font-extrabold text-slate-900 block mb-1">Placa *</label>
               <Input

@@ -13,6 +13,9 @@ interface AddressAutocompleteProps {
   className?: string;
   inputClassName?: string;
   proximity?: { longitude: number; latitude: number };
+  dropdownAlignment?: 'input' | 'viewport';
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 const cache = new Map<string, { expiresAt: number; results: LocationSuggestion[] }>();
@@ -27,6 +30,9 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   className = '',
   inputClassName = '',
   proximity,
+  dropdownAlignment = 'input',
+  onFocus,
+  onBlur,
 }) => {
   const listboxId = useId();
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -37,6 +43,27 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   const abortRef = useRef<AbortController | null>(null);
   const skipNextLookupRef = useRef(false);
   const hasUserEditedRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [viewportDropdownTop, setViewportDropdownTop] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (dropdownAlignment !== 'viewport' || !suggestions.length) return;
+
+    const updatePosition = () => {
+      const bounds = inputRef.current?.getBoundingClientRect();
+      setViewportDropdownTop(bounds ? bounds.bottom + 8 : null);
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.visualViewport?.addEventListener('resize', updatePosition);
+    window.visualViewport?.addEventListener('scroll', updatePosition);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.visualViewport?.removeEventListener('resize', updatePosition);
+      window.visualViewport?.removeEventListener('scroll', updatePosition);
+    };
+  }, [dropdownAlignment, suggestions.length]);
 
   useEffect(() => {
     const query = value.trim();
@@ -132,6 +159,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     <div className={`relative ${className}`}>
       <div className="relative">
         <input
+          ref={inputRef}
           role="combobox"
           aria-label={ariaLabel}
           aria-expanded={suggestions.length > 0}
@@ -143,6 +171,8 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             onChange(event.target.value);
           }}
           onKeyDown={handleKeyDown}
+          onFocus={onFocus}
+          onBlur={onBlur}
           placeholder={placeholder}
           className={`w-full ${inputClassName}`}
           autoComplete="off"
@@ -152,7 +182,12 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       </div>
       {error && <p className="mt-1 text-xs text-rose-700" role="alert">{error}</p>}
       {suggestions.length > 0 && (
-        <ul id={listboxId} role="listbox" className="absolute left-1/2 z-50 mt-2 max-h-72 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-2xl border border-[var(--mazzi-border)] bg-white p-1 shadow-[0_14px_32px_rgba(16,24,40,0.14)]">
+        <ul
+          id={listboxId}
+          role="listbox"
+          style={dropdownAlignment === 'viewport' && viewportDropdownTop !== null ? { top: viewportDropdownTop } : undefined}
+          className={`${dropdownAlignment === 'viewport' ? 'fixed left-1/2' : 'absolute left-1/2 mt-2'} z-50 max-h-72 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-2xl border border-[var(--mazzi-border)] bg-white p-1 shadow-[0_14px_32px_rgba(16,24,40,0.14)]`}
+        >
           {suggestions.map((suggestion, index) => (
             <li key={`${suggestion.placeId || suggestion.formattedAddress}-${index}`} id={`${listboxId}-${index}`} role="option" aria-selected={index === activeIndex}>
               <ButtonBase type="button" className={`flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition ${index === activeIndex ? 'bg-amber-50' : 'hover:bg-amber-50'}`} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)}>

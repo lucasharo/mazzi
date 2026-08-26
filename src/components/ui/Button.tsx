@@ -9,6 +9,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   loading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  contentClassName?: string;
 }
 
 export type ButtonBaseProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
@@ -36,6 +37,7 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   leftIcon,
   rightIcon,
+  contentClassName = '',
   className = '',
   disabled,
   id,
@@ -84,7 +86,7 @@ export const Button: React.FC<ButtonProps> = ({
       ) : (
         <>
           {(leftIcon || defaultIcon) && <span className="flex-shrink-0">{leftIcon || defaultIcon}</span>}
-          <span>{children}</span>
+          <span className={leftIcon || rightIcon || defaultIcon ? `min-w-0 ${contentClassName}` : contentClassName || undefined}>{children}</span>
           {rightIcon && <span className="flex-shrink-0">{rightIcon}</span>}
         </>
       )}

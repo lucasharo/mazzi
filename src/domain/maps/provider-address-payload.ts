@@ -43,7 +43,11 @@ export function buildProviderAddressPayload(value: ProviderAddressFormValue): Pr
   const latitude = value.address?.latitude ?? null;
   const longitude = value.address?.longitude ?? null;
   const address: Record<string, unknown> | null = value.address
-    ? { ...value.address, complement: value.complement.trim() || undefined }
+    ? {
+      ...value.address,
+      postalCode: normalizePostalCode(String(value.address.postalCode || value.postalCode)),
+      complement: value.complement.trim() || undefined,
+    }
     : null;
   if (address && mode !== 'STANDARD_ADDRESS') {
     delete address.houseNumber;

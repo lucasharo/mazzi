@@ -87,6 +87,7 @@ export interface Provider {
   documentNumber?: string; // CPF or CNPJ (PRIVATE)
   phone?: string; // Telefone interno (PRIVATE)
   publicContact?: string; // Contato comercial público
+  commercialEmail?: string; // E-mail de contato comercial
   type: ProviderType;
   status: ProviderStatus;
   ratingAverage: number;

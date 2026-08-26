@@ -180,7 +180,7 @@ export const ProviderApp: React.FC = () => {
     neighborhood: 'Pinheiros',
     city: 'São Paulo',
     state: 'SP',
-    serviceRadiusKm: 6,
+    serviceRadiusKm: 6 as number | '',
     bio: '',
     addressLine1: '',
     houseNumber: '',
@@ -203,11 +203,13 @@ export const ProviderApp: React.FC = () => {
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
   const [profileForm, setProfileForm] = useState({
     displayName: '',
+    legalName: '',
     publicContact: '',
+    commercialEmail: '',
     neighborhood: '',
     city: '',
     state: 'SP',
-    serviceRadiusKm: 6,
+    serviceRadiusKm: 6 as number | '',
     bio: '',
     addressLine1: '',
     houseNumber: '',
@@ -224,7 +226,7 @@ export const ProviderApp: React.FC = () => {
   const [vehicleForm, setVehicleForm] = useState({
     brand: '',
     model: '',
-    year: new Date().getFullYear(),
+    year: '' as number | '',
     licensePlate: '',
     category: 'B' as VehicleCategory,
     vehicleType: 'CAR' as VehicleType,
@@ -295,40 +297,48 @@ export const ProviderApp: React.FC = () => {
 
       const isInstructorUser = user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'));
       if (isInstructorUser) {
-        try {
-          const unified = await dbService.getMyUnifiedInstructorBookings();
-          setBookings(unified || []);
-        } catch (e: any) {
-          console.error('Unified instructor bookings load failed:', e);
+        const [unifiedBookingsResult, globalBlocksResult, globalDocumentsResult] = await Promise.allSettled([
+          dbService.getMyUnifiedInstructorBookings(),
+          dbService.getMyInstructorGlobalBlocks(),
+          workspace.provider.type === 'INSTRUCTOR'
+            ? dbService.listMyGlobalCompliance()
+            : Promise.resolve([] as ComplianceDocument[]),
+        ]);
+
+        if (unifiedBookingsResult.status === 'fulfilled') {
+          setBookings(unifiedBookingsResult.value || []);
+        } else {
+          console.error('Unified instructor bookings load failed:', unifiedBookingsResult.reason);
           setUnifiedCalendarError('Não foi possível carregar a agenda unificada do instrutor. Tente novamente.');
           setBookings([]);
         }
-        try {
-          const globalBlocks = await dbService.getMyInstructorGlobalBlocks();
-          setInstructorGlobalBlocks(globalBlocks || []);
-        } catch (e) {
-          console.warn('Failed to load instructor global blocks:', e);
+
+        if (globalBlocksResult.status === 'fulfilled') {
+          setInstructorGlobalBlocks(globalBlocksResult.value || []);
+        } else {
+          console.warn('Failed to load instructor global blocks:', globalBlocksResult.reason);
+          setInstructorGlobalBlocks([]);
         }
+
+        let effectiveComplianceDocuments = workspace.complianceDocuments;
+        if (globalDocumentsResult.status === 'fulfilled' && workspace.provider.type === 'INSTRUCTOR') {
+          const seen = new Set(effectiveComplianceDocuments.map((document) => document.id));
+          effectiveComplianceDocuments = [
+            ...effectiveComplianceDocuments,
+            ...globalDocumentsResult.value.filter((document) =>
+              document.scope === 'USER_GLOBAL' &&
+              document.userId === user?.id &&
+              !seen.has(document.id)
+            ),
+          ];
+        } else if (globalDocumentsResult.status === 'rejected') {
+          console.warn('Failed to load instructor global compliance:', globalDocumentsResult.reason);
+        }
+        setComplianceDocs(effectiveComplianceDocuments);
       } else {
         setBookings(workspace.bookings);
+        setComplianceDocs(workspace.complianceDocuments);
       }
-      let effectiveComplianceDocuments = workspace.complianceDocuments;
-      if (isInstructorUser && workspace.provider.type === 'INSTRUCTOR') {
-        // USER_GLOBAL documents (for example CNH/EAR) are part of the
-        // instructor's effective compliance set, but must never be mixed into
-        // another user/provider's workspace. Fail closed if this read fails.
-        const globalDocuments = await dbService.listMyGlobalCompliance();
-        const seen = new Set(effectiveComplianceDocuments.map((document) => document.id));
-        effectiveComplianceDocuments = [
-          ...effectiveComplianceDocuments,
-          ...globalDocuments.filter((document) =>
-            document.scope === 'USER_GLOBAL' &&
-            document.userId === user?.id &&
-            !seen.has(document.id)
-          ),
-        ];
-      }
-      setComplianceDocs(effectiveComplianceDocuments);
       setAvailabilityRules(workspace.availabilityRules.map((rule: any) => ({
         id: rule.id,
         providerId: rule.provider_id,
@@ -835,12 +845,17 @@ export const ProviderApp: React.FC = () => {
   // Vehicle Handlers
   const handleCreateVehicle = async () => {
     setVehicleError(null);
+    const vehicleYear = vehicleForm.year;
+    if (vehicleYear === '') {
+      setVehicleError('Informe o ano do veículo.');
+      return;
+    }
     try {
       const newVehicle = createVehicleDraft({
         providerId: currentProvider.id,
         brand: vehicleForm.brand,
         model: vehicleForm.model,
-        year: Number(vehicleForm.year),
+        year: vehicleYear,
         licensePlate: vehicleForm.licensePlate,
         category: vehicleForm.category,
         vehicleType: vehicleForm.vehicleType,
@@ -856,7 +871,7 @@ export const ProviderApp: React.FC = () => {
       setVehicleForm({
         brand: '',
         model: '',
-        year: new Date().getFullYear(),
+        year: '',
         licensePlate: '',
         category: 'B',
         vehicleType: 'CAR',
@@ -966,6 +981,17 @@ export const ProviderApp: React.FC = () => {
   const handleSaveProfile = async () => {
     if (isSavingProfile) return;
     setIsSavingProfile(true);
+    if (currentProvider?.type === 'DRIVING_SCHOOL' && !profileForm.legalName.trim()) {
+      setProfileFormError('Informe a razão social da autoescola.');
+      setIsSavingProfile(false);
+      return;
+    }
+    if (currentProvider?.type === 'DRIVING_SCHOOL' && profileForm.commercialEmail.trim()
+      && !/^\S+@\S+\.\S+$/.test(profileForm.commercialEmail.trim())) {
+      setProfileFormError('Informe um e-mail de contato válido.');
+      setIsSavingProfile(false);
+      return;
+    }
     const radiusKm = normalizeServiceRadius(profileForm.serviceRadiusKm);
     const cleanPhone = normalizePhone(profileForm.publicContact);
     const cleanState = maskStateUF(profileForm.state);
@@ -1047,7 +1073,9 @@ export const ProviderApp: React.FC = () => {
       });
       await dbService.updateProviderProfile(currentProvider.id, {
         name: cleanName,
+        legalName: profileForm.legalName.trim(),
         publicContact: cleanPhone,
+        commercialEmail: profileForm.commercialEmail.trim(),
         serviceRadiusKm: radiusKm,
         bio: cleanBio,
         ...addressPayload,
@@ -1184,7 +1212,11 @@ status: 'IN_REVIEW',
             providerVehicles={vehicles}
             onSelectBooking={setSelectedBooking}
             onNavigateTab={setActiveTab}
-            onOpenAddVehicleModal={() => setIsAddVehicleModalOpen(true)}
+            onOpenAddVehicleModal={() => {
+              setManagementSubTab('vehicles');
+              setActiveTab('management');
+              setIsAddVehicleModalOpen(true);
+            }}
             onOpenAddOfferingModal={() => setIsAddOfferingModalOpen(true)}
             calendarLoadError={unifiedCalendarError}
             isRefreshing={isRefreshingCurrentTab}
@@ -1333,7 +1365,9 @@ status: 'IN_REVIEW',
                 setProfileFormError(null);
                 setProfileForm({
                   displayName: currentProvider.name || '',
+                  legalName: currentProvider.legalName || '',
                   publicContact: currentProvider.publicContact || user?.phone || '',
+                  commercialEmail: currentProvider.commercialEmail || '',
                   neighborhood: currentProvider.neighborhood || '',
                   city: currentProvider.city || '',
                   state: currentProvider.state || 'SP',

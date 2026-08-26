@@ -37,7 +37,8 @@ vi.mock('../src/lib/supabase', () => ({
   },
 }));
 
-import { AppLogin } from '../src/components/auth/AppLogin';
+import { AppLogin, formatAuthError } from '../src/components/auth/AppLogin';
+import { AUTH_OTP_RESEND_COOLDOWN_SECONDS } from '../src/lib/auth-constants';
 
 describe('TASK-064 — password recovery isolation', () => {
   afterEach(() => {
@@ -47,6 +48,7 @@ describe('TASK-064 — password recovery isolation', () => {
     updatePassword.mockReset();
     requestPasswordReset.mockResolvedValue(undefined);
     auth.completePasswordRecovery.mockResolvedValue(undefined);
+    auth.error = null;
   });
 
   async function openRecoveryOtp() {
@@ -58,7 +60,7 @@ describe('TASK-064 — password recovery isolation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enviar código' }));
     await screen.findByRole('heading', { name: 'Digite o código' });
     fireEvent.change(screen.getByLabelText('Código de recuperação'), {
-      target: { value: '12345678' },
+      target: { value: '123456' },
     });
   }
 
@@ -102,5 +104,29 @@ describe('TASK-064 — password recovery isolation', () => {
     expect(auth.completePasswordRecovery).toHaveBeenCalledTimes(1);
     expect(auth.signIn).not.toHaveBeenCalled();
     expect(updatePassword).not.toHaveBeenCalled();
+  });
+
+  it('opens signup OTP when login reports an unconfirmed email', async () => {
+    auth.signIn.mockImplementationOnce(async () => {
+      auth.error = 'Seu e-mail ainda não foi confirmado.';
+      throw new Error('Seu e-mail ainda não foi confirmado.');
+    });
+
+    render(<AppLogin kind="student" />);
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'student@example.com' } });
+    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'password-123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    await screen.findByRole('heading', { name: 'Confirme seu e-mail' });
+    expect(screen.getByLabelText('Código de confirmação').getAttribute('maxLength')).toBe('6');
+    expect(screen.queryByText('Confirme o código de 6 dígitos enviado para o seu e-mail.')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar para o login' }));
+    expect(screen.getByRole('button', { name: 'Entrar' })).not.toBeNull();
+  });
+
+  it('translates Supabase resend limits and uses the 60-second product cooldown', () => {
+    expect(formatAuthError('For security purposes, you can only request this after 9 seconds.'))
+      .toBe('Para sua segurança, aguarde 9 segundos antes de solicitar um novo código.');
+    expect(AUTH_OTP_RESEND_COOLDOWN_SECONDS).toBe(60);
   });
 });

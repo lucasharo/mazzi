@@ -162,7 +162,9 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
       expect(supabase.rpc).toHaveBeenCalledWith('update_provider_profile', {
         p_provider_id: 'prov-123',
         p_name: 'Instrutor Carlos',
+        p_legal_name: null,
         p_public_contact: '11999998888',
+        p_commercial_email: null,
         p_neighborhood: 'Pinheiros',
         p_city: 'São Paulo',
         p_state: 'SP',
@@ -185,13 +187,32 @@ describe('PROVIDER SERVICE CONTRACT TESTS', () => {
       expect(supabase.rpc).toHaveBeenCalledWith('update_provider_profile', {
         p_provider_id: 'prov-123',
         p_name: '',
+        p_legal_name: null,
         p_public_contact: '',
+        p_commercial_email: null,
         p_neighborhood: null,
         p_city: '',
         p_state: '',
         p_service_radius_km: 0,
         p_bio: null,
       });
+    });
+
+    it('sends mutable school identity fields through the canonical profile RPC', async () => {
+      (supabase.rpc as any).mockResolvedValue({ data: null, error: null });
+
+      await dbService.updateProviderProfile('school-123', {
+        name: 'Autoescola MAZZI',
+        legalName: 'MAZZI Centro de Formação Ltda.',
+        commercialEmail: 'CONTATO@MAZZI.COM.BR',
+      });
+
+      expect(supabase.rpc).toHaveBeenCalledWith('update_provider_profile', expect.objectContaining({
+        p_provider_id: 'school-123',
+        p_name: 'Autoescola MAZZI',
+        p_legal_name: 'MAZZI Centro de Formação Ltda.',
+        p_commercial_email: 'CONTATO@MAZZI.COM.BR',
+      }));
     });
 
     it('fails closed gracefully when update_provider_profile RPC is absent (migration pending)', async () => {

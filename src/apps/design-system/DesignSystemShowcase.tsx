@@ -4,6 +4,7 @@ import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../compon
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { OtpInput } from '../../components/ui/OtpInput';
+import { AUTH_OTP_LENGTH } from '../../lib/auth-constants';
 import { Badge } from '../../components/ui/Badge';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Rating } from '../../components/ui/Rating';
@@ -605,7 +606,7 @@ export const DesignSystemShowcase: React.FC = () => {
                 <section className="space-y-6">
                   <div>
                     <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-black text-[#202126]">6. OTP Input (8 Dígitos)</h2>
+                      <h2 className="text-xl font-black text-[#202126]">6. OTP Input ({AUTH_OTP_LENGTH} dígitos)</h2>
                       <span className="text-xs font-mono text-slate-400">src/components/ui/OtpInput.tsx</span>
                     </div>
                     <p className="text-xs text-slate-600 mt-1">
@@ -614,8 +615,8 @@ export const DesignSystemShowcase: React.FC = () => {
                   </div>
 
                   <div className="p-6 rounded-3xl bg-slate-50 border border-[#e9e6de] space-y-4">
-                    <label className="block text-xs font-bold text-slate-700">Código de Verificação OTP (8 dígitos):</label>
-                    <OtpInput value={otpVal} onChange={setOtpVal} length={8} />
+                    <label className="block text-xs font-bold text-slate-700">Código de Verificação OTP ({AUTH_OTP_LENGTH} dígitos):</label>
+                    <OtpInput value={otpVal} onChange={setOtpVal} />
                     <p className="text-[11px] font-mono text-slate-500">Valor atual: "{otpVal}"</p>
                   </div>
                 </section>

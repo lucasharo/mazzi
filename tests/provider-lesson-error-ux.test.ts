@@ -96,4 +96,12 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     expect(friendly).not.toContain('PGRST999');
     expect(friendly).not.toContain('postgres');
   });
+
+  it('K. Raw English errors are replaced with the Portuguese fallback', () => {
+    const friendly = mapFriendlyErrorMessage(
+      { message: 'For security purposes, you can only request this after 9 seconds.' },
+      'Não foi possível reenviar o código agora.',
+    );
+    expect(friendly).toBe('Para sua segurança, aguarde 9 segundos antes de tentar novamente.');
+  });
 });

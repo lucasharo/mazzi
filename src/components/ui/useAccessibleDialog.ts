@@ -41,12 +41,14 @@ export interface AccessibleDialogOptions {
   isOpen: boolean;
   onClose: () => void;
   closeOnEscape?: boolean;
+  nested?: boolean;
 }
 
 export function useAccessibleDialog<T extends HTMLElement>({
   isOpen,
   onClose,
   closeOnEscape = true,
+  nested = false,
 }: AccessibleDialogOptions): RefObject<T | null> {
   const dialogRef = useRef<T>(null);
   const onCloseRef = useRef(onClose);
@@ -76,7 +78,11 @@ export function useAccessibleDialog<T extends HTMLElement>({
       : [];
 
     siblingState.forEach(({ element }) => {
-      element.inert = true;
+      // A nested portal sits above an already open dialog. Making the entire
+      // app root inert here forces browsers to blur the focused field and can
+      // reset the parent's internal scroll position. The nested backdrop and
+      // top-dialog focus trap already prevent interaction with the parent.
+      if (!nested) element.inert = true;
       element.setAttribute('aria-hidden', 'true');
     });
     lockBodyScroll();
@@ -131,7 +137,7 @@ export function useAccessibleDialog<T extends HTMLElement>({
       unlockBodyScroll();
       if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true });
     };
-  }, [closeOnEscape, isOpen]);
+  }, [closeOnEscape, isOpen, nested]);
 
   return dialogRef;
 }

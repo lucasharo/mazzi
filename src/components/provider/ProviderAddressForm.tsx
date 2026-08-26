@@ -19,7 +19,7 @@ interface Props {
 }
 
 function applyCep(value: ProviderAddressFormValue, cep: BrazilianPostalAddress): ProviderAddressFormValue {
-  return { ...value, locationMode: value.locationMode === 'MAP_PIN' ? 'MAP_PIN' : value.locationMode || 'STANDARD_ADDRESS', postalCode: maskPostalCode(cep.postalCode), addressLine1: cep.street, neighborhood: cep.neighborhood, city: cep.city, state: cep.stateCode, approximateLatitude: cep.approximateLatitude, approximateLongitude: cep.approximateLongitude, address: undefined };
+  return { ...value, locationMode: value.locationMode === 'MAP_PIN' ? 'MAP_PIN' : value.locationMode || 'STANDARD_ADDRESS', postalCode: normalizePostalCode(cep.postalCode), addressLine1: cep.street, neighborhood: cep.neighborhood, city: cep.city, state: cep.stateCode, approximateLatitude: cep.approximateLatitude, approximateLongitude: cep.approximateLongitude, address: undefined };
 }
 
 export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix }) => {
@@ -54,7 +54,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
   }, [value.postalCode]);
 
   const selectManualAddress = (suggestion: LocationSuggestion) => {
-    onChange({ ...value, addressLine1: suggestion.street || suggestion.addressLine1 || suggestion.formattedAddress, neighborhood: suggestion.neighborhood, city: suggestion.city, state: suggestion.stateCode || suggestion.state, postalCode: maskPostalCode(suggestion.postalCode || value.postalCode), address: { formatted: suggestion.formattedAddress, addressLine1: suggestion.addressLine1, addressLine2: suggestion.addressLine2, street: suggestion.street, houseNumber: suggestion.houseNumber, neighborhood: suggestion.neighborhood, city: suggestion.city, state: suggestion.state, stateCode: suggestion.stateCode, postalCode: suggestion.postalCode, country: suggestion.country, countryCode: suggestion.countryCode, latitude: suggestion.latitude, longitude: suggestion.longitude, placeId: suggestion.placeId, source: 'GEOAPIFY' } });
+    onChange({ ...value, addressLine1: suggestion.street || suggestion.addressLine1 || suggestion.formattedAddress, neighborhood: suggestion.neighborhood, city: suggestion.city, state: suggestion.stateCode || suggestion.state, postalCode: normalizePostalCode(suggestion.postalCode || value.postalCode), address: { formatted: suggestion.formattedAddress, addressLine1: suggestion.addressLine1, addressLine2: suggestion.addressLine2, street: suggestion.street, houseNumber: suggestion.houseNumber, neighborhood: suggestion.neighborhood, city: suggestion.city, state: suggestion.state, stateCode: suggestion.stateCode, postalCode: normalizePostalCode(suggestion.postalCode || value.postalCode), country: suggestion.country, countryCode: suggestion.countryCode, latitude: suggestion.latitude, longitude: suggestion.longitude, placeId: suggestion.placeId, source: 'GEOAPIFY' } });
     setManualSearch(false);
   };
 
@@ -80,7 +80,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       const resolvedNeighborhood = value.neighborhood || reverse.neighborhood;
       const resolvedCity = value.city || reverse.city;
       const resolvedState = reverse.stateCode || value.state;
-      onChange({ ...value, locationMode: resolvedMode, addressLine1: reverse.street || value.addressLine1, neighborhood: resolvedNeighborhood, city: resolvedCity, state: resolvedState, postalCode: maskPostalCode(reverse.postalCode || value.postalCode), houseNumber: inferredHouseNumber || (resolvedMode === 'NO_HOUSE_NUMBER' ? '' : value.houseNumber), address: { ...reverse, neighborhood: resolvedNeighborhood, city: resolvedCity, state: resolvedState, latitude, longitude, source: inferredHouseNumber ? 'GEOAPIFY' : 'MAP_PIN', locationMode: resolvedMode, noHouseNumber: !inferredHouseNumber, locationConfirmed: true, confirmationMethod: 'MAP_PIN' } });
+      onChange({ ...value, locationMode: resolvedMode, addressLine1: reverse.street || value.addressLine1, neighborhood: resolvedNeighborhood, city: resolvedCity, state: resolvedState, postalCode: normalizePostalCode(reverse.postalCode || value.postalCode), houseNumber: inferredHouseNumber || (resolvedMode === 'NO_HOUSE_NUMBER' ? '' : value.houseNumber), address: { ...reverse, postalCode: normalizePostalCode(reverse.postalCode || value.postalCode), neighborhood: resolvedNeighborhood, city: resolvedCity, state: resolvedState, latitude, longitude, source: inferredHouseNumber ? 'GEOAPIFY' : 'MAP_PIN', locationMode: resolvedMode, noHouseNumber: !inferredHouseNumber, locationConfirmed: true, confirmationMethod: 'MAP_PIN' } });
     } catch {
       onChange({ ...value, locationMode: returnMode, houseNumber: returnMode === 'NO_HOUSE_NUMBER' ? '' : value.houseNumber, address: { ...(value.address || {}), latitude, longitude, source: 'MAP_PIN', locationMode: returnMode, noHouseNumber: returnMode === 'NO_HOUSE_NUMBER', locationConfirmed: true, confirmationMethod: 'MAP_PIN', formatted: 'Localização confirmada no mapa' } });
     }
@@ -92,7 +92,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
     {!isMapPin && <div>
       <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor={`${idPrefix}-cep`}>CEP *</label>
       <div className="relative">
-        <Input id={`${idPrefix}-cep`} inputMode="numeric" maxLength={9} value={maskPostalCode(value.postalCode)} onChange={(event) => onChange({ ...value, postalCode: maskPostalCode(event.target.value), address: undefined })} placeholder="00000-000" className="rounded-2xl pr-10" />
+        <Input id={`${idPrefix}-cep`} inputMode="numeric" maxLength={9} value={maskPostalCode(value.postalCode)} onChange={(event) => onChange({ ...value, postalCode: normalizePostalCode(event.target.value), address: undefined })} placeholder="00000-000" className="rounded-2xl pr-10" />
         {isLookingUpCep && <LoaderCircle className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[var(--mazzi-muted)]" aria-label="Consultando CEP" />}
       </div>
       {cepMessage && <p className="mt-1 text-xs text-rose-700" role="alert">{cepMessage}</p>}
@@ -118,7 +118,16 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       {(isNoNumber || isMapPin) && (value.postalCode.trim() || value.addressLine1.trim()) && <ButtonBase type="button" className="text-xs font-bold text-[var(--mazzi-dark)] underline" onClick={() => { setIsMapModalOpen(true); }}><MapPin className="mr-1 inline h-3.5 w-3.5" /> Confirmar localização no mapa</ButtonBase>}
     </div>
     {(isNoNumber || isMapPin) && <p className="text-xs text-slate-600">{isNoNumber ? 'Este local não possui número. O mapa é opcional para ajustar a localização.' : 'Indique o ponto operacional diretamente no mapa.'}</p>}
-    <Modal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} title="Confirmar localização no mapa" size="lg">
+    <Modal
+      id={`${idPrefix}-location-map`}
+      isOpen={isMapModalOpen}
+      onClose={() => setIsMapModalOpen(false)}
+      title="Confirmar localização no mapa"
+      size="lg"
+      useHistory={false}
+      portal
+      layer="nested"
+    >
       <p className="mb-4 text-xs leading-relaxed text-slate-600">Confira o ponto sugerido para o endereço informado e confirme a localização operacional.</p>
       <LocationPinPicker latitude={value.address?.latitude || value.approximateLatitude} longitude={value.address?.longitude || value.approximateLongitude} onConfirm={(lat, lng) => { void confirmPin(lat, lng); setIsMapModalOpen(false); }} />
     </Modal>

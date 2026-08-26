@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { IconButton } from './IconButton';
 import { useAccessibleDialog } from './useAccessibleDialog';
@@ -15,6 +16,9 @@ export interface ModalProps {
   ariaLabel?: string;
   closeOnEscape?: boolean;
   closeOnBackdrop?: boolean;
+  useHistory?: boolean;
+  portal?: boolean;
+  layer?: 'base' | 'nested';
 }
 
 export function useDialogHistory({
@@ -91,14 +95,17 @@ export const Modal: React.FC<ModalProps> = ({
   ariaLabel,
   closeOnEscape = true,
   closeOnBackdrop = true,
+  useHistory = true,
+  portal = false,
+  layer = 'base',
 }) => {
   const generatedId = useId();
   const titleId = `${id || generatedId}-title`;
   // Keep the URL identity stable if a modal changes its title while open.
   const modalKeyRef = useRef(id || title || 'dialog');
   const modalKey = modalKeyRef.current;
-  const dialogRef = useAccessibleDialog<HTMLDivElement>({ isOpen, onClose, closeOnEscape });
-  useDialogHistory({ isOpen, onClose, modalKey });
+  const dialogRef = useAccessibleDialog<HTMLDivElement>({ isOpen, onClose, closeOnEscape, nested: layer === 'nested' });
+  useDialogHistory({ isOpen: isOpen && useHistory, onClose, modalKey });
 
   if (!isOpen) return null;
 
@@ -109,10 +116,10 @@ export const Modal: React.FC<ModalProps> = ({
     xl: 'max-w-2xl',
   };
 
-  return (
+  const modalContent = (
     <div
       id={id || 'mazzi-modal'}
-      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-150"
+      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-150`}
       onClick={(e) => {
         if (closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
@@ -124,7 +131,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : ariaLabel || 'Janela de diálogo'}
         tabIndex={-1}
-        className={`relative w-full ${sizeStyles[size]} mb-8 bg-white rounded-3xl shadow-xl border border-[var(--mazzi-border)] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150 text-left`}
+        className={`relative w-full ${sizeStyles[size]} mb-8 bg-white rounded-3xl shadow-xl border border-[var(--mazzi-border)] overflow-clip flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150 text-left`}
       >
         {title && (
           <div className="px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between">
@@ -146,4 +153,8 @@ export const Modal: React.FC<ModalProps> = ({
       </div>
     </div>
   );
+
+  return portal && typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : modalContent;
 };
