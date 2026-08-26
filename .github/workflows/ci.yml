@@ -86,41 +86,41 @@ jobs:
             done
           }
 
-          refresh_projects() {
-            retry 3 npx --yes wrangler@4 pages project list --json > /tmp/cloudflare-pages-projects.json
-          }
-
-          project_exists() {
-            local project="$1"
-            jq -e --arg project "$project" '.[] | select(.name == $project)' /tmp/cloudflare-pages-projects.json >/dev/null
-          }
-
           ensure_project() {
             local project="$1"
-
-            refresh_projects
-            if project_exists "$project"; then
-              echo "Cloudflare Pages project already exists: ${project}"
-              return 0
-            fi
+            local output
+            local status
 
             for attempt in 1 2 3; do
-              echo "Creating Cloudflare Pages project: ${project} (attempt ${attempt}/3)"
-              if npx --yes wrangler@4 pages project create "$project" \
-                --production-branch="feature/premium-ui-v2"; then
+              echo "Ensuring Cloudflare Pages project: ${project} (attempt ${attempt}/3)"
+
+              set +e
+              output=$(npx --yes wrangler@4 pages project create "$project" \
+                --production-branch="feature/premium-ui-v2" 2>&1)
+              status=$?
+              set -e
+
+              echo "$output"
+
+              if (( status == 0 )); then
                 return 0
               fi
 
-              # A transient API error can happen after Cloudflare has already
-              # accepted the creation. Re-check before trying to create again.
-              sleep $((attempt * 5))
-              if refresh_projects && project_exists "$project"; then
-                echo "Cloudflare Pages project exists after transient create error: ${project}"
+              # Cloudflare code 8000002 means the project already exists.
+              # That is the desired idempotent state for subsequent deploys.
+              if grep -qE 'code: 8000002|project with this name already exists' <<<"$output"; then
+                echo "Cloudflare Pages project already exists: ${project}"
                 return 0
+              fi
+
+              if (( attempt < 3 )); then
+                local delay=$((attempt * 5))
+                echo "::warning::Cloudflare project creation failed for ${project}; retrying in ${delay}s..." >&2
+                sleep "$delay"
               fi
             done
 
-            echo "::error::Unable to create Cloudflare Pages project after 3 attempts: ${project}" >&2
+            echo "::error::Unable to ensure Cloudflare Pages project after 3 attempts: ${project}" >&2
             return 1
           }
 
