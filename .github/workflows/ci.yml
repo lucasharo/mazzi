@@ -68,28 +68,78 @@ jobs:
             exit 0
           fi
 
+          retry() {
+            local max_attempts="$1"
+            shift
+            local attempt=1
+
+            until "$@"; do
+              if (( attempt >= max_attempts )); then
+                echo "::error::Cloudflare command failed after ${max_attempts} attempts: $*" >&2
+                return 1
+              fi
+
+              local delay=$((attempt * 5))
+              echo "::warning::Cloudflare command failed (${attempt}/${max_attempts}); retrying in ${delay}s..." >&2
+              sleep "$delay"
+              attempt=$((attempt + 1))
+            done
+          }
+
+          refresh_projects() {
+            retry 3 npx --yes wrangler@4 pages project list --json > /tmp/cloudflare-pages-projects.json
+          }
+
+          project_exists() {
+            local project="$1"
+            jq -e --arg project "$project" '.[] | select(.name == $project)' /tmp/cloudflare-pages-projects.json >/dev/null
+          }
+
+          ensure_project() {
+            local project="$1"
+
+            refresh_projects
+            if project_exists "$project"; then
+              echo "Cloudflare Pages project already exists: ${project}"
+              return 0
+            fi
+
+            for attempt in 1 2 3; do
+              echo "Creating Cloudflare Pages project: ${project} (attempt ${attempt}/3)"
+              if npx --yes wrangler@4 pages project create "$project" \
+                --production-branch="feature/premium-ui-v2"; then
+                return 0
+              fi
+
+              # A transient API error can happen after Cloudflare has already
+              # accepted the creation. Re-check before trying to create again.
+              sleep $((attempt * 5))
+              if refresh_projects && project_exists "$project"; then
+                echo "Cloudflare Pages project exists after transient create error: ${project}"
+                return 0
+              fi
+            done
+
+            echo "::error::Unable to create Cloudflare Pages project after 3 attempts: ${project}" >&2
+            return 1
+          }
+
           PROJECTS=(
             "mazzi-aluno:dist/student"
             "mazzi-pro:dist/instructor"
             "mazzi-admin:dist/admin"
           )
 
-          npx --yes wrangler@4 pages project list --json > /tmp/cloudflare-pages-projects.json
-
           for entry in "${PROJECTS[@]}"; do
             project="${entry%%:*}"
             directory="${entry#*:}"
 
-            if ! jq -e --arg project "$project" '.[] | select(.name == $project)' /tmp/cloudflare-pages-projects.json >/dev/null; then
-              echo "Creating Cloudflare Pages project: ${project}"
-              npx --yes wrangler@4 pages project create "$project" \
-                --production-branch="feature/premium-ui-v2"
-            fi
+            ensure_project "$project"
 
             echo "Deploying ${project} from ${directory}"
-            npx --yes wrangler@4 pages deploy "$directory" \
+            retry 3 npx --yes wrangler@4 pages deploy "$directory" \
               --project-name="$project" \
               --branch="feature/premium-ui-v2" \
               --commit-hash="$GITHUB_SHA" \
-              --commit-message="${GITHUB_COMMIT_MESSAGE:-MAZZI DEV deploy}"
+              --commit-message="MAZZI DEV deploy"
           done
