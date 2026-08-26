@@ -3,12 +3,14 @@ import { Pencil, Save, } from 'lucide-react';
 import { ComplianceDocument, Provider, ProviderAddress, UserRole } from '../../../types';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
+import { Textarea } from '../../../components/ui/Textarea';
 import { ProfilePhotoPicker } from '../../../components/profile/ProfilePhotoPicker';
 import { ComplianceStatusAlert } from '../../../components/ui/ComplianceStatusAlert';
 import { ProviderAddressForm, ProviderAddressFormValue } from '../../../components/provider/ProviderAddressForm';
 
 import { maskBrazilianPhone } from '../../../lib/input-masks';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
+import { Modal } from '../../../components/ui/Modal';
 import { evaluateProviderEligibility } from '../../../domain/compliance';
 import { resolveComplianceDocumentStatus } from '../../../domain/provider-compliance-presentation';
 
@@ -39,6 +41,8 @@ interface ProviderProfileTabProps {
   };
   onProfileFormChange: (form: any) => void;
   onSaveProfile: () => void;
+  formError?: string | null;
+  isSavingProfile?: boolean;
   onLogout: () => void;
 }
 
@@ -56,6 +60,8 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
   profileForm,
   onProfileFormChange,
   onSaveProfile,
+  formError,
+  isSavingProfile = false,
   onLogout,
 }) => {
   const isSchool = currentProvider.type === 'DRIVING_SCHOOL' || currentRole === 'SCHOOL_STAFF';
@@ -106,7 +112,23 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
             </div>
           </dl>
         ) : (
-          <form className="mt-4 space-y-4" onSubmit={(event) => { event.preventDefault(); onSaveProfile(); }}>
+          <Modal
+            isOpen={isEditingProfile}
+            onClose={onToggleEditProfile}
+            title="Editar perfil"
+            footer={(
+              <>
+                <Button type="button" variant="dangerSoft" size="sm" onClick={onToggleEditProfile}>
+                  Cancelar
+                </Button>
+                <PrimaryButton type="submit" form="provider-profile-edit-form" size="sm" className="font-bold shadow-xs" disabled={isSavingProfile} loading={isSavingProfile} leftIcon={<Save className="h-4 w-4" aria-hidden="true" />}>
+                  {isSavingProfile ? 'Salvando…' : 'Salvar perfil'}
+                </PrimaryButton>
+              </>
+            )}
+          >
+          <form id="provider-profile-edit-form" className="space-y-4" onSubmit={(event) => { event.preventDefault(); onSaveProfile(); }}>
+            {formError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">{formError}</div>}
             {onAvatarChange && (
               <div>
                 <span className="mb-1.5 block text-xs font-bold text-slate-700">Foto de perfil</span>
@@ -162,7 +184,7 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
 
             <div>
               <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-bio">Biografia e diferenciais</label>
-              <textarea
+              <Textarea
                 id="provider-profile-bio"
                 rows={4}
                 value={profileForm.bio}
@@ -172,21 +194,14 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
               />
             </div>
 
-            <div className="flex items-center gap-2.5 pt-2">
-              <Button type="button" variant="dangerSoft" size="sm" className="w-1/2" onClick={onToggleEditProfile}>
-                Cancelar
-              </Button>
-              <PrimaryButton type="submit" size="sm" className="min-h-11 w-1/2 font-bold shadow-xs" leftIcon={<Save className="h-4 w-4" aria-hidden="true" />}>
-                Salvar perfil
-              </PrimaryButton>
-            </div>
           </form>
+          </Modal>
         )}
       </div>
 
       {/* Logout: same quiet footer action as Student */}
-      <div className="border-t border-[var(--mazzi-border)] pt-4">
-        <Button variant="ghost" size="sm" className="w-full font-bold text-rose-700 hover:bg-rose-50" onClick={onLogout}>
+      <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4">
+        <Button variant="ghost" size="sm" className="font-bold text-rose-700 hover:bg-rose-50" onClick={onLogout}>
           Sair
         </Button>
       </div>

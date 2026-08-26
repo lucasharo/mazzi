@@ -10,6 +10,9 @@ import {
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Input } from '../../components/ui/Input';
+import { Textarea } from '../../components/ui/Textarea';
+import { Select } from '../../components/ui/Select';
+import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { formatCentsToBRL } from '../../domain/money';
 import { PlatformConfiguration } from '../../domain/platform-config';
@@ -350,30 +353,31 @@ export const ProvidersTab: React.FC<{
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Tipo</label>
-              <select
+              <Select
+                label="Tipo"
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="w-full text-xs rounded-xl border-slate-200 bg-white p-2 border"
-              >
-                <option value="ALL">Todos os Tipos</option>
-                <option value="INSTRUCTOR">Instrutores</option>
-                <option value="DRIVING_SCHOOL">Autoescolas</option>
-              </select>
+                options={[
+                  { value: 'ALL', label: 'Todos os Tipos' },
+                  { value: 'INSTRUCTOR', label: 'Instrutores' },
+                  { value: 'DRIVING_SCHOOL', label: 'Autoescolas' },
+                ]}
+              />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Status</label>
-              <select
+              <Select
+                label="Status"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full text-xs rounded-xl border-slate-200 bg-white p-2 border"
-              >
-                <option value="ALL">Todos os Status</option>
-                <option value="PENDING_REVIEW">Análise</option>
-                <option value="ACTIVE">Ativos</option>
-                <option value="SUSPENDED">Suspensos</option>
-                <option value="REJECTED">Rejeitados</option>
-                <option value="BLOCKED">Bloqueados</option>
-              </select>
+                options={[
+                  { value: 'ALL', label: 'Todos os Status' },
+                  { value: 'PENDING_REVIEW', label: 'Análise' },
+                  { value: 'ACTIVE', label: 'Ativos' },
+                  { value: 'SUSPENDED', label: 'Suspensos' },
+                  { value: 'REJECTED', label: 'Rejeitados' },
+                  { value: 'BLOCKED', label: 'Bloqueados' },
+                ]}
+              />
             </div>
           </div>
         </div>
@@ -657,30 +661,12 @@ export const ProvidersTab: React.FC<{
 
       {/* Modais de Moderação */}
       {actionType && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border shadow-2xl space-y-4 text-left">
-            <div>
-              <h3 className="font-black text-slate-900 text-sm uppercase tracking-wide">
-                {actionType === 'REJECT' ? 'Confirmar Rejeição do Cadastro' : actionType === 'SUSPEND' ? 'Suspender Prestador' : 'Confirmar Lockdown / Bloqueio'}
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                {actionType === 'BLOCK'
-                  ? 'Ação grave reservada a PLATFORM_ADMIN. Esta conta de prestador e todas as suas ofertas serão sumariamente ocultadas do catálogo, bloqueando transações comerciais.'
-                  : 'Esta ação altera o status do prestador na plataforma. Um e-mail/notificação com a justificativa de segurança será enviado.'}
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 uppercase">Justificativa Operacional Obrigatória *</label>
-              <textarea
-                value={reasonText}
-                onChange={(e) => setReasonText(e.target.value)}
-                placeholder="Informe detalhadamente os motivos regulatórios, técnicos ou fiscais para esta decisão..."
-                className="w-full h-24 text-xs rounded-xl border-slate-200 p-2.5 border"
-              />
-            </div>
-
-            <div className="mazzi-modal-actions flex justify-end gap-2">
+        <Modal
+          isOpen
+          onClose={() => setActionType(null)}
+          title={actionType === 'REJECT' ? 'Confirmar Rejeição do Cadastro' : actionType === 'SUSPEND' ? 'Suspender Prestador' : 'Confirmar Lockdown / Bloqueio'}
+          footer={(
+            <>
               <Button variant="dangerSoft" size="sm" onClick={() => setActionType(null)}>Cancelar</Button>
               <Button
                 variant="primary"
@@ -691,9 +677,24 @@ export const ProvidersTab: React.FC<{
               >
                 Confirmar
               </Button>
-            </div>
+            </>
+          )}
+        >
+          <div className="space-y-4 text-left">
+            <p className="text-xs text-slate-500">
+              {actionType === 'BLOCK'
+                ? 'Ação grave reservada a PLATFORM_ADMIN. Esta conta de prestador e todas as suas ofertas serão sumariamente ocultadas do catálogo, bloqueando transações comerciais.'
+                : 'Esta ação altera o status do prestador na plataforma. Um e-mail/notificação com a justificativa de segurança será enviado.'}
+            </p>
+            <Textarea
+              label="Justificativa Operacional Obrigatória *"
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              placeholder="Informe detalhadamente os motivos regulatórios, técnicos ou fiscais para esta decisão..."
+              rows={4}
+            />
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
@@ -741,20 +742,21 @@ export const ComplianceTab: React.FC<{
       <div className="lg:col-span-1 space-y-4">
         <div className="space-y-2">
           <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Fila de Documentos</h3>
-          <select
+          <Select
+            label="Status"
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value);
               setSelectedDocId('');
             }}
-            className="w-full text-xs rounded-xl border-slate-200 bg-white p-2 border"
-          >
-<option value="PENDING">Pendente ({complianceDocs.filter(d => d.status === 'PENDING' || d.status === 'IN_REVIEW').length})</option>
-            <option value="APPROVED">Aprovados ({complianceDocs.filter(d => d.status === 'APPROVED').length})</option>
-            <option value="REJECTED">Rejeitados ({complianceDocs.filter(d => d.status === 'REJECTED').length})</option>
-            <option value="EXPIRED">Expirados ({complianceDocs.filter(d => d.expiresAt && new Date(d.expiresAt).getTime() < Date.now()).length})</option>
-            <option value="ALL">Todos os Documentos ({complianceDocs.length})</option>
-          </select>
+            options={[
+              { value: 'PENDING', label: `Pendente (${complianceDocs.filter(d => d.status === 'PENDING' || d.status === 'IN_REVIEW').length})` },
+              { value: 'APPROVED', label: `Aprovados (${complianceDocs.filter(d => d.status === 'APPROVED').length})` },
+              { value: 'REJECTED', label: `Rejeitados (${complianceDocs.filter(d => d.status === 'REJECTED').length})` },
+              { value: 'EXPIRED', label: `Expirados (${complianceDocs.filter(d => d.expiresAt && new Date(d.expiresAt).getTime() < Date.now()).length})` },
+              { value: 'ALL', label: `Todos os Documentos (${complianceDocs.length})` },
+            ]}
+          />
         </div>
 
         {expiringDocs.length > 0 && (
@@ -943,22 +945,23 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
       <div className="lg:col-span-1 space-y-4">
         <div className="space-y-2">
           <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Homologação de Veículos</h3>
-          <select
+          <Select
+            label="Status"
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value);
               setSelectedVehId('');
             }}
-            className="w-full text-xs rounded-xl border-slate-200 bg-white p-2 border"
-          >
-            <option value="AWAITING_REVIEW">Aguardando aprovação ({vehicles.filter(v => isVehicleAwaitingAdminReview(v.status)).length})</option>
-            <option value="PENDING">Pendente novo ({vehicles.filter(v => v.status === 'PENDING').length})</option>
-<option value="IN_REVIEW">Em revisão ({vehicles.filter(v => v.status === 'IN_REVIEW').length})</option>
-            <option value="ACTIVE">Ativos ({vehicles.filter(v => v.status === 'ACTIVE').length})</option>
-            <option value="BLOCKED">Bloqueados ({vehicles.filter(v => v.status === 'BLOCKED').length})</option>
-            <option value="INACTIVE">Inativos ({vehicles.filter(v => v.status === 'INACTIVE').length})</option>
-            <option value="ALL">Todos os Veículos ({vehicles.length})</option>
-          </select>
+            options={[
+              { value: 'AWAITING_REVIEW', label: `Aguardando aprovação (${vehicles.filter(v => isVehicleAwaitingAdminReview(v.status)).length})` },
+              { value: 'PENDING', label: `Pendente novo (${vehicles.filter(v => v.status === 'PENDING').length})` },
+              { value: 'IN_REVIEW', label: `Em revisão (${vehicles.filter(v => v.status === 'IN_REVIEW').length})` },
+              { value: 'ACTIVE', label: `Ativos (${vehicles.filter(v => v.status === 'ACTIVE').length})` },
+              { value: 'BLOCKED', label: `Bloqueados (${vehicles.filter(v => v.status === 'BLOCKED').length})` },
+              { value: 'INACTIVE', label: `Inativos (${vehicles.filter(v => v.status === 'INACTIVE').length})` },
+              { value: 'ALL', label: `Todos os Veículos (${vehicles.length})` },
+            ]}
+          />
         </div>
 
         <div className="space-y-2 max-h-[450px] overflow-y-auto">
@@ -1092,33 +1095,28 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
 
       {/* Modal Rejeição/Bloqueio Veículo */}
       {actionType && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border shadow-2xl space-y-4 text-left">
-            <div>
-              <h3 className="font-black text-slate-900 text-sm uppercase tracking-wide">
-                {actionType === 'REJECT' ? 'Reprovar Veículo' : 'Confirmar Bloqueio de Veículo'}
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Informe o motivo operacional para a reprovação ou bloqueio do veículo na plataforma.
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 uppercase">Motivo *</label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Ex: Categoria incoerente com o modelo, documentação anual incompleta..."
-                className="w-full h-20 text-xs rounded-xl border-slate-200 p-2 border"
-              />
-            </div>
-
-            <div className="mazzi-modal-actions flex justify-end gap-2">
+        <Modal
+          isOpen
+          onClose={() => setActionType(null)}
+          title={actionType === 'REJECT' ? 'Reprovar Veículo' : 'Confirmar Bloqueio de Veículo'}
+          footer={(
+            <>
               <Button variant="dangerSoft" size="sm" onClick={() => setActionType(null)}>Cancelar</Button>
               <Button variant="primary" size="sm" className="bg-rose-600 hover:bg-rose-700 text-white" onClick={handleConfirmAction} disabled={!reason.trim()}>Confirmar</Button>
-            </div>
+            </>
+          )}
+        >
+          <div className="space-y-4 text-left">
+            <p className="text-xs text-slate-500">Informe o motivo operacional para a reprovação ou bloqueio do veículo na plataforma.</p>
+            <Textarea
+              label="Motivo *"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ex: Categoria incoerente com o modelo, documentação anual incompleta..."
+              rows={3}
+            />
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
@@ -1162,25 +1160,26 @@ export const BookingsTab: React.FC<{
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select
+          <Select
+            label="Status"
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value);
               setSelectedBookId('');
             }}
-            className="w-full text-xs rounded-xl border-slate-200 bg-white p-2 border"
-          >
-            <option value="ALL">Todos os Status ({bookings.length})</option>
-            <option value="CONFIRMED">Confirmadas</option>
-            <option value="IN_PROGRESS">Em Andamento</option>
-            <option value="COMPLETED">Concluídas</option>
-            <option value="PENDING_PAYMENT">Pagamento Pendente</option>
-            <option value="DISPUTED">Em Disputa</option>
-            <option value="CANCELLED_BY_STUDENT">Cancelado Aluno</option>
-            <option value="CANCELLED_BY_PROVIDER">Cancelado Prestador</option>
-            <option value="NO_SHOW_STUDENT">Falta do Aluno</option>
-            <option value="NO_SHOW_PROVIDER">Falta do Instrutor</option>
-          </select>
+            options={[
+              { value: 'ALL', label: `Todos os Status (${bookings.length})` },
+              { value: 'CONFIRMED', label: 'Confirmadas' },
+              { value: 'IN_PROGRESS', label: 'Em Andamento' },
+              { value: 'COMPLETED', label: 'Concluídas' },
+              { value: 'PENDING_PAYMENT', label: 'Pagamento Pendente' },
+              { value: 'DISPUTED', label: 'Em Disputa' },
+              { value: 'CANCELLED_BY_STUDENT', label: 'Cancelado Aluno' },
+              { value: 'CANCELLED_BY_PROVIDER', label: 'Cancelado Prestador' },
+              { value: 'NO_SHOW_STUDENT', label: 'Falta do Aluno' },
+              { value: 'NO_SHOW_PROVIDER', label: 'Falta do Instrutor' },
+            ]}
+          />
         </div>
 
         <div className="space-y-2 max-h-[450px] overflow-y-auto">
@@ -1693,26 +1692,26 @@ export const AuditTab: React.FC<{
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <select
+        <Select
+          aria-label="Filtrar por ação"
           value={filterAction}
           onChange={(e) => setFilterAction(e.target.value)}
-          className="text-xs rounded-xl border-slate-200 bg-white p-2 border"
-        >
-          <option value="ALL">Todas as Ações</option>
-          {uniqueActions.map((act) => (
-            <option key={act} value={act}>{act}</option>
-          ))}
-        </select>
-        <select
+          options={[
+            { value: 'ALL', label: 'Todas as Ações' },
+            ...uniqueActions.map((act) => ({ value: act, label: act })),
+          ]}
+        />
+        <Select
+          aria-label="Filtrar por perfil de ator"
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
-          className="text-xs rounded-xl border-slate-200 bg-white p-2 border"
-        >
-          <option value="ALL">Todos os Perfis de Ator</option>
-          <option value="PLATFORM_ADMIN">PLATFORM_ADMIN</option>
-          <option value="SUPPORT">SUPPORT</option>
-          <option value="INSTRUCTOR">INSTRUCTOR</option>
-        </select>
+          options={[
+            { value: 'ALL', label: 'Todos os Perfis de Ator' },
+            { value: 'PLATFORM_ADMIN', label: 'PLATFORM_ADMIN' },
+            { value: 'SUPPORT', label: 'SUPPORT' },
+            { value: 'INSTRUCTOR', label: 'INSTRUCTOR' },
+          ]}
+        />
       </div>
 
       {/* Listagem Tabela */}

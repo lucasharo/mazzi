@@ -29,7 +29,7 @@ describe('TASK-076 instructor onboarding contract', () => {
     expect(authContext).toContain(".rpc('get_my_roles')");
     expect(authContext).not.toContain(".from('user_roles')");
     expect(authContext).toContain('const roles = Array.from(new Set<UserRole>');
-    expect(appLogin).toContain('await onboardInstructor();');
+    expect(appLogin).toContain('await onboardInstructor({ keepOnboarding: true });');
   });
 
   it('does not make the initial instructor provider publicly sellable', () => {

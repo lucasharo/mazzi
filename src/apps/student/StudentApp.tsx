@@ -9,6 +9,7 @@ import { AppPageHeader } from '../../components/ui/AppPageHeader';
 import { AppBottomNav } from '../../components/ui/AppBottomNav';
 import { AppHomeHeader } from '../../components/ui/AppHomeHeader';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
 
@@ -722,6 +723,34 @@ function applyStrictProviderFilters(
     });
   }, [confirmedBookings]);
 
+  const handleCancelStudentProfile = () => {
+    setProfileName(user?.name || '');
+    setProfilePhone(formatPhone(user?.phone || ''));
+    setProfileBirthDate(formatDateMask(user?.birthDate || ''));
+    setProfileAvatar(user?.avatarUrl);
+    setProfileError(null);
+    setIsEditingProfile(false);
+  };
+
+  const handleSaveStudentProfile = async () => {
+    setProfileSaving(true);
+    setProfileError(null);
+    try {
+      if (profileBirthDate && !validateBirthDate(profileBirthDate).valid) {
+        setProfileError('Informe uma data de nascimento válida (idade mínima 18 anos).');
+        return;
+      }
+      const isoBirthDate = profileBirthDate ? toISODateString(profileBirthDate) : undefined;
+      await dbService.updateMyProfile(profileName, profilePhone, profileAvatar, isoBirthDate);
+      setIsEditingProfile(false);
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production') console.error('Failed to save student profile:', error);
+      setProfileError('Não foi possível salvar seu perfil.');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   return (
     <div className="mazzi-app">
         <main className="mazzi-mobile text-left">
@@ -1020,7 +1049,22 @@ function applyStrictProviderFilters(
               <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
                 <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Dados do perfil</h4>
                 {isEditingProfile ? (
-                  <div className="mt-4 space-y-4">
+                  <Modal
+                    isOpen={isEditingProfile}
+                    onClose={handleCancelStudentProfile}
+                    title="Editar perfil"
+                    footer={(
+                      <>
+                        <Button type="button" variant="dangerSoft" size="sm" disabled={profileSaving} onClick={handleCancelStudentProfile}>
+                          Cancelar
+                        </Button>
+                        <PrimaryButton type="button" size="sm" className="font-bold shadow-xs" isLoading={profileSaving} disabled={profileSaving} onClick={() => { void handleSaveStudentProfile(); }}>
+                          Salvar perfil
+                        </PrimaryButton>
+                      </>
+                    )}
+                  >
+                  <div className="space-y-4">
                     <div>
                       <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-photo">
                         Foto de perfil
@@ -1039,7 +1083,7 @@ function applyStrictProviderFilters(
                       <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-name">
                         Nome completo
                       </label>
-                      <input
+                      <Input
                         id="student-profile-name"
                         value={profileName}
                         onChange={(event) => setProfileName(event.target.value)}
@@ -1052,7 +1096,7 @@ function applyStrictProviderFilters(
                       <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-phone">
                         Telefone
                       </label>
-                      <input
+                      <Input
                         id="student-profile-phone"
                         value={profilePhone}
                         onChange={(event) => setProfilePhone(formatPhone(event.target.value))}
@@ -1066,7 +1110,7 @@ function applyStrictProviderFilters(
                       <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-birthdate">
                         Data de nascimento
                       </label>
-                      <input
+                      <Input
                         id="student-profile-birthdate"
                         value={profileBirthDate}
                         onChange={(event) => setProfileBirthDate(formatDateMask(event.target.value))}
@@ -1080,7 +1124,7 @@ function applyStrictProviderFilters(
                       <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-cpf">
                         CPF
                       </label>
-                      <input
+                      <Input
                         id="student-profile-cpf"
                         value={maskCpf(user?.cpf)}
                         readOnly
@@ -1096,7 +1140,7 @@ function applyStrictProviderFilters(
                       <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-email">
                         E-mail
                       </label>
-                      <input
+                      <Input
                         id="student-profile-email"
                         value={user?.email || ''}
                         readOnly
@@ -1111,54 +1155,8 @@ function applyStrictProviderFilters(
                       </p>
                     )}
 
-                    {/* Side-by-side Cancel and Save Buttons */}
-                    <div className="flex items-center gap-2.5 pt-2">
-                      <Button
-                        type="button"
-                        variant="dangerSoft"
-                        size="sm"
-                        className="w-1/2"
-                        disabled={profileSaving}
-                        onClick={() => {
-                          setProfileName(user?.name || '');
-                          setProfilePhone(formatPhone(user?.phone || ''));
-                          setProfileBirthDate(formatDateMask(user?.birthDate || ''));
-                          setProfileAvatar(user?.avatarUrl);
-                          setProfileError(null);
-                          setIsEditingProfile(false);
-                        }}
-                      >
-                        Cancelar
-                      </Button>
-                      <PrimaryButton
-                        type="button"
-                        size="sm"
-                        className="w-1/2 min-h-11 font-bold shadow-xs"
-                        isLoading={profileSaving}
-                        onClick={async () => {
-                          setProfileSaving(true);
-                          setProfileError(null);
-                          try {
-                            if (profileBirthDate && !validateBirthDate(profileBirthDate).valid) {
-                              setProfileError('Informe uma data de nascimento válida (idade mínima 18 anos).');
-                              setProfileSaving(false);
-                              return;
-                            }
-                            const isoBirthDate = profileBirthDate ? toISODateString(profileBirthDate) : undefined;
-                            await dbService.updateMyProfile(profileName, profilePhone, profileAvatar, isoBirthDate);
-                            setIsEditingProfile(false);
-                          } catch (error: any) {
-                            if (process.env.NODE_ENV !== 'production') console.error('Failed to save student profile:', error);
-                            setProfileError('Não foi possível salvar seu perfil.');
-                          } finally {
-                            setProfileSaving(false);
-                          }
-                        }}
-                      >
-                        Salvar perfil
-                      </PrimaryButton>
-                    </div>
                   </div>
+                  </Modal>
                 ) : (
                   <dl className="mt-4 space-y-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
@@ -1198,8 +1196,8 @@ function applyStrictProviderFilters(
 
               <StudentProMigrationCard />
 
-              <div className="border-t border-[var(--mazzi-border)] pt-4">
-                <Button variant="ghost" size="sm" className="w-full text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void logout(); }}>
+              <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4">
+                <Button variant="ghost" size="sm" className="text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void logout(); }}>
                   Sair
                 </Button>
               </div>

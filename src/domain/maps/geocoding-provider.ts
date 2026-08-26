@@ -25,7 +25,7 @@ export interface GeocodingLocationResult {
   country?: string;
   countryCode?: string;
   resultType?: string;
-  source?: 'GEOAPIFY' | 'DEVELOPMENT';
+  source?: 'GEOAPIFY' | 'DEVELOPMENT' | 'MAP_PIN';
 }
 
 export type LocationSuggestion = GeocodingLocationResult;
@@ -38,7 +38,7 @@ export interface GeocodingOptions {
 
 export interface StructuredGeocodingAddress {
   street: string;
-  houseNumber: string;
+  houseNumber?: string | null;
   postalCode: string;
   city: string;
   stateCode: string;
@@ -128,7 +128,7 @@ export class DevelopmentGeocodingAdapter implements GeocodingProvider {
 }
 
 function normalizeGeoapifyFeature(feature: any): LocationSuggestion | null {
-  const props = feature?.properties || {};
+  const props = feature?.properties || feature || {};
   const latitude = Number(props.lat ?? feature?.geometry?.coordinates?.[1]);
   const longitude = Number(props.lon ?? feature?.geometry?.coordinates?.[0]);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !props.formatted) return null;
@@ -141,7 +141,7 @@ function normalizeGeoapifyFeature(feature: any): LocationSuggestion | null {
     district: props.district || undefined,
     city: props.city || props.town || props.village || '',
     state: props.state || '',
-    stateCode: props.state_code || undefined,
+    stateCode: props.state_code || props.county_code || undefined,
     postalCode: props.postcode || undefined,
     country: props.country || undefined,
     countryCode: props.country_code || undefined,
@@ -194,7 +194,8 @@ export class GeoapifyGeocodingProvider implements GeocodingProvider {
   }
 
   geocodeStructuredAddress(address: StructuredGeocodingAddress, signal?: AbortSignal): Promise<LocationSuggestion[]> {
-    const params: Record<string, string> = { street: address.street, housenumber: address.houseNumber, postcode: address.postalCode, city: address.city, state: address.stateCode, country: address.countryCode || 'br', filter: 'countrycode:br', lang: 'pt', limit: '5' };
+    const params: Record<string, string> = { street: address.street, postcode: address.postalCode, city: address.city, state: address.stateCode, country: address.countryCode || 'br', filter: 'countrycode:br', lang: 'pt', limit: '5' };
+    if (address.houseNumber?.trim()) params.housenumber = address.houseNumber.trim();
     if (address.proximity) params.bias = `proximity:${address.proximity.longitude},${address.proximity.latitude}`;
     return this.request('search', params, signal);
   }

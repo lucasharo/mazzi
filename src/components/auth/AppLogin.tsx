@@ -4,9 +4,15 @@ import {
   requestPasswordReset, resendSignupOtp, updatePassword, verifyEmailOtp, verifyRecoveryOtp, } from '../../lib/auth-service';
 import { supabase } from '../../lib/supabase';
 import { Input, PasswordInput } from '../ui/Input';
-import { PrimaryButton, SecondaryButton, ButtonBase } from '../ui/Button';
+import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 import { OtpInput } from '../ui/OtpInput';
 import { AUTH_OTP_LENGTH } from '../../lib/auth-constants';
+import { dbService } from '../../lib/db-service';
+import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
+import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
+import type { ProviderAddressFormValue } from '../provider/ProviderAddressForm';
+import { ProviderAddressForm } from '../provider/ProviderAddressForm';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../utils/cpf';
 import { formatDateMask, toISODateString, validateBirthDate } from '../../utils/age';
 import { formatPhone, isValidPhone, normalizePhone } from '../../utils/phone';
@@ -14,6 +20,7 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
+  CircleX,
   Mail,
   KeyRound,
   ShieldAlert,
@@ -102,12 +109,25 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     onboardInstructor,
     beginInstructorOnboarding,
     cancelInstructorOnboarding,
+    completeInstructorOnboarding,
+    isInstructorOnboarding,
     beginPasswordRecovery,
     completePasswordRecovery,
     error: contextError,
     isLoading: isContextLoading,
   } = useAuth();
   const [screen, setScreen] = useState<Screen>('login');
+  const [onboardingAddress, setOnboardingAddress] = useState<ProviderAddressFormValue>({
+    addressLine1: '',
+    houseNumber: '',
+    complement: '',
+    postalCode: '',
+    neighborhood: '',
+    city: '',
+    state: 'SP',
+    address: undefined,
+    locationMode: 'STANDARD_ADDRESS',
+  });
 
   // Form Fields
   const [email, setEmail] = useState('');
@@ -139,6 +159,12 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       .then((module) => setDevQuickLogin(() => module.DevQuickLogin))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (kind === 'instructor' && isInstructorOnboarding && screen === 'login' && user?.roles.includes('STUDENT')) {
+      setScreen('instructor_onboarding');
+    }
+  }, [isInstructorOnboarding, kind, screen, user?.roles]);
 
   // Countdown timer for OTP resend cooldown
   useEffect(() => {
@@ -192,7 +218,42 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
   const tryCompleteInstructorOnboarding = async () => {
     try {
-      await onboardInstructor();
+      const validation = validateProviderAddressForm(onboardingAddress);
+      if (validation.mode !== 'STANDARD_ADDRESS' && !validation.valid) throw new Error(validation.reason || 'Confirme seu endereço profissional para continuar.');
+      let resolvedAddress = onboardingAddress.address;
+      if (validation.mode === 'STANDARD_ADDRESS' && resolvedAddress?.source !== 'GEOAPIFY') {
+        if (
+          !onboardingAddress.addressLine1.trim() ||
+          !onboardingAddress.houseNumber.trim() ||
+          !onboardingAddress.postalCode.trim() ||
+          !onboardingAddress.city.trim() ||
+          !onboardingAddress.state.trim()
+        ) {
+          throw new Error('Confirme seu endereço profissional para continuar. Preencha o CEP, número e endereço.');
+        }
+
+        resolvedAddress = await resolveProviderAddress({
+          street: onboardingAddress.addressLine1.trim(),
+          houseNumber: onboardingAddress.houseNumber.trim(),
+          postalCode: onboardingAddress.postalCode.replace(/\D/g, ''),
+          city: onboardingAddress.city.trim(),
+          stateCode: onboardingAddress.state.trim().toUpperCase(),
+          countryCode: 'br',
+        });
+      }
+
+      if (!resolvedAddress || resolvedAddress.latitude == null || resolvedAddress.longitude == null || !resolvedAddress.locationConfirmed && validation.mode !== 'STANDARD_ADDRESS') {
+        throw new Error('Confirme seu endereço profissional selecionando um endereço localizado.');
+      }
+
+      const confirmedAddressValue = { ...onboardingAddress, address: resolvedAddress };
+      setOnboardingAddress(confirmedAddressValue);
+      const onboardingResult = await onboardInstructor({ keepOnboarding: true });
+      const providerId = onboardingResult?.provider_id || user?.providerId;
+      if (!providerId) throw new Error('PROVIDER_PROFILE_NOT_CREATED');
+
+      await dbService.updateProviderProfile(providerId, buildProviderAddressPayload(confirmedAddressValue));
+      completeInstructorOnboarding();
       return true;
     } catch (caught: any) {
       setFeedback({
@@ -244,6 +305,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     event.preventDefault();
     setFeedback(null);
     const newErrors: Record<string, string> = {};
+    const instructorSignup = kind === 'instructor';
 
     // Name Validation: Must have at least 2 names (first name and surname)
     if (!name.trim()) {
@@ -310,7 +372,6 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     setErrors({});
 
     setIsSubmitting(true);
-    const instructorSignup = kind === 'instructor';
     if (instructorSignup) beginInstructorOnboarding();
     try {
       const { session } = await signUpPublicAccount({
@@ -330,8 +391,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         goTo('signup_otp');
       } else {
         if (instructorSignup) {
-          const completed = await tryCompleteInstructorOnboarding();
-          if (!completed) return;
+          goTo('instructor_onboarding');
+          return;
         }
         setFeedback({ tone: 'success', message: 'Conta criada com sucesso.' });
       }
@@ -368,8 +429,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       if (password) {
         await signIn(otpEmail, password);
         if (kind === 'instructor') {
-          const completed = await tryCompleteInstructorOnboarding();
-          if (!completed) return;
+          goTo('instructor_onboarding');
+          return;
         }
       } else {
         goTo('login');
@@ -552,28 +613,55 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
   const brandTag = kind === 'instructor' ? 'MAZZI PRO' : kind === 'admin' ? 'MAZZI ADMIN' : 'MAZZI';
 
   if (screen === 'instructor_onboarding') {
-    return shell(
-      <div className="space-y-6 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)] shadow-xs">
-          <Sparkles className="h-7 w-7 text-amber-600" aria-hidden="true" />
+    const leaveOnboarding = () => {
+      cancelInstructorOnboarding();
+      goTo('login');
+    };
+
+    return (
+      <Modal
+        isOpen
+        onClose={leaveOnboarding}
+        title="Finalizar cadastro profissional"
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="dangerSoft"
+              size="sm"
+              leftIcon={<CircleX className="h-4 w-4" aria-hidden="true" />}
+              className="cursor-pointer"
+              onClick={leaveOnboarding}
+            >
+              Cancelar
+            </Button>
+            <PrimaryButton type="button" size="sm" className="font-bold shadow-xs cursor-pointer" disabled={isLoading} loading={isLoading} onClick={async () => {
+              setIsSubmitting(true);
+              await tryCompleteInstructorOnboarding();
+              setIsSubmitting(false);
+            }}>
+              {isLoading ? 'Concluindo…' : 'Concluir cadastro'}
+            </PrimaryButton>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)] shadow-xs">
+            <Sparkles className="h-7 w-7 text-amber-600" aria-hidden="true" />
+          </div>
+          <div className="space-y-2 text-center">
+            <p className="mazzi-eyebrow">MAZZI PRO</p>
+            <p className="text-sm text-slate-600">Sua conta foi criada. Conclua o credenciamento para acessar o portal do instrutor.</p>
+          </div>
+          {activeError && <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200/60 text-xs font-semibold text-rose-700">{activeError}</div>}
+          <ProviderAddressForm
+            idPrefix="instructor-onboarding"
+            value={onboardingAddress}
+            onChange={setOnboardingAddress}
+          />
         </div>
-        <div className="space-y-2">
-          <p className="mazzi-eyebrow">MAZZI PRO</p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--mazzi-dark)] tracking-tight">Finalizar cadastro profissional</h1>
-          <p className="text-sm text-slate-600">Sua conta foi criada. Conclua o credenciamento para acessar o portal do instrutor.</p>
-        </div>
-        {activeError && <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200/60 text-xs font-semibold text-rose-700">{activeError}</div>}
-        <PrimaryButton type="button" size="sm" className="w-full font-bold shadow-xs cursor-pointer" disabled={isLoading} loading={isLoading} onClick={async () => {
-          setIsSubmitting(true);
-          await tryCompleteInstructorOnboarding();
-          setIsSubmitting(false);
-        }}>
-          {isLoading ? 'Concluindo…' : 'Continuar cadastro profissional'}
-        </PrimaryButton>
-        <SecondaryButton type="button" size="sm" className="w-full cursor-pointer" onClick={() => { cancelInstructorOnboarding(); goTo('login'); }}>
-          Voltar para o login
-        </SecondaryButton>
-      </div>
+      </Modal>
     );
   }
 
@@ -782,7 +870,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         )}
 
         <form noValidate onSubmit={submitResetPassword} className="space-y-4">
-          <PasswordInput
+           <PasswordInput
             id="new-password"
             label="Nova senha"
             placeholder="••••••••"
@@ -808,10 +896,10 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             }}
             error={errors.confirmPassword}
             autoComplete="new-password"
-            disabled={isLoading}
-          />
+             disabled={isLoading}
+           />
 
-          <PrimaryButton
+           <PrimaryButton
             type="submit"
             size="sm"
             className="w-full font-bold shadow-xs cursor-pointer mt-2"

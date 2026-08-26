@@ -4,6 +4,7 @@ import {
   Provider, Vehicle, ServiceOffering, Quote, Booking, Payment, PaymentMethodType, } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { Button, ButtonBase } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { Badge } from '../../../components/ui/Badge';
 import { formatCentsToBRL } from '../../../domain/money';
 import { isQuoteExpired, QuoteDomainError } from '../../../domain/quote';
@@ -730,7 +731,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <label htmlFor="checkout-student-address" className="mb-1.5 block text-xs font-bold text-slate-700">
                     Endereço completo para o ponto de encontro
                   </label>
-                  <input
+                  <Input
                     id="checkout-student-address"
                     value={studentAddress}
                     onChange={(event) => setStudentAddress(event.target.value)}

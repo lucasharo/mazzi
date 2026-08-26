@@ -19,7 +19,7 @@ function professionalNotice(providerStatus?: string): string {
 
 /** Multi-role UX: professional onboarding adds capability to this identity. */
 export const StudentProMigrationCard: React.FC = () => {
-  const { user, onboardInstructor } = useAuth();
+  const { user, beginInstructorOnboarding } = useAuth();
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -30,8 +30,7 @@ export const StudentProMigrationCard: React.FC = () => {
     setError(null);
     setFeedback(null);
     try {
-      await onboardInstructor();
-      setFeedback('Perfil profissional ativado. Você continua com o perfil de aluno e já pode acessar o MAZZI PRO.');
+      beginInstructorOnboarding();
     } catch (err) {
       setError(mapFriendlyErrorMessage(err, 'Não foi possível ativar o perfil profissional agora.'));
     } finally {
@@ -59,7 +58,7 @@ export const StudentProMigrationCard: React.FC = () => {
       </div>
 
       {!hasProfessionalProfile && (
-        <div className="mt-4">
+        <div className="mt-4 flex justify-center">
           <Button
             type="button"
             variant="outline"

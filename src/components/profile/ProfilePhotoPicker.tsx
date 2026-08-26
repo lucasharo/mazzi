@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Camera, ImagePlus, Loader2, Trash2, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Button, ButtonBase } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 
 interface ProfilePhotoPickerProps {
   value?: string;
@@ -256,18 +257,18 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
         {error && <p role="alert" className="text-[11px] font-semibold text-rose-600">{error}</p>}
       </div>
 
-      {isCameraOpen && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4" role="dialog" aria-modal="true" aria-label="Tirar foto do perfil">
-          <div className="w-full max-w-sm rounded-3xl bg-white border border-[var(--mazzi-border)] p-5 shadow-2xl space-y-4">
-            <h3 className="text-base font-extrabold text-[var(--mazzi-dark)]">Tirar foto do perfil</h3>
-            <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-2xl bg-slate-950 object-cover" />
-            <div className="flex gap-2">
+      <Modal
+        isOpen={isCameraOpen}
+        onClose={stopCamera}
+        title="Tirar foto do perfil"
+        size="sm"
+        footer={(
+          <>
               <Button
                 type="button"
                 variant="dangerSoft"
                 size="sm"
                 onClick={stopCamera}
-                className="flex-1"
                 leftIcon={<XCircle className="h-4 w-4" aria-hidden="true" />}
               >
                 Cancelar
@@ -277,15 +278,15 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
                 variant="primary"
                 size="sm"
                 onClick={() => void capturePhoto()}
-                className="flex-1"
                 leftIcon={<Camera className="h-4 w-4" aria-hidden="true" />}
               >
                 Capturar foto
               </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      >
+        <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-2xl bg-slate-950 object-cover" />
+      </Modal>
     </div>
   );
 };

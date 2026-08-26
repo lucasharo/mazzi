@@ -63,7 +63,7 @@ describe('TASK-096A4M-R6 private compliance storage contract', () => {
   });
 
   it('presents compliance review status as PENDING in the Admin app', () => {
-    expect(adminComponents).toContain('value="PENDING">Pendente');
+    expect(adminComponents).toContain("{ value: 'PENDING', label: `Pendente (");
 expect(adminComponents).toContain("d.status === 'PENDING' || d.status === 'IN_REVIEW'");
 expect(adminApp).toContain("d.status === 'PENDING' || d.status === 'IN_REVIEW'");
   });

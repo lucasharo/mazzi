@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { formatDateBR, formatTimeBR } from '../../lib/date-format';
 import { mergeMessagesById } from '../../lib/chat-messages';
 import { StatusBadge } from '../ui/StatusBadge';
+import { Textarea } from '../ui/Textarea';
 
 interface BookingChatPanelProps {
   booking: Booking;
@@ -264,7 +265,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
       {/* Modern Integrated Composer */}
       <div className="space-y-1.5">
         <div className="relative flex min-h-14 items-center rounded-2xl bg-white border border-[var(--mazzi-border)] focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-[var(--mazzi-focus-glow)] transition-all shadow-xs">
-          <textarea
+          <Textarea
             aria-label="Mensagem"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}

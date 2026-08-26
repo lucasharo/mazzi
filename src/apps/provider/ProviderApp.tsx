@@ -59,6 +59,7 @@ import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
 import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
 import { useMobileAppRoute } from '../../lib/mobile-app-router';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
+import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
 
 import { ProviderHeader } from './components/ProviderHeader';
 import { ProviderBottomNav, ProviderTabId } from './components/ProviderBottomNav';
@@ -186,6 +187,7 @@ export const ProviderApp: React.FC = () => {
     complement: '',
     postalCode: '',
     address: undefined,
+    locationMode: 'STANDARD_ADDRESS' as const,
   });
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
 
@@ -213,6 +215,8 @@ export const ProviderApp: React.FC = () => {
     postalCode: '',
     address: undefined,
   });
+  const [profileFormError, setProfileFormError] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
 
   // Vehicle Management Modal State
@@ -960,24 +964,69 @@ export const ProviderApp: React.FC = () => {
   };
 
   const handleSaveProfile = async () => {
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
     const radiusKm = normalizeServiceRadius(profileForm.serviceRadiusKm);
     const cleanPhone = normalizePhone(profileForm.publicContact);
     const cleanState = maskStateUF(profileForm.state);
     const cleanName = profileForm.displayName.trim();
     const cleanNeighborhood = profileForm.neighborhood.trim();
-    const cleanCity = profileForm.city.trim();
+    const cleanCity = profileForm.city.trim() || profileForm.address?.city?.trim() || '';
+    const addressState = profileForm.address?.stateCode || profileForm.address?.state || '';
+    const resolvedState = cleanState || addressState.trim().toUpperCase();
     const cleanBio = profileForm.bio.trim();
-    let cleanAddress = profileForm.address ? { ...profileForm.address, complement: profileForm.complement.trim() || undefined } : null;
-    if (profileForm.address?.source !== 'LEGACY' && profileForm.addressLine1.trim() && profileForm.houseNumber.trim() && profileForm.postalCode.trim()) {
+    let profileFormForSave = profileForm;
+    if (profileForm.locationMode === 'NO_HOUSE_NUMBER'
+      && profileForm.addressLine1.trim()
+      && cleanCity
+      && resolvedState
+      && (!profileForm.address || profileForm.address.confirmationMethod !== 'GEOAPIFY')) {
       try {
-        cleanAddress = await resolveProviderAddress({ street: profileForm.addressLine1.trim(), houseNumber: profileForm.houseNumber.trim(), postalCode: profileForm.postalCode.replace(/\D/g, ''), city: cleanCity, stateCode: cleanState, countryCode: 'br' });
+        const streetAddress = await resolveProviderAddress({
+          street: profileForm.addressLine1.trim(),
+          houseNumber: null,
+          postalCode: profileForm.postalCode.replace(/\D/g, ''),
+          city: cleanCity,
+          stateCode: resolvedState,
+          countryCode: 'br'
+        });
+        profileFormForSave = {
+          ...profileForm,
+          address: { ...streetAddress, locationMode: 'NO_HOUSE_NUMBER', noHouseNumber: true, locationConfirmed: true, confirmationMethod: 'GEOAPIFY' }
+        };
+      } catch {
+        // The normal validation below reports the missing address clearly.
+      }
+    }
+    const addressValidation = validateProviderAddressForm(profileFormForSave);
+    const hasStandardAddressInput = addressValidation.mode === 'STANDARD_ADDRESS'
+      && profileForm.addressLine1.trim()
+      && profileForm.houseNumber.trim()
+      && profileForm.postalCode.trim()
+      && cleanCity
+      && resolvedState;
+    if (!addressValidation.valid && addressValidation.mode !== 'STANDARD_ADDRESS' && (profileFormForSave.addressLine1.trim() || profileFormForSave.city.trim() || profileFormForSave.address)) {
+      setProfileFormError(addressValidation.reason || 'Confirme o endereço profissional antes de salvar.');
+      setIsSavingProfile(false);
+      return;
+    }
+    if (!addressValidation.valid && addressValidation.mode === 'STANDARD_ADDRESS' && !hasStandardAddressInput) {
+      setProfileFormError(addressValidation.reason || 'Preencha o endereço profissional antes de salvar.');
+      setIsSavingProfile(false);
+      return;
+    }
+    let cleanAddress = profileFormForSave.address ? { ...profileFormForSave.address, complement: profileFormForSave.complement.trim() || undefined } : null;
+    if (hasStandardAddressInput) {
+      try {
+        cleanAddress = await resolveProviderAddress({ street: profileForm.addressLine1.trim(), houseNumber: profileForm.houseNumber.trim(), postalCode: profileForm.postalCode.replace(/\D/g, ''), city: cleanCity, stateCode: resolvedState, countryCode: 'br' });
         cleanAddress.complement = profileForm.complement.trim() || undefined;
       } catch (error) {
-        setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível confirmar o endereço. Selecione um endereço manualmente ou revise o CEP e o número.'));
+        setProfileFormError(mapFriendlyErrorMessage(error, 'Não foi possível confirmar o endereço. Selecione um endereço manualmente ou revise o CEP e o número.'));
+        setIsSavingProfile(false);
         return;
       }
-    } else if (cleanNeighborhood || cleanCity) {
-      cleanAddress = { addressLine1: profileForm.addressLine1.trim(), neighborhood: cleanNeighborhood, city: cleanCity, state: cleanState, postalCode: profileForm.postalCode.trim(), source: 'LEGACY' as const };
+    } else if (addressValidation.mode === 'STANDARD_ADDRESS' && (cleanNeighborhood || cleanCity)) {
+      cleanAddress = { addressLine1: profileForm.addressLine1.trim(), neighborhood: cleanNeighborhood, city: cleanCity, state: resolvedState, postalCode: profileForm.postalCode.trim(), source: 'LEGACY' as const };
     }
 
     try {
@@ -986,24 +1035,31 @@ export const ProviderApp: React.FC = () => {
         cleanPhone || user?.phone || '',
         profileAvatar
       );
+      const addressPayload = buildProviderAddressPayload({
+        addressLine1: profileFormForSave.addressLine1,
+        houseNumber: profileFormForSave.houseNumber,
+        complement: profileFormForSave.complement,
+        postalCode: profileFormForSave.postalCode,
+        neighborhood: cleanNeighborhood,
+        city: cleanCity,
+        state: resolvedState,
+        address: cleanAddress || undefined,
+      });
       await dbService.updateProviderProfile(currentProvider.id, {
         name: cleanName,
         publicContact: cleanPhone,
-        neighborhood: cleanNeighborhood,
-        city: cleanCity,
-        state: cleanState,
         serviceRadiusKm: radiusKm,
         bio: cleanBio,
-        address: cleanAddress,
-        latitude: cleanAddress?.latitude ?? null,
-        longitude: cleanAddress?.longitude ?? null,
-        postalCode: profileForm.postalCode.replace(/\D/g, ''),
+        ...addressPayload,
       });
     } catch (error: any) {
-      setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o perfil do prestador.'));
+      setProfileFormError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o perfil do prestador.'));
+      setIsSavingProfile(false);
       return;
     }
     void loadWorkspace(currentProvider.id);
+    setProfileFormError(null);
+    setIsSavingProfile(false);
     setIsEditingProfile(false);
   };
 
@@ -1274,6 +1330,7 @@ status: 'IN_REVIEW',
             isEditingProfile={isEditingProfile}
             onToggleEditProfile={() => {
               if (!isEditingProfile) {
+                setProfileFormError(null);
                 setProfileForm({
                   displayName: currentProvider.name || '',
                   publicContact: currentProvider.publicContact || user?.phone || '',
@@ -1287,6 +1344,9 @@ status: 'IN_REVIEW',
                   complement: currentProvider.address?.complement || '',
                   postalCode: currentProvider.address?.postalCode || '',
                   address: currentProvider.address,
+                  locationMode: currentProvider.address?.locationMode || 'STANDARD_ADDRESS',
+                  approximateLatitude: currentProvider.latitude,
+                  approximateLongitude: currentProvider.longitude,
                 });
               }
               setIsEditingProfile((prev) => !prev);
@@ -1294,6 +1354,8 @@ status: 'IN_REVIEW',
             profileForm={profileForm}
             onProfileFormChange={setProfileForm}
             onSaveProfile={handleSaveProfile}
+            formError={profileFormError}
+            isSavingProfile={isSavingProfile}
             onLogout={logout}
           />
         )}

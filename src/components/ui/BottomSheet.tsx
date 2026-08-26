@@ -2,6 +2,7 @@ import React, { useId } from 'react';
 import { X } from 'lucide-react';
 import { IconButton } from './IconButton';
 import { useAccessibleDialog } from './useAccessibleDialog';
+import { useDialogHistory } from './Modal';
 
 export interface BottomSheetProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const generatedId = useId();
   const titleId = `${id || generatedId}-title`;
   const dialogRef = useAccessibleDialog<HTMLDivElement>({ isOpen, onClose, closeOnEscape });
+  useDialogHistory({ isOpen, onClose, modalKey: id || title || 'bottom-sheet' });
 
   if (!isOpen) return null;
 

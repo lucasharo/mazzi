@@ -312,18 +312,12 @@ export const DesignSystemShowcase: React.FC = () => {
         <main className="flex-1 min-w-0">
           {/* Mobile Dropdown Section Selector */}
           <div className="lg:hidden mb-4">
-            <label className="block text-xs font-bold text-slate-700 mb-1">Selecione a Seção do Design System:</label>
-            <select
+            <Select
+              label="Selecione a Seção do Design System"
               value={activeSection}
               onChange={(e) => setActiveSection(e.target.value as SectionId)}
-              className="w-full bg-white border border-[#e9e6de] rounded-2xl p-3 text-xs font-bold text-[#202126] shadow-xs focus:ring-2 focus:ring-[#f6c945]"
-            >
-              {SECTIONS.map((sec) => (
-                <option key={sec.id} value={sec.id}>
-                  {sec.label}
-                </option>
-              ))}
-            </select>
+              options={SECTIONS.map((sec) => ({ value: sec.id, label: sec.label }))}
+            />
           </div>
 
           <div className={getContainerWidth()}>

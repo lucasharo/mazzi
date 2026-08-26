@@ -6,6 +6,7 @@ import { Modal } from '../ui/Modal';
 import { dbService } from '../../lib/db-service';
 import { formatDateBR, formatTimeBR } from '../../lib/date-format';
 import { Rating } from '../ui/Rating';
+import { Textarea } from '../ui/Textarea';
 
 interface ReviewModalProps {
   booking: Booking | null;
@@ -144,7 +145,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 <label className="text-xs font-bold text-slate-700 mb-2 block">
                   Comentário opcional
                 </label>
-                <textarea
+          <Textarea
                   value={comment}
                   onChange={(event) => setComment(event.target.value)}
                   rows={4}

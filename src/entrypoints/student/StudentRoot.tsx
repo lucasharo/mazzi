@@ -15,7 +15,9 @@ const ProfessionalOnlyScreen: React.FC = () => {
         <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Perfil profissional</p>
         <h1 className="mt-1 text-xl font-extrabold">Acesse o MAZZI PRO</h1>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">Esta conta possui apenas um perfil profissional. Para gerenciar aulas, veículos, ofertas e agenda, acesse o aplicativo MAZZI PRO.</p>
-        <Button type="button" variant="outline" className="mt-6 w-full" onClick={() => void logout()}>Sair</Button>
+        <div className="mt-6 flex justify-center">
+          <Button type="button" variant="outline" onClick={() => void logout()}>Sair</Button>
+        </div>
       </div>
     </main>
   );
@@ -26,6 +28,7 @@ const StudentGate: React.FC = () => {
   if (auth.isLoading) return <LoadingScreen />;
   if (auth.recoveryInProgress) return <AppLogin kind="student" />;
   if (!auth.isAuthenticated) return <AppLogin kind="student" />;
+  if (auth.isInstructorOnboarding) return <AppLogin kind="instructor" />;
   if (auth.user?.roles.includes('STUDENT')) return <StudentApp />;
   if (auth.user?.roles.includes('INSTRUCTOR')) return <ProfessionalOnlyScreen />;
   return <AccessDenied />;

@@ -8,6 +8,7 @@ import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { ModalActionFooter } from '../../../components/ui/ModalActionFooter';
 import { Input } from '../../../components/ui/Input';
+import { Textarea } from '../../../components/ui/Textarea';
 import { DateInput, TimeInput } from '../../../components/ui/DateTimeInput';
 import { Select } from '../../../components/ui/Select';
 import { Badge } from '../../../components/ui/Badge';
@@ -772,7 +773,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               onChange={(value) => onExceptionFormChange({ ...exceptionForm, reasonCategory: value, reason: value === 'OTHER' ? '' : BLOCK_REASON_OPTIONS.find((option) => option.value === value)?.label || '' })}
               ariaLabel="Motivos do bloqueio"
             />
-            <textarea
+            <Textarea
               rows={2}
               value={exceptionForm.reasonCategory === 'OTHER' ? exceptionForm.reason : ''}
               onChange={(e) => onExceptionFormChange({ ...exceptionForm, reason: e.target.value })}

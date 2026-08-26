@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowLeft, XCircle, Info } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
+import { Textarea } from '../../../components/ui/Textarea';
 import { ReasonChips } from '../../../components/ui/ReasonChips';
 import { ProviderCancellationReasonCode } from '../../../domain/cancellation';
 
@@ -125,7 +126,7 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
             <label className="text-xs font-extrabold text-slate-900 block">
               Descrição Detalhada do Motivo *
             </label>
-            <textarea
+            <Textarea
               rows={3}
               value={customReason}
               onChange={(e) => onCustomReasonChange(e.target.value)}

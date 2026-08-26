@@ -138,7 +138,11 @@ export interface ProviderAddress {
   latitude?: number;
   longitude?: number;
   placeId?: string;
-  source?: 'GEOAPIFY' | 'LEGACY';
+  source?: 'GEOAPIFY' | 'MAP_PIN' | 'LEGACY';
+  locationMode?: 'STANDARD_ADDRESS' | 'NO_HOUSE_NUMBER' | 'MAP_PIN';
+  noHouseNumber?: boolean;
+  locationConfirmed?: boolean;
+  confirmationMethod?: 'GEOAPIFY' | 'MAP_PIN';
   complement?: string;
 }
 

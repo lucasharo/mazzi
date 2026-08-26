@@ -30,10 +30,10 @@ export const AccessDenied: React.FC = () => {
           </p>
         </div>
 
-        <div className="pt-2">
+        <div className="flex justify-center pt-2">
           <SecondaryButton
             size="sm"
-            className="w-full font-bold shadow-2xs"
+            className="font-bold shadow-2xs"
             onClick={() => void logout()}
             leftIcon={<LogOut className="w-4 h-4 text-slate-600" aria-hidden="true" />}
           >

@@ -504,7 +504,7 @@ export const AdminApp: React.FC = () => {
               {isEditingProfile && <div className="flex items-center gap-2.5 pt-5"><Button variant="dangerSoft" size="sm" className="w-1/2" onClick={() => { setProfileAvatar(user?.avatarUrl); setIsEditingProfile(false); }}>Cancelar</Button><Button variant="primary" size="sm" className="w-1/2" onClick={() => void handleSaveProfilePhoto()}>Salvar foto</Button></div>}
             </div>
 
-            {!isEditingProfile && <div className="border-t border-[var(--mazzi-border)] pt-4"><Button variant="ghost" size="sm" className="w-full font-bold text-rose-700 hover:bg-rose-50" onClick={() => { void logout(); }} leftIcon={<LogOut className="w-4 h-4" />}>Sair</Button></div>}
+            {!isEditingProfile && <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4"><Button variant="ghost" size="sm" className="font-bold text-rose-700 hover:bg-rose-50" onClick={() => { void logout(); }} leftIcon={<LogOut className="w-4 h-4" />}>Sair</Button></div>}
           </section>
         )}
       </main>

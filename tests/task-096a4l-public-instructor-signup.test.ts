@@ -49,7 +49,7 @@ describe('TASK-096A4L secure public instructor signup', () => {
   });
 
   it('keeps retry, DRAFT onboarding and public-search safety as explicit contracts', () => {
-    expect(appLogin).toContain('Continuar cadastro profissional');
+    expect(appLogin).toContain('Concluir cadastro');
     expect(instructorRoot).toContain('<ProviderApp />');
     expect(authService).toContain('onboard_my_instructor');
   });

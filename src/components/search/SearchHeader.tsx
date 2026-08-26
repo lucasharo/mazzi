@@ -1,6 +1,6 @@
 import { ButtonBase } from '../ui/Button';
 import React, { useEffect, useRef, useState } from 'react';
-import { Navigation, Search } from 'lucide-react';
+import { Navigation } from 'lucide-react';
 import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
 import { trackSearchAnalytics } from './SearchAnalytics';
@@ -66,7 +66,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   return (
     <section className="space-y-4" aria-label="Buscar aulas">
       <form onSubmit={handleAddressSubmit} className="mazzi-card p-3 sm:p-4 focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)] focus-within:ring-offset-2 transition-all">
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 sm:gap-3">
           <ButtonBase
             type="button"
             onClick={handleUseMyLocation}
@@ -98,6 +98,12 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
                   onUpdateSearch({ latitude: undefined, longitude: undefined });
                 }
               }}
+              onClear={() => {
+                selectedAddressRef.current = false;
+                setAddressInput('');
+                onUpdateSearch({ latitude: undefined, longitude: undefined, page: 1 });
+                onLocationCleared?.();
+              }}
               onSelect={(suggestion) => {
                 selectedAddressRef.current = true;
                 skipNextLocationNameSync.current = true;
@@ -108,14 +114,6 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
               }}
             />
           </label>
-          <ButtonBase
-            type="submit"
-            aria-label="Buscar endereço"
-            title="Buscar endereço"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-dark)] text-white transition hover:bg-[#34353a] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
-          >
-            <Search className="h-5 w-5" aria-hidden="true" />
-          </ButtonBase>
         </div>
       </form>
     </section>

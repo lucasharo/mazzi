@@ -4,6 +4,12 @@
 
 > Antes de criar ou alterar qualquer interface, consulte o catálogo executável em `src/apps/design-system` e os componentes globais em `src/components/ui`. Os apps Aluno, PRO e Admin devem compartilhar componentes, tokens e classes; não crie seletores CSS específicos por app para alterar tipografia ou aparência de um componente global.
 
+## Regra obrigatória de reutilização de componentes
+
+Antes de escrever JSX para uma interação ou superfície visual, procure primeiro um componente compartilhado em `src/components/ui` ou nos componentes de domínio compartilhados. Os apps Student, PRO e Admin devem usar a mesma implementação para botões (`Button`/`ButtonBase`), campos (`Input`, `Textarea`, `Select`), modais (`Modal` + `ModalActionFooter`), cards, badges, tabs, estados vazios, loading/skeleton e cabeçalhos.
+
+Não duplicar markup equivalente dentro de um app, criar variantes exclusivas por app ou estilizar diretamente um elemento nativo quando já existir um componente comum. Se o padrão ainda não existir, criar o componente global primeiro, documentá-lo aqui e então reutilizá-lo em todos os consumidores aplicáveis. Exceções técnicas, como o `input[type=file]` nativo oculto usado pelo seletor de arquivos, devem permanecer encapsuladas pela interface visual compartilhada.
+
 ## 1. Tokens oficiais
 
 - Fundo principal: `var(--mazzi-bg)` / `#f7f5ef`.

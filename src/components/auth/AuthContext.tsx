@@ -16,7 +16,8 @@ interface AuthContextType extends AuthSessionState {
   signUpStudent: (params: SignUpParams) => ReturnType<typeof signUpPublicAccountService>;
   beginInstructorOnboarding: () => void;
   cancelInstructorOnboarding: () => void;
-  onboardInstructor: () => Promise<Awaited<ReturnType<typeof onboardInstructorService>>>;
+  onboardInstructor: (options?: { keepOnboarding?: boolean }) => Promise<Awaited<ReturnType<typeof onboardInstructorService>>>;
+  completeInstructorOnboarding: () => void;
   getStudentToProMigrationStatus: () => Promise<StudentToProMigrationStatus>;
   migrateStudentProfileToInstructor: () => Promise<Awaited<ReturnType<typeof migrateStudentProfileToInstructorService>>>;
   logout: () => Promise<void>;
@@ -26,6 +27,26 @@ interface AuthContextType extends AuthSessionState {
 }
 
 const AuthContextReact = createContext<AuthContextType | undefined>(undefined);
+const INSTRUCTOR_ONBOARDING_STORAGE_KEY = 'mazzi.instructor-onboarding.pending';
+
+function hasPendingInstructorOnboarding(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(INSTRUCTOR_ONBOARDING_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function setPendingInstructorOnboarding(pending: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (pending) window.sessionStorage.setItem(INSTRUCTOR_ONBOARDING_STORAGE_KEY, 'true');
+    else window.sessionStorage.removeItem(INSTRUCTOR_ONBOARDING_STORAGE_KEY);
+  } catch {
+    // The in-memory gate remains authoritative when session storage is unavailable.
+  }
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthSessionState>({
@@ -39,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const recoveryInProgressRef = useRef(false);
-  const instructorOnboardingRef = useRef(false);
+  const instructorOnboardingRef = useRef(hasPendingInstructorOnboarding());
 
   const beginPasswordRecovery = () => {
     recoveryInProgressRef.current = true;
@@ -332,30 +353,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const beginInstructorOnboarding = () => {
     instructorOnboardingRef.current = true;
+    setPendingInstructorOnboarding(true);
     setAuthState((prev) => ({ ...prev, isInstructorOnboarding: true, error: null }));
   };
 
   const cancelInstructorOnboarding = () => {
     instructorOnboardingRef.current = false;
+    setPendingInstructorOnboarding(false);
     setAuthState((prev) => ({ ...prev, isInstructorOnboarding: false }));
   };
 
   const signUpPublicAccount = (params: SignUpParams) => signUpPublicAccountService(params);
   const signUpStudent = (params: SignUpParams) => signUpPublicAccountService(params);
-  const onboardInstructor = async () => {
+  const onboardInstructor = async ({ keepOnboarding = false }: { keepOnboarding?: boolean } = {}) => {
     try {
       const result = await onboardInstructorService();
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error || !session?.user) {
         throw new Error('AUTH_SESSION_UNAVAILABLE: Não foi possível reidratar a sessão do instrutor.');
       }
-      instructorOnboardingRef.current = false;
+      if (!keepOnboarding) {
+        instructorOnboardingRef.current = false;
+        setPendingInstructorOnboarding(false);
+      }
       await handleSession(session);
       return result;
     } catch (error) {
       setAuthState((prev) => ({ ...prev, isInstructorOnboarding: true, isLoading: false }));
       throw error;
     }
+  };
+
+  const completeInstructorOnboarding = () => {
+    instructorOnboardingRef.current = false;
+    setPendingInstructorOnboarding(false);
+    setAuthState((prev) => ({ ...prev, isInstructorOnboarding: false, error: null }));
   };
 
   const getStudentToProMigrationStatus = () => getStudentToProMigrationStatusService();
@@ -369,6 +401,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     instructorOnboardingRef.current = false;
+    setPendingInstructorOnboarding(false);
     setAuthState(prev => ({ ...prev, isLoading: true }));
     try {
       await supabase.auth.signOut();
@@ -401,6 +434,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         beginInstructorOnboarding,
         cancelInstructorOnboarding,
         onboardInstructor,
+        completeInstructorOnboarding,
         getStudentToProMigrationStatus,
         migrateStudentProfileToInstructor,
         logout,

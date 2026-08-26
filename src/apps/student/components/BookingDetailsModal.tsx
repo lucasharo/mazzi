@@ -4,6 +4,7 @@ import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Button, ButtonBase } from '../../../components/ui/Button';
+import { Textarea } from '../../../components/ui/Textarea';
 import { formatCentsToBRL } from '../../../domain/money';
 import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
@@ -316,7 +317,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 </ButtonBase>
               ))}
             </div>
-            <textarea
+            <Textarea
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
               placeholder="Observações adicionais (opcional)..."
