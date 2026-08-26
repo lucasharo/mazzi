@@ -7,7 +7,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { UserRole } from '../../types';
 import { AppPermission, resolveUserPermissions } from '../../domain/rbac';
 import { AuthSessionState } from '../../lib/auth-service';
-import { onboardInstructor as onboardInstructorService, getStudentToProMigrationStatus as getStudentToProMigrationStatusService, migrateStudentProfileToInstructor as migrateStudentProfileToInstructorService, signInWithEmail, signUpPublicAccount as signUpPublicAccountService, type SignUpParams, type StudentToProMigrationStatus } from '../../lib/auth-service';
+import { onboardDrivingSchool as onboardDrivingSchoolService, onboardInstructor as onboardInstructorService, getStudentToProMigrationStatus as getStudentToProMigrationStatusService, migrateStudentProfileToInstructor as migrateStudentProfileToInstructorService, signInWithEmail, signUpPublicAccount as signUpPublicAccountService, type DrivingSchoolOnboardingParams, type SignUpParams, type StudentToProMigrationStatus } from '../../lib/auth-service';
 import { supabase } from '../../lib/supabase';
 
 interface AuthContextType extends AuthSessionState {
@@ -17,6 +17,7 @@ interface AuthContextType extends AuthSessionState {
   beginInstructorOnboarding: () => void;
   cancelInstructorOnboarding: () => void;
   onboardInstructor: (options?: { keepOnboarding?: boolean }) => Promise<Awaited<ReturnType<typeof onboardInstructorService>>>;
+  onboardDrivingSchool: (params: DrivingSchoolOnboardingParams) => Promise<Awaited<ReturnType<typeof onboardDrivingSchoolService>>>;
   completeInstructorOnboarding: () => void;
   getStudentToProMigrationStatus: () => Promise<StudentToProMigrationStatus>;
   migrateStudentProfileToInstructor: () => Promise<Awaited<ReturnType<typeof migrateStudentProfileToInstructorService>>>;
@@ -254,22 +255,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let schoolId: string | undefined;
 
       if (profile && roles.some((role) => ['INSTRUCTOR', 'SCHOOL_ADMIN', 'SCHOOL_STAFF'].includes(role))) {
-        const { data: prov } = await sp
+        const { data: providers } = await sp
           .from('providers')
-          .select('id,status')
-          .eq('user_id', profile.id)
-          .maybeSingle();
-        if (prov) {
-          providerId = prov.id;
-          providerStatus = prov.status;
-        }
+          .select('id,status,type')
+          .eq('user_id', profile.id);
 
-        const { data: staff } = await sp
+        const { data: staffRows } = await sp
           .from('driving_school_staff')
-          .select('school_id')
-          .eq('user_id', profile.id)
-          .maybeSingle();
+          .select('school_id,role')
+          .eq('user_id', profile.id);
+
+        // A single human can own both an INSTRUCTOR and a DRIVING_SCHOOL
+        // workspace. Prefer the owned school workspace for SCHOOL_ADMIN, then
+        // fall back to the instructor profile without relying on maybeSingle().
+        const ownedSchool = providers?.find((provider) => provider.type === 'DRIVING_SCHOOL');
+        if (ownedSchool) schoolId = ownedSchool.id;
+        const staff = staffRows?.find((entry) => entry.school_id === ownedSchool?.id) || staffRows?.[0];
         if (staff) schoolId = staff.school_id;
+        const schoolProvider = schoolId ? providers?.find((provider) => provider.id === schoolId && provider.type === 'DRIVING_SCHOOL') : undefined;
+        const instructorProvider = providers?.find((provider) => provider.type === 'INSTRUCTOR');
+        const selectedProvider = roles.includes('SCHOOL_ADMIN') && schoolProvider ? schoolProvider : instructorProvider || schoolProvider;
+        if (selectedProvider) {
+          providerId = selectedProvider.id;
+          providerStatus = selectedProvider.status;
+        }
       }
 
       const mappedUser = {
@@ -384,6 +393,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const onboardDrivingSchool = async (params: DrivingSchoolOnboardingParams) => {
+    const result = await onboardDrivingSchoolService(params);
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session?.user) throw new Error('AUTH_SESSION_UNAVAILABLE: Não foi possível reidratar a sessão da autoescola.');
+    await handleSession(session);
+    return result;
+  };
+
   const completeInstructorOnboarding = () => {
     instructorOnboardingRef.current = false;
     setPendingInstructorOnboarding(false);
@@ -434,6 +451,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         beginInstructorOnboarding,
         cancelInstructorOnboarding,
         onboardInstructor,
+        onboardDrivingSchool,
         completeInstructorOnboarding,
         getStudentToProMigrationStatus,
         migrateStudentProfileToInstructor,

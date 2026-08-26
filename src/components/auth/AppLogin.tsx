@@ -16,6 +16,7 @@ import { ProviderAddressForm } from '../provider/ProviderAddressForm';
 import { formatCpf, isValidCpf, normalizeCpf } from '../../utils/cpf';
 import { formatDateMask, toISODateString, validateBirthDate } from '../../utils/age';
 import { formatPhone, isValidPhone, normalizePhone } from '../../utils/phone';
+import { maskCnpj, normalizeDocument } from '../../lib/input-masks';
 import {
   ArrowLeft,
   AlertCircle,
@@ -30,6 +31,7 @@ import {
   Pencil,
   RefreshCw,
   UserPlus,
+  Building2,
 } from 'lucide-react';
 
 export type AppLoginKind = 'student' | 'instructor' | 'admin';
@@ -38,7 +40,9 @@ type Screen =
   | 'signup'
   | 'forgot'
   | 'signup_otp'
+  | 'professional_choice'
   | 'instructor_onboarding'
+  | 'school_onboarding'
   | 'recovery_otp'
   | 'reset_password'
   | 'email_confirmation'
@@ -107,6 +111,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     signUpPublicAccount,
     user,
     onboardInstructor,
+    onboardDrivingSchool,
     beginInstructorOnboarding,
     cancelInstructorOnboarding,
     completeInstructorOnboarding,
@@ -117,6 +122,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     isLoading: isContextLoading,
   } = useAuth();
   const [screen, setScreen] = useState<Screen>('login');
+  const [professionalPath, setProfessionalPath] = useState<'instructor' | 'school'>('instructor');
   const [onboardingAddress, setOnboardingAddress] = useState<ProviderAddressFormValue>({
     addressLine1: '',
     houseNumber: '',
@@ -128,6 +134,14 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     address: undefined,
     locationMode: 'STANDARD_ADDRESS',
   });
+  const [schoolAddress, setSchoolAddress] = useState<ProviderAddressFormValue>({
+    addressLine1: '', houseNumber: '', complement: '', postalCode: '', neighborhood: '', city: '', state: 'SP', address: undefined, locationMode: 'STANDARD_ADDRESS',
+  });
+  const [schoolCnpj, setSchoolCnpj] = useState('');
+  const [schoolLegalName, setSchoolLegalName] = useState('');
+  const [schoolTradeName, setSchoolTradeName] = useState('');
+  const [schoolPhone, setSchoolPhone] = useState('');
+  const [schoolEmail, setSchoolEmail] = useState('');
 
   // Form Fields
   const [email, setEmail] = useState('');
@@ -265,6 +279,39 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     }
   };
 
+  const tryCompleteSchoolOnboarding = async () => {
+    try {
+      const validation = validateProviderAddressForm(schoolAddress);
+      if (!validation.valid) throw new Error(validation.reason || 'Confirme o endereço operacional da autoescola.');
+      let resolvedAddress = schoolAddress.address;
+      if (validation.mode === 'STANDARD_ADDRESS' && resolvedAddress?.source !== 'GEOAPIFY') {
+        resolvedAddress = await resolveProviderAddress({
+          street: schoolAddress.addressLine1.trim(), houseNumber: schoolAddress.houseNumber.trim(),
+          postalCode: schoolAddress.postalCode.replace(/\D/g, ''), city: schoolAddress.city.trim(),
+          stateCode: schoolAddress.state.trim().toUpperCase(), countryCode: 'br',
+        });
+      }
+      if (!resolvedAddress || resolvedAddress.latitude == null || resolvedAddress.longitude == null) {
+        throw new Error('Confirme o endereço operacional selecionando um endereço localizado.');
+      }
+      if (!schoolLegalName.trim() || !schoolTradeName.trim() || !schoolEmail.trim() || !isValidPhone(normalizePhone(schoolPhone))) {
+        throw new Error('Preencha razão social, nome fantasia, e-mail comercial e telefone válido.');
+      }
+      const payload = buildProviderAddressPayload({ ...schoolAddress, address: resolvedAddress });
+      await onboardDrivingSchool({
+        cnpj: normalizeDocument(schoolCnpj), legalName: schoolLegalName.trim(), tradeName: schoolTradeName.trim(),
+        phone: normalizePhone(schoolPhone), commercialEmail: schoolEmail.trim(), postalCode: schoolAddress.postalCode.replace(/\D/g, ''),
+        address: payload.address as Record<string, unknown>, latitude: payload.latitude!, longitude: payload.longitude!,
+      });
+      goTo('login');
+      return true;
+    } catch (caught: any) {
+      setFeedback({ tone: 'error', message: formatAuthError(caught instanceof Error ? caught.message : 'Não foi possível concluir o cadastro da autoescola.') });
+      setScreen('school_onboarding');
+      return false;
+    }
+  };
+
   // 1. SUBMIT LOGIN
   const submitLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -305,7 +352,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
     event.preventDefault();
     setFeedback(null);
     const newErrors: Record<string, string> = {};
-    const instructorSignup = kind === 'instructor';
+    const instructorSignup = kind === 'instructor' && professionalPath === 'instructor';
 
     // Name Validation: Must have at least 2 names (first name and surname)
     if (!name.trim()) {
@@ -390,8 +437,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
         // Requires 6-digit OTP verification
         goTo('signup_otp');
       } else {
-        if (instructorSignup) {
-          goTo('instructor_onboarding');
+        if (kind === 'instructor') {
+          goTo(professionalPath === 'school' ? 'school_onboarding' : 'instructor_onboarding');
           return;
         }
         setFeedback({ tone: 'success', message: 'Conta criada com sucesso.' });
@@ -429,7 +476,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
       if (password) {
         await signIn(otpEmail, password);
         if (kind === 'instructor') {
-          goTo('instructor_onboarding');
+          goTo(professionalPath === 'school' ? 'school_onboarding' : 'instructor_onboarding');
           return;
         }
       } else {
@@ -612,6 +659,27 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
 
   const brandTag = kind === 'instructor' ? 'MAZZI PRO' : kind === 'admin' ? 'MAZZI ADMIN' : 'MAZZI';
 
+  if (screen === 'professional_choice') {
+    return (
+      <Modal isOpen onClose={() => goTo('login')} title="Como você quer atuar no MAZZI?" size="sm">
+        <div className="space-y-3">
+          <Button type="button" variant="outline" className="w-full justify-start text-left" leftIcon={<UserPlus className="h-5 w-5" aria-hidden="true" />} onClick={() => {
+            setProfessionalPath('instructor');
+            if (user) { beginInstructorOnboarding(); goTo('instructor_onboarding'); } else goTo('signup');
+          }}>
+            <span><strong className="block">Sou instrutor autônomo</strong><span className="block text-xs font-normal text-slate-500">Atendo alunos com o meu próprio perfil profissional.</span></span>
+          </Button>
+          <Button type="button" variant="outline" className="w-full justify-start text-left" leftIcon={<Building2 className="h-5 w-5" aria-hidden="true" />} onClick={() => {
+            setProfessionalPath('school');
+            goTo(user ? 'school_onboarding' : 'signup');
+          }}>
+            <span><strong className="block">Represento uma Autoescola / CFC</strong><span className="block text-xs font-normal text-slate-500">Crio o espaço da autoescola e me torno seu administrador responsável.</span></span>
+          </Button>
+        </div>
+      </Modal>
+    );
+  }
+
   if (screen === 'instructor_onboarding') {
     const leaveOnboarding = () => {
       cancelInstructorOnboarding();
@@ -660,6 +728,29 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             value={onboardingAddress}
             onChange={setOnboardingAddress}
           />
+        </div>
+      </Modal>
+    );
+  }
+
+  if (screen === 'school_onboarding') {
+    const leaveOnboarding = () => goTo('login');
+    return (
+      <Modal isOpen onClose={leaveOnboarding} title="Cadastrar Autoescola / CFC" size="lg" footer={<>
+        <Button type="button" variant="dangerSoft" size="sm" leftIcon={<CircleX className="h-4 w-4" aria-hidden="true" />} onClick={leaveOnboarding}>Cancelar</Button>
+        <PrimaryButton type="button" size="sm" loading={isSubmitting} disabled={isSubmitting} onClick={async () => { setIsSubmitting(true); await tryCompleteSchoolOnboarding(); setIsSubmitting(false); }}>Concluir cadastro</PrimaryButton>
+      </>}>
+        <div className="space-y-5">
+          <div className="space-y-1 text-center"><p className="mazzi-eyebrow">MAZZI PRO</p><p className="text-sm text-slate-600">Cadastre a autoescola. Ela permanecerá pendente até concluir os requisitos de ativação.</p></div>
+          {feedback?.tone === 'error' && <div role="alert" className="rounded-2xl border border-rose-200/60 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700">{feedback.message}</div>}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input label="CNPJ *" value={schoolCnpj} onChange={(event) => setSchoolCnpj(maskCnpj(event.target.value))} inputMode="numeric" placeholder="00.000.000/0000-00" />
+            <Input label="Telefone comercial *" value={schoolPhone} onChange={(event) => setSchoolPhone(formatPhone(event.target.value))} inputMode="tel" placeholder="(11) 99999-9999" />
+          </div>
+          <Input label="Razão social *" value={schoolLegalName} onChange={(event) => setSchoolLegalName(event.target.value)} placeholder="Razão social da autoescola" />
+          <Input label="Nome fantasia *" value={schoolTradeName} onChange={(event) => setSchoolTradeName(event.target.value)} placeholder="Como os alunos conhecem a autoescola" />
+          <Input label="E-mail comercial *" value={schoolEmail} onChange={(event) => setSchoolEmail(event.target.value)} inputMode="email" placeholder="contato@autoescola.com.br" />
+          <ProviderAddressForm idPrefix="driving-school-onboarding" value={schoolAddress} onChange={setSchoolAddress} />
         </div>
       </Modal>
     );
@@ -1278,9 +1369,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
             <ButtonBase
               type="button"
               onClick={() => {
-                if (kind === 'instructor' && user?.roles.includes('STUDENT')) {
-                  beginInstructorOnboarding();
-                  goTo('instructor_onboarding');
+                if (kind === 'instructor') {
+                  goTo('professional_choice');
                 } else {
                   goTo('signup');
                 }
@@ -1288,7 +1378,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind }> = ({ kind }) => {
               className="inline-flex cursor-pointer items-center gap-1.5 font-bold text-amber-700 underline underline-offset-2 hover:text-amber-800"
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
-              {kind === 'instructor' ? (user?.roles.includes('STUDENT') ? 'Ativar perfil profissional' : 'Quero ser instrutor') : 'Criar conta'}
+              {kind === 'instructor' ? 'Quero ser instrutor ou representar uma autoescola' : 'Criar conta'}
             </ButtonBase>
           </p>
         )}

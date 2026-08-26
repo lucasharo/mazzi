@@ -105,6 +105,41 @@ export async function onboardInstructor() {
   return data;
 }
 
+export interface DrivingSchoolOnboardingParams {
+  cnpj: string;
+  legalName: string;
+  tradeName: string;
+  phone: string;
+  commercialEmail: string;
+  postalCode: string;
+  address: Record<string, unknown>;
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * Creates or resumes the authenticated person's driving-school workspace.
+ * The RPC derives auth.uid() and grants SCHOOL_ADMIN server-side, so the
+ * browser never supplies a user, school, or role identifier.
+ */
+export async function onboardDrivingSchool(params: DrivingSchoolOnboardingParams) {
+  // Generated database types are updated with the next schema refresh; keep
+  // this typed public boundary while the forward-only migration is pending.
+  const { data, error } = await (supabase as any).rpc('onboard_my_driving_school', {
+    p_cnpj: params.cnpj,
+    p_legal_name: params.legalName,
+    p_trade_name: params.tradeName,
+    p_phone: params.phone,
+    p_commercial_email: params.commercialEmail,
+    p_postal_code: params.postalCode,
+    p_address: params.address,
+    p_latitude: params.latitude,
+    p_longitude: params.longitude,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export interface StudentToProMigrationStatus {
   student_profile_active: boolean;
   instructor_role_active: boolean;
