@@ -249,3 +249,11 @@ O working tree, `supabase/baseline-candidate/` e o stash de segurança foram pre
 - Suíte completa: 724 passed, 0 skipped, 0 failed. Lint, builds e diff-check: PASS.
 - R11: 0 ofertas ativas de providers não ACTIVE; 50 ofertas ativas de providers ACTIVE. R10D: 0 instrutores ACTIVE sem termos aprovados vigentes.
 - Nenhuma migration, constraint, schema, Storage, `spatial_ref_sys`, Production, commit, push ou deploy foi alterado.
+## Edição de veículos pelo PRO
+
+- Card de veículo com ação `Editar`.
+- Modal de cadastro reutilizado para edição, com dados preenchidos.
+- RPC recebe o ID existente e evita duplicação.
+- Veículos ativos/inativos alterados retornam a `IN_REVIEW` para aprovação do Admin.
+- Frontend não promove nem aprova veículos.
+- Lint, builds e teste direcionado passaram; `git diff --check` passou.

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, } from 'lucide-react';
+import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, } from 'lucide-react';
 import {
   Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -34,6 +34,7 @@ interface ProviderManagementTabProps {
   schoolInstructorSummary: SchoolInstructorComplianceSummary[];
   isAddVehicleModalOpen: boolean;
   onOpenAddVehicleModal: () => void;
+  onOpenEditVehicle: (vehicleId: string) => void;
   onCloseAddVehicleModal: () => void;
   vehicleForm: {
     brand: string;
@@ -84,6 +85,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   schoolInstructorSummary,
   isAddVehicleModalOpen,
   onOpenAddVehicleModal,
+  onOpenEditVehicle,
   onCloseAddVehicleModal,
   vehicleForm,
   onVehicleFormChange,
@@ -203,14 +205,19 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                   footer={(
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-bold text-slate-400">ID: {vehicle.id.slice(0, 8)}</span>
-                      <Button
-                        variant={vehicle.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
-                        size="sm"
-                        onClick={() => onToggleVehicleStatus(vehicle.id)}
-                        leftIcon={vehicle.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
-                      >
-                        {vehicle.status === 'ACTIVE' ? 'Desativar Veículo' : 'Ativar Veículo'}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => onOpenEditVehicle(vehicle.id)} leftIcon={<Pencil className="w-3.5 h-3.5" />}>
+                          Editar
+                        </Button>
+                        <Button
+                          variant={vehicle.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
+                          size="sm"
+                          onClick={() => onToggleVehicleStatus(vehicle.id)}
+                          leftIcon={vehicle.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                        >
+                          {vehicle.status === 'ACTIVE' ? 'Desativar Veículo' : 'Ativar Veículo'}
+                        </Button>
+                      </div>
                     </div>
                   )}
                 />
@@ -381,7 +388,7 @@ const canResubmit = doc?.status === 'REJECTED';
       )}
 
       {/* ADD VEHICLE MODAL */}
-      <Modal isOpen={isAddVehicleModalOpen} onClose={onCloseAddVehicleModal} title="Cadastrar Veículo">
+      <Modal isOpen={isAddVehicleModalOpen} onClose={onCloseAddVehicleModal} title={vehicleForm.brand ? 'Editar Veículo' : 'Cadastrar Veículo'}>
         <div className="space-y-4 text-left">
           {vehicleError && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
@@ -454,7 +461,7 @@ const canResubmit = doc?.status === 'REJECTED';
               Cancelar
             </Button>
             <Button variant="primary" size="sm" onClick={onSaveVehicle} leftIcon={<Save className="w-4 h-4" />}>
-              Salvar Veículo
+              {vehicleForm.brand ? 'Enviar para aprovação' : 'Salvar Veículo'}
             </Button>
           </div>
         </div>

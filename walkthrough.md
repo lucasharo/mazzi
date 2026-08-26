@@ -117,3 +117,10 @@ Não houve reset local, consulta de documentos, signed URL, commit, push, deploy
 5. O cleanup remove apenas audit logs e bookings dos IDs da execução, inclusive em falhas.
 6. Foram realizadas três execuções consecutivas: 5/5 em cada; nenhuma fixture permaneceu no DEV.
 7. Suíte completa: 724 passed, 0 skipped, 0 failed. R11 e R10D permaneceram íntegros.
+## Edição de veículos no PRO — aprovação obrigatória
+
+1. O PRO agora pode editar um veículo diretamente pelo card.
+2. A edição reutiliza o modal de cadastro com marca, modelo, ano, placa, categoria, transmissão e cor preenchidos.
+3. A atualização preserva o ID original e usa `provider_save_vehicle`, sem duplicar o veículo.
+4. Alterações materiais em veículos ativos/inativos retornam a `IN_REVIEW` pelo RPC e exigem nova aprovação administrativa.
+5. Lint, builds Student/PRO/Admin, teste direcionado de veículos e `git diff --check` passaram.

@@ -223,6 +223,7 @@ export const ProviderApp: React.FC = () => {
 
   // Vehicle Management Modal State
   const [isAddVehicleModalOpen, setIsAddVehicleModalOpen] = useState<boolean>(false);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [vehicleForm, setVehicleForm] = useState({
     brand: '',
     model: '',
@@ -843,7 +844,41 @@ export const ProviderApp: React.FC = () => {
   };
 
   // Vehicle Handlers
-  const handleCreateVehicle = async () => {
+  const resetVehicleForm = () => {
+    setVehicleForm({
+      brand: '', model: '', year: '', licensePlate: '', category: 'B', vehicleType: 'CAR',
+      transmission: 'MANUAL', color: 'Prata',
+      photoUrl: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80',
+    });
+  };
+
+  const handleOpenAddVehicle = () => {
+    setEditingVehicleId(null);
+    resetVehicleForm();
+    setVehicleError(null);
+    setIsAddVehicleModalOpen(true);
+  };
+
+  const handleOpenEditVehicle = (vehicleId: string) => {
+    const vehicle = vehicles.find((item) => item.id === vehicleId);
+    if (!vehicle) return;
+    setEditingVehicleId(vehicleId);
+    setVehicleForm({
+      brand: vehicle.brand,
+      model: vehicle.model,
+      year: vehicle.year,
+      licensePlate: vehicle.licensePlate,
+      category: vehicle.category,
+      vehicleType: vehicle.vehicleType,
+      transmission: vehicle.transmission,
+      color: vehicle.color || '',
+      photoUrl: vehicle.photos?.[0] || '',
+    });
+    setVehicleError(null);
+    setIsAddVehicleModalOpen(true);
+  };
+
+  const handleSaveVehicle = async () => {
     setVehicleError(null);
     const vehicleYear = vehicleForm.year;
     if (vehicleYear === '') {
@@ -851,7 +886,21 @@ export const ProviderApp: React.FC = () => {
       return;
     }
     try {
-      const newVehicle = createVehicleDraft({
+      const vehiclePayload = editingVehicleId
+        ? {
+          id: editingVehicleId,
+          providerId: currentProvider.id,
+          brand: vehicleForm.brand,
+          model: vehicleForm.model,
+          year: vehicleYear,
+          licensePlate: vehicleForm.licensePlate,
+          category: vehicleForm.category,
+          vehicleType: vehicleForm.vehicleType,
+          transmission: vehicleForm.transmission,
+          color: vehicleForm.color,
+          photos: vehicleForm.photoUrl ? [vehicleForm.photoUrl] : [],
+        }
+        : createVehicleDraft({
         providerId: currentProvider.id,
         brand: vehicleForm.brand,
         model: vehicleForm.model,
@@ -865,20 +914,13 @@ export const ProviderApp: React.FC = () => {
         autoSubmitForReview: true,
       });
 
-      const savedVehicle = await dbService.saveVehicle(newVehicle);
-      setVehicles((prev) => [...prev, savedVehicle]);
+      const savedVehicle = await dbService.saveVehicle(vehiclePayload);
+      setVehicles((prev) => editingVehicleId
+        ? prev.map((vehicle) => vehicle.id === editingVehicleId ? savedVehicle : vehicle)
+        : [...prev, savedVehicle]);
       setIsAddVehicleModalOpen(false);
-      setVehicleForm({
-        brand: '',
-        model: '',
-        year: '',
-        licensePlate: '',
-        category: 'B',
-        vehicleType: 'CAR',
-        transmission: 'MANUAL',
-        color: 'Prata',
-        photoUrl: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80',
-      });
+      setEditingVehicleId(null);
+      resetVehicleForm();
     } catch (err: any) {
       setVehicleError(mapFriendlyErrorMessage(err, 'Erro ao cadastrar veículo.'));
     }
@@ -1073,12 +1115,14 @@ export const ProviderApp: React.FC = () => {
       });
       await dbService.updateProviderProfile(currentProvider.id, {
         name: cleanName,
-        legalName: profileForm.legalName.trim(),
         publicContact: cleanPhone,
-        commercialEmail: profileForm.commercialEmail.trim(),
         serviceRadiusKm: radiusKm,
         bio: cleanBio,
         ...addressPayload,
+        ...(currentProvider.type === 'DRIVING_SCHOOL' ? {
+          legalName: profileForm.legalName.trim(),
+          commercialEmail: profileForm.commercialEmail.trim(),
+        } : {}),
       });
     } catch (error: any) {
       setProfileFormError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o perfil do prestador.'));
@@ -1322,11 +1366,12 @@ status: 'IN_REVIEW',
             schoolInstructors={schoolInstructors}
             schoolInstructorSummary={schoolInstructorSummary}
             isAddVehicleModalOpen={isAddVehicleModalOpen}
-            onOpenAddVehicleModal={() => setIsAddVehicleModalOpen(true)}
-            onCloseAddVehicleModal={() => setIsAddVehicleModalOpen(false)}
+            onOpenAddVehicleModal={handleOpenAddVehicle}
+            onOpenEditVehicle={handleOpenEditVehicle}
+            onCloseAddVehicleModal={() => { setIsAddVehicleModalOpen(false); setEditingVehicleId(null); }}
             vehicleForm={vehicleForm}
             onVehicleFormChange={setVehicleForm}
-            onSaveVehicle={handleCreateVehicle}
+            onSaveVehicle={handleSaveVehicle}
             onToggleVehicleStatus={handleToggleVehicleStatus}
             vehicleError={vehicleError}
             isAddOfferingModalOpen={isAddOfferingModalOpen}

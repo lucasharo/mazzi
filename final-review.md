@@ -120,3 +120,6 @@ Testes direcionados: 59 passed. Lint, builds Student/PRO/Admin e diff-check: PAS
 O teste remoto de cancelamento foi isolado sem alterar a constraint, a RPC ou a migration R11. A fixture usa UUIDs dinâmicos, contexto coerente de offering/provider/vehicle/instructor, slot passado livre e transação atômica. O cleanup é limitado aos IDs criados e protegido por `finally`.
 
 O stale c007/c008 foi removido por ID, sem remoção de dados reais. Três execuções consecutivas passaram com 5/5 testes; a suíte completa passou com 724 passed, 0 skipped e 0 failed. O helper de failure-safety confirmou rollback quando o segundo insert falha. Lint, builds e diff-check passaram. DEV teve apenas DML de fixtures; schema, Storage, `spatial_ref_sys`, Production, commit, push e deploy permaneceram inalterados.
+## Edição de veículos no PRO — resultado
+
+O PRO passou a editar veículos pelo mesmo modal de cadastro. O salvamento usa o ID existente e o RPC `provider_save_vehicle`; alterações materiais em veículos ativos/inativos são encaminhadas para `IN_REVIEW`, mantendo a aprovação exclusivamente no Admin. Não houve alteração de Student, Admin ou Supabase LIVE nesta funcionalidade.
