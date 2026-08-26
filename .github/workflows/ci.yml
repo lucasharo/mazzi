@@ -126,20 +126,33 @@ jobs:
 
           PROJECTS=(
             "mazzi-aluno:dist/student"
-            "mazzi-pro:dist/instructor"
+            "mazzi-profissional:dist/instructor"
             "mazzi-admin:dist/admin"
           )
+
+          deploy_failed=0
 
           for entry in "${PROJECTS[@]}"; do
             project="${entry%%:*}"
             directory="${entry#*:}"
 
-            ensure_project "$project"
+            if ! ensure_project "$project"; then
+              echo "::error::Skipping deploy because project could not be ensured: ${project}" >&2
+              deploy_failed=1
+              continue
+            fi
 
             echo "Deploying ${project} from ${directory}"
-            retry 3 npx --yes wrangler@4 pages deploy "$directory" \
+            if ! retry 3 npx --yes wrangler@4 pages deploy "$directory" \
               --project-name="$project" \
               --branch="feature/premium-ui-v2" \
               --commit-hash="$GITHUB_SHA" \
-              --commit-message="MAZZI DEV deploy"
+              --commit-message="MAZZI DEV deploy"; then
+              deploy_failed=1
+            fi
           done
+
+          if (( deploy_failed != 0 )); then
+            echo "::error::One or more Cloudflare DEV deployments failed." >&2
+            exit 1
+          fi
