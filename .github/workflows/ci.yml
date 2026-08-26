@@ -19,11 +19,16 @@ permissions:
 
 jobs:
   validate:
-    name: Lint, Test & Multi-App Build
+    name: Lint, Test, Build & DEV Deploy
     runs-on: ubuntu-latest
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_GEOAPIFY_API_KEY: ${{ secrets.VITE_GEOAPIFY_API_KEY }}
+      VITE_PAYMENT_MODE: MOCK_VALIDATION
+      VITE_PAYMENT_GATEWAY_PROVIDER: fake
+      VITE_ENABLE_DEV_QUICK_LOGIN: 'false'
 
     steps:
       - name: Checkout Repository
@@ -46,3 +51,43 @@ jobs:
 
       - name: Validate Multi-App Production Build (npm run build:all)
         run: npm run build:all
+
+      - name: Deploy DEV apps to Cloudflare Pages
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/feature/premium-ui-v2' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" || -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
+            echo "::notice::Cloudflare DEV deploy skipped: CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN not configured."
+            exit 0
+          fi
+
+          PROJECTS=(
+            "mazzi-aluno-dev:dist/student"
+            "mazzi-pro-dev:dist/instructor"
+            "mazzi-admin-dev:dist/admin"
+          )
+
+          npx --yes wrangler@4 pages project list --json > /tmp/cloudflare-pages-projects.json
+
+          for entry in "${PROJECTS[@]}"; do
+            project="${entry%%:*}"
+            directory="${entry#*:}"
+
+            if ! jq -e --arg project "$project" '.[] | select(.name == $project)' /tmp/cloudflare-pages-projects.json >/dev/null; then
+              echo "Creating Cloudflare Pages project: ${project}"
+              npx --yes wrangler@4 pages project create "$project" \
+                --production-branch="feature/premium-ui-v2"
+            fi
+
+            echo "Deploying ${project} from ${directory}"
+            npx --yes wrangler@4 pages deploy "$directory" \
+              --project-name="$project" \
+              --branch="feature/premium-ui-v2" \
+              --commit-hash="$GITHUB_SHA" \
+              --commit-message="${GITHUB_COMMIT_MESSAGE:-MAZZI DEV deploy}"
+          done
