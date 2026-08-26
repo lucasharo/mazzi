@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - 'feature/**'
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -54,7 +55,7 @@ jobs:
         run: npm run build:all
 
       - name: Deploy DEV apps to Cloudflare Pages
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/feature/premium-ui-v2' }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/feature/premium-ui-v2' }}
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
