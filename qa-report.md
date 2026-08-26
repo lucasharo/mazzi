@@ -257,3 +257,12 @@ O working tree, `supabase/baseline-candidate/` e o stash de segurança foram pre
 - Veículos ativos/inativos alterados retornam a `IN_REVIEW` para aprovação do Admin.
 - Frontend não promove nem aprova veículos.
 - Lint, builds e teste direcionado passaram; `git diff --check` passou.
+
+## Auditoria de alterações recentes
+
+- Endereço/CEP/Geoapify/autocomplete: `0e6f84a`, `5aacba5`, `91d1ac6`.
+- Modais e rotas mobile: `52ca1ab`.
+- Cadastro público de autoescola: `d2487b5`.
+- Defaults e notificações contextuais: `8e511da`.
+- Publicação consolidada: `5250dbb`.
+- Edição de veículos PRO com nova aprovação: `a83a3f3`.

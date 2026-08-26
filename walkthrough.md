@@ -124,3 +124,14 @@ Não houve reset local, consulta de documentos, signed URL, commit, push, deploy
 3. A atualização preserva o ID original e usa `provider_save_vehicle`, sem duplicar o veículo.
 4. Alterações materiais em veículos ativos/inativos retornam a `IN_REVIEW` pelo RPC e exigem nova aprovação administrativa.
 5. Lint, builds Student/PRO/Admin, teste direcionado de veículos e `git diff --check` passaram.
+
+## Consolidação pós-R11A — histórico documentado
+
+- `0e6f84a`, `5aacba5`, `91d1ac6`: endereço brasileiro, CEP, Geoapify e autocomplete.
+- `52ca1ab`: modais, rotas mobile e fluxos compartilhados.
+- `d2487b5`: onboarding público de autoescola.
+- `8e511da`: defaults do PRO e notificações contextuais.
+- `5250dbb`: publicação consolidada anterior.
+- `a83a3f3`: edição de veículo no PRO com reaprovação administrativa.
+
+O histórico Git foi comparado aos documentos de QA/revisão e as alterações recentes relevantes estão registradas.

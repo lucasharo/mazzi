@@ -123,3 +123,7 @@ O stale c007/c008 foi removido por ID, sem remoção de dados reais. Três execu
 ## Edição de veículos no PRO — resultado
 
 O PRO passou a editar veículos pelo mesmo modal de cadastro. O salvamento usa o ID existente e o RPC `provider_save_vehicle`; alterações materiais em veículos ativos/inativos são encaminhadas para `IN_REVIEW`, mantendo a aprovação exclusivamente no Admin. Não houve alteração de Student, Admin ou Supabase LIVE nesta funcionalidade.
+
+## Auditoria do histórico recente
+
+Foram conferidos e documentados os commits de localização/CEP (`0e6f84a`, `5aacba5`, `91d1ac6`), modais e rotas (`52ca1ab`), onboarding de autoescola (`d2487b5`), defaults e notificações (`8e511da`), publicação anterior (`5250dbb`) e edição de veículos com reaprovação (`a83a3f3`).
