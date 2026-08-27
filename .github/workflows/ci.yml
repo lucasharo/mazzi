@@ -126,9 +126,9 @@ jobs:
           }
 
           PROJECTS=(
-            "mazzi-aluno:dist/student"
-            "mazzi-profissional:dist/instructor"
-            "mazzi-admin:dist/admin"
+            "mazzi-aluno-dev:dist/student"
+            "mazzi-profissional-dev:dist/instructor"
+            "mazzi-admin-dev:dist/admin"
           )
 
           deploy_failed=0
