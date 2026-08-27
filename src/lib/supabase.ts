@@ -8,14 +8,10 @@ import type { Database } from './database.types';
 import { assertFrontendSafeSupabaseEnv, getRuntimeEnvValue } from './runtime-env';
 
 // Browser-safe public credentials. Vite only exposes variables prefixed with VITE_.
-const env = (import.meta as any).env || (typeof process !== 'undefined' ? process.env : {}) || {};
 assertFrontendSafeSupabaseEnv();
 
 const supabaseUrl = getRuntimeEnvValue('VITE_SUPABASE_URL') || getRuntimeEnvValue('SUPABASE_URL');
-const supabasePublishableKey =
-  getRuntimeEnvValue('VITE_SUPABASE_PUBLISHABLE_KEY') ||
-  getRuntimeEnvValue('VITE_SUPABASE_ANON_KEY') ||
-  getRuntimeEnvValue('SUPABASE_ANON_KEY');
+const supabasePublishableKey = getRuntimeEnvValue('VITE_SUPABASE_PUBLISHABLE_KEY');
 
 if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error('Supabase env missing: set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local.');
@@ -23,7 +19,7 @@ if (!supabaseUrl || !supabasePublishableKey) {
 
 /**
  * 1. BROWSER CLIENT (Public Frontend)
- * Uses anon public key with RLS enforcement. Never has elevated privileges.
+ * Uses the Supabase publishable key with RLS enforcement. Never has elevated privileges.
  */
 export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
   auth: {
@@ -37,7 +33,7 @@ export const supabaseBrowserClient = supabase;
 
 /**
  * 2. SERVER AUTHENTICATED CLIENT FACTORY
- * Creates a client scoped to an incoming user's JWT access token for backend requests
+ * Creates a client scoped to an incoming user's JWT access token for backend requests.
  */
 export function createSupabaseServerClient(userAccessToken?: string): SupabaseClient<Database> {
   return createClient<Database>(supabaseUrl, supabasePublishableKey, {
