@@ -20,8 +20,10 @@ permissions:
 
 jobs:
   validate:
-    name: Lint, Test, Build & DEV Deploy
+    name: Lint, Test, Build & Environment Deploy
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
@@ -45,7 +47,7 @@ jobs:
       - name: Run Unit & Integration Test Suite (npm test)
         run: npm test
 
-      - name: Validate Multi-App DEV Build (npm run build:all)
+      - name: Validate Multi-App Build (npm run build:all)
         env:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_GEOAPIFY_API_KEY: ${{ secrets.VITE_GEOAPIFY_API_KEY }}
