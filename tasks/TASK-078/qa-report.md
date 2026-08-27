@@ -12,6 +12,8 @@
 | `npm run build:instructor` | PASS |
 | `npm run build:admin` | PASS |
 | `git diff --check` | PASS |
+| MAZZI CI | PASS — run 33032873295 |
+| MAZZI Database Baseline Verify | PASS — run 33032873286 |
 
 ## Smoke visual
 

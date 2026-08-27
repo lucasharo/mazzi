@@ -15,6 +15,7 @@ O Admin foi reconciliado com os contratos reais de status, permissões e Storage
 - Sem gateway de pagamento real: o modo de teste permanece explícito.
 - Alterações locais preexistentes fora da task serão preservadas fora do commit.
 
-## Próximo gate
+## Release gate
 
-Fazer commit seletivo, push da branch `feature/premium-ui-v2` e acompanhar MAZZI CI e o deploy DEV do Cloudflare.
+Commit `9f34d14ee04383d51343ad15aabe33a20ada4c28` enviado para `feature/premium-ui-v2`.
+MAZZI CI e MAZZI Database Baseline Verify concluíram com sucesso.
