@@ -84,6 +84,16 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, readonly AppPermission[]
     'provider.finance.read_own',
     'provider.payout.request',
   ],
+  DRIVING_SCHOOL: [
+    'school.profile.read',
+    'school.profile.update',
+    'school.member.read',
+    'school.member.manage',
+    'school.vehicle.manage',
+    'school.schedule.manage',
+    'school.finance.read',
+    'school.payout.request',
+  ],
   SCHOOL_ADMIN: [
     'school.profile.read',
     'school.profile.update',

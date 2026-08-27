@@ -3,7 +3,7 @@
 // File: src/apps/admin/AdminComponents.tsx
 // ============================================================================
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ShieldAlert, FileCheck2, CalendarCheck, TrendingUp, History, CheckCircle2, XCircle, Eye, EyeOff, Search, Filter, UserCheck, AlertTriangle, FileText, ShieldCheck, Ban, Settings, DollarSign, Users, Lock, ArrowRightLeft, Info, Calendar, Layers, MapPin, RefreshCw, Car, ArrowRight, } from 'lucide-react';
 import {
   Provider, ComplianceDocument, Vehicle, Booking, AuditLog, User, UserRole, BookingStatus, } from '../../types';
@@ -18,6 +18,7 @@ import { formatCentsToBRL } from '../../domain/money';
 import { PlatformConfiguration } from '../../domain/platform-config';
 import { AuthContext } from '../../domain/rbac';
 import { isVehicleAwaitingAdminReview } from '../../domain/vehicles-offerings';
+import { getComplianceDocumentTypeLabel, getFriendlyAdminError } from '../../domain/status-presentation';
 
 // Utility for masking plates
 export function formatMaskedPlate(plate: string, isExpanded: boolean): string {
@@ -122,7 +123,7 @@ const expiringDocsCount = complianceDocs.filter((d) => d.expiresAt && new Date(d
     alerts.push({
       id: 'alert_disp',
       type: 'error',
-      text: `Atenção: ${bookingsDisputed} aula(s) de direção prática estão sinalizadas em disputa comercial (DISPUTED).`,
+      text: `Há ${bookingsDisputed} aula(s) com disputa em aberto que precisam de acompanhamento.`,
       actionText: 'Gerenciar Disputas',
       tab: 'bookings',
     });
@@ -150,7 +151,7 @@ const expiringDocsCount = complianceDocs.filter((d) => d.expiresAt && new Date(d
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-slate-950 text-white border border-slate-900 flex flex-col justify-between">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 block">MARKETPLACE HEALTH</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 block">SAÚDE DA PLATAFORMA</span>
             <h4 className="text-xs font-bold text-slate-300 mt-0.5">Liquidez e Crescimento</h4>
           </div>
           <div className="my-3">
@@ -164,35 +165,35 @@ const expiringDocsCount = complianceDocs.filter((d) => d.expiresAt && new Date(d
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">ONBOARDING PIPELINE</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">CREDENCIAMENTO</span>
             <h4 className="text-xs font-bold text-slate-700 mt-0.5">Homologação de Parceiros</h4>
           </div>
           <div className="my-3">
             <p className="text-3xl font-black text-slate-900">{pendingReviewProviders}</p>
             <p className="text-[10px] text-slate-500 font-medium">Prestadores Aguardando Análise</p>
           </div>
-          <ButtonBase onClick={() => onNavigate('providers')} className="inline-flex items-center gap-1.5 text-left text-xs font-bold text-indigo-600 hover:text-indigo-800">
+          <ButtonBase onClick={() => onNavigate('providers')} className="inline-flex items-center gap-1.5 text-left text-xs font-bold text-[var(--mazzi-dark)] hover:text-amber-700">
             Verificar fila <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </ButtonBase>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">VEHICLE HOMOLOGATION</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">VEÍCULOS</span>
             <h4 className="text-xs font-bold text-slate-700 mt-0.5">Fila de Frota</h4>
           </div>
           <div className="my-3">
             <p className="text-3xl font-black text-slate-900">{vehiclesUnderReview}</p>
             <p className="text-[10px] text-slate-500 font-medium">Veículos Sob Análise</p>
           </div>
-          <ButtonBase onClick={() => onNavigate('vehicles')} className="inline-flex items-center gap-1.5 text-left text-xs font-bold text-indigo-600 hover:text-indigo-800">
+          <ButtonBase onClick={() => onNavigate('vehicles')} className="inline-flex items-center gap-1.5 text-left text-xs font-bold text-[var(--mazzi-dark)] hover:text-amber-700">
             Homologar veículos <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </ButtonBase>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">OPERATIONAL TRAFFIC</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">AULAS DE HOJE</span>
             <h4 className="text-xs font-bold text-slate-700 mt-0.5">Volume de Aulas Hoje</h4>
           </div>
           <div className="my-3">
@@ -268,9 +269,7 @@ const expiringDocsCount = complianceDocs.filter((d) => d.expiresAt && new Date(d
         <div>
           <span className="font-bold text-amber-950">Nota de Desenvolvimento (Simulado)</span>
           <p className="text-amber-800 mt-0.5 leading-relaxed">
-            Todas as métricas de faturamento e operações financeiras utilizam a biblioteca de integração{' '}
-            <code className="bg-amber-100 text-amber-950 font-mono px-1 rounded text-[11px]">DEVELOPMENT_FAKE_PAYMENT</code>.{' '}
-            As ações de reembolso simulam webhooks de transação reversa, gerando logs de auditoria correspondentes sem conexões com gateways reais de produção.
+            Os pagamentos estão em modo de teste. As ações de reembolso simulam uma transação reversa e geram o registro de auditoria correspondente, sem conexão com um gateway real.
           </p>
         </div>
       </div>
@@ -371,6 +370,7 @@ export const ProvidersTab: React.FC<{
                 onChange={(e) => setFilterStatus(e.target.value)}
                 options={[
                   { value: 'ALL', label: 'Todos os Status' },
+                  { value: 'DRAFT', label: 'Cadastros incompletos' },
                   { value: 'PENDING_REVIEW', label: 'Análise' },
                   { value: 'ACTIVE', label: 'Ativos' },
                   { value: 'SUSPENDED', label: 'Suspensos' },
@@ -414,7 +414,7 @@ export const ProvidersTab: React.FC<{
                     >
                       {p.type === 'INSTRUCTOR' ? 'Instrutor' : 'CFC'}
                     </span>
-                    <StatusBadge status={p.status} />
+                    <StatusBadge status={p.status} domain="provider" />
                   </div>
                   <h5 className="font-bold text-xs mt-2 line-clamp-1">{p.name}</h5>
                   <p className={`text-[11px] mt-0.5 ${isSelected ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -441,7 +441,7 @@ export const ProvidersTab: React.FC<{
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-black text-white">{selectedProv.name}</h3>
-                    <StatusBadge status={selectedProv.status} />
+                    <StatusBadge status={selectedProv.status} domain="provider" />
                   </div>
                   <p className="text-[11px] text-slate-300 font-medium mt-1">
                     Razão Social/Civil: <span className="text-slate-400 font-bold">{selectedProv.legalName || 'Não informada'}</span>
@@ -553,7 +553,7 @@ export const ProvidersTab: React.FC<{
                     <div key={v.id} className="p-3 border rounded-xl bg-white flex flex-col justify-between">
                       <div className="flex items-start justify-between gap-1">
                         <span className="font-bold text-xs">{v.brand} {v.model} ({v.year})</span>
-                        <StatusBadge status={v.status} />
+                        <StatusBadge status={v.status} domain="vehicle" />
                       </div>
                       <p className="text-[10px] text-slate-500 mt-1 font-bold">
                         Placa: <span className="font-mono text-indigo-600">{formatMaskedPlate(v.licensePlate, showSensitive)}</span> • Categoria {v.category}
@@ -709,16 +709,20 @@ export const ComplianceTab: React.FC<{
   actor: AuthContext;
   onApproveDoc: (doc: ComplianceDocument) => void;
   onRejectDoc: (doc: ComplianceDocument, reason: string) => void;
-}> = ({ complianceDocs, actor, onApproveDoc, onRejectDoc }) => {
+  onViewDocument: (doc: ComplianceDocument) => Promise<string>;
+}> = ({ complianceDocs, actor, onApproveDoc, onRejectDoc, onViewDocument }) => {
   const [filterStatus, setFilterStatus] = useState<string>('PENDING');
   const [selectedDocId, setSelectedDocId] = useState<string>('');
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewerError, setViewerError] = useState<string | null>(null);
+  const [isOpeningViewer, setIsOpeningViewer] = useState(false);
 
   const filteredDocs = complianceDocs.filter((d) =>
     filterStatus === 'ALL'
-      || (filterStatus === 'PENDING' ? d.status === 'PENDING' || d.status === 'IN_REVIEW' : filterStatus === 'EXPIRED'
-        ? Boolean(d.expiresAt && new Date(d.expiresAt).getTime() < Date.now())
+      || (filterStatus === 'EXPIRED'
+        ? d.status === 'EXPIRED' || Boolean(d.expiresAt && new Date(d.expiresAt).getTime() < Date.now())
         : d.status === filterStatus)
   );
   const selectedDoc = complianceDocs.find((d) => d.id === selectedDocId) || filteredDocs[0];
@@ -732,6 +736,19 @@ export const ComplianceTab: React.FC<{
     onRejectDoc(selectedDoc, rejectionReason);
     setIsRejecting(false);
     setRejectionReason('');
+  };
+
+  const handleViewDocument = async () => {
+    if (!selectedDoc) return;
+    setViewerError(null);
+    setIsOpeningViewer(true);
+    try {
+      setViewerUrl(await onViewDocument(selectedDoc));
+    } catch (error) {
+      setViewerError(getFriendlyAdminError(error, 'Não foi possível abrir este documento agora.'));
+    } finally {
+      setIsOpeningViewer(false);
+    }
   };
 
   const expiringDocs = complianceDocs.filter((d) => d.expiresAt && new Date(d.expiresAt).getTime() < Date.now());
@@ -750,7 +767,8 @@ export const ComplianceTab: React.FC<{
               setSelectedDocId('');
             }}
             options={[
-              { value: 'PENDING', label: `Pendente (${complianceDocs.filter(d => d.status === 'PENDING' || d.status === 'IN_REVIEW').length})` },
+              { value: 'PENDING', label: `Pendentes (${complianceDocs.filter(d => d.status === 'PENDING').length})` },
+              { value: 'IN_REVIEW', label: `Em análise (${complianceDocs.filter(d => d.status === 'IN_REVIEW').length})` },
               { value: 'APPROVED', label: `Aprovados (${complianceDocs.filter(d => d.status === 'APPROVED').length})` },
               { value: 'REJECTED', label: `Rejeitados (${complianceDocs.filter(d => d.status === 'REJECTED').length})` },
               { value: 'EXPIRED', label: `Expirados (${complianceDocs.filter(d => d.expiresAt && new Date(d.expiresAt).getTime() < Date.now()).length})` },
@@ -811,15 +829,20 @@ export const ComplianceTab: React.FC<{
               </div>
               <div className="text-[11px] text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4">
                 <p>Prestador: <strong>{selectedDoc.providerName || 'Não informado'}</strong></p>
-                <p>Categoria Requisito: <strong className="font-mono">{selectedDoc.type}</strong></p>
+                <p>Documento: <strong>{getComplianceDocumentTypeLabel(selectedDoc.type)}</strong></p>
                 <p>Data do Envio: <strong>{new Date(selectedDoc.uploadedAt).toLocaleString()}</strong></p>
                 <p>Data de Expiração: <strong>{selectedDoc.expiresAt ? new Date(selectedDoc.expiresAt).toLocaleDateString() : 'Não informada'}</strong></p>
               </div>
             </div>
 
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-              Documento armazenado em bucket privado. O painel exibe somente os metadados necessários para a decisão de compliance.
+              O arquivo é privado e pode ser visualizado somente por pessoas autorizadas da equipe de compliance.
             </div>
+
+            <Button variant="outline" size="sm" leftIcon={<Eye className="h-4 w-4" />} onClick={() => void handleViewDocument()} disabled={isOpeningViewer}>
+              {isOpeningViewer ? 'Abrindo documento...' : 'Visualizar documento'}
+            </Button>
+            {viewerError && <p role="alert" className="text-xs font-semibold text-rose-700">{viewerError}</p>}
 
             {selectedDoc.rejectionReason && (
               <div className="p-3 bg-rose-50 border border-rose-100 rounded-2xl text-xs text-rose-800 font-medium">
@@ -899,6 +922,21 @@ export const ComplianceTab: React.FC<{
           </ul>
         </div>
       </div>
+      <Modal isOpen={Boolean(viewerUrl)} onClose={() => setViewerUrl(null)} title="Visualizar documento">
+        {viewerUrl && (
+          <div className="space-y-3 text-left">
+            <div className="rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-muted)] p-3 text-xs">
+              <p className="font-bold text-[var(--mazzi-dark)]">{selectedDoc ? getComplianceDocumentTypeLabel(selectedDoc.type) : 'Documento de compliance'}</p>
+              <p className="mt-1 text-[var(--mazzi-muted)]">Acesso temporário e restrito à análise autorizada.</p>
+            </div>
+            {selectedDoc?.fileName.toLowerCase().endsWith('.pdf') ? (
+              <iframe title="Documento de compliance" src={viewerUrl} className="h-[65dvh] w-full rounded-2xl border border-[var(--mazzi-border)] bg-white" />
+            ) : (
+              <img src={viewerUrl} alt="Documento enviado para compliance" className="max-h-[65dvh] w-full rounded-2xl border border-[var(--mazzi-border)] object-contain" />
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
@@ -954,11 +992,13 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
             }}
             options={[
               { value: 'AWAITING_REVIEW', label: `Aguardando aprovação (${vehicles.filter(v => isVehicleAwaitingAdminReview(v.status)).length})` },
+              { value: 'DRAFT', label: `Rascunhos (${vehicles.filter(v => v.status === 'DRAFT').length})` },
               { value: 'PENDING', label: `Pendente novo (${vehicles.filter(v => v.status === 'PENDING').length})` },
               { value: 'IN_REVIEW', label: `Em revisão (${vehicles.filter(v => v.status === 'IN_REVIEW').length})` },
               { value: 'ACTIVE', label: `Ativos (${vehicles.filter(v => v.status === 'ACTIVE').length})` },
               { value: 'BLOCKED', label: `Bloqueados (${vehicles.filter(v => v.status === 'BLOCKED').length})` },
               { value: 'INACTIVE', label: `Inativos (${vehicles.filter(v => v.status === 'INACTIVE').length})` },
+              { value: 'EXPIRED', label: `Documentação vencida (${vehicles.filter(v => v.status === 'EXPIRED').length})` },
               { value: 'ALL', label: `Todos os Veículos (${vehicles.length})` },
             ]}
           />
@@ -986,7 +1026,7 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
                 >
                   <div className="flex items-start justify-between gap-1">
                     <span className="font-extrabold">{v.brand} {v.model} ({v.year})</span>
-                    <StatusBadge status={v.status} />
+                    <StatusBadge status={v.status} domain="vehicle" />
                   </div>
                   <p className="text-[11px] opacity-80 mt-1">Placa: {formatMaskedPlate(v.licensePlate, false)} • Cat: {v.category}</p>
                   <p className="text-[10px] opacity-60 truncate mt-0.5">Proprietário: {owner?.name || 'N/A'}</p>
@@ -1007,7 +1047,7 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
                   <h3 className="text-base font-black text-slate-900">{selectedVeh.brand} {selectedVeh.model}</h3>
                   <p className="text-[11px] text-slate-500">Ano de Fabricação: <span className="font-bold">{selectedVeh.year}</span></p>
                 </div>
-                <StatusBadge status={selectedVeh.status} />
+                <StatusBadge status={selectedVeh.status} domain="vehicle" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4 text-[11px] text-slate-600 mt-2">
@@ -1176,6 +1216,13 @@ export const BookingsTab: React.FC<{
               { value: 'DISPUTED', label: 'Em Disputa' },
               { value: 'CANCELLED_BY_STUDENT', label: 'Cancelado Aluno' },
               { value: 'CANCELLED_BY_PROVIDER', label: 'Cancelado Prestador' },
+              { value: 'DRAFT', label: 'Rascunhos' },
+              { value: 'PAYMENT_FAILED', label: 'Pagamento não aprovado' },
+              { value: 'NO_SHOW_STUDENT', label: 'Aluno ausente' },
+              { value: 'NO_SHOW_PROVIDER', label: 'Instrutor ausente' },
+              { value: 'REFUNDED', label: 'Reembolsadas' },
+              { value: 'PARTIALLY_REFUNDED', label: 'Reembolso parcial' },
+              { value: 'EXPIRED', label: 'Expiradas' },
               { value: 'NO_SHOW_STUDENT', label: 'Falta do Aluno' },
               { value: 'NO_SHOW_PROVIDER', label: 'Falta do Instrutor' },
             ]}
@@ -1200,7 +1247,7 @@ export const BookingsTab: React.FC<{
                 >
                   <div className="flex items-start justify-between gap-1">
                     <span className="font-extrabold">{b.id}</span>
-                    <StatusBadge status={b.status} />
+                    <StatusBadge status={b.status} domain="booking" />
                   </div>
                   <p className="font-medium mt-1">Aluno: {b.studentName}</p>
                   <p className="opacity-80">Parceiro: {b.providerName}</p>
@@ -1222,7 +1269,7 @@ export const BookingsTab: React.FC<{
                   <h3 className="text-base font-black text-slate-900">Reserva {selectedBook.id}</h3>
                   <p className="text-[11px] text-slate-500">Agendada em: <strong>{selectedBook.scheduledDate} das {selectedBook.startTime} às {selectedBook.endTime}</strong></p>
                 </div>
-                <StatusBadge status={selectedBook.status} />
+                <StatusBadge status={selectedBook.status} domain="booking" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-[11px] text-slate-600 mt-3 pt-2 border-t border-dashed border-slate-100">
@@ -1507,10 +1554,14 @@ export const FinancialTab: React.FC<{
 export const UsersTab: React.FC<{
   users: User[];
   actor: AuthContext;
-  onChangeRole: (userId: string, newRole: UserRole) => void;
-}> = ({ users, actor, onChangeRole }) => {
+  onAddAdministrativeRole: (userId: string, role: Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>) => Promise<void>;
+  onInviteAdministrativeUser: (email: string, role: Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>) => Promise<void>;
+}> = ({ users, actor, onAddAdministrativeRole, onInviteAdministrativeUser }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [roleToAdd, setRoleToAdd] = useState<Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>>('SUPPORT');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredUsers = users.filter(
     (u) =>
@@ -1518,16 +1569,21 @@ export const UsersTab: React.FC<{
       u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleRoleChange = (userId: string, newRole: UserRole) => {
+  const handleAddAdministrativeRole = async (userId: string, role: Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>) => {
     try {
-      onChangeRole(userId, newRole);
-      // Update selected user local view
-      if (selectedUser && selectedUser.id === userId) {
-        setSelectedUser({ ...selectedUser, role: newRole });
-      }
-    } catch (err: any) {
-      alert(err.message);
-    }
+      setIsSubmitting(true);
+      await onAddAdministrativeRole(userId, role);
+    } catch { /* Feedback is owned by the Admin shell toast. */ }
+    finally { setIsSubmitting(false); }
+  };
+
+  const handleInvite = async () => {
+    try {
+      setIsSubmitting(true);
+      await onInviteAdministrativeUser(inviteEmail, roleToAdd);
+      setInviteEmail('');
+    } catch { /* Feedback is owned by the Admin shell toast. */ }
+    finally { setIsSubmitting(false); }
   };
 
   return (
@@ -1571,13 +1627,30 @@ export const UsersTab: React.FC<{
         </div>
       </div>
 
-      {/* Direita: Moderação e Atribuição de Papéis */}
+      {/* Direita: Governança de acesso */}
       <div className="lg:col-span-2 space-y-6">
-        {selectedUser ? (
+        {!actor.roles.includes('PLATFORM_ADMIN') ? (
+          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
+            <h3 className="font-bold">Acesso restrito</h3>
+            <p className="mt-1 text-xs leading-relaxed">Somente administradores da plataforma podem adicionar acessos administrativos.</p>
+          </div>
+        ) : (
+          <>
+            <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+              <div className="mb-4 flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700"><ShieldCheck className="h-5 w-5" /></span>
+                <div><h3 className="font-bold text-[var(--mazzi-dark)]">Adicionar usuário administrativo</h3><p className="mt-1 text-xs text-[var(--mazzi-muted)]">Convide um novo usuário ou conceda acesso adicional sem remover os perfis que ele já possui.</p></div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr_180px_auto] sm:items-end">
+                <Input label="E-mail do usuário" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="nome@empresa.com.br" />
+                <Select label="Acesso" value={roleToAdd} onChange={(event) => setRoleToAdd(event.target.value as Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>)} options={[{ value: 'SUPPORT', label: 'Suporte' }, { value: 'PLATFORM_ADMIN', label: 'Administrador da plataforma' }]} />
+                <Button variant="primary" size="sm" className="min-h-11" disabled={isSubmitting || !inviteEmail.trim()} onClick={() => void handleInvite()} leftIcon={<Users className="h-4 w-4" />}>{isSubmitting ? 'Enviando...' : 'Adicionar'}</Button>
+              </div>
+            </div>
+            {selectedUser ? (
           <div className="p-5 bg-white border border-slate-200 rounded-3xl space-y-6 shadow-xs">
             <div className="border-b border-slate-100 pb-4">
               <h3 className="text-base font-black text-slate-900">{selectedUser.name}</h3>
-              <p className="text-xs text-slate-500 font-mono mt-0.5">ID do Usuário: {selectedUser.id}</p>
               <div className="text-[11px] text-slate-600 space-y-1 mt-2.5">
                 <p>E-mail da Conta: <strong>{selectedUser.email}</strong></p>
                 <p>Telefone: <strong>{selectedUser.phone}</strong></p>
@@ -1585,63 +1658,19 @@ export const UsersTab: React.FC<{
               </div>
             </div>
 
-            {/* Atribuição de Papel */}
             <div className="space-y-4">
               <div>
-                <h4 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Lock className="w-4 h-4 text-indigo-600" />
-                  Gerenciamento de Credencial de Acesso (Papel / Roles)
-                </h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Operação crítica restrita a administradores ativos. SUPPORT está estritamente bloqueado de alterar papéis.
-                </p>
+                <h4 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-1.5"><Lock className="w-4 h-4 text-amber-600" />Acesso administrativo adicional</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Esta ação preserva a função principal e todos os acessos existentes do usuário.</p>
               </div>
-
-              {/* Se for SUPPORT, exibe bloqueio */}
-              {!actor.roles.includes('PLATFORM_ADMIN') ? (
-                <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 leading-relaxed font-medium">
-                  <strong>Acesso Negado (Least Privilege)</strong>
-                  <p className="mt-1">
-                    Seu perfil ativo de operador (<code className="font-bold">SUPPORT</code>) não possui privilégios para promover usuários, alterar privilégios regulatórios de credenciamento ou ver senhas.
-                  </p>
-                </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                  <label className="text-[10px] font-bold text-slate-700 uppercase block">Selecionar Novo Papel (Role)</label>
-                  <div className="flex flex-wrap gap-2">
-                    {(['STUDENT', 'INSTRUCTOR', 'SCHOOL_ADMIN', 'SUPPORT', 'PLATFORM_ADMIN'] as UserRole[]).map((roleOption) => {
-                      const isCurrent = selectedUser.role === roleOption;
-                      return (
-                        <ButtonBase
-                          key={roleOption}
-                          disabled={isCurrent}
-                          onClick={() => handleRoleChange(selectedUser.id, roleOption)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition border ${
-                            isCurrent
-                              ? 'bg-indigo-600 text-white border-indigo-600 cursor-default'
-                              : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
-                          }`}
-                    >
-                      <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                      {roleOption}
-                        </ButtonBase>
-                      );
-                    })}
-                  </div>
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-normal">
-                    <strong>Regra de Salvaguarda Ativa (LAST_PLATFORM_ADMIN_PROTECTION):</strong>
-                    <p className="mt-0.5">
-                      O sistema bloqueia transações que eliminem ou rebaixem o último administrador geral remanescente para evitar órfãos regulatórios na governança da plataforma.
-                    </p>
-                  </div>
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={isSubmitting} onClick={() => void handleAddAdministrativeRole(selectedUser.id, 'SUPPORT')}>Conceder acesso de suporte</Button><Button variant="primary" size="sm" disabled={isSubmitting} onClick={() => void handleAddAdministrativeRole(selectedUser.id, 'PLATFORM_ADMIN')}>Conceder acesso de administrador</Button></div>
             </div>
           </div>
         ) : (
-          <div className="p-12 text-center text-xs text-slate-400 border border-dashed rounded-3xl">
-            Selecione um usuário no diretório ao lado para moderar privilégios.
+          <div className="p-12 text-center text-xs text-slate-500 border border-dashed border-[var(--mazzi-border)] rounded-3xl bg-white">
+            Selecione uma pessoa na lista para conceder acesso adicional.
           </div>
+        )}</>
         )}
       </div>
     </div>
@@ -1786,18 +1815,33 @@ export const SettingsTab: React.FC<{
   const [minNotice, setMinNotice] = useState<number | ''>(config.minimumBookingNoticeHours);
   const [safetyPeriod, setSafetyPeriod] = useState<number | ''>(config.payoutSafetyPeriodHours);
   const [radius, setRadius] = useState<number | ''>(config.searchRadiusDefaultsKm);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
+  useEffect(() => {
+    setFee(config.platformFeeDefaultPercentage);
+    setHorizon(config.availabilityHorizonDays);
+    setQuoteExp(config.quoteExpirationMinutes);
+    setMinNotice(config.minimumBookingNoticeHours);
+    setSafetyPeriod(config.payoutSafetyPeriodHours);
+    setRadius(config.searchRadiusDefaultsKm);
+  }, [config]);
+
+  const handleSave = async () => {
     if (!isAuthorized) return;
     if ([fee, horizon, quoteExp, minNotice, safetyPeriod, radius].some((value) => value === '')) return;
-    onUpdateConfig({
-      platformFeeDefaultPercentage: fee,
-      availabilityHorizonDays: horizon,
-      quoteExpirationMinutes: quoteExp,
-      minimumBookingNoticeHours: minNotice,
-      payoutSafetyPeriodHours: safetyPeriod,
-      searchRadiusDefaultsKm: radius,
-    });
+    try {
+      setIsSaving(true);
+      await onUpdateConfig({
+        platformFeeDefaultPercentage: fee,
+        availabilityHorizonDays: horizon,
+        quoteExpirationMinutes: quoteExp,
+        minimumBookingNoticeHours: minNotice,
+        payoutSafetyPeriodHours: safetyPeriod,
+        searchRadiusDefaultsKm: radius,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -1813,7 +1857,7 @@ export const SettingsTab: React.FC<{
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 leading-relaxed font-medium">
           <strong>⚠️ Acesso Restrito (Configurações Bloqueadas)</strong>
           <p className="mt-1">
-            Seu perfil ativo de operador (<code className="font-bold">SUPPORT</code>) não possui permissão regulatória para alterar estes parâmetros comerciais. Os formulários abaixo foram travados como somente leitura.
+            Seu perfil de suporte não possui permissão para alterar estas configurações. Os campos permanecem disponíveis somente para consulta.
           </p>
         </div>
       )}
@@ -1899,9 +1943,10 @@ export const SettingsTab: React.FC<{
               variant="primary"
               size="sm"
               leftIcon={<Settings className="w-4 h-4" />}
-              onClick={handleSave}
+              onClick={() => void handleSave()}
+              disabled={isSaving}
             >
-              Salvar Parâmetros Globais
+              {isSaving ? 'Salvando...' : 'Salvar configurações'}
             </Button>
           </div>
         )}

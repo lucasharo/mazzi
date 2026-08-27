@@ -23,16 +23,17 @@ describe('TASK-077A static contracts', () => {
 
   it('does not turn Admin read failures into empty lists', () => {
     expect(adminApp).not.toMatch(/dbService\.get(?:Providers|Vehicles|Bookings|AdminComplianceDocs|AuditLogs|PlatformConfigs|Users)\(\)\.catch/);
-    expect(adminApp).toContain('Falha ao carregar Admin real:');
+    expect(adminApp).toContain('As informações anteriores continuam disponíveis.');
   });
 
-  it('uses an explicit Admin compliance projection without exposing storage paths', () => {
+  it('uses an explicit Admin compliance projection and only uses a short signed URL for authorized viewing', () => {
     expect(dbService).toContain('async getAdminComplianceDocs()');
-    expect(dbService).toContain('id,provider_id,user_id,membership_id,scope,document_type,status,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
+    expect(dbService).toContain('id,provider_id,user_id,membership_id,scope,document_type,status,storage_path,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
     expect(dbService).not.toMatch(/getAdminComplianceDocs[\s\S]*?select\('\*'\)/);
     expect(adminApp).toContain('dbService.getAdminComplianceDocs()');
     expect(adminComponents).not.toContain('StoragePath');
     expect(adminComponents).not.toContain('selectedDoc.storagePath');
+    expect(dbService).toContain(".createSignedUrl(document.storagePath, 300)");
   });
 
   it('uses current Sao Paulo date and real booking timestamps', () => {

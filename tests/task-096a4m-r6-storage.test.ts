@@ -53,18 +53,20 @@ describe('TASK-096A4M-R6 private compliance storage contract', () => {
     expect(migration).not.toMatch(/FOR UPDATE\s+TO/i);
   });
 
-  it('keeps document rows and private paths out of the Admin projection', () => {
+  it('keeps private paths out of the Admin UX and uses them only to create short signed URLs', () => {
     expect(migration).not.toMatch(/INSERT\s+INTO\s+public\.compliance_documents/i);
     expect(migration).not.toMatch(/UPDATE\s+public\.compliance_documents/i);
     expect(migration).not.toMatch(/DELETE\s+FROM\s+public\.compliance_documents/i);
     const adminRead = dbService.match(/async getAdminComplianceDocs\(\)[\s\S]{0,500}/)?.[0] || '';
-    expect(adminRead).not.toContain('storage_path');
+    expect(adminRead).toContain('storage_path');
     expect(adminComponents).not.toContain('selectedDoc.storagePath');
+    expect(dbService).toContain(".createSignedUrl(document.storagePath, 300)");
   });
 
   it('presents compliance review status as PENDING in the Admin app', () => {
-    expect(adminComponents).toContain("{ value: 'PENDING', label: `Pendente (");
-expect(adminComponents).toContain("d.status === 'PENDING' || d.status === 'IN_REVIEW'");
+    expect(adminComponents).toContain("{ value: 'PENDING', label: `Pendentes (");
+expect(adminComponents).toContain("{ value: 'IN_REVIEW', label: `Em análise (");
+expect(adminComponents).toContain("d.status === filterStatus");
 expect(adminApp).toContain("d.status === 'PENDING' || d.status === 'IN_REVIEW'");
   });
 

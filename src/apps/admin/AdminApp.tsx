@@ -48,6 +48,8 @@ import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
 import { NotificationIndicator } from '../../components/ui/NotificationIndicator';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import { Modal } from '../../components/ui/Modal';
+import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
+import { getFriendlyAdminError } from '../../domain/status-presentation';
 
 export const AdminApp: React.FC = () => {
   const { user, logout } = useAuth();
@@ -55,6 +57,13 @@ export const AdminApp: React.FC = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showFeedback = (type: ToastMessage['type'], title: string, description?: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((current) => [...current, { id, type, title, description }]);
+    window.setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== id)), 5000);
+  };
 
   useEffect(() => {
     setProfileAvatar(user?.avatarUrl);
@@ -129,7 +138,9 @@ export const AdminApp: React.FC = () => {
         }
       } catch (err: any) {
         console.error('Failed to load live database state in AdminApp:', err);
-        setLoadError(err?.message || 'Falha ao carregar dados reais do Supabase para o Admin.');
+        setLoadError(isRefresh
+          ? 'Não foi possível atualizar os dados agora. As informações anteriores continuam disponíveis.'
+          : 'Não foi possível carregar os dados administrativos agora. Tente novamente em instantes.');
       } finally {
         if (isRefresh) setIsRefreshingRealData(false);
         else setIsLoadingRealData(false);
@@ -160,7 +171,7 @@ export const AdminApp: React.FC = () => {
       const updated = await dbService.reviewProvider(p.id, 'ACTIVE');
       setProviders((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (error: any) {
-      alert(`Não foi possível aprovar o prestador: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível aprovar o prestador', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     }
   };
 
@@ -169,7 +180,7 @@ export const AdminApp: React.FC = () => {
       const updated = await dbService.reviewProvider(p.id, 'REJECTED', reason);
       setProviders((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (error: any) {
-      alert(`Não foi possível rejeitar o prestador: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível reprovar o prestador', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     }
   };
 
@@ -178,7 +189,7 @@ export const AdminApp: React.FC = () => {
       const updated = await dbService.reviewProvider(p.id, 'SUSPENDED', reason);
       setProviders((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (error: any) {
-      alert(`Não foi possível suspender o prestador: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível suspender o prestador', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     }
   };
 
@@ -187,7 +198,7 @@ export const AdminApp: React.FC = () => {
       const updated = await dbService.reviewProvider(p.id, 'BLOCKED', reason);
       setProviders((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (error: any) {
-      alert(`Não foi possível bloquear o prestador: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível bloquear o prestador', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     }
   };
 
@@ -200,7 +211,7 @@ export const AdminApp: React.FC = () => {
       setComplianceDocs((current) => current.map((item) => item.id === updatedDoc.id ? updatedDoc : item));
     } catch (error: any) {
       console.error('Admin document approval failed:', error);
-      alert(`Não foi possível aprovar o documento: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível aprovar o documento', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     }
   };
 
@@ -210,7 +221,16 @@ export const AdminApp: React.FC = () => {
       setComplianceDocs((current) => current.map((item) => item.id === updatedDoc.id ? updatedDoc : item));
     } catch (error: any) {
       console.error('Admin document rejection failed:', error);
-      alert(`Não foi possível rejeitar o documento: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível reprovar o documento', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
+    }
+  };
+
+  const handleViewDocument = async (doc: ComplianceDocument) => {
+    try {
+      return await dbService.createComplianceDocumentSignedUrl(doc);
+    } catch (error) {
+      console.error('Admin document viewer failed:', error);
+      throw error;
     }
   };
 
@@ -223,7 +243,7 @@ export const AdminApp: React.FC = () => {
       setVehicles((current) => current.map((item) => item.id === updatedVehicle.id ? updatedVehicle : item));
     } catch (error: any) {
       console.error('Admin vehicle approval failed:', error);
-      alert(`Não foi possível aprovar o veículo: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível aprovar o veículo', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     }
   };
 
@@ -233,7 +253,7 @@ export const AdminApp: React.FC = () => {
       setVehicles((current) => current.map((item) => item.id === updatedVehicle.id ? updatedVehicle : item));
     } catch (error: any) {
       console.error('Admin vehicle rejection failed:', error);
-      alert(`Não foi possível reprovar o veículo: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível reprovar o veículo', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     }
   };
 
@@ -243,7 +263,7 @@ export const AdminApp: React.FC = () => {
       setVehicles((current) => current.map((item) => item.id === updatedVehicle.id ? updatedVehicle : item));
     } catch (error: any) {
       console.error('Admin vehicle block failed:', error);
-      alert(`Não foi possível bloquear o veículo: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível bloquear o veículo', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     }
   };
 
@@ -255,19 +275,30 @@ export const AdminApp: React.FC = () => {
       await dbService.adminRefundMockBooking(b.id);
       setBookings((current) => current.map((item) => item.id === b.id ? { ...item, status: 'REFUNDED' } : item));
     } catch (error: any) {
-      alert(`Não foi possível processar o estorno simulado: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível processar o estorno de teste', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     }
   };
 
   // ==========================================================================
   // USER ROLE MANAGEMENT HANDLER
   // ==========================================================================
-  const handleChangeRole = async (userId: string, newRole: UserRole) => {
+  const handleAddAdministrativeRole = async (userId: string, role: Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>) => {
     try {
-      const updated = await dbService.updateUserRole(userId, newRole);
-      setUsers((current) => current.map((item) => item.id === updated.id ? updated : item));
+      await dbService.addAdministrativeRole(userId, role);
+      showFeedback('success', 'Acesso administrativo adicionado', 'As funções existentes do usuário foram preservadas.');
     } catch (error: any) {
-      alert(`Não foi possível alterar o papel: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível atualizar as permissões', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
+    }
+  };
+
+  const handleInviteAdministrativeUser = async (email: string, role: Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>) => {
+    try {
+      const outcome = await dbService.inviteAdministrativeUser(email, role);
+      showFeedback('success', outcome === 'existing_user' ? 'Acesso administrativo adicionado' : 'Convite enviado', outcome === 'existing_user' ? 'As funções existentes do usuário foram preservadas.' : 'A pessoa receberá as instruções para acessar a plataforma.');
+      refreshAdminDataRef.current();
+    } catch (error: any) {
+      showFeedback('error', 'Não foi possível adicionar este usuário', getFriendlyAdminError(error, 'Revise o e-mail e tente novamente.'));
+      throw error;
     }
   };
 
@@ -286,10 +317,11 @@ export const AdminApp: React.FC = () => {
         updatedAt: new Date().toISOString(),
         updatedBy: user?.email || current.updatedBy,
       }));
-      alert('Parâmetros globais atualizados com sucesso.');
+      showFeedback('success', 'Configurações salvas', 'As regras da plataforma foram atualizadas com segurança.');
     } catch (error: any) {
       console.error('Admin platform configuration update failed:', error);
-      alert(`Não foi possível salvar os parâmetros: ${error?.message || 'erro desconhecido'}`);
+      showFeedback('error', 'Não foi possível salvar as configurações', getFriendlyAdminError(error, 'Revise os valores e tente novamente.'));
+      throw error;
     }
   };
 
@@ -306,7 +338,7 @@ export const AdminApp: React.FC = () => {
               <span className="text-base font-black tracking-tight text-white">MAZZI</span>
               <span className="text-[10px] font-bold uppercase tracking-[.15em] text-[var(--mazzi-yellow)]">Admin</span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Operação do marketplace</p>
+            <p className="text-[11px] text-slate-400 font-medium">Central de operação</p>
           </div>
         </div>
         <ButtonBase
@@ -374,20 +406,15 @@ export const AdminApp: React.FC = () => {
       {/* App Workspace */}
       <main className="w-full p-6 md:col-start-2 md:row-span-2 md:row-start-1 md:p-10">
         {activeTab !== 'profile' && <div className="mb-8"><p className="mazzi-eyebrow mb-2">MAZZI Admin</p><h1 className="text-3xl font-extrabold tracking-[-.04em]">{activeTab === 'dashboard' ? 'Visão geral' : 'Operação'}</h1></div>}
-        {isLoadingRealData && !isRefreshingRealData && (
-          <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-600">
-            Carregando dados reais do Supabase...
-          </div>
-        )}
-        {isRefreshingRealData && <ContentSkeleton mode={activeTab === 'profile' ? 'object' : 'list'} label="Atualizando dados do Admin" />}
+        {isLoadingRealData && !isRefreshingRealData && <ContentSkeleton mode={activeTab === 'profile' ? 'object' : 'list'} />}
 
         {loadError && (
-          <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
-            Falha ao carregar Admin real: {loadError}
+          <div role="status" className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
+            {loadError}
           </div>
         )}
 
-        {!isRefreshingRealData && activeTab === 'dashboard' && (
+        {activeTab === 'dashboard' && (
           <DashboardTab
             providers={providers}
             complianceDocs={complianceDocs}
@@ -398,7 +425,7 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {!isRefreshingRealData && activeTab === 'providers' && (
+        {activeTab === 'providers' && (
           <ProvidersTab
             providers={providers}
             complianceDocs={complianceDocs}
@@ -413,16 +440,17 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {!isRefreshingRealData && activeTab === 'compliance' && (
+        {activeTab === 'compliance' && (
           <ComplianceTab
             complianceDocs={complianceDocs}
             actor={activeActor}
             onApproveDoc={handleApproveDoc}
             onRejectDoc={handleRejectDoc}
+            onViewDocument={handleViewDocument}
           />
         )}
 
-        {!isRefreshingRealData && activeTab === 'vehicles' && (
+        {activeTab === 'vehicles' && (
           <VehiclesTab
             vehicles={vehicles}
             providers={providers}
@@ -432,14 +460,14 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {!isRefreshingRealData && activeTab === 'bookings' && (
+        {activeTab === 'bookings' && (
           <BookingsTab
             bookings={bookings}
             auditLogs={auditLogs}
           />
         )}
 
-        {!isRefreshingRealData && activeTab === 'financial' && (
+        {activeTab === 'financial' && (
           <FinancialTab
             bookings={bookings}
             auditLogs={auditLogs}
@@ -448,25 +476,26 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {!isRefreshingRealData && activeTab === 'analytics' && (
+        {activeTab === 'analytics' && (
           <AdminAnalyticsPanel />
         )}
 
-        {!isRefreshingRealData && activeTab === 'users' && (
+        {activeTab === 'users' && (
           <UsersTab
             users={users}
             actor={activeActor}
-            onChangeRole={handleChangeRole}
+            onAddAdministrativeRole={handleAddAdministrativeRole}
+            onInviteAdministrativeUser={handleInviteAdministrativeUser}
           />
         )}
 
-        {!isRefreshingRealData && activeTab === 'audit' && (
+        {activeTab === 'audit' && (
           <AuditTab
             auditLogs={auditLogs}
           />
         )}
 
-        {!isRefreshingRealData && activeTab === 'settings' && (
+        {activeTab === 'settings' && (
           <SettingsTab
             config={platformConfig}
             actor={activeActor}
@@ -474,7 +503,7 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {!isRefreshingRealData && activeTab === 'profile' && (
+        {activeTab === 'profile' && (
           <section className="max-w-xl space-y-5 text-left">
             <header className="flex items-start justify-between gap-4 pt-0">
               <div>
@@ -511,6 +540,7 @@ export const AdminApp: React.FC = () => {
       <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações MAZZI Admin">
         <NotificationsPanel appContext="ADMIN" />
       </Modal>
+      <ToastContainer toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))} />
     </div>
   );
 };

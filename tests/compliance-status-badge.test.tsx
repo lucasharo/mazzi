@@ -12,7 +12,7 @@ describe('global compliance status badge', () => {
     ['APPROVED', 'Aprovado', 'bg-emerald-50'],
 ['IN_REVIEW', 'Em análise', 'bg-blue-50'],
     ['PENDING', 'Pendente', 'bg-orange-50'],
-    ['REJECTED', 'Não aprovado', 'bg-rose-50'],
+    ['REJECTED', 'Reprovado', 'bg-rose-50'],
   ])('maps %s to the shared semantic state', (status, label, color) => {
     const markup = renderToStaticMarkup(
       <StatusBadge status={status} domain="compliance" />,
@@ -24,6 +24,6 @@ describe('global compliance status badge', () => {
 
   it('keeps blocked and rejected operational states distinct', () => {
     expect(renderToStaticMarkup(<StatusBadge status="BLOCKED" />)).toContain('Bloqueado');
-    expect(renderToStaticMarkup(<StatusBadge status="REJECTED" />)).toContain('Rejeitado');
+    expect(renderToStaticMarkup(<StatusBadge status="REJECTED" />)).toContain('Reprovado');
   });
 });

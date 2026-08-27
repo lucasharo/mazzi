@@ -5,6 +5,7 @@
 export type UserRole =
   | 'STUDENT'
   | 'INSTRUCTOR'
+  | 'DRIVING_SCHOOL'
   | 'SCHOOL_ADMIN'
   | 'SCHOOL_STAFF'
   | 'PLATFORM_ADMIN'
@@ -63,7 +64,8 @@ export type DocumentStatus =
   | 'PENDING'
   | 'IN_REVIEW'
   | 'APPROVED'
-  | 'REJECTED';
+  | 'REJECTED'
+  | 'EXPIRED';
 
 export type PaymentMethodType = 'PIX' | 'CREDIT_CARD';
 

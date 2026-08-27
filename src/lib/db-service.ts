@@ -1246,6 +1246,25 @@ export const dbService = {
     if (error) throw error;
   },
 
+  async addAdministrativeRole(userId: string, role: Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>): Promise<void> {
+    const { error } = await sp.rpc('admin_add_administrative_role', {
+      p_target_user_id: userId,
+      p_role: role,
+    });
+    if (error) throw error;
+  },
+
+  async inviteAdministrativeUser(email: string, role: Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>): Promise<'existing_user' | 'invited_user'> {
+    const { data, error } = await sp.functions.invoke('admin-invite-administrative-user', {
+      body: { email, role },
+    });
+    if (error) throw error;
+    if (data?.outcome !== 'existing_user' && data?.outcome !== 'invited_user') {
+      throw new Error('ADMINISTRATIVE_INVITE_FAILED');
+    }
+    return data.outcome;
+  },
+
   async markAllNotificationsAsRead(appContext: NonNullable<Notification['appContext']>): Promise<void> {
     const { error } = await sp
       .from('notifications')
@@ -1309,9 +1328,18 @@ export const dbService = {
   async getAdminComplianceDocs(): Promise<ComplianceDocument[]> {
     const { data, error } = await sp
       .from('compliance_documents')
-      .select('id,provider_id,user_id,membership_id,scope,document_type,status,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
+      .select('id,provider_id,user_id,membership_id,scope,document_type,status,storage_path,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
     if (error) throw error;
     return (data || []).map(mapComplianceFromDb);
+  },
+
+  async createComplianceDocumentSignedUrl(document: ComplianceDocument): Promise<string> {
+    if (!document.storagePath) throw new Error('DOCUMENT_FILE_UNAVAILABLE');
+    const { data, error } = await sp.storage
+      .from('provider-compliance-docs')
+      .createSignedUrl(document.storagePath, 300);
+    if (error || !data?.signedUrl) throw error || new Error('DOCUMENT_FILE_UNAVAILABLE');
+    return data.signedUrl;
   },
 
   async saveComplianceDoc(doc: Partial<ComplianceDocument> & { scope?: 'USER_GLOBAL' | 'PROVIDER' | 'MEMBERSHIP' | 'VEHICLE' }): Promise<ComplianceDocument> {

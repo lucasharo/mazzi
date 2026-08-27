@@ -6,6 +6,7 @@ import {
   DocumentStatus,
   PayoutStatus,
 } from '../../types';
+import { getStatusPresentation, StatusPresentationDomain } from '../../domain/status-presentation';
 
 type AnyStatus =
   | BookingStatus
@@ -20,97 +21,26 @@ export interface StatusBadgeProps {
   className?: string;
   id?: string;
   audience?: 'default' | 'student';
-  domain?: 'default' | 'compliance';
+  domain?: StatusPresentationDomain;
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
   status,
   className = '',
   id,
-  audience = 'default',
-  domain = 'default',
+  domain = 'default' as StatusPresentationDomain,
 }) => {
   const getStatusConfig = (s: string): { label: string; bg: string; text: string; dot: string } => {
-    if (domain === 'compliance') {
-      switch (s) {
-        case 'OFFICIALLY_VALIDATED':
-          return { label: 'Regulamentado', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' };
-        case 'REQUIRES_REGULATORY_VALIDATION':
-          return { label: 'Em análise', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-900', dot: 'bg-amber-500' };
-        case 'SUPERSEDED':
-          return { label: 'Pendente', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', dot: 'bg-orange-500' };
-        case 'INACTIVE':
-          return { label: 'Não aprovado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
-        case 'APPROVED':
-          return { label: 'Aprovado', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' };
-        case 'IN_REVIEW':
-          return { label: 'Em análise', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-800', dot: 'bg-blue-500' };
-        case 'PENDING':
-          return { label: 'Pendente', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', dot: 'bg-orange-500' };
-        case 'REJECTED':
-        case 'EXPIRED':
-          return { label: 'Não aprovado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
-        default:
-          return { label: 'Não aprovado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
-      }
-    }
-
-    switch (s) {
-      // Booking Statuses
-      case 'CONFIRMED':
-        return { label: 'Confirmada', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' };
-      case 'IN_PROGRESS':
-        return { label: 'Em Andamento', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-800', dot: 'bg-blue-500 animate-pulse' };
-      case 'COMPLETED':
-        return { label: 'Concluída', bg: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-800', dot: 'bg-indigo-500' };
-      case 'PENDING_PAYMENT':
-        return { label: audience === 'student' ? 'Pagamento pendente' : 'Aguardando Pagamento', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', dot: 'bg-amber-500' };
-      case 'CANCELLED_BY_STUDENT':
-        return { label: audience === 'student' ? 'Cancelada por você' : 'Cancelada pelo Aluno', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
-      case 'CANCELLED_BY_PROVIDER':
-        return { label: audience === 'student' ? 'Cancelada pelo prestador' : 'Cancelada pelo Fornecedor', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
-      case 'NO_SHOW_STUDENT':
-        return { label: 'Ausência do aluno', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-800', dot: 'bg-purple-500' };
-      case 'NO_SHOW_PROVIDER':
-        return { label: 'Ausência do prestador', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-800', dot: 'bg-purple-500' };
-      case 'PAYMENT_FAILED':
-        return { label: 'Falha no pagamento', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
-      case 'DISPUTED':
-        return { label: 'Em Disputa', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', dot: 'bg-orange-500' };
-      case 'REFUNDED':
-        return { label: 'Reembolsada', bg: 'bg-slate-100 border-slate-200', text: 'text-slate-700', dot: 'bg-slate-400' };
-
-      // Provider & Vehicle & Document Statuses
-      case 'ACTIVE':
-      case 'APPROVED':
-        return { label: 'Ativo / Verificado', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' };
-      case 'PENDING_REVIEW':
-      case 'IN_REVIEW':
-        return { label: 'Em Análise', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', dot: 'bg-amber-500' };
-      case 'DRAFT':
-      case 'PENDING':
-        return { label: 'Pendente', bg: 'bg-slate-100 border-slate-200', text: 'text-slate-700', dot: 'bg-slate-400' };
-      case 'SUSPENDED':
-      case 'INACTIVE':
-        return { label: 'Suspenso / Inativo', bg: 'bg-amber-50 border-amber-300', text: 'text-amber-900', dot: 'bg-amber-600' };
-      case 'BLOCKED':
-        return { label: 'Bloqueado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
-      case 'REJECTED':
-        return { label: 'Rejeitado', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' };
-      case 'EXPIRED':
-        return { label: 'Expirada', bg: 'bg-slate-100 border-slate-300', text: 'text-slate-600', dot: 'bg-slate-400' };
-
-      // Payouts
-      case 'AVAILABLE':
-        return { label: 'Disponível', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' };
-      case 'PROCESSING':
-        return { label: 'Processando', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-800', dot: 'bg-blue-500 animate-pulse' };
-      case 'PAID':
-        return { label: 'Pago', bg: 'bg-teal-50 border-teal-200', text: 'text-teal-800', dot: 'bg-teal-500' };
-
-      default:
-        return { label: s, bg: 'bg-slate-100 border-slate-200', text: 'text-slate-800', dot: 'bg-slate-400' };
-    }
+    const presentation = getStatusPresentation(s, domain);
+    const tone = {
+      success: { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' },
+      info: { bg: 'bg-blue-50 border-blue-200', text: 'text-blue-800', dot: 'bg-blue-500' },
+      warning: { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-900', dot: 'bg-amber-500' },
+      warningOrange: { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-800', dot: 'bg-orange-500' },
+      danger: { bg: 'bg-rose-50 border-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' },
+      neutral: { bg: 'bg-slate-100 border-slate-200', text: 'text-slate-700', dot: 'bg-slate-400' },
+    }[presentation.tone];
+    return { label: presentation.label, ...tone, dot: `${tone.dot}${presentation.isPulsing ? ' animate-pulse' : ''}` };
   };
 
   const config = getStatusConfig(status);
