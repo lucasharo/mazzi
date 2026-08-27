@@ -1,4 +1,6 @@
 -- Preserve the real audit actor identity in the Admin history.
+DROP FUNCTION IF EXISTS public.get_admin_audit_logs();
+
 CREATE OR REPLACE FUNCTION public.get_admin_audit_logs()
 RETURNS TABLE (
   id UUID,
