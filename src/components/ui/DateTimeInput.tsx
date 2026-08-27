@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Input, InputProps } from './Input';
 
 function onlyDigits(value: string): string {
@@ -36,11 +36,17 @@ export interface DateInputProps extends Omit<InputProps, 'type' | 'value' | 'def
 
 export const DateInput: React.FC<DateInputProps> = ({ value = '', onChange, placeholder = 'dd/mm/aaaa', ...props }) => {
   const [displayValue, setDisplayValue] = useState(() => isoToDisplay(value));
+  const previousValue = useRef(value);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (displayToIso(displayValue) !== value) {
+    // Enquanto o usuário edita, o valor pode ficar temporariamente incompleto.
+    // Não sobrescreva essa edição com o valor anterior controlado pelo pai.
+    const wasUnedited = displayValue === isoToDisplay(previousValue.current);
+    if ((value && displayToIso(displayValue) !== value) || (!value && wasUnedited && displayValue)) {
       setDisplayValue(isoToDisplay(value));
     }
+    previousValue.current = value;
   }, [value]);
 
   return (
@@ -52,10 +58,18 @@ export const DateInput: React.FC<DateInputProps> = ({ value = '', onChange, plac
       placeholder={placeholder}
       value={displayValue}
       onChange={(event) => {
+        const cursorPosition = event.currentTarget.selectionStart ?? event.currentTarget.value.length;
+        const rawValue = event.currentTarget.value;
+        const rawBeforeCursor = rawValue.slice(0, cursorPosition);
         const nextDisplayValue = maskDate(event.target.value);
         setDisplayValue(nextDisplayValue);
         onChange?.(displayToIso(nextDisplayValue));
+        requestAnimationFrame(() => {
+          const nextCursorPosition = Math.min(maskDate(rawBeforeCursor).length, nextDisplayValue.length);
+          inputRef.current?.setSelectionRange(nextCursorPosition, nextCursorPosition);
+        });
       }}
+      inputRef={inputRef}
       aria-label={props['aria-label'] || 'Data no formato dia, mês e ano'}
     />
   );

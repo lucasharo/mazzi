@@ -109,7 +109,7 @@ export const Select: React.FC<SelectProps> = ({
 
   return (
     <div ref={rootRef} className="w-full space-y-1.5 text-left" data-component="mazzi-select">
-      {label && <label htmlFor={selectId} className="block text-xs font-bold text-[var(--mazzi-dark)]">{label}</label>}
+      {label && <label htmlFor={selectId} className="mazzi-field-label block">{label}</label>}
       <div className="relative">
         <ButtonBase
           id={selectId}
@@ -125,7 +125,7 @@ export const Select: React.FC<SelectProps> = ({
           onKeyDown={handleKeyDown}
           onBlur={onBlur}
           onFocus={onFocus}
-          className={`mazzi-select flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border bg-white px-4 py-3 text-left text-sm font-medium text-[var(--mazzi-dark)] shadow-[0_2px_8px_rgba(32,33,38,.06)] outline-none transition-[border-color,box-shadow] focus:border-[var(--mazzi-yellow)] focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60 ${error ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100' : 'border-[var(--mazzi-border)]'} ${className}`}
+          className={`mazzi-select flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border bg-white px-4 py-3 text-left text-sm font-medium text-[var(--mazzi-text)] shadow-[0_2px_8px_rgba(32,33,38,.06)] outline-none transition-[border-color,box-shadow] focus:border-[var(--mazzi-yellow)] focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60 ${error ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100' : 'border-[var(--mazzi-border)]'} ${className}`}
         >
           <span className={selectedOption ? 'truncate' : 'text-[var(--mazzi-muted)]'}>{selectedOption?.label || 'Selecione uma opção...'}</span>
           <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--mazzi-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -142,7 +142,7 @@ export const Select: React.FC<SelectProps> = ({
                   aria-selected={isSelected}
                   disabled={option.disabled}
                   onClick={() => chooseOption(option)}
-                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors ${option.disabled ? 'cursor-not-allowed text-slate-300' : isSelected ? 'bg-[var(--mazzi-yellow-soft)] font-bold text-[var(--mazzi-dark)]' : 'text-[var(--mazzi-dark)] hover:bg-[var(--mazzi-yellow-hover)]'}`}
+                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors ${option.disabled ? 'cursor-not-allowed text-slate-300' : isSelected ? 'bg-[var(--mazzi-yellow-soft)] font-bold text-[var(--mazzi-text)]' : 'text-[var(--mazzi-text)] hover:bg-[var(--mazzi-yellow-hover)]'}`}
                 >
                   <span className="min-w-0 truncate">{option.label}</span>
                   {isSelected && <Check className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}

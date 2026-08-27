@@ -80,9 +80,12 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {activeLoading ? (
-        <span className="inline-flex items-center justify-center">
+        <>
+          <span className="flex-shrink-0" aria-hidden="true">
           <Loader2 className="w-5 h-5 animate-spin text-current" aria-hidden="true" />
-        </span>
+          </span>
+          <span className={contentClassName || undefined}>{children}</span>
+        </>
       ) : (
         <>
           {(leftIcon || defaultIcon) && <span className="flex-shrink-0">{leftIcon || defaultIcon}</span>}

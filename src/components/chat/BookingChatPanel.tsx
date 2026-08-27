@@ -238,7 +238,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
                     className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs ${
                       isMine
                         ? 'rounded-br-xs bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-medium shadow-2xs'
-                        : 'rounded-bl-xs bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] border border-[var(--mazzi-border)]'
+                        : 'rounded-bl-xs bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-text)] border border-[var(--mazzi-border)]'
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
@@ -271,7 +271,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             onChange={(event) => setDraft(event.target.value)}
             rows={1}
             maxLength={2000}
-            className="min-h-14 w-full resize-none border-0 bg-transparent px-4 py-3.5 pr-16 text-xs leading-relaxed text-[var(--mazzi-dark)] placeholder:text-slate-400 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-slate-50 sm:text-sm"
+            className="min-h-14 w-full resize-none border-0 bg-transparent px-4 py-3.5 pr-16 text-xs leading-relaxed text-[var(--mazzi-text)] placeholder:text-slate-400 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:bg-slate-50 sm:text-sm"
             placeholder={booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER' ? 'Chat encerrado por cancelamento da aula.' : 'Escreva uma mensagem sobre esta aula...'}
             disabled={!conversation || loading || sending || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             onKeyDown={(event) => {

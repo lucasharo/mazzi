@@ -29,7 +29,7 @@ export const Price: React.FC<PriceProps> = ({
 
   return (
     <div id={id} className={`inline-flex items-baseline gap-1 select-none ${className}`}>
-      <span className={`text-slate-900 tracking-tight ${sizeStyles[size]}`}>
+      <span className={`text-[var(--mazzi-text)] tracking-tight ${sizeStyles[size]}`}>
         {formatted}
       </span>
       {showPeriodLabel && (

@@ -10,37 +10,49 @@ import {
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Input } from '../../components/ui/Input';
+import { DateInput } from '../../components/ui/DateTimeInput';
 import { Textarea } from '../../components/ui/Textarea';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
+import { ReasonChips } from '../../components/ui/ReasonChips';
 import { formatCentsToBRL } from '../../domain/money';
 import { PlatformConfiguration } from '../../domain/platform-config';
 import { AuthContext } from '../../domain/rbac';
 import { isVehicleAwaitingAdminReview } from '../../domain/vehicles-offerings';
-import { getComplianceDocumentTypeLabel, getFriendlyAdminError } from '../../domain/status-presentation';
+import { getAuditActionLabel, getComplianceDocumentTypeLabel, getFriendlyAdminError, getUserRoleLabel } from '../../domain/status-presentation';
+import { maskBrazilianPhone, maskCpf, maskCnpj, maskVehiclePlate } from '../../lib/input-masks';
 
 // Utility for masking plates
 export function formatMaskedPlate(plate: string, isExpanded: boolean): string {
-  if (isExpanded) return plate;
   if (!plate) return '***-****';
   const clean = plate.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (clean.length < 7) return '***-****';
-  return `${clean.substring(0, 3)}-***${clean.substring(clean.length - 1)}`;
+  const formatted = maskVehiclePlate(clean);
+  if (isExpanded) return formatted;
+  return /^[A-Z]{3}-\d{4}$/.test(formatted)
+    ? `${formatted.slice(0, 3)}-****`
+    : `${formatted.slice(0, 3)}*${formatted.slice(4, 5)}**`;
 }
 
 // Utility for masking sensitive personal info
 export function maskSensitiveValue(value: string, isExpanded: boolean, type: 'CPF' | 'CNPJ' | 'PHONE'): string {
-  if (isExpanded) return value;
   if (!value) return '---';
   if (type === 'PHONE') {
-    return value.replace(/(\(\d{2}\)\s*\d)\d{4}/, '$1****');
+    const formattedPhone = maskBrazilianPhone(value);
+    if (isExpanded) return formattedPhone || '---';
+    const digits = value.replace(/\D/g, '');
+    return digits.length >= 10
+      ? `(${digits.slice(0, 2)}) ${digits.slice(2, 3)}****-****`
+      : formattedPhone || 'Telefone indisponível';
   }
   if (type === 'CPF') {
-    return value.replace(/(\d{3})\.(\d{3})\.(\d{3})-(\d{2})/, '$1.***.***-$4');
+    const formattedCpf = maskCpf(value);
+    return isExpanded ? formattedCpf : formattedCpf.replace(/^(\d{3})\.\d{3}\.\d{3}-(\d{2})$/, '$1.***.***-$2');
   }
   if (type === 'CNPJ') {
-    return value.replace(/(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})-(\d{2})/, '$1.***.***/****-$5');
+    const formattedCnpj = maskCnpj(value);
+    return isExpanded ? formattedCnpj : formattedCnpj.replace(/^(\d{2})\.\d{3}\.\d{3}\/\d{4}-(\d{2})$/, '$1.***.***/****-$2');
   }
   return '***';
 }
@@ -302,6 +314,8 @@ export const ProvidersTab: React.FC<{
   // Rejection/Suspension modals inside component
   const [actionType, setActionType] = useState<'REJECT' | 'SUSPEND' | 'BLOCK' | null>(null);
   const [reasonText, setReasonText] = useState<string>('');
+  const [reasonPreset, setReasonPreset] = useState('');
+  const providerReasonOptions = ['Documentação inconsistente', 'Pendências regulatórias', 'Informações cadastrais inválidas', 'Outro motivo'];
 
   const selectedProv = providers.find((p) => p.id === selectedProvId) || providers[0];
   const selectedProvDocs = selectedProv ? complianceDocs.filter((d) =>
@@ -351,7 +365,6 @@ export const ProvidersTab: React.FC<{
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Tipo</label>
               <Select
                 label="Tipo"
                 value={filterType}
@@ -370,7 +383,6 @@ export const ProvidersTab: React.FC<{
                 onChange={(e) => setFilterStatus(e.target.value)}
                 options={[
                   { value: 'ALL', label: 'Todos os Status' },
-                  { value: 'DRAFT', label: 'Cadastros incompletos' },
                   { value: 'PENDING_REVIEW', label: 'Análise' },
                   { value: 'ACTIVE', label: 'Ativos' },
                   { value: 'SUSPENDED', label: 'Suspensos' },
@@ -431,25 +443,25 @@ export const ProvidersTab: React.FC<{
         </div>
       </div>
 
-      {/* Coluna Direita: Ficha de Detalhes Completa */}
-      <div className="lg:col-span-2 space-y-6">
+      {/* Coluna Direita: Ficha de Detalhes Completa — alinhada ao primeiro input */}
+      <div className="lg:col-span-2 space-y-6 lg:pt-6">
         {selectedProv ? (
           <div className="space-y-6">
             {/* Header do Parceiro */}
-            <div className="p-5 rounded-3xl bg-slate-900 text-white space-y-4 shadow-sm relative overflow-hidden">
+            <div className="p-5 rounded-3xl bg-white border border-slate-200 text-[var(--mazzi-text)] space-y-4 shadow-sm relative overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black text-white">{selectedProv.name}</h3>
+                    <h3 className="text-base font-black text-[var(--mazzi-text)]">{selectedProv.name}</h3>
                     <StatusBadge status={selectedProv.status} domain="provider" />
                   </div>
-                  <p className="text-[11px] text-slate-300 font-medium mt-1">
-                    Razão Social/Civil: <span className="text-slate-400 font-bold">{selectedProv.legalName || 'Não informada'}</span>
+                  <p className="text-[11px] text-slate-500 font-medium mt-1">
+                    Razão Social/Civil: <span className="text-[var(--mazzi-text)] font-bold">{selectedProv.legalName || 'Não informada'}</span>
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-x-4">
+                  <p className="text-[11px] text-slate-500 mt-1 flex flex-wrap gap-x-4">
                     <span>
                       Identificação:{' '}
-                      <span className="font-mono text-amber-300 font-bold">
+                      <span className="font-mono text-amber-700 font-bold">
                         {maskSensitiveValue(
                           selectedProv.documentNumber || '',
                           showSensitive,
@@ -459,7 +471,7 @@ export const ProvidersTab: React.FC<{
                     </span>
                     <span>
                       Contato comercial:{' '}
-                      <span className="font-mono text-slate-300 font-bold">
+                      <span className="font-mono text-[var(--mazzi-text)] font-bold">
                         {maskSensitiveValue(selectedProv.phone || '', showSensitive, 'PHONE')}
                       </span>
                     </span>
@@ -469,7 +481,7 @@ export const ProvidersTab: React.FC<{
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-amber-400 hover:text-amber-300 border border-amber-500/20 self-start sm:self-auto"
+                    className="text-amber-700 hover:text-amber-800 border border-amber-300 self-start sm:self-auto"
                     leftIcon={showSensitive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     onClick={() => {
                       setShowSensitive(!showSensitive);
@@ -491,8 +503,8 @@ export const ProvidersTab: React.FC<{
                 <div
                   className={`p-3.5 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                     eligibility.isEligible
-                      ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
-                      : 'bg-amber-950/60 border-amber-500/50 text-amber-300'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-amber-50 border-amber-300 text-amber-900'
                   }`}
                 >
                   <div className="space-y-1">
@@ -506,7 +518,7 @@ export const ProvidersTab: React.FC<{
                         : `Atenção: Credenciamento bloqueado. Pendências: ${eligibility.ineligibilityReasons.join('; ')}`}
                     </p>
                   </div>
-                  <span className="bg-slate-900/40 border border-current font-extrabold text-[10px] px-2.5 py-1 rounded-full shrink-0 self-start sm:self-auto uppercase">
+                  <span className="bg-white/70 border border-current font-extrabold text-[10px] px-2.5 py-1 rounded-full shrink-0 self-start sm:self-auto uppercase">
                     {eligibility.approvedCount}/{eligibility.mandatoryRequirementsCount} Requisitos
                   </span>
                 </div>
@@ -525,7 +537,7 @@ export const ProvidersTab: React.FC<{
                   {selectedProvDocs.map((doc) => (
                     <div key={doc.id} className="p-3 border rounded-xl bg-white flex flex-col justify-between">
                       <div className="flex items-start justify-between gap-1">
-                        <span className="font-bold text-xs truncate" title={doc.title}>{doc.title}</span>
+                        <span className="font-bold text-xs truncate" title={getComplianceDocumentTypeLabel(doc.type)}>{getComplianceDocumentTypeLabel(doc.type)}</span>
                         <StatusBadge status={doc.status} domain="compliance" />
                       </div>
                       <p className="text-[10px] text-slate-500 mt-1 font-mono leading-none truncate">
@@ -605,7 +617,7 @@ export const ProvidersTab: React.FC<{
                     variant="outline"
                     size="sm"
                     className="text-amber-700 border-amber-200 hover:bg-amber-50"
-                    onClick={() => setActionType('SUSPEND')}
+              onClick={() => { setActionType('SUSPEND'); setReasonText(''); setReasonPreset(''); }}
                   >
                     Suspender Prestador
                   </Button>
@@ -618,7 +630,7 @@ export const ProvidersTab: React.FC<{
                     size="sm"
                     className="text-slate-900 border-slate-300 hover:bg-slate-100"
                     leftIcon={<Ban className="w-3.5 h-3.5" />}
-                    onClick={() => setActionType('BLOCK')}
+                    onClick={() => { setActionType('BLOCK'); setReasonText(''); setReasonPreset(''); }}
                   >
                     Lockdown Administrativo (Bloquear)
                   </Button>
@@ -642,8 +654,8 @@ export const ProvidersTab: React.FC<{
                   {selectedProvLogs.map((log) => (
                     <div key={log.id} className="text-[11px] p-2 bg-white rounded border border-slate-200 flex items-start justify-between gap-2">
                       <div>
-                        <span className="font-extrabold font-mono text-slate-900">{log.action}</span>
-                        <p className="text-slate-500">Por {log.actorName} ({log.actorRole})</p>
+                        <span className="font-extrabold text-slate-900">{getAuditActionLabel(log.action)}</span>
+                        <p className="text-slate-500">Por {log.actorName} ({getUserRoleLabel(log.actorRole)})</p>
                       </div>
                       <span className="text-slate-400 font-mono text-[10px] shrink-0">{new Date(log.timestamp).toLocaleDateString()}</span>
                     </div>
@@ -683,16 +695,17 @@ export const ProvidersTab: React.FC<{
           <div className="space-y-4 text-left">
             <p className="text-xs text-slate-500">
               {actionType === 'BLOCK'
-                ? 'Ação grave reservada a PLATFORM_ADMIN. Esta conta de prestador e todas as suas ofertas serão sumariamente ocultadas do catálogo, bloqueando transações comerciais.'
+                ? 'Ação grave reservada ao administrador da plataforma. Esta conta de prestador e todas as suas ofertas serão sumariamente ocultadas do catálogo, bloqueando transações comerciais.'
                 : 'Esta ação altera o status do prestador na plataforma. Um e-mail/notificação com a justificativa de segurança será enviado.'}
             </p>
-            <Textarea
+            <ReasonChips options={providerReasonOptions.map((option) => ({ value: option, label: option }))} value={reasonPreset} onChange={(value) => { setReasonPreset(value); if (value !== 'Outro motivo') setReasonText(value); else setReasonText(''); }} ariaLabel="Motivos da decisão" />
+            {(reasonPreset === 'Outro motivo' || !reasonPreset) && <Textarea
               label="Justificativa Operacional Obrigatória *"
               value={reasonText}
               onChange={(e) => setReasonText(e.target.value)}
               placeholder="Informe detalhadamente os motivos regulatórios, técnicos ou fiscais para esta decisão..."
               rows={4}
-            />
+            />}
           </div>
         </Modal>
       )}
@@ -706,29 +719,51 @@ export const ProvidersTab: React.FC<{
 // ============================================================================
 export const ComplianceTab: React.FC<{
   complianceDocs: ComplianceDocument[];
+  providers: Provider[];
   actor: AuthContext;
-  onApproveDoc: (doc: ComplianceDocument) => void;
+  onApproveDoc: (doc: ComplianceDocument, expiresAt?: string) => void;
   onRejectDoc: (doc: ComplianceDocument, reason: string) => void;
   onViewDocument: (doc: ComplianceDocument) => Promise<string>;
-}> = ({ complianceDocs, actor, onApproveDoc, onRejectDoc, onViewDocument }) => {
-  const [filterStatus, setFilterStatus] = useState<string>('PENDING');
+}> = ({ complianceDocs, providers, actor, onApproveDoc, onRejectDoc, onViewDocument }) => {
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [selectedDocId, setSelectedDocId] = useState<string>('');
   const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [rejectionPreset, setRejectionPreset] = useState('');
+  const complianceReasonOptions = ['Documento ilegível', 'Documento vencido', 'Dados incompatíveis', 'Documento não atende ao requisito', 'Outro motivo'];
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [isOpeningViewer, setIsOpeningViewer] = useState(false);
+  const [expirationDate, setExpirationDate] = useState('');
+  const [expirationError, setExpirationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (filterStatus === 'ALL' && complianceDocs.length > 0) {
+      setFilterStatus(complianceDocs.some((doc) => doc.status === 'PENDING' || doc.status === 'IN_REVIEW') ? 'IN_REVIEW' : 'ALL');
+    }
+  }, [complianceDocs.length]);
 
   const filteredDocs = complianceDocs.filter((d) =>
     filterStatus === 'ALL'
       || (filterStatus === 'EXPIRED'
         ? d.status === 'EXPIRED' || Boolean(d.expiresAt && new Date(d.expiresAt).getTime() < Date.now())
-        : d.status === filterStatus)
+        : filterStatus === 'IN_REVIEW'
+          ? d.status === 'PENDING' || d.status === 'IN_REVIEW'
+          : d.status === filterStatus)
   );
+  const getDocumentOwnerName = (doc: ComplianceDocument) =>
+    providers.find((provider) => provider.id === doc.providerId)?.name || doc.providerName || 'Não informado';
   const selectedDoc = complianceDocs.find((d) => d.id === selectedDocId) || filteredDocs[0];
+  const selectedDocOwnerName = selectedDoc ? getDocumentOwnerName(selectedDoc) : 'Não informado';
+
+  useEffect(() => {
+    setExpirationDate(selectedDoc?.expiresAt ? selectedDoc.expiresAt.slice(0, 10) : '');
+    setExpirationError(null);
+  }, [selectedDoc?.id, selectedDoc?.expiresAt]);
 
   const handleApprove = (doc: ComplianceDocument) => {
-    onApproveDoc(doc);
+    setExpirationError(null);
+    onApproveDoc(doc, expirationDate ? new Date(`${expirationDate}T23:59:59-03:00`).toISOString() : undefined);
   };
 
   const handleReject = () => {
@@ -767,12 +802,11 @@ export const ComplianceTab: React.FC<{
               setSelectedDocId('');
             }}
             options={[
-              { value: 'PENDING', label: `Pendentes (${complianceDocs.filter(d => d.status === 'PENDING').length})` },
-              { value: 'IN_REVIEW', label: `Em análise (${complianceDocs.filter(d => d.status === 'IN_REVIEW').length})` },
+              { value: 'IN_REVIEW', label: `Pendentes (${complianceDocs.filter(d => d.status === 'PENDING' || d.status === 'IN_REVIEW').length})` },
               { value: 'APPROVED', label: `Aprovados (${complianceDocs.filter(d => d.status === 'APPROVED').length})` },
               { value: 'REJECTED', label: `Rejeitados (${complianceDocs.filter(d => d.status === 'REJECTED').length})` },
               { value: 'EXPIRED', label: `Expirados (${complianceDocs.filter(d => d.expiresAt && new Date(d.expiresAt).getTime() < Date.now()).length})` },
-              { value: 'ALL', label: `Todos os Documentos (${complianceDocs.length})` },
+              { value: 'ALL', label: `Todos os documentos (${complianceDocs.length})` },
             ]}
           />
         </div>
@@ -803,10 +837,10 @@ export const ComplianceTab: React.FC<{
                   }`}
                 >
                   <div className="flex items-start justify-between gap-1">
-                    <span className="font-bold line-clamp-1">{doc.title}</span>
+                    <span className="font-bold line-clamp-1">{getComplianceDocumentTypeLabel(doc.type)}</span>
 <StatusBadge status={doc.status} domain="compliance" />
                   </div>
-                  <p className={`text-[11px] mt-1 truncate opacity-80`}>Prestador: {doc.providerName || 'N/A'}</p>
+                  <p className="text-[11px] mt-1 truncate opacity-80">Prestador: {getDocumentOwnerName(doc)}</p>
                   <p className={`text-[10px] mt-0.5 font-mono opacity-60`}>Enviado em: {new Date(doc.uploadedAt).toLocaleDateString()}</p>
                 </div>
               );
@@ -816,19 +850,19 @@ export const ComplianceTab: React.FC<{
       </div>
 
       {/* Coluna Direita: Detalhes, Visualização de Arquivos Simulados e Análise */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="lg:col-span-2 space-y-6 lg:pt-10">
         {selectedDoc ? (
           <div className="space-y-6 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
             <div className="border-b border-slate-100 pb-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">{selectedDoc.title}</h3>
+                  <h3 className="text-base font-black text-slate-900">{getComplianceDocumentTypeLabel(selectedDoc.type)}</h3>
                   <p className="text-[11px] text-slate-500">ID de Auditoria do Arquivo: <span className="font-mono text-indigo-600 font-bold">{selectedDoc.id}</span></p>
                 </div>
 <StatusBadge status={selectedDoc.status} domain="compliance" />
               </div>
               <div className="text-[11px] text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4">
-                <p>Prestador: <strong>{selectedDoc.providerName || 'Não informado'}</strong></p>
+                <p>Proprietário: <strong>{selectedDocOwnerName}</strong></p>
                 <p>Documento: <strong>{getComplianceDocumentTypeLabel(selectedDoc.type)}</strong></p>
                 <p>Data do Envio: <strong>{new Date(selectedDoc.uploadedAt).toLocaleString()}</strong></p>
                 <p>Data de Expiração: <strong>{selectedDoc.expiresAt ? new Date(selectedDoc.expiresAt).toLocaleDateString() : 'Não informada'}</strong></p>
@@ -847,6 +881,20 @@ export const ComplianceTab: React.FC<{
             {selectedDoc.rejectionReason && (
               <div className="p-3 bg-rose-50 border border-rose-100 rounded-2xl text-xs text-rose-800 font-medium">
                 Motivo de Recusa Registrado: <span className="font-bold">{selectedDoc.rejectionReason}</span>
+              </div>
+            )}
+
+            {(selectedDoc.status === 'PENDING' || selectedDoc.status === 'IN_REVIEW') && (
+              <div className="rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-muted)] p-4">
+                <DateInput
+                  label="Data de validade"
+                  value={expirationDate}
+                  onChange={(value) => { setExpirationDate(value); setExpirationError(null); }}
+                />
+                <p className="mt-1.5 text-[11px] text-[var(--mazzi-muted)]">
+                  Confira a validade no arquivo antes de aprovar. Para documentos permanentes, deixe em branco.
+                </p>
+                {expirationError && <p role="alert" className="mt-1.5 text-xs font-semibold text-rose-700">{expirationError}</p>}
               </div>
             )}
 
@@ -883,13 +931,14 @@ export const ComplianceTab: React.FC<{
                 ) : (
                   <div className="space-y-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-700 block uppercase">Motivo detalhado da recusa *</label>
-                      <Input
+                      <label className="mazzi-field-label block">Motivo detalhado da recusa *</label>
+                      <ReasonChips options={complianceReasonOptions.map((option) => ({ value: option, label: option }))} value={rejectionPreset} onChange={(value) => { setRejectionPreset(value); if (value !== 'Outro motivo') setRejectionReason(value); else setRejectionReason(''); }} ariaLabel="Motivos da recusa" />
+                      {(rejectionPreset === 'Outro motivo' || !rejectionPreset) && <Input
                         value={rejectionReason}
                         onChange={(e) => setRejectionReason(e.target.value)}
                         placeholder="Ex: EAR não está averbado ou CNH vencida..."
                         className="text-xs"
-                      />
+                      />}
                     </div>
                     <div className="flex items-center gap-2">
                   <Button variant="primary" size="sm" className="bg-rose-600 hover:bg-rose-700" onClick={handleReject} disabled={!rejectionReason.trim()}>
@@ -952,13 +1001,31 @@ export const VehiclesTab: React.FC<{
   onRejectVehicle: (veh: Vehicle, reason: string) => void;
   onBlockVehicle: (veh: Vehicle, reason: string) => void;
 }> = ({ vehicles, providers, onApproveVehicle, onRejectVehicle, onBlockVehicle }) => {
-const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
+const [filterStatus, setFilterStatus] = useState<string>('AWAITING_REVIEW');
   const [selectedVehId, setSelectedVehId] = useState<string>('');
   const [showFullPlate, setShowFullPlate] = useState<boolean>(false);
   
   // Rejection/Block dialog state
   const [actionType, setActionType] = useState<'REJECT' | 'BLOCK' | null>(null);
   const [reason, setReason] = useState<string>('');
+  const [selectedBlockReason, setSelectedBlockReason] = useState<string>('');
+  const blockReasonOptions = [
+    'Documentação irregular ou vencida',
+    'Veículo fora da idade permitida',
+    'Placa ou identificação inconsistente',
+    'Problema de segurança ou conservação',
+  ];
+  const rejectVehicleReasonOptions = ['Documentação incompleta', 'Dados do veículo inconsistentes', 'Veículo fora dos requisitos', 'Placa inválida', 'Outro motivo'];
+
+  useEffect(() => {
+    if (filterStatus === 'IN_REVIEW') {
+      setFilterStatus('AWAITING_REVIEW');
+      return;
+    }
+    if (filterStatus === 'AWAITING_REVIEW' && vehicles.length > 0 && !vehicles.some((vehicle) => isVehicleAwaitingAdminReview(vehicle.status))) {
+      setFilterStatus('ACTIVE');
+    }
+  }, [vehicles.length]);
 
   const filteredVehicles = vehicles.filter((v) => filterStatus === 'AWAITING_REVIEW'
     ? isVehicleAwaitingAdminReview(v.status)
@@ -992,14 +1059,11 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
             }}
             options={[
               { value: 'AWAITING_REVIEW', label: `Aguardando aprovação (${vehicles.filter(v => isVehicleAwaitingAdminReview(v.status)).length})` },
-              { value: 'DRAFT', label: `Rascunhos (${vehicles.filter(v => v.status === 'DRAFT').length})` },
-              { value: 'PENDING', label: `Pendente novo (${vehicles.filter(v => v.status === 'PENDING').length})` },
-              { value: 'IN_REVIEW', label: `Em revisão (${vehicles.filter(v => v.status === 'IN_REVIEW').length})` },
               { value: 'ACTIVE', label: `Ativos (${vehicles.filter(v => v.status === 'ACTIVE').length})` },
               { value: 'BLOCKED', label: `Bloqueados (${vehicles.filter(v => v.status === 'BLOCKED').length})` },
               { value: 'INACTIVE', label: `Inativos (${vehicles.filter(v => v.status === 'INACTIVE').length})` },
               { value: 'EXPIRED', label: `Documentação vencida (${vehicles.filter(v => v.status === 'EXPIRED').length})` },
-              { value: 'ALL', label: `Todos os Veículos (${vehicles.length})` },
+              { value: 'ALL', label: `Todos os veículos (${vehicles.length})` },
             ]}
           />
         </div>
@@ -1038,7 +1102,7 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
       </div>
 
       {/* Coluna Direita: Ficha do Veículo */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="lg:col-span-2 space-y-6 lg:pt-10">
         {selectedVeh ? (
           <div className="space-y-6 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
             <div className="border-b border-slate-100 pb-4 space-y-2">
@@ -1110,7 +1174,7 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
                     variant="outline"
                     size="sm"
                     className="text-rose-600 border-rose-200 hover:bg-rose-50"
-                    onClick={() => setActionType('REJECT')}
+                    onClick={() => { setActionType('REJECT'); setReason(''); setSelectedBlockReason(''); }}
                   >
                     Reprovar (Inativar)
                   </Button>
@@ -1118,7 +1182,7 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
                     variant="outline"
                     size="sm"
                     className="text-slate-900 border-slate-300 hover:bg-slate-100"
-                    onClick={() => setActionType('BLOCK')}
+                    onClick={() => { setActionType('BLOCK'); setReason(''); setSelectedBlockReason(''); }}
                   >
                     Bloquear Veículo
                   </Button>
@@ -1148,13 +1212,26 @@ const [filterStatus, setFilterStatus] = useState<string>('IN_REVIEW');
         >
           <div className="space-y-4 text-left">
             <p className="text-xs text-slate-500">Informe o motivo operacional para a reprovação ou bloqueio do veículo na plataforma.</p>
-            <Textarea
-              label="Motivo *"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Ex: Categoria incoerente com o modelo, documentação anual incompleta..."
-              rows={3}
-            />
+            {actionType === 'BLOCK' && (
+              <div className="space-y-2">
+                <label className="mazzi-field-label block">Motivo do bloqueio *</label>
+                <ReasonChips
+                  options={[...blockReasonOptions.map((option) => ({ value: option, label: option })), { value: 'OTHER', label: 'Outro motivo' }]}
+                  value={selectedBlockReason}
+                  onChange={(value) => { setSelectedBlockReason(value); setReason(value === 'OTHER' ? '' : value); }}
+                  ariaLabel="Motivos do bloqueio do veículo"
+                />
+              </div>
+            )}
+            {actionType === 'REJECT' && (
+              <div className="space-y-2">
+                <label className="mazzi-field-label block">Motivo da reprovação *</label>
+                <ReasonChips options={rejectVehicleReasonOptions.map((option) => ({ value: option, label: option }))} value={selectedBlockReason} onChange={(value) => { setSelectedBlockReason(value); if (value !== 'Outro motivo') setReason(value); else setReason(''); }} ariaLabel="Motivos da reprovação do veículo" />
+              </div>
+            )}
+            {(actionType === 'REJECT' || selectedBlockReason === 'OTHER') && (
+              <Textarea label="Motivo *" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Descreva detalhadamente o motivo..." rows={3} />
+            )}
           </div>
         </Modal>
       )}
@@ -1208,7 +1285,7 @@ export const BookingsTab: React.FC<{
               setSelectedBookId('');
             }}
             options={[
-              { value: 'ALL', label: `Todos os Status (${bookings.length})` },
+              { value: 'ALL', label: `Todos os status (${bookings.length})` },
               { value: 'CONFIRMED', label: 'Confirmadas' },
               { value: 'IN_PROGRESS', label: 'Em Andamento' },
               { value: 'COMPLETED', label: 'Concluídas' },
@@ -1216,7 +1293,6 @@ export const BookingsTab: React.FC<{
               { value: 'DISPUTED', label: 'Em Disputa' },
               { value: 'CANCELLED_BY_STUDENT', label: 'Cancelado Aluno' },
               { value: 'CANCELLED_BY_PROVIDER', label: 'Cancelado Prestador' },
-              { value: 'DRAFT', label: 'Rascunhos' },
               { value: 'PAYMENT_FAILED', label: 'Pagamento não aprovado' },
               { value: 'NO_SHOW_STUDENT', label: 'Aluno ausente' },
               { value: 'NO_SHOW_PROVIDER', label: 'Instrutor ausente' },
@@ -1245,12 +1321,11 @@ export const BookingsTab: React.FC<{
                     isSelected ? 'bg-slate-950 text-white border-slate-900 shadow-md' : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-1">
-                    <span className="font-extrabold">{b.id}</span>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-extrabold leading-tight">{b.studentName || 'Aluno não identificado'}</span>
                     <StatusBadge status={b.status} domain="booking" />
                   </div>
-                  <p className="font-medium mt-1">Aluno: {b.studentName}</p>
-                  <p className="opacity-80">Parceiro: {b.providerName}</p>
+                  <p className="mt-1 opacity-80">Aula com {b.instructorName || b.providerName}</p>
                   <p className="text-[10px] opacity-60 mt-1">{b.scheduledDate} • {b.startTime} - {b.endTime}</p>
                 </div>
               );
@@ -1260,13 +1335,13 @@ export const BookingsTab: React.FC<{
       </div>
 
       {/* Coluna Direita: Ficha de Detalhes */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="lg:col-span-2 space-y-6 lg:pt-10">
         {selectedBook ? (
           <div className="space-y-6 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
             <div className="border-b border-slate-100 pb-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Reserva {selectedBook.id}</h3>
+                  <h3 className="text-base font-black text-slate-900">Aula de {selectedBook.studentName || 'Aluno não identificado'}</h3>
                   <p className="text-[11px] text-slate-500">Agendada em: <strong>{selectedBook.scheduledDate} das {selectedBook.startTime} às {selectedBook.endTime}</strong></p>
                 </div>
                 <StatusBadge status={selectedBook.status} domain="booking" />
@@ -1274,7 +1349,8 @@ export const BookingsTab: React.FC<{
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-[11px] text-slate-600 mt-3 pt-2 border-t border-dashed border-slate-100">
                 <p>Aluno: <strong className="text-slate-900">{selectedBook.studentName}</strong></p>
-                <p>CFC / Instrutor: <strong className="text-slate-900">{selectedBook.providerName}</strong> ({selectedBook.instructorName || 'Autônomo'})</p>
+                <p>Proprietário / CFC: <strong className="text-slate-900">{selectedBook.providerName}</strong></p>
+                <p>Instrutor: <strong>{selectedBook.instructorName || 'Autônomo'}</strong></p>
                 <p>Veículo: <strong className="text-slate-900">{selectedBook.vehicleName || 'Não especificado'}</strong></p>
                 <p>Ponto de Encontro: <strong className="text-slate-900">{selectedBook.meetingPoint}</strong></p>
                 <p>Transmissão: <strong>{selectedBook.snapshot?.transmission || 'N/A'}</strong></p>
@@ -1315,7 +1391,7 @@ export const BookingsTab: React.FC<{
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-amber-950 text-xs">
                     <ArrowRightLeft className="w-4 h-4 text-amber-600" />
-                    Reatribuição de Recursos (BOOKING_RESOURCE_REASSIGNMENT_POLICY_PENDING)
+                    Reatribuição de recursos
                   </div>
                   <p className="text-[11px] text-amber-800 leading-normal">
                     Alerta do Sistema: Reatribuição automática de instrutor ou veículo para aulas ativas ainda não é suportada diretamente pelo painel administrativo para evitar quebras de agendamento do aluno.
@@ -1326,7 +1402,7 @@ export const BookingsTab: React.FC<{
                   <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
                     <div className="flex items-center gap-1.5 font-bold text-rose-950 text-xs">
                       <ShieldAlert className="w-4 h-4 text-rose-600" />
-                      Disputa Aberta (DISPUTE_MANAGEMENT_FLOW_PENDING)
+                      Disputa em aberto
                     </div>
                     <p className="text-[11px] text-rose-800 leading-normal">
                       Esta aula foi contestada por uma das partes (Aluno/Instrutor). O fluxo de resolução de disputas regulatório está sob andamento pendente de auditoria de check-in.
@@ -1346,7 +1422,7 @@ export const BookingsTab: React.FC<{
                   {selectedBookLogs.map((log) => (
                     <div key={log.id} className="p-2 bg-slate-50 rounded border text-[11px] flex justify-between gap-2">
                       <div>
-                        <span className="font-extrabold">{log.action}</span>
+                        <span className="font-extrabold">{getAuditActionLabel(log.action)}</span>
                         <p className="text-slate-500">Por {log.actorName}</p>
                       </div>
                       <span className="text-slate-400 font-mono text-[10px]">{new Date(log.timestamp).toLocaleString()}</span>
@@ -1392,9 +1468,9 @@ export const FinancialTab: React.FC<{
     <div className="space-y-6 text-left">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900">Módulo Financeiro & Repasses</h2>
+          <h2 className="text-xl font-extrabold text-slate-900">Financeiro e repasses</h2>
           <p className="text-xs text-slate-500 font-medium">
-            Monitoramento de repasses (payouts), ledger de transações e ferramentas de estorno controlado.
+            Acompanhe pagamentos de teste, repasses e estornos registrados.
           </p>
         </div>
         
@@ -1405,14 +1481,14 @@ export const FinancialTab: React.FC<{
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${activeSubTab === 'ledger' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
           >
             <History className="h-4 w-4" aria-hidden="true" />
-            Ledger de Transações
+            Movimentações
           </ButtonBase>
           <ButtonBase
             onClick={() => setActiveSubTab('payouts')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${activeSubTab === 'payouts' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
           >
             <DollarSign className="h-4 w-4" aria-hidden="true" />
-            Repasses (Payouts)
+            Repasses
           </ButtonBase>
         </div>
       </div>
@@ -1442,8 +1518,8 @@ export const FinancialTab: React.FC<{
                       onClick={() => setSelectedBookingId(t.id)}
                       className={`cursor-pointer transition hover:bg-slate-50/50 ${selectedBookingId === t.id ? 'bg-indigo-50/40 font-semibold' : ''}`}
                     >
-                      <td className="p-3 font-mono font-bold text-indigo-600">{t.id}</td>
-                      <td className="p-3">{t.studentName}</td>
+                      <td className="p-3 font-medium text-slate-700">Aula agendada</td>
+                      <td className="p-3 font-semibold">{t.studentName || 'Aluno não identificado'}</td>
                       <td className="p-3 font-medium">{t.providerName}</td>
                       <td className="p-3 font-mono">{formatCentsToBRL(t.priceInCents)}</td>
                       <td className="p-3 font-mono text-slate-500">+{formatCentsToBRL(t.platformFeeInCents)}</td>
@@ -1459,21 +1535,21 @@ export const FinancialTab: React.FC<{
           </div>
 
           {/* Ficha Refund */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="lg:col-span-1 space-y-3">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ferramenta de Estornos</h4>
             {selectedBooking ? (
               <div className="p-4 rounded-3xl border border-slate-200 bg-white space-y-4 shadow-sm text-xs">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">AULA SELECIONADA</span>
-                  <h5 className="font-extrabold text-sm text-slate-900">{selectedBooking.id}</h5>
-                  <p className="text-slate-500 mt-1">Parceiro: {selectedBooking.providerName}</p>
+                  <h5 className="font-extrabold text-sm text-slate-900">Aula de {selectedBooking.studentName || 'Aluno não identificado'}</h5>
+                  <p className="text-slate-500 mt-1">Proprietário / parceiro: {selectedBooking.providerName}</p>
                   <p className="text-slate-500">Total Transacionado: <strong className="font-mono text-slate-950">{formatCentsToBRL(selectedBooking.totalInCents)}</strong></p>
                 </div>
 
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 leading-relaxed font-medium">
-                  <strong>⚠️ Ação Sob Homologação de Ambiente</strong>
+                  <strong>Ação em ambiente de teste</strong>
                   <p className="mt-1">
-                    Esta ferramenta é simulada (DEVELOPMENT) e reverte as transações financeiras nos registros locais.
+                    Esta ação simula um estorno e registra a movimentação para conferência, sem acionar um gateway de pagamento real.
                   </p>
                 </div>
 
@@ -1486,7 +1562,7 @@ export const FinancialTab: React.FC<{
                     className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold"
                     onClick={() => handleRefund(selectedBooking)}
                   >
-                    Estornar Transação (Refund)
+                    Simular estorno
                   </Button>
                 )}
               </div>
@@ -1506,7 +1582,7 @@ export const FinancialTab: React.FC<{
             <div>
               <span className="font-bold">Política de Retenção de Repasse Seguro (Payout Safety Period)</span>
               <p className="mt-0.5 text-indigo-800">
-                Por questões de governança operacional e política contra chargebacks de alunos, os fundos de aulas concluídas permanecem sob status <strong className="bg-indigo-100 px-1 rounded font-mono text-[11px]">HELD</strong> por 24 horas antes de serem liberados para <strong className="bg-indigo-100 px-1 rounded font-mono text-[11px]">AVAILABLE</strong> para o prestador.
+                O valor de uma aula concluída fica em segurança por 24 horas antes de ficar disponível para o prestador.
               </p>
             </div>
           </div>
@@ -1517,24 +1593,22 @@ export const FinancialTab: React.FC<{
                 <tr>
                   <th className="p-3">Ref Parceiro</th>
                   <th className="p-3">Razão Social / Nome</th>
-                  <th className="p-3">Valor Pendente (HELD)</th>
-                  <th className="p-3">Valor Disponível (AVAILABLE)</th>
-                  <th className="p-3">Último Repasse (PAID)</th>
+                  <th className="p-3">Em segurança</th>
+                  <th className="p-3">Disponível</th>
+                  <th className="p-3">Último repasse</th>
                   <th className="p-3">Status de Processamento</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {bookings.filter(b => b.status === 'COMPLETED').map((b, i) => (
                   <tr key={i}>
-                    <td className="p-3 font-mono font-bold text-slate-600">{b.providerId}</td>
+                    <td className="p-3 font-medium text-slate-600">Prestador</td>
                     <td className="p-3">{b.providerName}</td>
                     <td className="p-3 font-mono text-slate-500">{formatCentsToBRL(b.priceInCents)}</td>
                     <td className="p-3 font-mono text-emerald-600 font-bold">{formatCentsToBRL(0)}</td>
                     <td className="p-3 font-mono text-slate-400">---</td>
                     <td className="p-3">
-                      <span className="bg-amber-100 text-amber-800 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase">
-                        HELD (Safety Period)
-                      </span>
+                      <StatusBadge status="PENDING" domain="payout" />
                     </td>
                   </tr>
                 ))}
@@ -1610,16 +1684,16 @@ export const UsersTab: React.FC<{
               <div
                 key={u.id}
                 onClick={() => setSelectedUser(u)}
-                className={`p-3 rounded-2xl border transition cursor-pointer text-xs flex justify-between items-center ${
-                  isSelected ? 'bg-slate-950 text-white border-slate-900 shadow-md' : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
+                className={`p-3.5 rounded-2xl border transition cursor-pointer text-xs flex justify-between items-center gap-3 ${
+                  isSelected ? 'bg-slate-950 text-white border-slate-900 shadow-md' : 'bg-white text-[var(--mazzi-text)] border-slate-200 hover:border-amber-300 hover:shadow-xs'
                 }`}
               >
-                <div>
-                  <h5 className="font-bold">{u.name}</h5>
-                  <p className="opacity-80 mt-0.5">{u.email}</p>
+                <div className="min-w-0">
+                  <h5 className="truncate font-extrabold leading-tight">{u.name}</h5>
+                  <p className={`mt-1 truncate text-[11px] ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>{u.email}</p>
                 </div>
-                <Badge variant={u.role === 'PLATFORM_ADMIN' ? 'success' : u.role === 'SUPPORT' ? 'warning' : 'neutral'} size="xs" className="uppercase font-bold tracking-wider">
-                  {u.role}
+                <Badge variant={u.role === 'PLATFORM_ADMIN' ? 'success' : u.role === 'SUPPORT' ? 'warning' : 'default'} size="sm" className="shrink-0 uppercase font-bold tracking-wider">
+                  {getUserRoleLabel(u.role)}
                 </Badge>
               </div>
             );
@@ -1627,8 +1701,8 @@ export const UsersTab: React.FC<{
         </div>
       </div>
 
-      {/* Direita: Governança de acesso */}
-      <div className="lg:col-span-2 space-y-6">
+      {/* Direita: Governança de acesso — alinhada ao campo de pesquisa */}
+      <div className="lg:col-span-2 space-y-6 lg:pt-6">
         {!actor.roles.includes('PLATFORM_ADMIN') ? (
           <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
             <h3 className="font-bold">Acesso restrito</h3>
@@ -1653,7 +1727,7 @@ export const UsersTab: React.FC<{
               <h3 className="text-base font-black text-slate-900">{selectedUser.name}</h3>
               <div className="text-[11px] text-slate-600 space-y-1 mt-2.5">
                 <p>E-mail da Conta: <strong>{selectedUser.email}</strong></p>
-                <p>Telefone: <strong>{selectedUser.phone}</strong></p>
+                <p>Telefone: <strong>{maskBrazilianPhone(selectedUser.phone) || 'Não informado'}</strong></p>
                 <p>Data do Cadastro: <strong>{new Date(selectedUser.createdAt).toLocaleDateString()}</strong></p>
               </div>
             </div>
@@ -1681,6 +1755,28 @@ export const UsersTab: React.FC<{
 // ============================================================================
 // 8. AUDIT LOG TAB
 // ============================================================================
+const AUDIT_ROLE_OPTIONS: Array<{ value: UserRole; label: string }> = [
+  { value: 'PLATFORM_ADMIN', label: 'Administrador da plataforma' },
+  { value: 'SUPPORT', label: 'Suporte' },
+  { value: 'STUDENT', label: 'Aluno' },
+  { value: 'INSTRUCTOR', label: 'Instrutor' },
+  { value: 'DRIVING_SCHOOL', label: 'Autoescola' },
+  { value: 'SCHOOL_ADMIN', label: 'Gestor da autoescola' },
+  { value: 'SCHOOL_STAFF', label: 'Equipe da autoescola' },
+];
+
+const getAuditEntityLabel = (entityType: string) => ({
+  Booking: 'Reserva', BOOKINGS: 'Reserva',
+  Vehicle: 'Veículo', VEHICLES: 'Veículo',
+  Provider: 'Prestador', PROVIDERS: 'Prestador',
+  User: 'Usuário', USERS: 'Usuário',
+  ComplianceDocument: 'Documento de compliance', COMPLIANCE_DOCUMENTS: 'Documento de compliance',
+  ServiceOffering: 'Oferta de serviço', SERVICE_OFFERINGS: 'Oferta de serviço',
+  Quote: 'Cotação', QUOTES: 'Cotação', Payment: 'Pagamento', PAYMENTS: 'Pagamento',
+  Review: 'Avaliação', REVIEWS: 'Avaliação',
+  PlatformConfiguration: 'Configuração da plataforma', PLATFORM_CONFIGURATIONS: 'Configuração da plataforma',
+} as Record<string, string>)[entityType] || 'Registro';
+
 export const AuditTab: React.FC<{
   auditLogs: AuditLog[];
 }> = ({ auditLogs }) => {
@@ -1689,7 +1785,7 @@ export const AuditTab: React.FC<{
   const [filterRole, setFilterRole] = useState<string>('ALL');
 
   // Compute available actions for filters
-  const uniqueActions = Array.from(new Set(auditLogs.map((log) => log.action)));
+  const uniqueActions: string[] = Array.from(new Set<string>(auditLogs.map((log) => String(log.action))));
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch = log.actorName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -1704,7 +1800,7 @@ export const AuditTab: React.FC<{
   return (
     <div className="space-y-4 text-left">
       <div>
-        <h2 className="text-xl font-extrabold text-slate-900">Trilha de Auditoria Geral (Audit Logs)</h2>
+        <h2 className="text-xl font-extrabold text-slate-900">Histórico de ações</h2>
         <p className="text-xs text-slate-500 font-medium">
           Registro imutável das ações administrativas da plataforma. Não é permitida edição, retroação ou exclusão dos registros.
         </p>
@@ -1716,7 +1812,7 @@ export const AuditTab: React.FC<{
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <Input
             className="pl-9 text-xs"
-            placeholder="Buscar por ID, Valor, Ator..."
+            placeholder="Buscar por pessoa ou ação..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -1726,8 +1822,8 @@ export const AuditTab: React.FC<{
           value={filterAction}
           onChange={(e) => setFilterAction(e.target.value)}
           options={[
-            { value: 'ALL', label: 'Todas as Ações' },
-            ...uniqueActions.map((act) => ({ value: act, label: act })),
+            { value: 'ALL', label: 'Todas as ações' },
+            ...uniqueActions.map((act) => ({ value: act, label: getAuditActionLabel(act) })),
           ]}
         />
         <Select
@@ -1735,57 +1831,48 @@ export const AuditTab: React.FC<{
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
           options={[
-            { value: 'ALL', label: 'Todos os Perfis de Ator' },
-            { value: 'PLATFORM_ADMIN', label: 'PLATFORM_ADMIN' },
-            { value: 'SUPPORT', label: 'SUPPORT' },
-            { value: 'INSTRUCTOR', label: 'INSTRUCTOR' },
+            { value: 'ALL', label: 'Todos os perfis' },
+            ...AUDIT_ROLE_OPTIONS,
           ]}
         />
       </div>
 
       {/* Listagem Tabela */}
-      <div className="border border-slate-200 rounded-2xl bg-white shadow-xs overflow-hidden">
-        <table className="w-full text-xs text-left">
+      <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-xs">
+        <table className="min-w-[680px] w-full text-xs text-left">
           <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
             <tr>
-              <th className="p-3">Ref AuditLog</th>
-              <th className="p-3">Ator (Perfil)</th>
-              <th className="p-3">Ação executada</th>
-              <th className="p-3">Entidade (Ref ID)</th>
-              <th className="p-3">Valor Anterior ➔ Novo Valor</th>
-              <th className="p-3">Data & IP</th>
+              <th className="p-3">Pessoa</th>
+              <th className="p-3">Ação</th>
+              <th className="p-3">Área</th>
+              <th className="p-3">Registro</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
             {filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-400">
+                <td colSpan={4} className="p-8 text-center text-slate-400">
                   Nenhum registro de auditoria atende aos filtros de pesquisa.
                 </td>
               </tr>
             ) : (
               filteredLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-50/50">
-                  <td className="p-3 font-mono text-[10px] text-slate-400 font-bold">{log.id}</td>
                   <td className="p-3">
                     <span className="font-extrabold text-slate-900">{log.actorName}</span>
-                    <span className="block text-[10px] text-slate-500">{log.actorRole}</span>
+                    <span className="block text-[10px] text-slate-500">{getUserRoleLabel(log.actorRole)}</span>
                   </td>
                   <td className="p-3">
-                    <span className="bg-slate-100 text-slate-800 font-mono text-[10px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wide">
-                      {log.action}
+                    <span className="inline-flex rounded-full bg-[var(--mazzi-surface-muted)] px-2 py-1 text-[10px] font-bold text-[var(--mazzi-dark)]">
+                      {getAuditActionLabel(log.action)}
                     </span>
                   </td>
                   <td className="p-3 text-[11px]">
-                    <span className="text-slate-400 font-bold">{log.entityType}: </span>
-                    <code className="font-mono bg-indigo-50 text-indigo-800 px-1 rounded text-[10px]">{log.entityId}</code>
+                    <span className="font-semibold text-slate-700">{getAuditEntityLabel(log.entityType)}</span>
                   </td>
-                  <td className="p-3 max-w-xs truncate font-mono text-[10px] text-slate-500">
-                    {log.previousValue || '---'} ➔ {log.newValue || '---'}
-                  </td>
-                  <td className="p-3 shrink-0 text-slate-400 text-[10px] font-mono leading-tight">
-                    <p>{new Date(log.timestamp).toLocaleString()}</p>
-                    <p>{log.ipAddress || '127.0.0.1'}</p>
+                  <td className="p-3 text-[11px] text-slate-500">
+                    <p>Alteração registrada</p>
+                    <p>{new Date(log.timestamp).toLocaleString('pt-BR')}</p>
                   </td>
                 </tr>
               ))
@@ -1865,7 +1952,7 @@ export const SettingsTab: React.FC<{
       <div className="p-5 bg-white border border-slate-200 rounded-3xl space-y-4 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 block uppercase">Taxa de Serviço da Plataforma (%)</label>
+            <label className="mazzi-field-label block">Taxa de Serviço da Plataforma (%)</label>
             <Input
               type="number"
               value={fee}
@@ -1877,7 +1964,7 @@ export const SettingsTab: React.FC<{
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 block uppercase">Horizonte de Disponibilidade (Dias)</label>
+            <label className="mazzi-field-label block">Horizonte de Disponibilidade (Dias)</label>
             <Input
               type="number"
               value={horizon}
@@ -1889,7 +1976,7 @@ export const SettingsTab: React.FC<{
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 block uppercase">Expiração de Cotação de Aula (Minutos)</label>
+            <label className="mazzi-field-label block">Expiração de Cotação de Aula (Minutos)</label>
             <Input
               type="number"
               value={quoteExp}
@@ -1901,7 +1988,7 @@ export const SettingsTab: React.FC<{
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 block uppercase">Aviso Prévio Mínimo de Aula (Horas)</label>
+            <label className="mazzi-field-label block">Aviso Prévio Mínimo de Aula (Horas)</label>
             <Input
               type="number"
               value={minNotice}
@@ -1913,7 +2000,7 @@ export const SettingsTab: React.FC<{
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 block uppercase">Retenção de Payout Seguro (Horas)</label>
+            <label className="mazzi-field-label block">Retenção de Payout Seguro (Horas)</label>
             <Input
               type="number"
               value={safetyPeriod}
@@ -1925,7 +2012,7 @@ export const SettingsTab: React.FC<{
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 block uppercase">Raio Padrão de Busca Próxima (Km)</label>
+            <label className="mazzi-field-label block">Raio Padrão de Busca Próxima (Km)</label>
             <Input
               type="number"
               value={radius}

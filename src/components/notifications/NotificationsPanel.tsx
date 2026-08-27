@@ -131,7 +131,7 @@ export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-black text-sm text-slate-900 truncate">{notification.title}</p>
+                  <p className="font-black text-sm text-[var(--mazzi-text)] truncate">{notification.title}</p>
                   {!notification.isRead && <Badge variant="primary">Nova</Badge>}
                 </div>
                 <p className="text-xs text-slate-600 mt-1">{notification.body}</p>

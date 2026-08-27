@@ -8,6 +8,7 @@ export function digitsOnly(value: string = ''): string {
   return value.replace(/\D/g, '');
 }
 
+
 /** Formats a phone string into Brazilian format (11) 99999-9999 or (11) 3333-4444 */
 export function maskBrazilianPhone(value: string = ''): string {
   const digits = digitsOnly(value).slice(0, 11);

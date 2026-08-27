@@ -37,6 +37,7 @@ import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker'
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { maskCpf } from '../../utils/cpf';
 import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
+import { MaskedInput } from '../../components/ui/MaskedInput';
 import { useMobileAppRoute } from '../../lib/mobile-app-router';
 import { StudentProMigrationCard } from './components/StudentProMigrationCard';
 
@@ -751,8 +752,13 @@ function applyStrictProviderFilters(
     }
   };
 
+  const studentProfileFormValid = Boolean(
+    profileName.trim() &&
+    (!profileBirthDate || validateBirthDate(profileBirthDate).valid),
+  );
+
   return (
-    <div className="mazzi-app">
+    <div className="mazzi-app text-[var(--mazzi-text)]">
         <main className="mazzi-mobile text-left">
           {/* SEARCH TAB */}
           {activeTab === 'search' && (
@@ -1059,7 +1065,7 @@ function applyStrictProviderFilters(
                         <Button type="button" variant="dangerSoft" size="sm" disabled={profileSaving} onClick={handleCancelStudentProfile}>
                           Cancelar
                         </Button>
-                        <PrimaryButton type="button" size="sm" className="font-bold shadow-xs" isLoading={profileSaving} disabled={profileSaving} onClick={() => { void handleSaveStudentProfile(); }}>
+                        <PrimaryButton type="button" size="sm" className="font-bold shadow-xs" isLoading={profileSaving} disabled={profileSaving || !studentProfileFormValid} onClick={() => { void handleSaveStudentProfile(); }}>
                           Salvar perfil
                         </PrimaryButton>
                       </>
@@ -1067,7 +1073,7 @@ function applyStrictProviderFilters(
                   >
                   <div className="space-y-4">
                     <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-photo">
+                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-photo">
                         Foto de perfil
                       </label>
                       <div id="student-profile-photo">
@@ -1081,7 +1087,7 @@ function applyStrictProviderFilters(
                     </div>
 
                     <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-name">
+                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-name">
                         Nome completo
                       </label>
                       <Input
@@ -1094,13 +1100,14 @@ function applyStrictProviderFilters(
                     </div>
 
                     <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-phone">
+                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-phone">
                         Telefone
                       </label>
-                      <Input
+                      <MaskedInput
                         id="student-profile-phone"
                         value={profilePhone}
-                        onChange={(event) => setProfilePhone(formatPhone(event.target.value))}
+                        mask={formatPhone}
+                        onChange={setProfilePhone}
                         placeholder="(11) 99999-9999"
                         disabled={profileSaving}
                         className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
@@ -1108,7 +1115,7 @@ function applyStrictProviderFilters(
                     </div>
 
                     <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-birthdate">
+                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-birthdate">
                         Data de nascimento
                       </label>
                       <Input
@@ -1122,7 +1129,7 @@ function applyStrictProviderFilters(
                     </div>
 
                     <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-cpf">
+                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-cpf">
                         CPF
                       </label>
                       <Input
@@ -1138,7 +1145,7 @@ function applyStrictProviderFilters(
                     </div>
 
                     <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="student-profile-email">
+                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-email">
                         E-mail
                       </label>
                       <Input
@@ -1162,19 +1169,19 @@ function applyStrictProviderFilters(
                   <dl className="mt-4 space-y-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-slate-500">Telefone</dt>
-                      <dd className="font-semibold text-slate-900">{profilePhone || 'Não informado'}</dd>
+                      <dd className="font-semibold text-[var(--mazzi-text)]">{profilePhone || 'Não informado'}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-slate-500">E-mail</dt>
-                      <dd className="truncate font-semibold text-slate-900">{user?.email || 'Não informado'}</dd>
+                      <dd className="truncate font-semibold text-[var(--mazzi-text)]">{user?.email || 'Não informado'}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-slate-500">CPF</dt>
-                      <dd className="font-mono font-semibold text-slate-900">{maskCpf(user?.cpf)}</dd>
+                      <dd className="font-mono font-semibold text-[var(--mazzi-text)]">{maskCpf(user?.cpf)}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-slate-500">Data de nascimento</dt>
-                      <dd className="font-semibold text-slate-900">{formatBirthDateForDisplay(user?.birthDate)}</dd>
+                      <dd className="font-semibold text-[var(--mazzi-text)]">{formatBirthDateForDisplay(user?.birthDate)}</dd>
                     </div>
                   </dl>
                 )}
@@ -1182,7 +1189,7 @@ function applyStrictProviderFilters(
 
               <div className="mazzi-hero text-left">
                 <div className="p-5">
-                  <span className="text-xl font-bold text-slate-900 block">
+                  <span className="text-xl font-bold text-[var(--mazzi-text)] block">
                     {historyBookings.filter((b) => b.status === 'COMPLETED').length}
                   </span>
                   <span className="text-[11px] text-slate-500 font-semibold">Aulas Concluídas</span>
@@ -1354,7 +1361,7 @@ function applyStrictProviderFilters(
                       <Car className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-black text-slate-900">{vehicleName}</span>
+                      <span className="block truncate text-sm font-black text-[var(--mazzi-text)]">{vehicleName}</span>
                       <span className="mt-1 block truncate text-xs font-semibold text-slate-500">
                         {transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. {ctx.category || ctx.offering_category || 'B'}
                       </span>

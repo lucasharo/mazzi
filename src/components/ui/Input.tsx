@@ -9,6 +9,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   rightAction?: React.ReactNode;
+  inputRef?: React.Ref<HTMLInputElement>;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -18,6 +19,7 @@ export const Input: React.FC<InputProps> = ({
   leftIcon,
   rightIcon,
   rightAction,
+  inputRef,
   className = '',
   id,
   disabled,
@@ -35,7 +37,7 @@ export const Input: React.FC<InputProps> = ({
       {label && (
         <label
           htmlFor={generatedId}
-          className="block text-xs font-semibold uppercase tracking-wider text-slate-700"
+          className="mazzi-field-label block"
         >
           {label}
         </label>
@@ -47,11 +49,12 @@ export const Input: React.FC<InputProps> = ({
           </div>
         )}
         <input
+          ref={inputRef}
           id={generatedId}
           disabled={disabled}
           aria-invalid={error ? true : Boolean(ariaInvalid)}
           aria-describedby={describedBy}
-          className={`w-full min-h-11 rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2 read-only:bg-slate-50 read-only:text-slate-500 read-only:cursor-not-allowed read-only:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
+          className={`w-full min-h-11 rounded-xl border bg-white px-3.5 py-2.5 text-sm text-[var(--mazzi-text)] placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2 read-only:bg-slate-50 read-only:text-slate-500 read-only:cursor-not-allowed read-only:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
             leftIcon ? 'pl-10' : ''
           } ${rightAction ? 'pr-11' : rightIcon || error ? 'pr-10' : ''} ${
             error

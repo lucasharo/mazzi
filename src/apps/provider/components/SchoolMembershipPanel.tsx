@@ -100,7 +100,7 @@ export const SchoolMembershipPanel: React.FC<SchoolMembershipPanelProps> = ({ pr
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"><UserRound className="h-5 w-5" aria-hidden="true" /></span>
-                        <div><p className="font-bold text-slate-900">{item.name || item.email || 'Instrutor'}</p><p className="text-xs text-slate-500">{item.email}</p></div>
+                        <div><p className="font-bold text-[var(--mazzi-text)]">{item.name || item.email || 'Instrutor'}</p><p className="text-xs text-slate-500">{item.email}</p></div>
                       </div>
                       <Badge variant={item.isActive ? 'success' : 'default'}>{membershipLabel}</Badge>
                     </div>
@@ -148,7 +148,7 @@ export const SchoolMembershipPanel: React.FC<SchoolMembershipPanelProps> = ({ pr
       ) : (
         invitations.filter((item) => item.status === 'PENDING').map((item) => (
           <div key={item.id} className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 p-3 text-center">
-            <div><p className="font-semibold text-slate-900">{item.school_name}</p><p className="text-xs text-slate-500">Convite para atuar como instrutor</p></div>
+            <div><p className="font-semibold text-[var(--mazzi-text)]">{item.school_name}</p><p className="text-xs text-slate-500">Convite para atuar como instrutor</p></div>
             <div className="flex justify-center gap-2"><Button size="sm" onClick={() => run(() => dbService.acceptSchoolInstructorInvitation(item.id), 'Convite aceito.')} disabled={busy} leftIcon={<Check className="h-4 w-4" />}>Aceitar</Button><Button size="sm" variant="dangerSoft" onClick={() => run(() => dbService.declineSchoolInstructorInvitation(item.id), 'Convite recusado.')} disabled={busy} leftIcon={<CircleX className="h-4 w-4" />}>Recusar</Button></div>
           </div>
         ))

@@ -586,6 +586,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const durationLabel = typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) && durationMinutes > 0
     ? ` (${durationMinutes} min)`
     : '';
+  const checkoutFormValid = Boolean(
+    quote &&
+    !isProcessing &&
+    (meetingPointType === 'PROVIDER' || studentAddress.trim()),
+  );
 
   return (
     <Modal
@@ -728,7 +733,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
               {meetingPointType === 'STUDENT' && (
                 <div>
-                  <label htmlFor="checkout-student-address" className="mb-1.5 block text-xs font-bold text-slate-700">
+                  <label htmlFor="checkout-student-address" className="mazzi-field-label mb-1.5 block">
                     Endereço completo para o ponto de encontro
                   </label>
                   <Input
@@ -749,6 +754,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               size="sm"
               className="w-full font-bold shadow-xs"
               isLoading={isProcessing}
+              disabled={!checkoutFormValid}
               onClick={handleProceedToBookingHold}
               aria-label="Continuar para pagamento da aula"
             >

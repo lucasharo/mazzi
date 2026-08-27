@@ -615,7 +615,7 @@ export const DesignSystemShowcase: React.FC = () => {
                   </div>
 
                   <div className="p-6 rounded-3xl bg-slate-50 border border-[#e9e6de] space-y-4">
-                    <label className="block text-xs font-bold text-slate-700">Código de Verificação OTP ({AUTH_OTP_LENGTH} dígitos):</label>
+                    <label className="mazzi-field-label block">Código de Verificação OTP ({AUTH_OTP_LENGTH} dígitos):</label>
                     <OtpInput value={otpVal} onChange={setOtpVal} />
                     <p className="text-[11px] font-mono text-slate-500">Valor atual: "{otpVal}"</p>
                   </div>
@@ -832,6 +832,10 @@ export const DesignSystemShowcase: React.FC = () => {
                     <ContentSkeleton label="Atualizando lista" />
                     <h3 className="pt-2 text-xs font-black uppercase tracking-wider text-slate-500">Objeto</h3>
                     <ContentSkeleton mode="object" label="Atualizando objeto" />
+                    <h3 className="pt-2 text-xs font-black uppercase tracking-wider text-slate-500">Painel com indicadores</h3>
+                    <ContentSkeleton mode="dashboard" label="Atualizando painel com indicadores" />
+                    <h3 className="pt-2 text-xs font-black uppercase tracking-wider text-slate-500">Lista e detalhes</h3>
+                    <ContentSkeleton mode="split" label="Atualizando lista e detalhes" />
                     <div className="border-t border-slate-100 pt-4">
                       <LoadingScreen fullscreen={false} label="Carregamento inicial da tela" />
                     </div>

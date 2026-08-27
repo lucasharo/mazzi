@@ -250,6 +250,7 @@ export interface Vehicle {
   vehicleType: VehicleType;
   transmission: TransmissionType;
   status: VehicleStatus;
+  blockedReason?: string;
   color?: string;
   description?: string;
   photos: string[]; // Public vehicle media URLs

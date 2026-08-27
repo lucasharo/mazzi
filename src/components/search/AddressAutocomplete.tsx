@@ -192,7 +192,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             <li key={`${suggestion.placeId || suggestion.formattedAddress}-${index}`} id={`${listboxId}-${index}`} role="option" aria-selected={index === activeIndex}>
               <ButtonBase type="button" className={`flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition ${index === activeIndex ? 'bg-amber-50' : 'hover:bg-amber-50'}`} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)}>
                 <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-50 text-[var(--mazzi-yellow-dark)]"><MapPin className="h-3.5 w-3.5" aria-hidden="true" /></span>
-                <span className="min-w-0 flex-1"><span className="block truncate text-xs font-bold leading-4 text-[var(--mazzi-dark)]">{suggestion.addressLine1 || suggestion.formattedAddress}</span><span className="mt-0.5 block truncate text-[10px] font-medium leading-4 text-[var(--mazzi-muted)]">{suggestion.addressLine2 || suggestion.formattedAddress}</span></span>
+                <span className="min-w-0 flex-1"><span className="block truncate text-xs font-bold leading-4 text-[var(--mazzi-text)]">{suggestion.addressLine1 || suggestion.formattedAddress}</span><span className="mt-0.5 block truncate text-[10px] font-medium leading-4 text-[var(--mazzi-muted)]">{suggestion.addressLine2 || suggestion.formattedAddress}</span></span>
               </ButtonBase>
             </li>
           ))}

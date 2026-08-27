@@ -91,7 +91,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
       <div className="space-y-6 text-left">
         {/* 1. Date Filter */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-[var(--mazzi-dark)] flex items-center gap-1.5 mb-2">
+          <label className="mazzi-field-label flex items-center gap-1.5 mb-2">
             <Calendar className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
             Quando você quer sua aula?
           </label>
@@ -124,7 +124,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
 
         {/* 2. Sort By */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-[var(--mazzi-dark)] flex items-center gap-1.5 mb-2">
+          <label className="mazzi-field-label flex items-center gap-1.5 mb-2">
             <ArrowUpDown className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
             Ordenar Por
           </label>
@@ -159,7 +159,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
 
         {/* 3. Provider Type */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-[var(--mazzi-dark)] flex items-center gap-1.5 mb-2">
+          <label className="mazzi-field-label flex items-center gap-1.5 mb-2">
             <ShieldCheck className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
             Tipo de Profissional
           </label>
@@ -193,7 +193,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
         {/* 4. Transmission Filter (Only applicable for Cat B or ALL) */}
         {currentDraft.category !== 'A' && (
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--mazzi-dark)] flex items-center gap-1.5 mb-2">
+            <label className="mazzi-field-label flex items-center gap-1.5 mb-2">
               <Car className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
               Tipo de Câmbio
             </label>
@@ -228,7 +228,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
         {/* 5. Search Radius */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--mazzi-dark)] flex items-center gap-1.5">
+          <label className="mazzi-field-label flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
               Raio Máximo de Busca
             </label>
@@ -261,7 +261,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
 
         {/* 6. Minimum Rating */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-[var(--mazzi-dark)] flex items-center gap-1.5 mb-2">
+          <label className="mazzi-field-label flex items-center gap-1.5 mb-2">
             <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" aria-hidden="true" />
             Avaliação Mínima
           </label>
@@ -295,7 +295,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
 
         {/* 7. Price Range */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-[var(--mazzi-dark)] flex items-center gap-1.5 mb-2">
+          <label className="mazzi-field-label flex items-center gap-1.5 mb-2">
             <DollarSign className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
             Faixa de Preço Máxima por Aula
           </label>

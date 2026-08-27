@@ -96,6 +96,7 @@ export function mapVehicleFromDb(row: any): Vehicle {
     vehicleType: row.vehicle_type,
     transmission: row.transmission,
     status: row.status,
+    blockedReason: row.blocked_reason || undefined,
     color: row.color || 'Prata',
     photos: row.photos || [],
     createdAt: row.created_at || new Date().toISOString(),
@@ -265,8 +266,8 @@ export function mapAuditLogFromDb(row: any): AuditLog {
   return {
     id: row.id,
     actorId: row.actor_id || 'SYSTEM',
-    actorName: 'Usuário',
-    actorRole: 'SUPPORT',
+    actorName: row.actor_name || (row.actor_id ? 'Usuário' : 'Sistema'),
+    actorRole: row.actor_role || 'PLATFORM_ADMIN',
     action: row.action,
     entityType: row.entity_type,
     entityId: row.entity_id,
@@ -740,6 +741,14 @@ export const dbService = {
 
   async deactivateVehicle(vehicleId: string): Promise<Vehicle> {
     const { data, error } = await sp.rpc('provider_deactivate_vehicle', {
+      p_vehicle_id: vehicleId,
+    });
+    if (error) throw error;
+    return mapVehicleFromDb(data);
+  },
+
+  async activateVehicle(vehicleId: string): Promise<Vehicle> {
+    const { data, error } = await sp.rpc('provider_activate_vehicle', {
       p_vehicle_id: vehicleId,
     });
     if (error) throw error;
@@ -1246,6 +1255,24 @@ export const dbService = {
     if (error) throw error;
   },
 
+  async getAdminBookings(): Promise<Booking[]> {
+    const { data, error } = await sp.from('bookings').select('*');
+    if (error) throw error;
+    const rows = data || [];
+    if (rows.length === 0) return [];
+    const bookingIds = rows.map((row: any) => row.id).filter(Boolean);
+    const [{ data: names, error: namesError }, { data: categoriesData }] = await Promise.all([
+      sp.rpc('get_admin_booking_names', { p_booking_ids: bookingIds }),
+      sp.rpc('get_my_booking_categories', { p_booking_ids: bookingIds }),
+    ]);
+    if (namesError) throw namesError;
+    const namesByBooking = new Map<string, any>((names || []).map((item: any) => [item.booking_id, item]));
+    const categoriesByBooking = new Map<string, string>((categoriesData || []).map((item: any) => [item.booking_id, item.category]));
+    return rows
+      .map((row: any) => mapBookingFromDb({ ...row, ...(namesByBooking.get(row.id) || {}) }, categoriesByBooking.get(row.id)))
+      .sort((a: Booking, b: Booking) => new Date(a.scheduledStartAt || 0).getTime() - new Date(b.scheduledStartAt || 0).getTime());
+  },
+
   async addAdministrativeRole(userId: string, role: Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>): Promise<void> {
     const { error } = await sp.rpc('admin_add_administrative_role', {
       p_target_user_id: userId,
@@ -1385,13 +1412,23 @@ export const dbService = {
     return mapComplianceFromDb(data);
   },
 
-  async reviewComplianceDocument(documentId: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string): Promise<ComplianceDocument> {
+  async reviewComplianceDocument(documentId: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string, expiresAt?: string): Promise<ComplianceDocument> {
     const { data, error } = await sp.rpc('review_compliance_document', {
       p_document_id: documentId,
       p_status: status,
       p_rejection_reason: rejectionReason || null,
     });
     if (error) throw error;
+    if (status === 'APPROVED' && expiresAt !== undefined) {
+      const { data: updated, error: updateError } = await sp
+        .from('compliance_documents')
+        .update({ expires_at: expiresAt || null, updated_at: new Date().toISOString() })
+        .eq('id', documentId)
+        .select('*')
+        .single();
+      if (updateError) throw updateError;
+      return mapComplianceFromDb(updated);
+    }
     return mapComplianceFromDb(data);
   },
 

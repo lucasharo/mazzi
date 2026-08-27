@@ -90,7 +90,7 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
 
         {/* Next slot */}
         {provider.nextAvailableSlot && (
-          <div className="mt-3.5 px-3 py-2 rounded-xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] flex items-center gap-2 text-xs text-[var(--mazzi-dark)] font-medium">
+          <div className="mt-3.5 px-3 py-2 rounded-xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] flex items-center gap-2 text-xs text-[var(--mazzi-text)] font-medium">
             <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
             <span>Próximo horário: <strong className="font-extrabold">{provider.nextAvailableSlot}</strong></span>
           </div>

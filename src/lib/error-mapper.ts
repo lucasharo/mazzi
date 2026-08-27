@@ -91,6 +91,10 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'O veículo selecionado ainda não está aprovado. Aguarde a validação administrativa antes de publicar esta oferta.';
   }
 
+  if (/ativar oferta/i.test(msg) && /DRAFT/i.test(msg)) {
+    return 'Não é possível ativar a oferta porque o cadastro do prestador ainda está incompleto. Conclua o cadastro e aguarde a aprovação.';
+  }
+
   if (msg.includes('OFFERING_INSTRUCTOR_NOT_ELIGIBLE')) {
     return 'O instrutor selecionado ainda não está elegível para esta oferta. Verifique o vínculo e os documentos de compliance.';
   }

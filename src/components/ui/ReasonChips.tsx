@@ -25,7 +25,7 @@ export function ReasonChips<T extends string>({ options, value, onChange, ariaLa
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option.value)}
-            className={`min-h-0 rounded-full px-2.5 py-1.5 text-[11px] leading-tight font-semibold transition focus-visible:outline-amber-400 ${selected ? 'bg-[#f6c945] text-slate-950 shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            className={`min-h-0 rounded-full border px-3 py-1.5 text-[11px] leading-tight font-semibold transition focus-visible:outline-amber-400 ${selected ? 'border-[var(--mazzi-yellow)] bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs' : 'border-transparent bg-slate-100 text-[var(--mazzi-text)] hover:border-[var(--mazzi-yellow)] hover:bg-[var(--mazzi-yellow-soft)]'}`}
           >
             {option.label}
           </ButtonBase>

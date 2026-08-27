@@ -64,7 +64,7 @@ const SuggestionList: React.FC<SuggestionListProps> = ({ id, options, onSelect }
         key={option.code}
         type="button"
         role="option"
-        className="flex min-h-10 w-full items-center rounded-xl px-3 py-2 text-left text-sm text-[var(--mazzi-dark)] transition-colors hover:bg-[var(--mazzi-yellow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
+        className="flex min-h-10 w-full items-center rounded-xl px-3 py-2 text-left text-sm text-[var(--mazzi-text)] transition-colors hover:bg-[var(--mazzi-yellow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => onSelect(option)}
       >
@@ -159,6 +159,10 @@ export const VehicleCatalogPicker: React.FC<VehicleCatalogPickerProps> = ({
   const filteredBrands = useMemo(() => brands.filter((option) => matchesSearch(option.name, brand)).slice(0, 8), [brand, brands]);
   const filteredModels = useMemo(() => models.filter((option) => matchesSearch(option.name, model)).slice(0, 8), [model, models]);
   const filteredYears = useMemo(() => years.filter((option) => matchesSearch(option.name, String(year))).slice(0, 8), [year, years]);
+  const yearSuggestions = useMemo(
+    () => filteredYears.map((option) => ({ ...option, name: option.name.slice(0, 4) })),
+    [filteredYears],
+  );
 
   const selectBrand = (option: CatalogOption) => {
     setBrandCode(option.code);
@@ -254,10 +258,11 @@ export const VehicleCatalogPicker: React.FC<VehicleCatalogPickerProps> = ({
             autoComplete="off"
             aria-autocomplete="list"
             aria-controls="vehicle-year-suggestions"
+            helperText={`Máximo de 12 anos de fabricação (a partir de ${new Date().getFullYear() - 12}).`}
             disabled={disabled || (!modelCode && !model.trim())}
           />
-          {activeField === 'year' && filteredYears.length > 0 && (
-            <SuggestionList id="vehicle-year-suggestions" options={filteredYears} onSelect={selectYear} />
+          {activeField === 'year' && yearSuggestions.length > 0 && (
+            <SuggestionList id="vehicle-year-suggestions" options={yearSuggestions} onSelect={selectYear} />
           )}
         </div>
       </div>

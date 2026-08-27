@@ -36,6 +36,8 @@ export class VehicleDomainError extends Error {
   }
 }
 
+export const MAX_VEHICLE_AGE_YEARS = 12;
+
 export class OfferingDomainError extends Error {
   constructor(
     message: string,
@@ -276,6 +278,13 @@ export function validateVehicleData(data: Partial<Vehicle>): void {
       400
     );
   }
+  if (data.year < currentYear - MAX_VEHICLE_AGE_YEARS) {
+    throw new VehicleDomainError(
+      `O veículo deve ter no máximo ${MAX_VEHICLE_AGE_YEARS} anos de fabricação (a partir de ${currentYear - MAX_VEHICLE_AGE_YEARS}).`,
+      'VEHICLE_TOO_OLD',
+      400,
+    );
+  }
 
   if (data.licensePlate) {
     const plateCheck = validateLicensePlate(data.licensePlate);
@@ -344,7 +353,7 @@ export function validateVehicleData(data: Partial<Vehicle>): void {
 }
 
 /**
-* Creates a new Vehicle record in PENDING or IN_REVIEW status.
+ * Creates a new Vehicle record ready for submission to administrative review.
  */
 export function createVehicleDraft(params: {
   providerId: string;
@@ -369,7 +378,7 @@ export function createVehicleDraft(params: {
     );
   }
 
-const initialStatus: VehicleStatus = params.autoSubmitForReview ? 'IN_REVIEW' : 'PENDING';
+  const initialStatus: VehicleStatus = params.autoSubmitForReview ? 'IN_REVIEW' : 'PENDING';
 
   const vehicle: Vehicle = {
     id: `veh_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -764,23 +773,25 @@ export function validateOfferingActivationPermission(
 ): void {
   if (actorRole === 'SUPPORT') {
     throw new OfferingDomainError(
-      'O papel SUPPORT não possui permissão para ativar ou alterar ofertas de serviço.',
+      'O perfil Suporte não possui permissão para ativar ou alterar ofertas de serviço.',
       'SUPPORT_OFFERING_ACTIVATION_DENIED',
       403
     );
   }
 
   if (provider.status !== 'ACTIVE') {
+    const providerStatusDescription = provider.status === 'DRAFT' ? 'cadastro incompleto' : provider.status === 'PENDING_REVIEW' ? 'aguardando análise' : provider.status === 'SUSPENDED' ? 'suspenso' : provider.status === 'BLOCKED' ? 'bloqueado' : 'não aprovado';
     throw new OfferingDomainError(
-      `Não é possível ativar oferta de serviço para um prestador não ativo (Status: '${provider.status}').`,
+      `Não é possível ativar a oferta de serviço porque o prestador está com o ${providerStatusDescription}.`,
       'INACTIVE_PROVIDER_OFFERING_ACTIVATION_DENIED',
       422
     );
   }
 
   if (vehicle.status !== 'ACTIVE') {
+    const vehicleStatusDescription = vehicle.status === 'DRAFT' ? 'cadastro incompleto' : vehicle.status === 'PENDING' ? 'aguardando aprovação' : vehicle.status === 'IN_REVIEW' ? 'em reanálise' : vehicle.status === 'INACTIVE' ? 'inativo' : vehicle.status === 'BLOCKED' ? 'bloqueado' : 'indisponível';
     throw new OfferingDomainError(
-      `Não é possível ativar oferta de serviço para um veículo não ativo (Status: '${vehicle.status}').`,
+      `Não é possível ativar a oferta de serviço porque o veículo está ${vehicleStatusDescription}.`,
       'INACTIVE_VEHICLE_OFFERING_ACTIVATION_DENIED',
       422
     );

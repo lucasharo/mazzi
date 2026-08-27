@@ -4,6 +4,7 @@ import {
   requestPasswordReset, resendSignupOtp, updatePassword, verifyEmailOtp, verifyRecoveryOtp, } from '../../lib/auth-service';
 import { supabase } from '../../lib/supabase';
 import { Input, PasswordInput } from '../ui/Input';
+import { MaskedInput } from '../ui/MaskedInput';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { OtpInput } from '../ui/OtpInput';
@@ -942,8 +943,8 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
           <div className="space-y-1 text-center"><p className="mazzi-eyebrow">MAZZI PRO</p><p className="text-sm text-slate-600">Cadastre a autoescola. Ela permanecerá pendente até concluir os requisitos de ativação.</p></div>
           {feedback?.tone === 'error' && <div role="alert" className="rounded-2xl border border-rose-200/60 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700">{feedback.message}</div>}
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input label="CNPJ *" value={schoolCnpj} onChange={(event) => setSchoolCnpj(maskCnpj(event.target.value))} inputMode="numeric" placeholder="00.000.000/0000-00" />
-            <Input label="Telefone comercial *" value={schoolPhone} onChange={(event) => setSchoolPhone(formatPhone(event.target.value))} inputMode="tel" placeholder="(11) 99999-9999" />
+            <MaskedInput label="CNPJ *" value={schoolCnpj} onChange={setSchoolCnpj} mask={maskCnpj} inputMode="numeric" placeholder="00.000.000/0000-00" />
+            <MaskedInput label="Telefone comercial *" value={schoolPhone} onChange={setSchoolPhone} mask={formatPhone} inputMode="tel" placeholder="(11) 99999-9999" />
           </div>
           <Input label="Razão social *" value={schoolLegalName} onChange={(event) => setSchoolLegalName(event.target.value)} placeholder="Razão social da autoescola" />
           <Input label="Nome fantasia *" value={schoolTradeName} onChange={(event) => setSchoolTradeName(event.target.value)} placeholder="Como os alunos conhecem a autoescola" />
@@ -971,7 +972,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
           </h1>
           <p className="text-sm text-slate-600">
             Enviamos um código de {AUTH_OTP_LENGTH} dígitos para{' '}
-            <strong className="text-slate-900 font-semibold">{otpEmail}</strong>.
+            <strong className="text-[var(--mazzi-text)] font-semibold">{otpEmail}</strong>.
           </p>
         </div>
 
@@ -1062,7 +1063,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
           </h1>
           <p className="text-sm text-slate-600">
             Informe o código de {AUTH_OTP_LENGTH} dígitos enviado para{' '}
-            <strong className="text-slate-900 font-semibold">{otpEmail}</strong>.
+            <strong className="text-[var(--mazzi-text)] font-semibold">{otpEmail}</strong>.
           </p>
         </div>
 
@@ -1343,7 +1344,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
                 <Building2 className="h-4 w-4" aria-hidden="true" />
               </span>
-              <p><strong className="text-[var(--mazzi-dark)]">Você será a pessoa responsável pela autoescola.</strong> Depois de criar sua conta, informe CNPJ, razão social e endereço operacional da empresa.</p>
+              <p><strong className="text-[var(--mazzi-text)]">Você será a pessoa responsável pela autoescola.</strong> Depois de criar sua conta, informe CNPJ, razão social e endereço operacional da empresa.</p>
             </div>
           )}
           <Input

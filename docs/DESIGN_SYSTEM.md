@@ -68,6 +68,7 @@ Todos usam tipografia, cores e espaçamentos globais. Não replique o markup em 
 - Perfis Aluno, PRO e Admin seguem a mesma composição: `AppPageHeader`, avatar central, identificação e card de dados.
 - A edição fica no canto superior direito do header.
 - Foto e galeria usam `ProfilePhotoPicker` e botões globais.
+- Labels de campos usam a classe compartilhada `mazzi-field-label`, com texto claro, compacto e em caixa alta em todos os apps.
 - Inputs usam `Input` e o mesmo tratamento de borda/foco em todos os apps; não há borda preta específica do PRO.
 
 ## 7. Agendamento

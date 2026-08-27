@@ -64,10 +64,11 @@ describe('TASK-096A4M-R6 private compliance storage contract', () => {
   });
 
   it('presents compliance review status as PENDING in the Admin app', () => {
-    expect(adminComponents).toContain("{ value: 'PENDING', label: `Pendentes (");
-expect(adminComponents).toContain("{ value: 'IN_REVIEW', label: `Em análise (");
-expect(adminComponents).toContain("d.status === filterStatus");
-expect(adminApp).toContain("d.status === 'PENDING' || d.status === 'IN_REVIEW'");
+    expect(adminComponents).toContain("{ value: 'IN_REVIEW', label: `Pendentes (");
+    expect(adminComponents).toContain("filterStatus === 'IN_REVIEW'");
+    expect(adminComponents).toContain("d.status === 'PENDING' || d.status === 'IN_REVIEW'");
+    expect(adminComponents).not.toContain("{ value: 'DRAFT'");
+    expect(adminApp).toContain("d.status === 'PENDING' || d.status === 'IN_REVIEW'");
   });
 
   it('does not contain live credentials or an instruction to execute DDL remotely', () => {

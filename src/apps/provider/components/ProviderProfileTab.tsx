@@ -110,17 +110,17 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
         {/* Profile Content / Edit Form */}
         {!isEditingProfile || !canEditProfile ? (
           <dl className="mt-4 space-y-3 text-sm">
-            {isSchool && <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">Razão social</dt><dd className="max-w-[65%] text-right font-semibold text-slate-900">{currentProvider.legalName || 'Não informado'}</dd></div>}
-            {isSchool && <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">CNPJ</dt><dd className="font-semibold text-slate-900">{currentProvider.documentNumber || 'Não informado'}</dd></div>}
-            <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Telefone</dt><dd className="font-semibold text-slate-900">{maskBrazilianPhone(currentProvider.publicContact || userPhone || '') || 'Não informado'}</dd></div>
-            <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">E-mail de contato</dt><dd className="max-w-[65%] truncate text-right font-semibold text-slate-900">{currentProvider.commercialEmail || userEmail || 'Não informado'}</dd></div>
-            {!isSchool && <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">E-mail</dt><dd className="truncate font-semibold text-slate-900">{userEmail || 'Não informado'}</dd></div>}
-            <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Perfil profissional</dt><dd className="text-right font-semibold text-slate-900">{isSchool ? 'Autoescola / CFC' : 'Instrutor autônomo'}</dd></div>
-            <div className="flex items-start justify-between gap-3"><dt className="shrink-0 text-slate-500">Localização</dt><dd className="max-w-[68%] text-right font-semibold text-slate-900">{currentProvider.neighborhood || 'Não informado'}, {currentProvider.city || 'Não informado'} - {currentProvider.state || 'SP'}</dd></div>
-            <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Raio público</dt><dd className="font-semibold text-slate-900">{currentProvider.serviceRadiusKm || 6} km</dd></div>
+            {isSchool && <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">Razão social</dt><dd className="max-w-[65%] text-right font-semibold text-[var(--mazzi-text)]">{currentProvider.legalName || 'Não informado'}</dd></div>}
+            {isSchool && <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">CNPJ</dt><dd className="font-semibold text-[var(--mazzi-text)]">{currentProvider.documentNumber ? maskCnpj(currentProvider.documentNumber) : 'Não informado'}</dd></div>}
+            <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Telefone</dt><dd className="font-semibold text-[var(--mazzi-text)]">{maskBrazilianPhone(currentProvider.publicContact || userPhone || '') || 'Não informado'}</dd></div>
+            <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">E-mail de contato</dt><dd className="max-w-[65%] truncate text-right font-semibold text-[var(--mazzi-text)]">{currentProvider.commercialEmail || userEmail || 'Não informado'}</dd></div>
+            {!isSchool && <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">E-mail</dt><dd className="truncate font-semibold text-[var(--mazzi-text)]">{userEmail || 'Não informado'}</dd></div>}
+            <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Perfil profissional</dt><dd className="text-right font-semibold text-[var(--mazzi-text)]">{isSchool ? 'Autoescola / CFC' : 'Instrutor autônomo'}</dd></div>
+            <div className="flex items-start justify-between gap-3"><dt className="shrink-0 text-slate-500">Localização</dt><dd className="max-w-[68%] text-right font-semibold text-[var(--mazzi-text)]">{currentProvider.neighborhood || 'Não informado'}, {currentProvider.city || 'Não informado'} - {currentProvider.state || 'SP'}</dd></div>
+            <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Raio público</dt><dd className="font-semibold text-[var(--mazzi-text)]">{currentProvider.serviceRadiusKm || 6} km</dd></div>
             <div className="border-t border-[var(--mazzi-border)] pt-3">
               <dt className="text-slate-500">Biografia</dt>
-              <dd className="mt-1.5 leading-relaxed text-slate-900">{currentProvider.bio || 'Nenhuma biografia cadastrada.'}</dd>
+              <dd className="mt-1.5 leading-relaxed text-[var(--mazzi-text)]">{currentProvider.bio || 'Nenhuma biografia cadastrada.'}</dd>
             </div>
           </dl>
         ) : (
@@ -154,22 +154,22 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
 
             {isSchool && <>
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-legal-name">Razão social *</label>
+                <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-profile-legal-name">Razão social *</label>
                 <Input id="provider-profile-legal-name" className="rounded-2xl" value={profileForm.legalName} onChange={(e) => onProfileFormChange({ ...profileForm, legalName: e.target.value })} />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-cnpj">CNPJ</label>
+                <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-profile-cnpj">CNPJ</label>
                 <Input id="provider-profile-cnpj" className="rounded-2xl bg-slate-100 text-slate-500" value={currentProvider.documentNumber ? maskCnpj(currentProvider.documentNumber) : 'Não informado'} readOnly aria-describedby="provider-profile-cnpj-help" />
                 <p id="provider-profile-cnpj-help" className="mt-1 text-[11px] text-slate-500">O CNPJ não pode ser alterado.</p>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-commercial-email">E-mail de contato</label>
+                <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-profile-commercial-email">E-mail de contato</label>
                 <Input id="provider-profile-commercial-email" className="rounded-2xl" type="email" value={profileForm.commercialEmail} onChange={(e) => onProfileFormChange({ ...profileForm, commercialEmail: e.target.value })} placeholder="contato@autoescola.com.br" />
               </div>
             </>}
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-name">Nome de exibição *</label>
+              <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-profile-name">Nome de exibição *</label>
               <Input
                 id="provider-profile-name"
                 className="rounded-2xl"
@@ -179,7 +179,7 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-contact">WhatsApp / contato público</label>
+              <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-profile-contact">WhatsApp / contato público</label>
               <Input
                 id="provider-profile-contact"
                 className="rounded-2xl"
@@ -198,7 +198,7 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
             />
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-radius">Raio de atendimento (km)</label>
+              <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-profile-radius">Raio de atendimento (km)</label>
               <Input
                 id="provider-profile-radius"
                 className="rounded-2xl"
@@ -214,13 +214,13 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700" htmlFor="provider-profile-bio">Biografia e diferenciais</label>
+              <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-profile-bio">Biografia e diferenciais</label>
               <Textarea
                 id="provider-profile-bio"
                 rows={4}
                 value={profileForm.bio}
                 onChange={(e) => onProfileFormChange({ ...profileForm, bio: e.target.value })}
-                className="w-full rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm leading-relaxed text-[var(--mazzi-dark)] transition focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)]"
+                className="w-full rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm leading-relaxed text-[var(--mazzi-text)] transition focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)]"
                 placeholder="Descreva sua experiência, paciência com alunos iniciantes e diferenciais..."
               />
             </div>

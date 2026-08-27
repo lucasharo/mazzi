@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Calendar, Clock, MapPin, Car, UserCheck, Building2, CreditCard, MessageSquare, AlertTriangle, XCircle, AlertCircle, ArrowLeft, CheckCircle2, Circle, Star, } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
+import { ReasonChips } from '../../../components/ui/ReasonChips';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
@@ -297,26 +298,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
           {/* Optional reason selector */}
           <div className="space-y-2 pt-1">
-            <label className="block text-xs font-bold text-slate-700">
+            <label className="mazzi-field-label block">
               Motivo do cancelamento <span className="text-slate-400 font-normal">(opcional)</span>
             </label>
-            <div className="flex flex-wrap gap-1.5">
-              {CANCEL_REASON_CHIPS.map((chip) => (
-                <ButtonBase
-                  key={chip}
-                  type="button"
-                  onClick={() => setSelectedReasonChip(selectedReasonChip === chip ? '' : chip)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                    selectedReasonChip === chip
-                      ? 'bg-amber-500 text-slate-950 font-extrabold shadow-2xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {selectedReasonChip === chip ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : <Circle className="h-3.5 w-3.5" aria-hidden="true" />}
-                  {chip}
-                </ButtonBase>
-              ))}
-            </div>
+            <ReasonChips
+              options={CANCEL_REASON_CHIPS.map((chip) => ({ value: chip, label: chip }))}
+              value={selectedReasonChip}
+              onChange={(value) => setSelectedReasonChip(selectedReasonChip === value ? '' : value)}
+              ariaLabel="Motivos do cancelamento"
+            />
             <Textarea
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}

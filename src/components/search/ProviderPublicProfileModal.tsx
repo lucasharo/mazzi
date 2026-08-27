@@ -101,7 +101,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
             </h2>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-medium text-slate-500">
               {result.ratingCount > 0 ? (
-                <span className="inline-flex items-center gap-1 text-[var(--mazzi-dark)] font-bold">
+                <span className="inline-flex items-center gap-1 text-[var(--mazzi-text)] font-bold">
                   <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" aria-hidden="true" />
                   <span>{result.ratingAverage.toFixed(1)}</span>
                   <span className="text-slate-400 font-normal">({result.ratingCount} avaliações)</span>
@@ -142,7 +142,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
         {(availableCategories.length > 0 || result.nextAvailableSlot) && (
           <section className="mazzi-soft-card p-3.5 border border-[var(--mazzi-border)] flex flex-wrap items-center justify-between gap-2 text-xs">
             {availableCategories.length > 0 && (
-              <div className="flex items-center gap-1.5 font-semibold text-[var(--mazzi-dark)]">
+              <div className="flex items-center gap-1.5 font-semibold text-[var(--mazzi-text)]">
                 <span className="text-[var(--mazzi-muted)] font-medium">Categorias:</span>
                 {availableCategories.map((cat) => (
                   <span key={cat} className="bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] text-[10px] font-bold uppercase px-2 py-0.5 rounded-md">
@@ -190,7 +190,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-bold text-[var(--mazzi-dark)]">
+                          <p className="truncate text-sm font-bold text-[var(--mazzi-text)]">
                             {(() => {
                               const title = offering.vehicleTitle || 'Veículo disponível';
                               const nameParts = result.displayName.split(/\s+/).filter((p) => p.length > 2);
@@ -199,7 +199,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
                             })()}
                           </p>
                           {offering.category && (
-                            <span className="shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] border border-[var(--mazzi-border)] px-2 py-0.5 rounded-md">
+                            <span className="shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-text)] border border-[var(--mazzi-border)] px-2 py-0.5 rounded-md">
                               Cat. {offering.category}
                             </span>
                           )}
@@ -208,7 +208,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
                           {details}
                         </p>
                         {offering.priceInCents > 0 && (
-                          <p className="mt-1.5 text-xs font-bold text-[var(--mazzi-dark)]">
+                          <p className="mt-1.5 text-xs font-bold text-[var(--mazzi-text)]">
                             {formatCentsToBRL(offering.priceInCents)}
                             {offering.durationMinutes ? (
                               <span className="text-[10px] font-normal text-slate-500"> / {offering.durationMinutes} min</span>

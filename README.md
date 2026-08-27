@@ -40,6 +40,16 @@ npm run lint
 npm run build
 ```
 
+### Publicação
+
+O deploy dos três apps é feito pelo GitHub Actions no Cloudflare Pages. Pushes para a branch `feature/premium-ui-v2` executam lint, testes, build e publicação dos ambientes DEV configurados para:
+
+- `mazzi-aluno-dev` — `dist/student`
+- `mazzi-profissional-dev` — `dist/instructor`
+- `mazzi-admin-dev` — `dist/admin`
+
+O fluxo antigo de GitHub Pages/Vercel não faz parte do ambiente atual.
+
 ---
 
 ## 📚 Documentação Técnica
@@ -61,6 +71,7 @@ Consulte a pasta `/docs/` para a especificação detalhada:
 - `docs/14-security-lgpd.md` — Segurança e conformidade com a LGPD
 - `docs/15-testing.md` — Estratégia de testes
 - `docs/16-roadmap.md` — Funcionalidades planejadas pós-MVP
+- `docs/22-chat-history-2026-08-27.md` — Histórico consolidado das decisões deste ciclo
 - `AGENTS.md` — Diretrizes obrigatórias para agentes e desenvolvedores
 # Regras de produto
 

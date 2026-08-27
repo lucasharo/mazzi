@@ -1,5 +1,5 @@
-import React from 'react';
-import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, } from 'lucide-react';
+import React, { useState } from 'react';
+import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, } from 'lucide-react';
 import {
   Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -7,6 +7,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
+import { MaskedInput } from '../../../components/ui/MaskedInput';
 import { Select } from '../../../components/ui/Select';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { VehicleCard } from '../../../components/ui/VehicleCard';
@@ -20,6 +21,7 @@ import { SchoolMembershipPanel } from './SchoolMembershipPanel';
 import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../../lib/db-service';
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 import { VehicleCatalogPicker } from '../../../components/vehicles/VehicleCatalogPicker';
+import { getStatusPresentation } from '../../../domain/status-presentation';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
@@ -68,6 +70,7 @@ interface ProviderManagementTabProps {
   offeringNotice?: string | null;
   onUploadDocClick: (docType: string) => void;
   onAcceptComplianceTerms: () => void;
+  onViewComplianceDocument: (document: ComplianceDocument) => void;
   isAcceptingComplianceTerms?: boolean;
   complianceTermsError?: string | null;
 }
@@ -103,9 +106,18 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   offeringNotice,
   onUploadDocClick,
   onAcceptComplianceTerms,
+  onViewComplianceDocument,
   isAcceptingComplianceTerms = false,
   complianceTermsError,
 }) => {
+  const [blockedVehicleId, setBlockedVehicleId] = useState<string | null>(null);
+  const currentYear = new Date().getFullYear();
+  const vehicleFormValid = Boolean(vehicleForm.brand.trim() && vehicleForm.model.trim() && typeof vehicleForm.year === 'number' && vehicleForm.year >= currentYear - 12 && vehicleForm.year <= currentYear + 1 && vehicleForm.licensePlate.trim() && vehicleForm.category && vehicleForm.transmission);
+  const offeringFormValid = Boolean(offeringForm.vehicleId && offeringForm.priceInBrl.trim() && (currentProvider.type !== 'DRIVING_SCHOOL' || offeringForm.instructorId));
+  const sortedVehicles = [...vehicles].sort((a, b) => {
+    const priority: Record<string, number> = { ACTIVE: 0, PENDING: 1, IN_REVIEW: 2 };
+    return (priority[a.status] ?? 3) - (priority[b.status] ?? 3);
+  });
   const [isInviteInstructorModalOpen, setIsInviteInstructorModalOpen] = React.useState(false);
   const isSchool = currentProvider.type === 'DRIVING_SCHOOL';
   const eligibleSchoolInstructors = schoolInstructors.filter((instructor) => {
@@ -163,7 +175,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
 
       {!isRefreshing && managementSubTab === 'offerings' && currentProvider.status !== 'ACTIVE' && (
         <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
-          As ofertas só podem ser publicadas depois que o cadastro do prestador for aprovado. Status atual: <strong>{currentProvider.status}</strong>.
+          As ofertas só podem ser publicadas depois que o cadastro do prestador for aprovado. Status atual: <strong>{getStatusPresentation(currentProvider.status, 'provider').label}</strong>.
         </div>
       )}
 
@@ -197,28 +209,40 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
               onAction={onOpenAddVehicleModal}
             />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {vehicles.map((vehicle) => (
+            <div className="grid grid-cols-1 gap-4">
+              {sortedVehicles.map((vehicle) => (
                 <VehicleCard
                   key={vehicle.id}
                   vehicle={vehicle}
                   footer={(
+                    <>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-bold text-slate-400">ID: {vehicle.id.slice(0, 8)}</span>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => onOpenEditVehicle(vehicle.id)} leftIcon={<Pencil className="w-3.5 h-3.5" />}>
-                          Editar
+                      {vehicle.status === 'BLOCKED' ? (
+                        <Button variant="outline" size="sm" onClick={() => setBlockedVehicleId(blockedVehicleId === vehicle.id ? null : vehicle.id)} leftIcon={blockedVehicleId === vehicle.id ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}>
+                          {blockedVehicleId === vehicle.id ? 'Esconder motivo do bloqueio' : 'Ver motivo do bloqueio'}
                         </Button>
-                        <Button
-                          variant={vehicle.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
-                          size="sm"
-                          onClick={() => onToggleVehicleStatus(vehicle.id)}
-                          leftIcon={vehicle.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
-                        >
-                          {vehicle.status === 'ACTIVE' ? 'Desativar Veículo' : 'Ativar Veículo'}
-                        </Button>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => onOpenEditVehicle(vehicle.id)} leftIcon={<Pencil className="w-3.5 h-3.5" />}>Editar</Button>
+                          <Button
+                            variant={vehicle.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
+                            size="sm"
+                            disabled={vehicle.status === 'PENDING' || vehicle.status === 'IN_REVIEW'}
+                            onClick={() => onToggleVehicleStatus(vehicle.id)}
+                            leftIcon={vehicle.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                          >
+                            {vehicle.status === 'ACTIVE' ? 'Desativar Veículo' : vehicle.status === 'IN_REVIEW' ? 'Em reanálise' : vehicle.status === 'PENDING' ? 'Aguardando aprovação' : 'Ativar Veículo'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
+                    {vehicle.status === 'BLOCKED' && blockedVehicleId === vehicle.id && (
+                      <p className="mt-2 rounded-xl border border-rose-200 bg-rose-50 p-2 text-[11px] font-medium text-rose-800">
+                        {vehicle.blockedReason || vehicle.description || 'Este veículo foi bloqueado administrativamente. Cadastre um novo veículo ou entre em contato com o suporte.'}
+                      </p>
+                    )}
+                    </>
                   )}
                 />
               ))}
@@ -271,7 +295,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
 
                       <p className="text-xs text-slate-600 font-medium">
                         Veículo vinculado:{' '}
-                          <span className="text-slate-900 font-bold">
+                          <span className="text-[var(--mazzi-text)] font-bold">
                           {linkedVehicle ? `${linkedVehicle.brand} ${linkedVehicle.model}` : 'Veículo não localizado'}
                         </span>
                       </p>
@@ -279,7 +303,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                       {currentProvider.type === 'DRIVING_SCHOOL' && (
                         <p className="text-xs text-slate-600 font-medium">
                           Instrutor:{' '}
-                          <span className="text-slate-900 font-bold">
+                          <span className="text-[var(--mazzi-text)] font-bold">
                             {linkedInstructor?.name || 'Instrutor não localizado'}
                           </span>
                         </p>
@@ -297,6 +321,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                       <Button
                         variant={o.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
                         size="sm"
+                        disabled={o.status !== 'ACTIVE'}
                         onClick={() => onToggleOfferingStatus(o.id)}
                         leftIcon={o.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                       >
@@ -341,7 +366,7 @@ const canResubmit = doc?.status === 'REJECTED';
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-900">{req.title}</span>
+                      <span className="text-sm font-bold text-[var(--mazzi-text)]">{req.title}</span>
                     </div>
                     <p className="text-xs text-slate-500">{req.description}</p>
                     {doc && !isTermsAcceptance && (
@@ -354,9 +379,14 @@ const canResubmit = doc?.status === 'REJECTED';
                     )}
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="w-full sm:ml-auto sm:w-auto">
+                    <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
                       <StatusBadge status={doc?.status ?? 'PENDING'} domain="compliance" />
+                      {doc?.storagePath && !isTermsAcceptance && (
+                        <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5" aria-hidden="true" />} onClick={() => onViewComplianceDocument(doc)}>
+                          Ver arquivo
+                        </Button>
+                      )}
                       {(!doc || canResubmit) && !isTermsAcceptance && (
                         <Button
                           variant="outline"
@@ -407,16 +437,17 @@ const canResubmit = doc?.status === 'REJECTED';
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Placa *</label>
-              <Input
+              <label className="mazzi-field-label block mb-1">Placa *</label>
+              <MaskedInput
                 value={vehicleForm.licensePlate}
-                onChange={(e) => onVehicleFormChange({ ...vehicleForm, licensePlate: maskVehiclePlate(e.target.value) })}
+                mask={maskVehiclePlate}
+                onChange={(value) => onVehicleFormChange({ ...vehicleForm, licensePlate: value })}
                 placeholder="ABC-1234 / ABC1D23"
               />
             </div>
             <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Categoria *</label>
               <Select
+                label="Categoria *"
                 value={vehicleForm.category}
                 onChange={(e) => {
                   const cat = e.target.value as VehicleCategory;
@@ -428,16 +459,16 @@ const canResubmit = doc?.status === 'REJECTED';
                 }}
                 options={[
                   { value: 'B', label: 'Cat. B (Carro)' },
-                  { value: 'A', label: 'Cat. A (Moto)' },
                 ]}
+                disabled
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Transmissão *</label>
               <Select
+                label="Transmissão *"
                 value={vehicleForm.transmission}
                 onChange={(e) => onVehicleFormChange({ ...vehicleForm, transmission: e.target.value as TransmissionType })}
                 options={[
@@ -447,7 +478,7 @@ const canResubmit = doc?.status === 'REJECTED';
               />
             </div>
             <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Cor</label>
+              <label className="mazzi-field-label block mb-1">Cor</label>
               <Input
                 value={vehicleForm.color}
                 onChange={(e) => onVehicleFormChange({ ...vehicleForm, color: e.target.value })}
@@ -460,8 +491,8 @@ const canResubmit = doc?.status === 'REJECTED';
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddVehicleModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>
-            <Button variant="primary" size="sm" onClick={onSaveVehicle} leftIcon={<Save className="w-4 h-4" />}>
-              {vehicleForm.brand ? 'Enviar para aprovação' : 'Salvar Veículo'}
+            <Button variant="primary" size="sm" onClick={onSaveVehicle} disabled={!vehicleFormValid} leftIcon={<Save className="w-4 h-4" />}>
+              {vehicleForm.brand ? 'Enviar' : 'Salvar Veículo'}
             </Button>
           </div>
         </div>
@@ -479,8 +510,8 @@ const canResubmit = doc?.status === 'REJECTED';
 
           {currentProvider.type === 'DRIVING_SCHOOL' && (
             <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Instrutor *</label>
               <Select
+                label="Instrutor *"
                 value={offeringForm.instructorId}
                 onChange={(e) => onOfferingFormChange({ ...offeringForm, instructorId: e.target.value })}
                 options={[
@@ -496,21 +527,21 @@ const canResubmit = doc?.status === 'REJECTED';
           )}
 
           <div>
-            <label className="text-xs font-extrabold text-slate-900 block mb-1">Veículo Associado *</label>
             <Select
+              label="Veículo Associado *"
               value={offeringForm.vehicleId}
               onChange={(e) => onOfferingFormChange({ ...offeringForm, vehicleId: e.target.value })}
               options={[
                 { value: '', label: 'Selecione um veículo...' },
-                ...vehicles.map((v) => ({ value: v.id, label: `${v.brand} ${v.model} (${maskVehiclePlate(v.licensePlate) || 'Sem placa'}) - Cat. ${v.category}` })),
+                ...vehicles.filter((v) => v.status === 'ACTIVE').map((v) => ({ value: v.id, label: `${v.brand} ${v.model} (${maskVehiclePlate(v.licensePlate) || 'Sem placa'}) - Cat. ${v.category}` })),
               ]}
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Duração (Minutos) *</label>
               <Select
+                label="Duração (Minutos) *"
                 value={offeringForm.durationMinutes}
                 onChange={(e) => onOfferingFormChange({ ...offeringForm, durationMinutes: Number(e.target.value) })}
                 options={[
@@ -521,7 +552,7 @@ const canResubmit = doc?.status === 'REJECTED';
               />
             </div>
             <div>
-              <label className="text-xs font-extrabold text-slate-900 block mb-1">Preço em R$ *</label>
+              <label className="mazzi-field-label block mb-1">Preço em R$ *</label>
               <Input
                 value={offeringForm.priceInBrl}
                 onChange={(e) => onOfferingFormChange({ ...offeringForm, priceInBrl: maskBRLInput(e.target.value) })}
@@ -534,7 +565,7 @@ const canResubmit = doc?.status === 'REJECTED';
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddOfferingModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>
-            <Button variant="primary" size="sm" onClick={onSaveOffering} leftIcon={<Save className="w-4 h-4" />}>
+            <Button variant="primary" size="sm" onClick={onSaveOffering} disabled={!offeringFormValid} leftIcon={<Save className="w-4 h-4" />}>
               Salvar Oferta
             </Button>
           </div>

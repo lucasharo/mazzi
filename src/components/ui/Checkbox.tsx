@@ -68,7 +68,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
   return (
     <div className="space-y-2 text-left">
       {label && (
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+        <label className="mazzi-field-label block">
           {label}
         </label>
       )}
@@ -97,7 +97,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
                 className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 focus:ring-emerald-500"
               />
               <div className="ml-3 text-sm">
-                <span className="font-medium text-slate-900 block">{opt.label}</span>
+                <span className="font-medium text-[var(--mazzi-text)] block">{opt.label}</span>
                 {opt.description && (
                   <span className="text-xs text-slate-500 block mt-0.5">{opt.description}</span>
                 )}

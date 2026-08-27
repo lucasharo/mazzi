@@ -92,11 +92,11 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       {/* 1. HERO: Prominent Date, Time & Status in Evidence */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--mazzi-border)]">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] border border-amber-200/60 shadow-2xs">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-text)] border border-amber-200/60 shadow-2xs">
             <Calendar className="h-5 w-5 text-amber-600" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm sm:text-base font-extrabold text-[var(--mazzi-dark)] leading-tight truncate">
+            <p className="text-sm sm:text-base font-extrabold text-[var(--mazzi-text)] leading-tight truncate">
               {formatDateBR(booking.scheduledDate)}
             </p>
             <p className="text-xs font-bold text-amber-600 flex items-center gap-1 mt-0.5">
@@ -117,7 +117,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         {/* Avatar */}
         <div className="mazzi-avatar h-12 w-12 shrink-0 text-sm font-bold shadow-xs ring-1 ring-black/5">
           <span
-            className="flex h-full w-full items-center justify-center bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)]"
+            className="flex h-full w-full items-center justify-center bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-text)]"
             aria-hidden="true"
           >
             {getInitials(mainDisplayName)}
@@ -127,7 +127,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         {/* Info: Name once + optional Autoescola tag + Location */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <h2 className="text-sm sm:text-base font-bold text-[var(--mazzi-dark)] leading-snug break-words">
+            <h2 className="text-sm sm:text-base font-bold text-[var(--mazzi-text)] leading-snug break-words">
               {mainDisplayName}
             </h2>
           </div>
@@ -140,11 +140,11 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       </div>
 
       {/* 3. Vehicle & Transmission Soft Card (Aligned with ProviderResultCard) */}
-      <div className="mazzi-soft-card flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[var(--mazzi-dark)] border border-[var(--mazzi-border)]">
+      <div className="mazzi-soft-card flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[var(--mazzi-text)] border border-[var(--mazzi-border)]">
         <Car className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
         <span className="truncate">{vehicle}</span>
         <span className="shrink-0 text-[var(--mazzi-muted)] font-medium">· {transLabel}</span>
-        <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] px-2 py-0.5 rounded-md">
+        <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-text)] px-2 py-0.5 rounded-md">
           Cat. {category}
         </span>
       </div>
@@ -155,7 +155,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
             Valor total
           </p>
-          <p className="mt-0.5 text-base sm:text-lg font-bold text-[var(--mazzi-dark)]">
+          <p className="mt-0.5 text-base sm:text-lg font-bold text-[var(--mazzi-text)]">
             {formatCentsToBRL(totalInCents)}
             {duration ? (
               <span className="ml-1 text-xs font-normal text-slate-500">· {duration} min</span>

@@ -40,7 +40,6 @@ export function useDialogHistory({
   useEffect(() => {
     if (!isOpen || typeof window === 'undefined') return undefined;
 
-    const currentUrl = new URL(window.location.href);
     const currentModalKey = window.history.state?.mazziModal;
     if (currentModalKey === modalKey) {
       // The component can remount while the modal history entry is still
@@ -48,21 +47,12 @@ export function useDialogHistory({
       // navigate back and remove the URL while the modal is open.
       historyEntryRef.current = true;
     } else {
-      if (currentUrl.hash) {
-        const hashContent = currentUrl.hash.slice(1);
-        const separatorIndex = hashContent.indexOf('?');
-        const hashPath = separatorIndex >= 0 ? hashContent.slice(0, separatorIndex) : hashContent;
-        const hashParams = new URLSearchParams(separatorIndex >= 0 ? hashContent.slice(separatorIndex + 1) : '');
-        hashParams.set('mazzi_modal', modalKey);
-        currentUrl.search = '';
-        currentUrl.hash = `${hashPath}?${hashParams.toString()}`;
-      } else {
-        currentUrl.searchParams.set('mazzi_modal', modalKey);
-      }
+      // Keep the address bar unchanged. The history entry is internal and
+      // still lets the mobile back button close the modal first.
       window.history.pushState(
         { ...(window.history.state || {}), mazziModal: modalKey },
         '',
-        currentUrl.toString(),
+        window.location.href,
       );
       historyEntryRef.current = true;
     }

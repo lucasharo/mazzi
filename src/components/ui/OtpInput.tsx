@@ -54,7 +54,7 @@ export const OtpInput: React.FC<OtpInputProps> = ({
       {label && (
         <label
           htmlFor={id}
-          className="text-xs font-semibold uppercase tracking-wider text-slate-700 block"
+          className="mazzi-field-label block"
         >
           {label}
         </label>
@@ -77,7 +77,7 @@ export const OtpInput: React.FC<OtpInputProps> = ({
           placeholder={placeholderText}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-          className={`w-full min-h-[56px] text-center font-mono text-xl sm:text-2xl tracking-[0.3em] sm:tracking-[0.4em] font-bold rounded-2xl border px-3 py-2 transition-all outline-none bg-white text-slate-900 shadow-2xs placeholder:text-slate-300 placeholder:tracking-[0.3em] ${
+          className={`w-full min-h-[56px] text-center font-mono text-xl sm:text-2xl tracking-[0.3em] sm:tracking-[0.4em] font-bold rounded-2xl border px-3 py-2 transition-all outline-none bg-white text-[var(--mazzi-text)] shadow-2xs placeholder:text-slate-300 placeholder:tracking-[0.3em] ${
             error
               ? 'border-rose-400 focus:border-rose-500 focus:ring-4 focus:ring-rose-100'
               : 'border-[var(--mazzi-border)] focus:border-[var(--mazzi-yellow)] focus:ring-4 focus:ring-[var(--mazzi-focus-glow)]'

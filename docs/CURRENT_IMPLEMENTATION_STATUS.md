@@ -1,6 +1,6 @@
 # MAZZI — Current Implementation Status
 
-**Última revisão**: 2026-08-22
+**Última revisão**: 2026-08-27
 *Nota: Este documento deve ser atualizado sempre que uma TASK alterar o estado de uma feature relevante.*
 
 ---
@@ -10,7 +10,7 @@
 Para evitar divergências entre planejamento, arquitetura e código funcional:
 
 - [`MVP_RULES.md`](./product/MVP_RULES.md): Especifica **O QUE** o produto pretende e decidiu para o MVP.
-- [`PRODUCT_DECISIONS.md`](./product/PRODUCT_DECISIONS.md): Registra formalmente as **decisões de produto aprovadas** (`DEC-001` a `DEC-009`).
+- [`PRODUCT_DECISIONS.md`](./product/PRODUCT_DECISIONS.md): Registra formalmente as **decisões de produto aprovadas** (`DEC-001` a `DEC-013`).
 - [`ARCHITECTURE.md`](./architecture/ARCHITECTURE.md): Detalha **COMO** a arquitetura técnica e o sistema estão estruturados.
 - [`CURRENT_IMPLEMENTATION_STATUS.md`](./CURRENT_IMPLEMENTATION_STATUS.md): Retrato fiel e auditado do **QUE ESTÁ REALMENTE IMPLEMENTADO AGORA** no código-fonte.
 
@@ -45,7 +45,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Perfil | RPC `update_my_profile` Hardening | `IMPLEMENTADO` | `supabase/migrations/20260818000032_harden_update_my_profile_and_reconcile_migrations.sql` | RPC `SECURITY DEFINER`, `search_path = public, pg_temp`, `RETURNS void`, sem vazamento de dados |
 | Perfil | Foto de Perfil / Avatar Upload | `IMPLEMENTADO` | [`src/components/profile/ProfilePhotoPicker.tsx`](../src/components/profile/ProfilePhotoPicker.tsx), `supabase/migrations/20260817000027_storage_avatars_bucket.sql` | Storage bucket `avatars` com RLS |
 | Ferramental Dev | DevQuickLogin (Hardened / Sem Senhas Versionadas) | `MOCK/DEV` | [`src/components/auth/dev/DevQuickLogin.tsx`](../src/components/auth/dev/DevQuickLogin.tsx), [`src/components/auth/dev/demo-accounts.ts`](../src/components/auth/dev/demo-accounts.ts) | Lista mantida em DEV (`DEV=true` + `VITE_ENABLE_DEV_QUICK_LOGIN="true"`), sem senhas versionadas; credenciais rotacionadas e lidas exclusivamente do `.env.local` (`DEC-012`) |
-| Infra / CI | GitHub Actions CI Workflow (`MAZZI CI`) | `IMPLEMENTADO` | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | Automação de `npm ci`, `npm run lint`, `npm test` e `npm run build:all` em Node 20 para PRs e pushes |
+| Infra / CI | GitHub Actions CI Workflow (`MAZZI CI`) | `IMPLEMENTADO` | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | Automação de lint, testes, build dos três apps e publicação DEV no Cloudflare Pages para pushes em `feature/premium-ui-v2` |
 
 ---
 
@@ -61,7 +61,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Prestador | Perfil Público do Prestador | `IMPLEMENTADO` | [`src/components/search/ProviderPublicProfileModal.tsx`](../src/components/search/ProviderPublicProfileModal.tsx) | Exibe detalhes, foto, avaliações e frota do profissional |
 | Agenda | Seleção de Horários (Horizonte 60 Dias) | `IMPLEMENTADO` | [`src/domain/availability.ts`](../src/domain/availability.ts), [`src/apps/student/components/SlotSelectorModal.tsx`](../src/apps/student/components/SlotSelectorModal.tsx) | `STUDENT_BOOKING_HORIZON_DAYS = 60` (carregamento progressivo 30+30 dias) |
 | Pagamentos | Gateway Ativo Atual | `MOCK/DEV` | [`src/domain/payments/fake-adapter.ts`](../src/domain/payments/fake-adapter.ts), [`src/apps/student/components/CheckoutModal.tsx`](../src/apps/student/components/CheckoutModal.tsx) | `FakePaymentGateway` ativo no checkout para pagamentos simulados (PIX e Cartão), sem movimentação financeira real (`DEC-010`) |
-| Pagamentos | Integração Mercado Pago | `FUTURO` | [`src/domain/payments/mercadopago-adapter.ts`](../src/domain/payments/mercadopago-adapter.ts), [`src/domain/payments/gateway-factory.ts`](../src/domain/payments/gateway-factory.ts) | Desabilitada; o gateway real só poderá ser ativado mediante solicitação explícita futura. O checkout atual usa `FakePaymentGateway` / `MOCK_VALIDATION`. |
+| Pagamentos | Integração Mercado Pago | `FUTURO` | [`src/domain/payments/mercadopago-adapter.ts`](../src/domain/payments/mercadopago-adapter.ts), [`src/domain/payments/gateway-factory.ts`](../src/domain/payments/gateway-factory.ts), [`docs/09-payments.md`](./09-payments.md) | Recomendação inicial para avaliação comercial; desabilitada até homologação, contrato, webhooks, split, repasses, estornos e validação jurídica. O checkout atual usa `FakePaymentGateway` / `MOCK_VALIDATION`. |
 | Minhas Aulas | Gestão de Aulas Agendadas e Histórico | `IMPLEMENTADO` | [`src/apps/student/components/BookingDetailsModal.tsx`](../src/apps/student/StudentApp.tsx) | Exibe aulas ativas, concluídas e detalhes da reserva |
 | Cancelamento | Fluxo Comercial de Cancelamento | `IMPLEMENTADO` | [`src/domain/cancellation.ts`](../src/domain/cancellation.ts), `supabase/migrations/20260818000034_cancellation_flow_and_rpc.sql` | Tabela canônica DEC-013 (100% >=24h, 50% 6-24h, 0% <6h), RPC `cancel_booking_v2`, modal no App Aluno e modo Read-Only no Chat |
 | Comunicação | Chat Contextual por Aula | `IMPLEMENTADO` | [`src/components/chat/BookingChatPanel.tsx`](../src/components/chat/BookingChatPanel.tsx), `supabase/migrations/20260817000019_student_realtime_chat.sql` | Mensageria associada à reserva confirmada com Supabase Realtime |
@@ -97,4 +97,5 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 ## 4. Próximos Passos Recomendados
 
 1. **Operação e observabilidade (`Dev`):** acompanhar a execução do fluxo já implementado de cancelamento DEC-013 e do ciclo Autoescola ↔ Instrutor.
-2. **Gateway de pagamento (`Product/Dev`):** permanece `FAKE / MOCK_VALIDATION`; nenhuma homologação ou ativação de gateway real deve ocorrer sem solicitação explícita futura.
+2. **Gateway de pagamento (`Product/Dev`):** permanece `FAKE / MOCK_VALIDATION`; a próxima etapa é fechar a escolha comercial e o desenho do Mercado Pago ou alternativa antes de qualquer ativação real.
+3. **Publicação (`Dev`):** acompanhar o workflow GitHub Actions e os três projetos Cloudflare Pages DEV após cada push da branch `feature/premium-ui-v2`.

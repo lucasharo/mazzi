@@ -243,7 +243,7 @@ describe('Domain: Sprint 05 — Vehicles & Service Offerings', () => {
 
     expect(() =>
       validateOfferingActivationPermission(mockProvider, activeVehicle, offering, 'SUPPORT')
-    ).toThrowError(/SUPPORT não possui permissão/i);
+    ).toThrowError(/perfil Suporte não possui permissão/i);
   });
 
   it('denies direct vehicle activation by provider from DRAFT or IN_REVIEW state', () => {

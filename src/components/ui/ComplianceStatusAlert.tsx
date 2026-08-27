@@ -57,6 +57,6 @@ export const ComplianceStatusAlert: React.FC<ComplianceStatusAlertProps> = ({
         <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{copy.description}</p>
       </div>
     </div>
-    <StatusBadge status={resolvedStatus} domain="compliance" className="mt-3 w-full justify-start" />
+    <StatusBadge status={resolvedStatus} domain="compliance" className="mt-3 w-full justify-center" />
   </section>;
 };

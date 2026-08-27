@@ -39,7 +39,7 @@ describe('TASK-077 PRO defaults and contextual notifications', () => {
     expect(dbService).toContain('markAllNotificationsAsRead(appContext');
     expect(studentApp).toContain('<NotificationsPanel appContext="STUDENT" />');
     expect(providerApp).toContain('<NotificationsPanel appContext="PRO" />');
-    expect(adminApp).toContain('<NotificationsPanel appContext="ADMIN" />');
+    expect(adminApp).not.toContain('<NotificationsPanel appContext="ADMIN" />');
   });
 
   it('uses canonical in-screen feedback rather than native vehicle/offering alerts', () => {

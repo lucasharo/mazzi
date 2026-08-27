@@ -119,7 +119,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
               className="mt-0.5 sm:mt-1"
               proximity={currentLocation ? { longitude: currentLocation.lng, latitude: currentLocation.lat } : undefined}
               dropdownAlignment="viewport"
-              inputClassName="min-h-[32px] bg-transparent pr-7 text-sm font-extrabold text-[var(--mazzi-dark)] outline-none placeholder:text-slate-400 focus:outline-none"
+              inputClassName="min-h-[32px] bg-transparent pr-7 text-sm font-extrabold text-[var(--mazzi-text)] outline-none placeholder:text-slate-400 focus:outline-none"
               onFocus={() => setIsAddressFocused(true)}
               onBlur={() => {
                 setIsAddressFocused(false);

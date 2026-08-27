@@ -109,7 +109,7 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
 
         {/* Reason Select */}
         <div className="space-y-2">
-          <label className="text-xs font-extrabold text-slate-900 block">
+          <label className="mazzi-field-label block">
             Motivo do Cancelamento *
           </label>
           <ReasonChips
@@ -123,7 +123,7 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
         {/* Custom Reason Text Input (Mandatory when OTHER) */}
         {isOther && (
           <div className="space-y-1">
-            <label className="text-xs font-extrabold text-slate-900 block">
+            <label className="mazzi-field-label block">
               Descrição Detalhada do Motivo *
             </label>
             <Textarea

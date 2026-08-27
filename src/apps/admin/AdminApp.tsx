@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import {
-  BarChart3, Bell, Calendar, Car, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
+  BarChart3, Calendar, Car, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { dbService } from '../../lib/db-service';
 import {
@@ -44,18 +44,27 @@ import {
 import { AdminAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
-import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
-import { NotificationIndicator } from '../../components/ui/NotificationIndicator';
-import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
+import { ContentSkeleton, ContentSkeletonMode } from '../../components/ui/ContentSkeleton';
 import { Modal } from '../../components/ui/Modal';
 import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
 import { getFriendlyAdminError } from '../../domain/status-presentation';
+import { getUserRoleLabel } from '../../domain/status-presentation';
+import { useMobileAppRoute } from '../../lib/mobile-app-router';
+
+const getAdminSkeletonMode = (tab: string): ContentSkeletonMode => {
+  if (tab === 'dashboard') return 'dashboard';
+  if (tab === 'bookings' || tab === 'financial') return 'split';
+  if (tab === 'analytics') return 'analytics';
+  if (tab === 'settings') return 'form';
+  if (tab === 'profile') return 'object';
+  return 'list';
+};
 
 export const AdminApp: React.FC = () => {
   const { user, logout } = useAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
+  const [savedProfileAvatar, setSavedProfileAvatar] = useState<string | undefined>();
   const [profileError, setProfileError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -67,8 +76,12 @@ export const AdminApp: React.FC = () => {
 
   useEffect(() => {
     setProfileAvatar(user?.avatarUrl);
+    setSavedProfileAvatar(user?.avatarUrl);
     if (user?.id) {
-      void getMyProfileAvatar().then((avatarUrl) => setProfileAvatar(avatarUrl)).catch(() => undefined);
+      void getMyProfileAvatar().then((avatarUrl) => {
+        setProfileAvatar(avatarUrl);
+        setSavedProfileAvatar(avatarUrl);
+      }).catch(() => undefined);
     }
   }, [user?.avatarUrl]);
 
@@ -77,6 +90,7 @@ export const AdminApp: React.FC = () => {
     setProfileError(null);
     try {
       await dbService.updateMyProfile(user.name, user.phone || '', profileAvatar);
+      setSavedProfileAvatar(profileAvatar);
       setIsEditingProfile(false);
     } catch (error: any) {
       setProfileError(error?.message || 'Não foi possível salvar a foto do perfil.');
@@ -84,7 +98,12 @@ export const AdminApp: React.FC = () => {
   };
 
   // Navigation State
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useMobileAppRoute('admin', 'dashboard', ['dashboard', 'providers', 'compliance', 'vehicles', 'bookings', 'financial', 'analytics', 'users', 'audit', 'settings', 'profile']);
+  const activeSkeletonMode = getAdminSkeletonMode(activeTab);
+
+  const navigateAdminTab = (tab: string) => {
+    setActiveTab(tab as typeof activeTab);
+  };
 
   // Core Data States
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -96,10 +115,12 @@ export const AdminApp: React.FC = () => {
   const [platformConfig, setPlatformConfig] = useState<PlatformConfiguration>(DEFAULT_PLATFORM_CONFIGURATION);
   const [isLoadingRealData, setIsLoadingRealData] = useState(true);
   const [isRefreshingRealData, setIsRefreshingRealData] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const refreshAdminDataRef = useRef<() => void>(() => undefined);
 
-  // Load live data from Supabase
+  // Load once per authenticated session. Subsequent reloads are intentionally
+  // initiated only by the refresh control in the header.
   useEffect(() => {
     async function loadRealData(isRefresh = false) {
       if (isRefresh) setIsRefreshingRealData(true);
@@ -109,7 +130,7 @@ export const AdminApp: React.FC = () => {
         const [p, v, b, c, a, configs, u] = await Promise.all([
           dbService.getProviders(),
           dbService.getVehicles(),
-          dbService.getBookings(),
+          dbService.getAdminBookings(),
           dbService.getAdminComplianceDocs(),
           dbService.getAuditLogs(),
           dbService.getPlatformConfigs(),
@@ -148,7 +169,7 @@ export const AdminApp: React.FC = () => {
     }
     refreshAdminDataRef.current = () => { void loadRealData(true); };
     void loadRealData();
-  }, [user]);
+  }, [user?.id]);
 
   // Resolved Session Context
   const activeActor: AuthContext = {
@@ -205,9 +226,9 @@ export const AdminApp: React.FC = () => {
   // ==========================================================================
   // COMPLIANCE DOCUMENTS HANDLERS
   // ==========================================================================
-  const handleApproveDoc = async (doc: ComplianceDocument) => {
+  const handleApproveDoc = async (doc: ComplianceDocument, expiresAt?: string) => {
     try {
-      const updatedDoc = await dbService.reviewComplianceDocument(doc.id, 'APPROVED');
+      const updatedDoc = await dbService.reviewComplianceDocument(doc.id, 'APPROVED', undefined, expiresAt);
       setComplianceDocs((current) => current.map((item) => item.id === updatedDoc.id ? updatedDoc : item));
     } catch (error: any) {
       console.error('Admin document approval failed:', error);
@@ -295,7 +316,6 @@ export const AdminApp: React.FC = () => {
     try {
       const outcome = await dbService.inviteAdministrativeUser(email, role);
       showFeedback('success', outcome === 'existing_user' ? 'Acesso administrativo adicionado' : 'Convite enviado', outcome === 'existing_user' ? 'As funções existentes do usuário foram preservadas.' : 'A pessoa receberá as instruções para acessar a plataforma.');
-      refreshAdminDataRef.current();
     } catch (error: any) {
       showFeedback('error', 'Não foi possível adicionar este usuário', getFriendlyAdminError(error, 'Revise o e-mail e tente novamente.'));
       throw error;
@@ -325,48 +345,43 @@ export const AdminApp: React.FC = () => {
     }
   };
 
+  const withActionLoading = <T extends unknown[]>(action: (...args: T) => Promise<void>) => async (...args: T) => {
+    if (isActionLoading) return;
+    setIsActionLoading(true);
+    try { await action(...args); } finally { setIsActionLoading(false); }
+  };
+
+  const activeScreenTitle: Record<string, string> = {
+     dashboard: 'Visão geral',
+    providers: 'Prestadores',
+    compliance: 'Compliance',
+    vehicles: 'Veículos',
+    bookings: 'Reservas',
+    financial: 'Financeiro',
+    analytics: 'Analytics',
+    users: 'Usuários & Papéis',
+    audit: 'Auditoria',
+    settings: 'Configurações',
+    profile: 'Perfil',
+  };
+
   return (
-    <div className="min-h-[100dvh] w-full bg-[var(--mazzi-bg)] text-[var(--mazzi-text)] md:grid md:grid-cols-[248px_1fr] md:grid-rows-[92px_1fr]">
-      {/* Top Main Navigation Header */}
-      <header className="flex items-center bg-[var(--mazzi-dark)] px-6 text-white md:col-start-1 md:row-start-1">
+    <div className="min-h-[100dvh] w-full bg-[var(--mazzi-bg)] text-[var(--mazzi-text)] md:grid md:grid-cols-[248px_1fr]">
+      {/* Brand stays in the upper-left corner; actions live in the workspace. */}
+      <aside className="border-b border-[var(--mazzi-border)] bg-white px-4 py-4 sm:px-5 sm:py-5 md:min-h-[100dvh] md:border-b-0 md:border-r md:px-8 md:py-7">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black flex items-center justify-center text-xl shadow-md border border-amber-300/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow)] text-xl font-black text-[var(--mazzi-dark)] shadow-xs">
             M
           </div>
           <div className="text-left">
             <div className="flex items-center gap-2">
-              <span className="text-base font-black tracking-tight text-white">MAZZI</span>
-              <span className="text-[10px] font-bold uppercase tracking-[.15em] text-[var(--mazzi-yellow)]">Admin</span>
+              <span className="text-base font-black tracking-tight text-[var(--mazzi-dark)]">MAZZI</span>
+              <span className="text-[10px] font-bold uppercase tracking-[.15em] text-[var(--mazzi-orange)]">Admin</span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Central de operação</p>
+            <p className="text-[11px] font-medium text-[var(--mazzi-muted)]">Central de operação</p>
           </div>
         </div>
-        <ButtonBase
-          type="button"
-          onClick={() => refreshAdminDataRef.current()}
-          disabled={isRefreshingRealData}
-          aria-label="Atualizar dados do Admin"
-          title="Atualizar dados do Admin"
-          className="ml-auto grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-white hover:bg-white/15 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-5 w-5 ${isRefreshingRealData ? 'animate-spin' : ''}`} aria-hidden="true" />
-        </ButtonBase>
-        <ButtonBase
-          type="button"
-          onClick={() => setIsNotificationsOpen(true)}
-          aria-label="Abrir notificações"
-          title="Notificações"
-          className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 text-white hover:bg-white/15"
-        >
-          <NotificationIndicator appContext="ADMIN" className="h-full w-full items-center justify-center">
-            <Bell className="h-5 w-5" aria-hidden="true" />
-          </NotificationIndicator>
-        </ButtonBase>
-
-      </header>
-
-      {/* Tabs Menu Subheader */}
-      <aside className="flex gap-1 overflow-x-auto bg-[var(--mazzi-dark)] px-4 pb-4 md:col-start-1 md:row-start-2 md:flex-col md:overflow-visible">
+        <nav className="mt-5 flex snap-x gap-1 overflow-x-auto pb-2 md:mt-7 md:flex-col md:overflow-visible md:pb-0">
         {[
           { id: 'dashboard', label: 'Visão Geral', icon: LayoutDashboard },
           { id: 'providers', label: 'Prestadores', icon: UserCheck, count: providers.filter((p) => p.status === 'PENDING_REVIEW').length },
@@ -384,11 +399,11 @@ export const AdminApp: React.FC = () => {
           return (
             <ButtonBase
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+              onClick={() => navigateAdminTab(tab.id)}
+              className={`min-h-11 snap-start px-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 sm:px-4 ${
                 isActive
                   ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  : 'text-[var(--mazzi-muted)] hover:bg-[var(--mazzi-surface-muted)] hover:text-[var(--mazzi-dark)]'
               }`}
             >
               <tab.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -401,19 +416,39 @@ export const AdminApp: React.FC = () => {
             </ButtonBase>
           );
         })}
+        </nav>
       </aside>
 
       {/* App Workspace */}
-      <main className="w-full p-6 md:col-start-2 md:row-span-2 md:row-start-1 md:p-10">
-        {activeTab !== 'profile' && <div className="mb-8"><p className="mazzi-eyebrow mb-2">MAZZI Admin</p><h1 className="text-3xl font-extrabold tracking-[-.04em]">{activeTab === 'dashboard' ? 'Visão geral' : 'Operação'}</h1></div>}
-        {isLoadingRealData && !isRefreshingRealData && <ContentSkeleton mode={activeTab === 'profile' ? 'object' : 'list'} />}
-
+      <main className="relative min-w-0 w-full p-4 pt-5 sm:p-6 sm:pt-6 md:p-10 md:pt-7">
+        <div className="absolute right-4 top-5 flex items-center gap-2 sm:right-6 sm:top-6 md:right-10 md:top-7">
+          <ButtonBase type="button" onClick={() => refreshAdminDataRef.current()} disabled={isRefreshingRealData} aria-label="Atualizar dados do Admin" title="Atualizar dados do Admin" className="mazzi-icon-button disabled:opacity-50">
+            <RefreshCw className={`h-5 w-5 ${isRefreshingRealData ? 'animate-spin' : ''}`} aria-hidden="true" />
+          </ButtonBase>
+        </div>
+        {activeTab !== 'profile' && <div className="mb-6 pr-14 sm:mb-8"><p className="mazzi-eyebrow mb-2">MAZZI Admin</p><h1 className="text-2xl font-extrabold tracking-[-.04em] sm:text-3xl">{activeScreenTitle[activeTab] || 'Visão geral'}</h1></div>}
         {loadError && (
           <div role="status" className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
             {loadError}
           </div>
         )}
 
+        <section aria-busy={isLoadingRealData || isRefreshingRealData || isActionLoading} className="relative">
+        {isActionLoading && (
+          <div className="absolute inset-0 z-20 flex items-start justify-center rounded-2xl bg-white/55 pt-8 backdrop-blur-[1px]" role="status" aria-live="polite">
+            <div className="flex items-center gap-2 rounded-full border border-[var(--mazzi-border)] bg-white px-4 py-2 text-xs font-semibold text-[var(--mazzi-text)] shadow-sm">
+              <RefreshCw className="h-4 w-4 animate-spin text-amber-600" aria-hidden="true" />
+              Processando ação...
+            </div>
+          </div>
+        )}
+        {(isLoadingRealData || isRefreshingRealData) && (
+          <ContentSkeleton
+            mode={activeSkeletonMode}
+            label={isRefreshingRealData ? 'Atualizando conteúdo da tela atual' : 'Carregando conteúdo da tela atual'}
+          />
+        )}
+        <div className={isLoadingRealData || isRefreshingRealData ? 'hidden' : ''}>
         {activeTab === 'dashboard' && (
           <DashboardTab
             providers={providers}
@@ -421,7 +456,7 @@ export const AdminApp: React.FC = () => {
             vehicles={vehicles}
             bookings={bookings}
             auditLogs={auditLogs}
-            onNavigate={(target) => setActiveTab(target)}
+            onNavigate={navigateAdminTab}
           />
         )}
 
@@ -432,10 +467,10 @@ export const AdminApp: React.FC = () => {
             vehicles={vehicles}
             auditLogs={auditLogs}
             actor={activeActor}
-            onApprove={handleApproveProvider}
-            onReject={handleRejectProvider}
-            onSuspend={handleSuspendProvider}
-            onBlock={handleBlockProvider}
+            onApprove={withActionLoading(handleApproveProvider)}
+            onReject={withActionLoading(handleRejectProvider)}
+            onSuspend={withActionLoading(handleSuspendProvider)}
+            onBlock={withActionLoading(handleBlockProvider)}
             eligibilityChecker={handleEligibilityCheck}
           />
         )}
@@ -443,9 +478,10 @@ export const AdminApp: React.FC = () => {
         {activeTab === 'compliance' && (
           <ComplianceTab
             complianceDocs={complianceDocs}
+            providers={providers}
             actor={activeActor}
-            onApproveDoc={handleApproveDoc}
-            onRejectDoc={handleRejectDoc}
+            onApproveDoc={withActionLoading(handleApproveDoc)}
+            onRejectDoc={withActionLoading(handleRejectDoc)}
             onViewDocument={handleViewDocument}
           />
         )}
@@ -454,9 +490,9 @@ export const AdminApp: React.FC = () => {
           <VehiclesTab
             vehicles={vehicles}
             providers={providers}
-            onApproveVehicle={handleApproveVehicle}
-            onRejectVehicle={handleRejectVehicle}
-            onBlockVehicle={handleBlockVehicle}
+            onApproveVehicle={withActionLoading(handleApproveVehicle)}
+            onRejectVehicle={withActionLoading(handleRejectVehicle)}
+            onBlockVehicle={withActionLoading(handleBlockVehicle)}
           />
         )}
 
@@ -472,7 +508,7 @@ export const AdminApp: React.FC = () => {
             bookings={bookings}
             auditLogs={auditLogs}
             actor={activeActor}
-            onProcessRefund={handleProcessRefund}
+            onProcessRefund={withActionLoading(handleProcessRefund)}
           />
         )}
 
@@ -499,7 +535,7 @@ export const AdminApp: React.FC = () => {
           <SettingsTab
             config={platformConfig}
             actor={activeActor}
-            onUpdateConfig={handleUpdateConfig}
+            onUpdateConfig={withActionLoading(handleUpdateConfig)}
           />
         )}
 
@@ -525,21 +561,20 @@ export const AdminApp: React.FC = () => {
               <div className="mt-5 rounded-2xl border border-[var(--mazzi-border)] bg-white p-1">
                 <h4 className="px-3 pt-2 text-sm font-bold text-[var(--mazzi-dark)]">Dados do perfil</h4>
                 <dl className="space-y-3 p-3 text-sm">
-                  <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Nome</dt><dd className="font-semibold text-slate-900">{user?.name || 'Não informado'}</dd></div>
-                  <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">E-mail</dt><dd className="truncate font-semibold text-slate-900">{user?.email || 'Não informado'}</dd></div>
-                  <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Perfil</dt><dd className="font-semibold text-slate-900">{user?.roles?.[0] || 'Não informado'}</dd></div>
+                  <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Nome</dt><dd className="font-semibold text-[var(--mazzi-text)]">{user?.name || 'Não informado'}</dd></div>
+                  <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">E-mail</dt><dd className="truncate font-semibold text-[var(--mazzi-text)]">{user?.email || 'Não informado'}</dd></div>
+                <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Perfil</dt><dd className="font-semibold text-[var(--mazzi-text)]">{getUserRoleLabel(user?.roles?.[0])}</dd></div>
                 </dl>
               </div>
-              {isEditingProfile && <div className="flex items-center gap-2.5 pt-5"><Button variant="dangerSoft" size="sm" className="w-1/2" onClick={() => { setProfileAvatar(user?.avatarUrl); setIsEditingProfile(false); }}>Cancelar</Button><Button variant="primary" size="sm" className="w-1/2" onClick={() => void handleSaveProfilePhoto()}>Salvar foto</Button></div>}
+              {isEditingProfile && <div className="flex items-center gap-2.5 pt-5"><Button variant="dangerSoft" size="sm" className="w-1/2" onClick={() => { setProfileAvatar(savedProfileAvatar); setIsEditingProfile(false); }}>Cancelar</Button><Button variant="primary" size="sm" className="w-1/2" onClick={() => void handleSaveProfilePhoto()}>Salvar foto</Button></div>}
             </div>
 
             {!isEditingProfile && <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4"><Button variant="ghost" size="sm" className="font-bold text-rose-700 hover:bg-rose-50" onClick={() => { void logout(); }} leftIcon={<LogOut className="w-4 h-4" />}>Sair</Button></div>}
           </section>
         )}
+        </div>
+        </section>
       </main>
-      <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações MAZZI Admin">
-        <NotificationsPanel appContext="ADMIN" />
-      </Modal>
       <ToastContainer toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))} />
     </div>
   );

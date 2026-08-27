@@ -885,6 +885,10 @@ export const ProviderApp: React.FC = () => {
       setVehicleError('Informe o ano do veículo.');
       return;
     }
+    if (vehicleYear < new Date().getFullYear() - 12) {
+      setVehicleError(`O veículo deve ter no máximo 12 anos de fabricação (a partir de ${new Date().getFullYear() - 12}).`);
+      return;
+    }
     try {
       const vehiclePayload = editingVehicleId
         ? {
@@ -931,11 +935,11 @@ export const ProviderApp: React.FC = () => {
       const targetVehicle = vehicles.find((v) => v.id === vehicleId);
       if (!targetVehicle) return;
 
-      if (targetVehicle.status !== 'ACTIVE') {
-        throw new Error('A reativação do veículo depende de nova aprovação administrativa.');
-      }
-
-      const savedVehicle = await dbService.deactivateVehicle(vehicleId);
+      const savedVehicle = targetVehicle.status === 'ACTIVE'
+        ? await dbService.deactivateVehicle(vehicleId)
+        : targetVehicle.status === 'INACTIVE'
+        ? await dbService.activateVehicle(vehicleId)
+        : (() => { throw new Error('A reativação do veículo depende de nova aprovação administrativa.'); })();
       setVehicles((prev) => prev.map((vehicle) => (vehicle.id === vehicleId ? savedVehicle : vehicle)));
     } catch (err: any) {
       setVehicleError(mapFriendlyErrorMessage(err, 'Ação de ativação do veículo não permitida.'));
@@ -1017,6 +1021,15 @@ export const ProviderApp: React.FC = () => {
       setOfferings((prev) => prev.map((offering) => (offering.id === offeringId ? savedOffering : offering)));
     } catch (err: any) {
       setOfferingError(mapFriendlyErrorMessage(err, 'Ação de ativação da oferta não permitida.'));
+    }
+  };
+
+  const handleViewComplianceDocument = async (document: ComplianceDocument) => {
+    try {
+      const signedUrl = await dbService.createComplianceDocumentSignedUrl(document);
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (error: any) {
+      setComplianceTermsError(mapFriendlyErrorMessage(error, 'Não foi possível abrir o arquivo enviado.'));
     }
   };
 
@@ -1209,7 +1222,7 @@ status: 'IN_REVIEW',
   };
 
   return (
-    <div className="mazzi-app flex flex-col min-h-dvh bg-[#f7f5ef] text-[#202126]">
+    <div className="mazzi-app flex flex-col min-h-dvh bg-[#f7f5ef] text-[var(--mazzi-text)]">
       {/* Header */}
       {activeTab === 'dashboard' && (
         <ProviderHeader
@@ -1385,6 +1398,7 @@ status: 'IN_REVIEW',
             offeringNotice={offeringNotice}
             onUploadDocClick={(type) => setUploadModalDocType(type)}
             onAcceptComplianceTerms={() => void handleAcceptComplianceTerms()}
+            onViewComplianceDocument={(document) => { void handleViewComplianceDocument(document); }}
             isAcceptingComplianceTerms={isAcceptingComplianceTerms}
             complianceTermsError={complianceTermsError}
           />

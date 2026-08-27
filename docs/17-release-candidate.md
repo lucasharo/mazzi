@@ -2,7 +2,7 @@
 
 Status: release candidate técnico, não lançamento público.
 
-Branch: `main`
+Branch de validação atual: `feature/premium-ui-v2`
 
 Base esperada antes da Sprint 16: `8fd86af fix: bind booking holds to authenticated students`
 
@@ -13,7 +13,7 @@ A Sprint 16 prepara o MAZZI para validação de release candidate sem adicionar 
 ## Decisões mantidas
 
 - O produto segue como marketplace MVP para aulas práticas categoria B em São Paulo.
-- `Supabase + OpenStreetMap/Leaflet` são a direção técnica atual; Mercado Pago permanece futuro e desabilitado.
+- `Supabase + OpenStreetMap/Leaflet + Cloudflare Pages` são a direção técnica atual; Mercado Pago permanece futuro e desabilitado.
 - Dinheiro real continua desabilitado.
 - O gateway fake existe somente para desenvolvimento/testes.
 - “Minha jornada para a CNH”, pacotes, WhatsApp/SMS/e-mail transacional, IA e gamificação continuam fora do MVP.
@@ -53,6 +53,7 @@ Nunca criar `VITE_SUPABASE_SERVICE_ROLE_KEY`. A service role é exclusivamente s
 ## Checklist manual antes de produção real
 
 - [ ] Confirmar domínio final e HTTPS.
+- [ ] Confirmar os três projetos Cloudflare Pages e seus domínios/ambientes.
 - [ ] Rodar Supabase Security Advisor e documentar apenas warnings aceitos.
 - [ ] Ativar leaked password protection no Supabase Auth.
 - [ ] Confirmar que nenhuma credencial real aparece em `dist/`.

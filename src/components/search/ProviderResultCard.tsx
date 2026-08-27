@@ -118,7 +118,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
         <div className="absolute right-4 top-4 shrink-0 text-right sm:right-5 sm:top-5">
           {result.ratingCount > 0 ? (
             <div
-              className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[var(--mazzi-dark)] bg-[var(--mazzi-surface-soft)] px-2.5 py-1 rounded-xl border border-[var(--mazzi-border)]"
+              className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[var(--mazzi-text)] bg-[var(--mazzi-surface-soft)] px-2.5 py-1 rounded-xl border border-[var(--mazzi-border)]"
               aria-label={`Avaliação ${result.ratingAverage.toFixed(1)} com ${result.ratingCount} avaliações`}
             >
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" aria-hidden="true" />
@@ -135,12 +135,12 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
 
       {/* 2. Vehicle & Transmission Chip (When available) */}
       {primaryOffering && (
-        <div className="mazzi-soft-card mt-3 flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[var(--mazzi-dark)] border border-[var(--mazzi-border)]">
+        <div className="mazzi-soft-card mt-3 flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[var(--mazzi-text)] border border-[var(--mazzi-border)]">
           <Car className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
           <span className="truncate">{cleanVehicleTitle}</span>
           {transmission && <span className="shrink-0 text-[var(--mazzi-muted)] font-medium">· {transmission}</span>}
           {categoryLabel && (
-            <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] px-2 py-0.5 rounded-md">
+            <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-text)] px-2 py-0.5 rounded-md">
               {categoryLabel}
             </span>
           )}
@@ -159,7 +159,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
               Valor por aula
             </p>
           )}
-          <p className="mt-0.5 whitespace-nowrap text-sm sm:text-base font-bold text-[var(--mazzi-dark)]">
+          <p className="mt-0.5 whitespace-nowrap text-sm sm:text-base font-bold text-[var(--mazzi-text)]">
             {formatCentsToBRL(result.startingPriceInCents)}
             {duration ? (
               <span className="mt-0.5 block text-[10px] font-normal text-slate-500">{duration} min</span>

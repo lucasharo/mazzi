@@ -365,7 +365,7 @@ describe('SPRINT 11 — PROVIDER APP JOURNEY & LESSON LIFECYCLE TESTS', () => {
 
     expect(() =>
       validateOfferingActivationPermission(inactiveProvider, activeVehicle, offering, 'INSTRUCTOR')
-    ).toThrowError(/Não é possível ativar oferta de serviço para um prestador não ativo/);
+    ).toThrowError(/Não é possível ativar a oferta de serviço porque o prestador está/);
   });
 
   it('12. Cancelamento por Provider: Executa cancelamento e calcula política com idempotência', () => {

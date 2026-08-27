@@ -1,7 +1,7 @@
 # 04 — Arquitetura de Software
 
 ## Padrão Arquitetural: Monolito Modular
-Para o MVP, adota-se um **Monolito Modular** bem desacoplado, com domínios bem delimitados, garantindo simplicidade operacional, transações ACID nativas no banco de dados e facilidade de deploy no Google Cloud Run.
+Para o MVP, adota-se um **Monolito Modular** bem desacoplado, com domínios bem delimitados, garantindo simplicidade operacional, transações ACID nativas no banco de dados e publicação dos frontends no Cloudflare Pages por GitHub Actions.
 
 ```
 +-------------------------------------------------------------------+
@@ -31,7 +31,7 @@ Para o MVP, adota-se um **Monolito Modular** bem desacoplado, com domínios bem 
 +-------------------------------------------------------------------+
 |                      DATA & STORAGE LAYER                         |
 |     PostgreSQL 16 + PostGIS (ACID & Temporal Exclusions)          |
-|     Google Cloud Storage (Private Signed URLs for Compliance)     |
+|     Supabase Storage (Private Signed URLs for Compliance)         |
 +-------------------------------------------------------------------+
 ```
 
@@ -49,3 +49,11 @@ Para o MVP, adota-se um **Monolito Modular** bem desacoplado, com domínios bem 
 ## Runtime de elegibilidade
 
 O predicado canônico `is_provider_instructor_eligible` é usado pelas RPCs e triggers do PostgreSQL. O React exibe o estado e chama RPCs autenticadas; não decide ativação, disponibilidade ou início de aula.
+
+## Publicação e ambientes
+
+- Os apps Aluno, PRO e Admin são compilados separadamente com Vite.
+- O GitHub Actions executa lint, testes e `npm run build:all`.
+- Pushes para `feature/premium-ui-v2` publicam os três artefatos no Cloudflare Pages nos projetos DEV configurados no workflow.
+- O Supabase permanece como backend compartilhado e fonte de verdade para dados, autenticação, RLS, RPCs e Storage privado.
+- Não há fluxo de deploy por Vercel no ambiente atual.
