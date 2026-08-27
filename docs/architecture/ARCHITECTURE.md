@@ -72,9 +72,9 @@ src/
 2. **Gateway Ativo Atual (`FakePaymentGateway`)**:
    - Por padrão em desenvolvimento (`DEC-010`), o sistema utiliza `FakePaymentGateway` (`fake-adapter.ts`).
    - Simula respostas autorizadas de PIX e Cartão de Crédito sem realizar chamadas HTTP reais ou movimentar dinheiro real.
-3. **Gateway Preparado / Futuro (`MercadoPagoPaymentGateway`)**:
-   - Adaptadores e fábrica (`mercadopago-adapter.ts`, `gateway-factory.ts`) estão preparados e estruturados no código-fonte.
-   - Chamadas HTTP ao vivo e webhooks de produção do Mercado Pago estão oficialmente adiados para uma TASK futura dedicada.
+3. **Mercado Pago em Homologação DEV**:
+   - O Card Payment Brick tokeniza o cartão no browser; a Edge Function autenticada cria a cobrança com credencial de teste e idempotência.
+   - A seleção `fake|mercadopago` é feita por variável de ambiente. O backend exige ambiente `test`; produção continua desabilitada.
 
 ---
 

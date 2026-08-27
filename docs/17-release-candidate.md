@@ -13,7 +13,7 @@ A Sprint 16 prepara o MAZZI para validação de release candidate sem adicionar 
 ## Decisões mantidas
 
 - O produto segue como marketplace MVP para aulas práticas categoria B em São Paulo.
-- `Supabase + OpenStreetMap/Leaflet + Cloudflare Pages` são a direção técnica atual; Mercado Pago permanece futuro e desabilitado.
+- `Supabase + OpenStreetMap/Leaflet + Cloudflare Pages` são a direção técnica atual; Mercado Pago está disponível somente para homologação DEV com credenciais de teste e permanece desabilitado em produção.
 - Dinheiro real continua desabilitado.
 - O gateway fake existe somente para desenvolvimento/testes.
 - “Minha jornada para a CNH”, pacotes, WhatsApp/SMS/e-mail transacional, IA e gamificação continuam fora do MVP.

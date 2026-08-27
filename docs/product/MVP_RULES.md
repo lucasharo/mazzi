@@ -27,7 +27,7 @@
 - **Veículo do Profissional**: Toda aula é ministrada obrigatoriamente no veículo fornecido e homologado pelo instrutor/CFC;
 - **Busca com Filtros Estritos**: Busca geoespacial e por disponibilidade com matching integral de filtros;
 - **Agendamento com Horizonte Canônico de 60 Dias**: Visualização progressiva de 30 + 30 dias;
-- **Pagamentos Integrados**: Pagamento dentro do aplicativo (PIX e Cartão de Crédito). *Nota: Na implementação atual, o checkout utiliza o `FakePaymentGateway` em ambiente de desenvolvimento/testes sem movimentação financeira real. A integração HTTP ao vivo com o Mercado Pago permanece como arquitetura futura planejada (DEC-010).*
+- **Pagamentos Integrados**: Pagamento dentro do aplicativo (PIX e Cartão de Crédito). *Nota: o checkout fake continua padrão. Em DEV, a configuração `mercadopago` permite homologar somente cartão com credenciais de teste e sem cobrança real (DEC-014).*
 - **Chat Contextual**: Mensageria interna associada à reserva confirmada;
 - **Avaliações**: Sistema de 1 a 5 estrelas e depoimento após a conclusão da aula.
 
@@ -80,9 +80,9 @@
 
 1. **Unidade Monetária**: Todos os valores monetários são manipulados e persistidos em **centavos inteiros** (`integer`/`bigint`). Exemplo: R$ 120,00 = `12000`. Jamais utilizar números de ponto flutuante (`float`) para dinheiro.
 2. **Fonte da Verdade**: O cálculo de taxas, split de pagamento e confirmação de reserva reside e é validado no Backend.
-3. **Gateway Ativo Atual vs Futuro (DEC-010)**:
-   - **Ativo Atualmente**: `FakePaymentGateway` (`src/domain/payments/fake-adapter.ts`), utilizado no desenvolvimento e testes do checkout sem dinheiro real.
-   - **Futuro / Planejado**: `MercadoPagoPaymentGateway` (`src/domain/payments/mercadopago-adapter.ts`), com infraestrutura e adaptadores preparados no código-fonte para ativação em TASK futura dedicada.
+3. **Gateway de Checkout em DEV (DEC-010 e DEC-014)**:
+   - **Padrão**: `FakePaymentGateway`, sem dinheiro real.
+   - **Homologação opcional**: Mercado Pago com Card Payment Brick e credenciais de teste, selecionado por variável de ambiente. Produção continua bloqueada.
 4. **Transição de Estados de Booking**:
    - `DRAFT` → `PENDING_PAYMENT` → `CONFIRMED` → `IN_PROGRESS` → `COMPLETED`.
    - O booking só transiciona para `CONFIRMED` após notificação/webhook assinado e verificado do gateway de pagamento.

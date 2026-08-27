@@ -1,9 +1,9 @@
 ## FASE ATUAL DO PROJETO (MVP VALIDATION MODE)
-- **Modo de Pagamento**: `MOCK_VALIDATION` (Fake Payment Gateway).
+- **Modo de Pagamento**: alternável em DEV entre `fake` (padrão) e `mercadopago` por `VITE_PAYMENT_GATEWAY_PROVIDER`.
 - **Dinheiro Real**: NÃO (Nenhum valor financeiro real é cobrado ou enviado para rede externa).
-- **Mercado Pago Real**: FUTURO / DESABILITADO; só pode ser ativado mediante solicitação explícita futura do Product/User.
+- **Mercado Pago em DEV**: habilitado somente para homologação com Card Payment Brick, cartão de teste, uma parcela e `MERCADOPAGO_ENVIRONMENT=test`.
 - **Segurança & Idempotência**: O fluxo usa `fake_payment_gateway` com chave de idempotência `idem_pay_<booking_id>` e verificação transacional no banco PostgreSQL (`confirm_booking_payment` RPC).
-- **Produção Futura (Pagamentos Reais)**: se houver solicitação explícita futura, o gateway real Mercado Pago utilizará exclusivamente webhooks e assinaturas criptográficas do backend confiável como fonte de verdade.
+- **Produção Futura (Pagamentos Reais)**: continua desabilitada. Webhooks assinados permanecem obrigatórios antes de uma futura ativação produtiva para reconciliação e eventos posteriores.
 
 ## Direção de seleção do gateway
 
@@ -11,7 +11,15 @@ Foi realizada uma comparação inicial entre Mercado Pago, Stripe Connect, Asaas
 
 Essa recomendação ainda não é uma decisão de ativação nem substitui uma proposta comercial. O custo efetivo deverá considerar método de pagamento, parcelamento, prazo de recebimento, antecipação, chargebacks, estornos e cada repasse ao prestador. O Mercado Pago documenta split 1:1 para Checkout Pro e Checkout Transparente, com vínculo dos vendedores por OAuth e comissão da plataforma configurada na cobrança.
 
-Até que a contratação, a homologação técnica e a validação jurídica sejam concluídas, o gateway real permanece desabilitado e o ambiente continua em `MOCK_VALIDATION`.
+O ambiente DEV pode executar chamadas com credenciais de teste. Não há autorização para credenciais ou cobranças de produção.
+
+## Checkout online de teste — TASK-079
+
+- O modo Mercado Pago oferece apenas cartão; PIX e boleto ficam fora por dependerem de conclusão posterior.
+- O Brick oficial tokeniza PAN/CVV; o MAZZI recebe somente token temporário.
+- A Edge Function autenticada ignora valores do browser, usa `payments.amount_in_cents` e envia `X-Idempotency-Key`.
+- Somente `approved` confirma a reserva; `pending`, `in_process` ou rejeição mantêm a reserva não confirmada.
+- A chave pública fica em `VITE_MERCADOPAGO_PUBLIC_KEY`; Access Token fica somente nos secrets do Supabase.
 
 ## Interface Abstrata: `PaymentGateway`
 O domínio MAZZI é completamente desacoplado de provedores específicos (como Asaas, Pagar.me, Stripe ou Mercado Pago).

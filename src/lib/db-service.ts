@@ -1087,6 +1087,20 @@ export const dbService = {
     return data;
   },
 
+  async processMercadoPagoCardPayment(payload: {
+    paymentId: string;
+    token: string;
+    issuerId: string;
+    paymentMethodId: string;
+    installments: number;
+    payer: { email?: string; identification?: { type?: string; number?: string } };
+  }): Promise<any> {
+    const { data, error } = await sp.functions.invoke('process-mercadopago-card-payment', { body: payload });
+    if (error) throw error;
+    if (!data?.approved) throw new Error(data?.message || 'PAYMENT_NOT_APPROVED');
+    return data;
+  },
+
   async updateBookingStatus(id: string, status: string, extra: Record<string, any> = {}): Promise<void> {
     const { data, error } = await sp
       .from('bookings')

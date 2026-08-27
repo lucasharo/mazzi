@@ -154,7 +154,16 @@
 - **Impacto**: Domínio `src/domain/cancellation.ts`, constante `MVP_CANCELLATION_POLICY`, RPC `cancel_booking_v2`, modal de cancelamento em `BookingDetailsModal.tsx` e portal do prestador.
 - **Relacionado a**: [`MVP_RULES.md`](./MVP_RULES.md), [`03-business-rules.md`](../03-business-rules.md), `cancellation.ts`.
 
+---
 
+## DEC-014: Checkout Mercado Pago Alternável e Restrito ao Ambiente de Teste
+- **Data**: 2026-08-27
+- **Status**: `APROVADA & IMPLEMENTADA EM DEV` (Complementa a `DEC-010`)
+- **Tema**: Pagamentos, Segurança e Homologação
+- **Decisão**: Preservar o `FakePaymentGateway` como padrão e permitir selecionar `mercadopago` por `VITE_PAYMENT_GATEWAY_PROVIDER`. O modo Mercado Pago utiliza somente Card Payment Brick, uma parcela, captura online e credenciais de teste. PIX, boleto e meios de conclusão posterior não são oferecidos neste modo. A Edge Function exige `MERCADOPAGO_ENVIRONMENT=test`, usa valor persistido em centavos, autenticação e idempotência; somente resposta `approved` finaliza pagamento e reserva no backend.
+- **Motivo**: Homologar a integração real de API e UX sem movimentar dinheiro nem remover o ambiente simulado.
+- **Impacto**: `MercadoPagoCardCheckout.tsx`, Edge Function `process-mercadopago-card-payment`, migration TASK-079 e variáveis documentadas em `.env.example`. Produção permanece desabilitada.
+- **Relacionado a**: [`MVP_RULES.md`](./MVP_RULES.md), [`09-payments.md`](../09-payments.md), `tasks/TASK-079/`.
 
 
 

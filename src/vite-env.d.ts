@@ -1,4 +1,6 @@
 interface ImportMetaEnv {
+  readonly VITE_PAYMENT_GATEWAY_PROVIDER?: string;
+  readonly VITE_MERCADOPAGO_PUBLIC_KEY?: string;
   readonly DEV: boolean;
   readonly MODE: string;
   readonly VITE_ENABLE_DEV_QUICK_LOGIN?: string;
