@@ -46,20 +46,40 @@ Deno.serve(async (request) => {
   const service = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: payment, error: paymentError } = await service
     .from("payments")
-    .select("id, booking_id, student_id, amount_in_cents, idempotency_key, status")
+    .select("id, booking_id, amount_in_cents, idempotency_key, status")
     .eq("id", payload.paymentId)
     .maybeSingle();
-  if (paymentError || !payment) return reply(404, { message: "Pagamento não encontrado." });
-  if (payment.student_id !== authData.user.id) return reply(403, { message: "Você não tem permissão para este pagamento." });
+  if (paymentError) {
+    console.error("MERCADOPAGO_PAYMENT_LOOKUP_FAILED", {
+      code: paymentError.code,
+      message: paymentError.message,
+      details: paymentError.details,
+    });
+    return reply(500, { message: "Não foi possível consultar o pagamento. Tente novamente." });
+  }
+  if (!payment) return reply(404, { message: "Pagamento não encontrado." });
   if (payment.status === "PAID") return reply(200, { approved: true, paymentId: payment.id, alreadyPaid: true });
   if (payment.status !== "PENDING" && payment.status !== "FAILED") {
     return reply(409, { message: "Este pagamento não pode ser processado agora." });
   }
 
-  const { data: booking } = await service.from("bookings").select("id, status").eq("id", payment.booking_id).maybeSingle();
+  const { data: booking, error: bookingError } = await service
+    .from("bookings")
+    .select("id, student_id, status")
+    .eq("id", payment.booking_id)
+    .maybeSingle();
+  if (bookingError) {
+    console.error("MERCADOPAGO_BOOKING_LOOKUP_FAILED", {
+      code: bookingError.code,
+      message: bookingError.message,
+      details: bookingError.details,
+    });
+    return reply(500, { message: "Não foi possível validar a reserva. Tente novamente." });
+  }
   if (!booking || booking.status !== "PENDING_PAYMENT") {
     return reply(409, { message: "O prazo desta reserva terminou ou ela já foi processada." });
   }
+  if (booking.student_id !== authData.user.id) return reply(403, { message: "Você não tem permissão para este pagamento." });
 
   const cents = Number(payment.amount_in_cents);
   if (!Number.isSafeInteger(cents) || cents <= 0) return reply(409, { message: "O valor deste pagamento é inválido." });
@@ -102,20 +122,30 @@ Deno.serve(async (request) => {
   if (!mpResponse.ok || result.status !== "approved") {
     await service.from("payments").update({
       status: "FAILED",
-      failed_at: new Date().toISOString(),
       gateway_provider: "mercadopago_test",
       metadata: { mercado_pago_status: result.status || "rejected", mercado_pago_status_detail: result.status_detail || null },
       updated_at: new Date().toISOString(),
     }).eq("id", payment.id);
-    return reply(402, { approved: false, message: "Pagamento não aprovado. Confira o cartão de teste e tente novamente." });
+    return reply(402, {
+      approved: false,
+      message: "Pagamento de teste recusado. Para simular uma aprovação, informe APRO como nome do titular e CPF 123.456.789-09.",
+    });
   }
 
   const { data: finalized, error: finalizeError } = await service.rpc("finalize_mercadopago_test_payment", {
     p_payment_id: payment.id,
+    p_student_id: authData.user.id,
     p_external_payment_id: String(result.id),
     p_card_brand: result.payment_method_id || null,
     p_card_last4: result.card?.last_four_digits || null,
   });
-  if (finalizeError) return reply(500, { message: "O pagamento foi aprovado, mas a reserva ainda está sendo validada. Contate o suporte." });
+  if (finalizeError) {
+    console.error("MERCADOPAGO_PAYMENT_FINALIZATION_FAILED", {
+      code: finalizeError.code,
+      message: finalizeError.message,
+      details: finalizeError.details,
+    });
+    return reply(500, { message: "O pagamento foi aprovado, mas a reserva ainda está sendo validada. Contate o suporte." });
+  }
   return reply(200, { approved: true, paymentId: payment.id, externalPaymentId: String(result.id), result: finalized });
 });

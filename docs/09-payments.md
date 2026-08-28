@@ -21,6 +21,25 @@ O ambiente DEV pode executar chamadas com credenciais de teste. Não há autoriz
 - Somente `approved` confirma a reserva; `pending`, `in_process` ou rejeição mantêm a reserva não confirmada.
 - A chave pública fica em `VITE_MERCADOPAGO_PUBLIC_KEY`; Access Token fica somente nos secrets do Supabase.
 
+## Mercado Pago Marketplace / Split 1:1
+
+Para o modelo MAZZI, o marketplace deve operar com três contas de teste no Mercado Pago:
+
+- **Aluno**: comprador de teste usado no checkout.
+- **PRO / Prestador**: vendedor que autoriza a MAZZI via OAuth.
+- **MAZZI**: integrador/marketplace, dono da aplicação e da chave pública usada no frontend.
+
+O fluxo correto para split 1:1 é:
+
+1. O PRO conecta sua conta Mercado Pago à MAZZI via OAuth.
+2. O backend salva, de forma privada, o `access_token` do vendedor vinculado ao prestador.
+3. O checkout no app Aluno usa a `public_key` da conta integradora MAZZI.
+4. A Edge Function cria o pagamento usando o `access_token` do vendedor/PRO.
+5. A comissão da MAZZI é enviada na cobrança como taxa de marketplace (`marketplace_fee`), calculada em centavos a partir de `platform_fee_in_cents`.
+6. O Mercado Pago liquida a parte do vendedor e a parte da MAZZI conforme a configuração da cobrança e as regras da conta de teste.
+
+Enquanto `MERCADOPAGO_ENVIRONMENT=test`, somente contas e cartões de teste podem ser usados. Credenciais produtivas seguem proibidas neste ambiente.
+
 ## Interface Abstrata: `PaymentGateway`
 O domínio MAZZI é completamente desacoplado de provedores específicos (como Asaas, Pagar.me, Stripe ou Mercado Pago).
 

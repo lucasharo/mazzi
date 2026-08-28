@@ -41,7 +41,7 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
         cardNumber: { label: 'Número do cartão', placeholder: '0000 0000 0000 0000' },
         cardExpirationDate: { label: 'Validade', placeholder: 'MM/AA' },
         cardSecurityCode: { label: 'Código de segurança', placeholder: 'CVV' },
-        cardholderName: { label: 'Nome impresso no cartão', placeholder: 'Nome completo' },
+        cardholderName: { label: 'Nome impresso no cartão', placeholder: 'APRO para aprovar o teste' },
         cardholderIdentification: { label: 'Documento do titular' },
         cardholderEmail: { label: 'E-mail' },
         emailSectionTitle: 'Dados do titular',
@@ -115,7 +115,7 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
     <div className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 sm:p-4">
       <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-[var(--mazzi-text)]">
         <ShieldCheck className="h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
-        <span>Ambiente de teste — use somente cartões de teste do Mercado Pago.</span>
+        <span>Ambiente de teste — use um cartão de teste e APRO como nome do titular.</span>
       </div>
       {!isReady && !sdkError && <p role="status" className="py-4 text-center text-sm text-[var(--mazzi-text)]">Carregando pagamento seguro…</p>}
       {sdkError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{sdkError}</p>}

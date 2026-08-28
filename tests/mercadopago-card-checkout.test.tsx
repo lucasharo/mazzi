@@ -55,6 +55,7 @@ describe('checkout de cartão do Mercado Pago', () => {
         texts: {
           emailSectionTitle: 'Dados do titular',
           formSubmit: 'Pagar agora',
+          cardholderName: { placeholder: 'APRO para aprovar o teste' },
         },
         style: {
           theme: 'flat',
