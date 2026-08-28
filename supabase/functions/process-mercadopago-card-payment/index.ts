@@ -156,8 +156,9 @@ Deno.serve(async (request) => {
   }
 
   const result = await mpResponse.json().catch(() => ({}));
+  const isApproved = mpResponse.ok && result.status === "approved";
   const isDefinitiveDecline = result.status === "rejected" || result.status === "cancelled";
-  if (!isDefinitiveDecline) {
+  if (!isApproved && !isDefinitiveDecline) {
     // Não marca a tentativa como FAILED em HTTP 5xx, limite de requisições,
     // resposta inválida ou status intermediário. Qualquer um deles pode ocultar
     // uma cobrança aceita; por isso a mesma chave deve ser repetida com segurança.
@@ -169,7 +170,7 @@ Deno.serve(async (request) => {
     });
   }
 
-  if (!mpResponse.ok || result.status !== "approved") {
+  if (!isApproved) {
     await service.from("payments").update({
       status: "FAILED",
       gateway_provider: "mercadopago_test",

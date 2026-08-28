@@ -18,7 +18,7 @@ describe('contrato seguro do pagamento Mercado Pago em DEV', () => {
   it('usa o valor persistido e confirma somente pagamento aprovado', () => {
     expect(source).toContain('payment.amount_in_cents')
     expect(source).not.toContain('payload.transactionAmount')
-    expect(source).toContain('result.status !== "approved"')
+    expect(source).toContain('result.status === "approved"')
     expect(source).toContain('finalize_mercadopago_test_payment')
   });
 
@@ -49,5 +49,14 @@ describe('contrato seguro do pagamento Mercado Pago em DEV', () => {
     expect(source).toContain('number: String(payerIdentification.number).replace(/\\D/g, "")')
     expect(source).toContain('first_name: cardholderName')
     expect(source).toContain('typeof payload.cardholderName !== "string"')
+  });
+
+  it('trata aprovação antes de classificar respostas intermediárias', () => {
+    const approvedCheck = source.indexOf('const isApproved = mpResponse.ok && result.status === "approved"')
+    const intermediateCheck = source.indexOf('if (!isApproved && !isDefinitiveDecline)')
+
+    expect(approvedCheck).toBeGreaterThanOrEqual(0)
+    expect(intermediateCheck).toBeGreaterThan(approvedCheck)
+    expect(source).toContain('if (!isApproved) {')
   });
 });
