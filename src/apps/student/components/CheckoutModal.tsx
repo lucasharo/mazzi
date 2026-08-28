@@ -108,6 +108,35 @@ function friendlyCheckoutError(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function buildPendingMercadoPagoPayment(
+  booking: Booking,
+  paymentId: string,
+  method: PaymentMethodType,
+  now = new Date(),
+): Payment {
+  const amountInCents = booking.snapshot.totalInCents || booking.totalInCents;
+  const platformFeeInCents = booking.snapshot.platformFeeInCents || booking.platformFeeInCents;
+  const providerAmountInCents = booking.snapshot.priceInCents || (amountInCents - platformFeeInCents);
+
+  return {
+    id: paymentId,
+    bookingId: booking.id,
+    studentId: booking.studentId,
+    providerId: booking.providerId,
+    gateway: 'MERCADOPAGO',
+    idempotencyKey: `idem_pay_${booking.id}`,
+    method,
+    status: 'PENDING',
+    amountInCents,
+    platformFeeInCents,
+    providerAmountInCents,
+    pixExpiresAt: method === 'PIX' ? booking.holdExpiresAt : undefined,
+    metadata: { gatewayProvider: 'mercadopago_test' },
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  };
+}
+
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
@@ -148,10 +177,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [quoteTimeRemainingSec, setQuoteTimeRemainingSec] = useState<number>(600);
   const [holdTimeRemainingSec, setHoldTimeRemainingSec] = useState<number>(600);
 
-  // Initialize Payment Service with Fake Gateway
+  // The fake gateway is used only for the explicitly selected fake mode.
+  // Mercado Pago payments are represented by the real Supabase payment record.
   const paymentService = React.useMemo(() => {
-    return new PaymentService(new FakePaymentGateway());
-  }, []);
+    return checkoutGatewayProvider === 'fake' ? new PaymentService(new FakePaymentGateway()) : null;
+  }, [checkoutGatewayProvider]);
 
   const createQuoteInFlightRef = React.useRef(false);
   const checkoutAttemptIdRef = React.useRef<string>('');
@@ -200,21 +230,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             throw new Error('PAYMENT_UUID_GENERATION_FAILED');
           }
 
-          const initialPay: Payment = {
-            id: realPayId,
-            bookingId: resumeBooking.id,
-            studentId: user?.id || resumeBooking.studentId,
-            providerId: resumeBooking.providerId,
-            gateway: 'DEVELOPMENT_MOCK',
-            idempotencyKey: `idem_pay_${resumeBooking.id}`,
-            method: paymentMethod || 'PIX',
-            status: 'PENDING',
-            amountInCents: resumeBooking.totalInCents || resumeBooking.snapshot?.totalInCents || 0,
-            platformFeeInCents: resumeBooking.platformFeeInCents || resumeBooking.snapshot?.platformFeeInCents || 0,
-            providerAmountInCents: (resumeBooking.totalInCents || 0) - (resumeBooking.platformFeeInCents || 0),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
+          const initialPay: Payment = checkoutGatewayProvider === 'mercadopago'
+            ? buildPendingMercadoPagoPayment(resumeBooking, realPayId, paymentMethod || 'PIX')
+            : {
+                id: realPayId,
+                bookingId: resumeBooking.id,
+                studentId: user?.id || resumeBooking.studentId,
+                providerId: resumeBooking.providerId,
+                gateway: 'DEVELOPMENT_MOCK',
+                idempotencyKey: `idem_pay_${resumeBooking.id}`,
+                method: paymentMethod || 'PIX',
+                status: 'PENDING',
+                amountInCents: resumeBooking.totalInCents || resumeBooking.snapshot?.totalInCents || 0,
+                platformFeeInCents: resumeBooking.platformFeeInCents || resumeBooking.snapshot?.platformFeeInCents || 0,
+                providerAmountInCents: (resumeBooking.totalInCents || 0) - (resumeBooking.platformFeeInCents || 0),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
           if (active) {
             setPayment(initialPay);
             setStep('PAYMENT_SELECTION');
@@ -534,26 +566,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       const syncedBooking = { ...holdResult.booking, id: realBookingId };
       setBooking(syncedBooking);
 
-      // Create initial Payment entity via PaymentService
-      const createPayRes = await paymentService.createPayment({
-        request: {
-          bookingId: realBookingId,
-          method: paymentMethod,
-          idempotencyKey: `idem_pay_${realBookingId}`,
-        },
-        booking: syncedBooking,
-        student: user,
-        provider,
-      });
-
-      const initialPayment = { ...createPayRes.payment, id: realPaymentId || createPayRes.payment.id };
+      let initialPayment: Payment;
       if (checkoutGatewayProvider === 'mercadopago') {
-        // O PaymentService local monta o formato comum do pagamento, mas o
-        // payload Pix falso nunca deve aparecer na tela do Mercado Pago.
-        initialPayment.gateway = 'MERCADOPAGO';
-        initialPayment.pixQrCode = undefined;
-        initialPayment.pixQrCodeBase64 = undefined;
-        initialPayment.pixExpiresAt = undefined;
+        if (!realPaymentId) throw new Error('PAYMENT_UUID_GENERATION_FAILED');
+        initialPayment = buildPendingMercadoPagoPayment(syncedBooking, realPaymentId, paymentMethod);
+      } else {
+        if (!paymentService) throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION');
+        const createPayRes = await paymentService.createPayment({
+          request: {
+            bookingId: realBookingId,
+            method: paymentMethod,
+            idempotencyKey: `idem_pay_${realBookingId}`,
+          },
+          booking: syncedBooking,
+          student: user,
+          provider,
+        });
+        initialPayment = createPayRes.payment;
       }
       setPayment(initialPayment);
       setStep('PAYMENT_SELECTION');
