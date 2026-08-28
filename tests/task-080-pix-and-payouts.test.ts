@@ -27,6 +27,7 @@ describe('TASK-080 — Pix e repasse manual', () => {
     expect(webhookFunction).toContain('MERCADOPAGO_WEBHOOK_SECRET');
     expect(webhookFunction).toContain('signaturesMatch');
     expect(webhookFunction).toContain('payment_webhook_events');
+    expect(webhookFunction).toContain('Integração atual usa notificações de pagamento Pix.');
   });
 
   it('mantém a regra de repasse manual com referência e destino Pix', () => {

@@ -35,6 +35,10 @@ Deno.serve(async (request) => {
 
   const rawBody = await request.text();
   const body = (() => { try { return JSON.parse(rawBody || "{}"); } catch { return {}; } })();
+  const notificationType = String(body?.type || body?.action || "");
+  if (notificationType === "order" || notificationType === "order.processed") {
+    return reply(200, { received: true, ignored: true, reason: "Integração atual usa notificações de pagamento Pix." });
+  }
   const paymentId = String(body?.data?.id || body?.id || "");
   const eventId = String(request.headers.get("x-request-id") || body?.id || `${body?.type || "event"}:${paymentId}`);
   if (!paymentId) return reply(200, { received: true, ignored: true });
@@ -49,7 +53,7 @@ Deno.serve(async (request) => {
 
   const service = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const payloadHash = await hmacHex(secret, rawBody);
-  const { data: event, error: eventError } = await service.from("payment_webhook_events").insert({ gateway: "mercadopago_test", external_event_id: eventId, external_payment_id: paymentId, event_type: body?.type || body?.action || "payment.updated", payload_hash: payloadHash, status: "RECEIVED" }).select("id").maybeSingle();
+  const { data: event, error: eventError } = await service.from("payment_webhook_events").insert({ gateway: "mercadopago_test", external_event_id: eventId, external_payment_id: paymentId, event_type: notificationType || "payment.updated", payload_hash: payloadHash, status: "RECEIVED" }).select("id").maybeSingle();
   if (eventError?.code === "23505") return reply(200, { received: true, duplicate: true });
   if (eventError || !event) return reply(500, { message: "Não foi possível registrar a notificação." });
 

@@ -25,6 +25,7 @@ O ambiente DEV pode executar chamadas com credenciais de teste. Não há autoriz
 
 - O gateway é selecionado por `VITE_PAYMENT_GATEWAY_PROVIDER=fake|mercadopago`; `fake` continua sendo o padrão seguro.
 - A criação do Pix é online, mas a confirmação é posterior: o aluno permanece em `Aguardando pagamento` até o webhook assinado ou a atualização manual consultar o status autoritativo.
+- O webhook configurado para esta integração deve receber notificações de pagamento (`payment.updated`). Eventos de Orders (`order.processed`) são aceitos e ignorados porque não pertencem ao fluxo Pix atual.
 - O backend valida valor em centavos, aluno/reserva, expiração, assinatura e idempotência antes de confirmar a reserva.
 - O PRO cadastra sua chave Pix no próprio app. O Admin vê repasses somente de reservas pagas e concluídas e registra o repasse manual com referência.
 - Split automático, OAuth e transferência Pix automática continuam fora desta entrega.
