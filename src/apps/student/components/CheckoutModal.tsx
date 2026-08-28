@@ -1016,6 +1016,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </ButtonBase>
             </div>
 
+            {checkoutGatewayProvider === 'mercadopago' && paymentMethod === 'PIX' && (
+              <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-[var(--mazzi-text)]">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+                <span>Pix de teste Mercado Pago. A reserva só será confirmada após a identificação do pagamento.</span>
+              </div>
+            )}
+
             {/* PIX Fake View */}
             {checkoutGatewayProvider === 'fake' && paymentMethod === 'PIX' && (
               <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] text-center space-y-3 shadow-2xs">

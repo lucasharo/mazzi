@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Copy, QrCode, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Check, Copy, QrCode, RefreshCw } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { formatCentsToBRL } from '../../../domain/money';
 
@@ -48,11 +48,6 @@ export const MercadoPagoPixCheckout: React.FC<Props> = ({
 
   return (
     <div className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 sm:p-4">
-      <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-[var(--mazzi-text)]">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
-        <span>Pix de teste Mercado Pago. A reserva só será confirmada após a identificação do pagamento.</span>
-      </div>
-
       {!pixQrCode ? (
         <div className="space-y-3 py-3 text-center">
           <QrCode className="mx-auto h-10 w-10 text-amber-600" aria-hidden="true" />
