@@ -58,7 +58,7 @@ Deno.serve(async (request) => {
   const service = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: payment, error: paymentError } = await service
     .from("payments")
-    .select("id, booking_id, amount_in_cents, idempotency_key, status")
+    .select("id, booking_id, amount_in_cents, idempotency_key, status, external_transaction_id")
     .eq("id", payload.paymentId)
     .maybeSingle();
   if (paymentError) {
@@ -70,7 +70,22 @@ Deno.serve(async (request) => {
     return reply(500, { message: "Não foi possível consultar o pagamento. Tente novamente." });
   }
   if (!payment) return reply(404, { message: "Pagamento não encontrado." });
-  if (payment.status === "PAID") return reply(200, { approved: true, paymentId: payment.id, alreadyPaid: true });
+  if (payment.status === "PAID") {
+    return reply(200, {
+      approved: true,
+      paymentId: payment.id,
+      externalPaymentId: payment.external_transaction_id || undefined,
+      alreadyPaid: true,
+    });
+  }
+  if (payment.status === "FAILED") {
+    return reply(409, {
+      approved: false,
+      paymentStatus: "FAILED",
+      retryable: true,
+      message: "Esta tentativa foi recusada. Gere uma nova tentativa de pagamento.",
+    });
+  }
   if (payment.status !== "PENDING" && payment.status !== "FAILED") {
     return reply(409, { message: "Este pagamento não pode ser processado agora." });
   }
@@ -127,10 +142,30 @@ Deno.serve(async (request) => {
       body: JSON.stringify(body),
     });
   } catch {
-    return reply(502, { message: "Não foi possível falar com o Mercado Pago agora. Tente novamente." });
+    // A requisição pode ter chegado ao Mercado Pago mesmo com perda da resposta.
+    // Mantém o pagamento PENDING e reutiliza esta chave na próxima tentativa.
+    return reply(502, {
+      approved: false,
+      paymentStatus: "PENDING",
+      retryable: true,
+      message: "Não foi possível confirmar a resposta do Mercado Pago. Tente novamente.",
+    });
   }
 
   const result = await mpResponse.json().catch(() => ({}));
+  const isDefinitiveDecline = result.status === "rejected" || result.status === "cancelled";
+  if (!isDefinitiveDecline) {
+    // Não marca a tentativa como FAILED em HTTP 5xx, limite de requisições,
+    // resposta inválida ou status intermediário. Qualquer um deles pode ocultar
+    // uma cobrança aceita; por isso a mesma chave deve ser repetida com segurança.
+    return reply(503, {
+      approved: false,
+      paymentStatus: "PENDING",
+      retryable: true,
+      message: "Não foi possível confirmar o pagamento. Tente novamente.",
+    });
+  }
+
   if (!mpResponse.ok || result.status !== "approved") {
     await service.from("payments").update({
       status: "FAILED",
@@ -140,6 +175,8 @@ Deno.serve(async (request) => {
     }).eq("id", payment.id);
     return reply(402, {
       approved: false,
+      paymentStatus: "FAILED",
+      retryable: true,
       message: "Pagamento de teste recusado. Para simular uma aprovação, informe APRO como nome do titular e CPF 123.456.789-09.",
     });
   }
@@ -152,7 +189,12 @@ Deno.serve(async (request) => {
   }).eq("id", payment.id).eq("status", "PENDING");
   if (methodUpdateError) {
     console.error("MERCADOPAGO_CARD_PAYMENT_PERSIST_FAILED", { code: methodUpdateError.code, message: methodUpdateError.message });
-    return reply(500, { message: "O pagamento foi aprovado, mas não conseguimos registrar a forma de pagamento." });
+    return reply(500, {
+      approved: false,
+      paymentStatus: "PENDING",
+      retryable: true,
+      message: "O pagamento foi processado, mas ainda não conseguimos registrar a forma de pagamento. Tente novamente.",
+    });
   }
 
   const { data: finalized, error: finalizeError } = await service.rpc("finalize_mercadopago_test_payment", {
@@ -168,7 +210,12 @@ Deno.serve(async (request) => {
       message: finalizeError.message,
       details: finalizeError.details,
     });
-    return reply(500, { message: "O pagamento foi aprovado, mas a reserva ainda está sendo validada. Contate o suporte." });
+    return reply(500, {
+      approved: false,
+      paymentStatus: "PENDING",
+      retryable: true,
+      message: "O pagamento foi processado, mas a reserva ainda está sendo validada. Tente novamente.",
+    });
   }
   return reply(200, { approved: true, paymentId: payment.id, externalPaymentId: String(result.id), result: finalized });
 });

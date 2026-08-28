@@ -117,6 +117,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [booking, setBooking] = useState<Booking | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
   const [paymentAttemptId, setPaymentAttemptId] = useState<string | null>(null);
+  const [cardCheckoutKey, setCardCheckoutKey] = useState(0);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>(
     'PIX'
@@ -147,6 +148,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setErrorMessage(null);
     setBooking(null);
     setPayment(null);
+    setCardCheckoutKey(0);
     setStep('QUOTE_PREVIEW');
 
     if (!isOpen) {
@@ -606,7 +608,75 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setStep('SUCCESS');
       onBookingConfirmed(confirmedBooking);
     } catch (error) {
-      setErrorMessage(friendlyCheckoutError(error, 'Pagamento não aprovado. Confira os dados do cartão de teste e tente novamente.'));
+      const isRealSupabase = (import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder');
+      let paymentWasConfirmed = false;
+
+      if (isRealSupabase && /^[0-9a-f-]{36}$/i.test(payment.id)) {
+        try {
+          // A função pode retornar erro depois que o Mercado Pago aceitou a
+          // cobrança. Sempre reconcilia o estado autoritativo antes de criar
+          // uma nova tentativa.
+          const currentStatus = await dbService.getMyPaymentStatus(payment.id);
+          if (currentStatus?.status === 'PAID' || currentStatus?.booking_status === 'CONFIRMED') {
+            const confirmedBooking = { ...booking, status: 'CONFIRMED' as const, updatedAt: new Date().toISOString() };
+            setBooking(confirmedBooking);
+            setPayment({
+              ...payment,
+              gateway: 'MERCADOPAGO',
+              method: 'CREDIT_CARD',
+              status: 'PAID',
+              externalPaymentId: currentStatus.external_payment_id || payment.externalPaymentId,
+              paidAt: currentStatus.paid_at || payment.paidAt || new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+            setStep('SUCCESS');
+            onBookingConfirmed(confirmedBooking);
+            paymentWasConfirmed = true;
+          } else if (currentStatus?.status === 'FAILED') {
+            // Somente uma recusa definitiva recebe uma nova chave de
+            // idempotência e uma nova tentativa no Mercado Pago.
+            const retryIdempotencyKey = `idem_card_retry_${booking.id}_${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
+            const retryPayment = await dbService.createBookingPayment(
+              booking.id,
+              'CREDIT_CARD',
+              retryIdempotencyKey,
+              'mercadopago_test'
+            );
+            const retryPaymentId = retryPayment?.payment_id || retryPayment?.id;
+            if (!retryPaymentId) throw new Error('PAYMENT_UUID_GENERATION_FAILED_ON_RETRY');
+
+            setPayment({
+              ...payment,
+              id: retryPaymentId,
+              gateway: 'MERCADOPAGO',
+              method: 'CREDIT_CARD',
+              status: 'PENDING',
+              externalPaymentId: undefined,
+              paidAt: undefined,
+              updatedAt: new Date().toISOString(),
+            });
+            setPaymentAttemptId(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `att_${Date.now()}`);
+            setCardCheckoutKey((current) => current + 1);
+          } else {
+            // Pendente/desconhecido significa que a requisição pode ter chegado
+            // ao gateway. Reutiliza a mesma tentativa e chave, mas remonta o
+            // Brick para o botão voltar a ficar interativo.
+            setCardCheckoutKey((current) => current + 1);
+          }
+        } catch (verificationError) {
+          console.error('MERCADOPAGO_CARD_PAYMENT_RECONCILIATION_FAILED', verificationError);
+          // Se a reconciliação falhar, nunca cria uma segunda tentativa. O
+          // mesmo pagamento pode ser repetido com segurança porque sua chave
+          // de idempotência permanece inalterada.
+          setCardCheckoutKey((current) => current + 1);
+        }
+      } else {
+        setCardCheckoutKey((current) => current + 1);
+      }
+
+      if (!paymentWasConfirmed) {
+        setErrorMessage(friendlyCheckoutError(error, 'Pagamento não aprovado. Confira os dados do cartão de teste e tente novamente.'));
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -1120,6 +1190,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {checkoutGatewayProvider === 'mercadopago' && paymentMethod === 'CREDIT_CARD' && (
               <React.Suspense fallback={<p role="status" className="py-6 text-center text-sm text-[var(--mazzi-text)]">Carregando pagamento seguro…</p>}>
                 <MercadoPagoCardCheckout
+                  key={cardCheckoutKey}
                   amountInCents={payment.amountInCents}
                   isProcessing={isProcessing}
                   onSubmit={handleMercadoPagoCardPayment}

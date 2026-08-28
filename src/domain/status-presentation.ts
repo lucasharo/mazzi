@@ -129,6 +129,7 @@ const auditActionLabels: Record<string, string> = {
   PLATFORM_CONFIG_UPDATED: 'Configuração da plataforma atualizada',
   CREATE_BOOKING: 'Reserva criada',
   BOOKING_CREATE_HOLD: 'Reserva iniciada',
+  BOOKING_PAYMENT_HOLD_EXPIRED: 'Prazo de pagamento expirado',
   BOOKING_CONFIRMED: 'Reserva confirmada',
   BOOKING_CANCELLED: 'Reserva cancelada',
   BOOKING_CANCEL_STUDENT_IDEMPOTENT: 'Cancelamento solicitado pelo aluno',
