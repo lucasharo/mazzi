@@ -1095,6 +1095,7 @@ export const dbService = {
     issuerId: string;
     paymentMethodId: string;
     installments: number;
+    cardholderName: string;
     payer: { email?: string; identification?: { type?: string; number?: string } };
   }): Promise<any> {
     const { data, error } = await sp.functions.invoke('process-mercadopago-card-payment', { body: payload });

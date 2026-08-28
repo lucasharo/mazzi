@@ -8,6 +8,7 @@ export interface MercadoPagoCardPayload {
   issuerId: string;
   paymentMethodId: string;
   installments: number;
+  cardholderName: string;
   payer: {
     email?: string;
     identification?: { type?: string; number?: string };
@@ -92,12 +93,13 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
     payment_method_id: string;
     installments: number;
     payer: MercadoPagoCardPayload['payer'];
-  }) => {
+  }, additionalData?: { cardholderName?: string }) => {
     await onSubmitRef.current({
       token: formData.token,
       issuerId: formData.issuer_id,
       paymentMethodId: formData.payment_method_id,
       installments: formData.installments,
+      cardholderName: additionalData?.cardholderName?.trim() || '',
       payer: formData.payer,
     });
   }, []);

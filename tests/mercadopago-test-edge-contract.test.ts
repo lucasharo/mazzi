@@ -47,5 +47,7 @@ describe('contrato seguro do pagamento Mercado Pago em DEV', () => {
     expect(source).toContain('email: authData.user.email')
     expect(source).not.toContain('email: payerEmail')
     expect(source).toContain('number: String(payerIdentification.number).replace(/\\D/g, "")')
+    expect(source).toContain('first_name: cardholderName')
+    expect(source).toContain('typeof payload.cardholderName !== "string"')
   });
 });

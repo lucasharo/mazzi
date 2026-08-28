@@ -92,7 +92,30 @@ describe('checkout de cartão do Mercado Pago', () => {
       issuerId: '123',
       paymentMethodId: 'master',
       installments: 1,
+      cardholderName: '',
       payer: payload.payer,
     });
+  });
+
+  it('encaminha o nome do titular recebido como dado adicional do Brick', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <MercadoPagoCardCheckout amountInCents={13000} isProcessing={false} onSubmit={onSubmit} />,
+    );
+
+    const submit = mercadoPagoSdk.cardPaymentProps.at(-1)!.onSubmit as (
+      payload: unknown,
+      additionalData?: { cardholderName?: string },
+    ) => Promise<void>;
+
+    await act(async () => submit({
+      token: 'token-teste',
+      issuer_id: '123',
+      payment_method_id: 'master',
+      installments: 1,
+      payer: { identification: { type: 'CPF', number: '12345678909' } },
+    }, { cardholderName: ' APRO ' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ cardholderName: 'APRO' }));
   });
 });

@@ -51,7 +51,8 @@ Deno.serve(async (request) => {
   let payload: Record<string, any>;
   try { payload = await request.json(); } catch { return reply(400, { message: "Dados de pagamento inválidos." }); }
   if (!isUuid(payload.paymentId) || typeof payload.token !== "string" || !payload.token ||
-      typeof payload.paymentMethodId !== "string" || !payload.paymentMethodId || payload.installments !== 1) {
+      typeof payload.paymentMethodId !== "string" || !payload.paymentMethodId || payload.installments !== 1 ||
+      typeof payload.cardholderName !== "string" || !payload.cardholderName.trim()) {
     return reply(400, { message: "Confira os dados do cartão e tente novamente." });
   }
 
@@ -110,6 +111,7 @@ Deno.serve(async (request) => {
 
   const cents = Number(payment.amount_in_cents);
   if (!Number.isSafeInteger(cents) || cents <= 0) return reply(409, { message: "O valor deste pagamento é inválido." });
+  const cardholderName = payload.cardholderName.trim();
   const payerIdentification = payload.payer?.identification;
   const body = {
     transaction_amount: Number((cents / 100).toFixed(2)),
@@ -122,6 +124,7 @@ Deno.serve(async (request) => {
     external_reference: booking.id,
     payer: {
       email: authData.user.email,
+      first_name: cardholderName,
       identification: payerIdentification?.number ? {
         type: payerIdentification.type || "CPF",
         number: String(payerIdentification.number).replace(/\D/g, ""),
