@@ -17,6 +17,7 @@ import {
   AuditLog,
   User,
   UserRole,
+  Payout,
 } from '../../types';
 import {
   DEFAULT_PLATFORM_CONFIGURATION,
@@ -112,6 +113,7 @@ export const AdminApp: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfiguration>(DEFAULT_PLATFORM_CONFIGURATION);
   const [isLoadingRealData, setIsLoadingRealData] = useState(true);
   const [isRefreshingRealData, setIsRefreshingRealData] = useState(false);
@@ -127,7 +129,7 @@ export const AdminApp: React.FC = () => {
       else setIsLoadingRealData(true);
       setLoadError(null);
       try {
-        const [p, v, b, c, a, configs, u] = await Promise.all([
+        const [p, v, b, c, a, configs, u, payoutRows] = await Promise.all([
           dbService.getProviders(),
           dbService.getVehicles(),
           dbService.getAdminBookings(),
@@ -135,6 +137,7 @@ export const AdminApp: React.FC = () => {
           dbService.getAuditLogs(),
           dbService.getPlatformConfigs(),
           dbService.getUsers(),
+          dbService.getAdminPayouts(),
         ]);
         setProviders(p);
         setVehicles(v);
@@ -142,11 +145,16 @@ export const AdminApp: React.FC = () => {
         setComplianceDocs(c);
         setAuditLogs(a);
         setUsers(u);
+        setPayouts(payoutRows);
         
         if (configs.length > 0) {
           const mappedConfig = { ...DEFAULT_PLATFORM_CONFIGURATION };
           for (const item of configs) {
-            if (item.key === 'platform_fees' && item.value?.default_percentage !== undefined) mappedConfig.platformFeeDefaultPercentage = Number(item.value.default_percentage);
+            if (item.key === 'platform_fees') {
+              if (item.value?.default_percentage !== undefined) mappedConfig.platformFeeDefaultPercentage = Number(item.value.default_percentage);
+              if (item.value?.mercadopago_fee_percentage !== undefined) mappedConfig.mercadoPagoFeePercentage = Number(item.value.mercadopago_fee_percentage);
+              if (item.value?.max_total_fee_percentage !== undefined) mappedConfig.maxTotalFeePercentage = Number(item.value.max_total_fee_percentage);
+            }
             if (item.key === 'quote_settings' && item.value?.expiration_minutes !== undefined) mappedConfig.quoteExpirationMinutes = Number(item.value.expiration_minutes);
             if (item.key === 'scheduling_settings' && item.value?.max_booking_horizon_days !== undefined) mappedConfig.availabilityHorizonDays = Number(item.value.max_booking_horizon_days);
             if (item.key === 'platform_operations') {
@@ -297,6 +305,17 @@ export const AdminApp: React.FC = () => {
       setBookings((current) => current.map((item) => item.id === b.id ? { ...item, status: 'REFUNDED' } : item));
     } catch (error: any) {
       showFeedback('error', 'Não foi possível processar o estorno de teste', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
+    }
+  };
+
+  const handleMarkManualPayout = async (payout: Payout, transferReference: string) => {
+    try {
+      await dbService.markManualPayout(payout.id, transferReference);
+      setPayouts((current) => current.map((item) => item.id === payout.id ? { ...item, status: 'PAID', transferReference, processedAt: new Date().toISOString(), releasedAt: new Date().toISOString() } : item));
+      showFeedback('success', 'Repasse registrado', 'O repasse manual foi registrado com a referência informada.');
+    } catch (error: any) {
+      showFeedback('error', 'Não foi possível registrar o repasse', getFriendlyAdminError(error, 'Revise a disponibilidade e tente novamente.'));
+      throw error;
     }
   };
 
@@ -509,6 +528,8 @@ export const AdminApp: React.FC = () => {
             auditLogs={auditLogs}
             actor={activeActor}
             onProcessRefund={withActionLoading(handleProcessRefund)}
+            payouts={payouts}
+            onMarkManualPayout={withActionLoading(handleMarkManualPayout)}
           />
         )}
 

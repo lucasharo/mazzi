@@ -1,7 +1,7 @@
 ## FASE ATUAL DO PROJETO (MVP VALIDATION MODE)
 - **Modo de Pagamento**: alternável em DEV entre `fake` (padrão) e `mercadopago` por `VITE_PAYMENT_GATEWAY_PROVIDER`.
 - **Dinheiro Real**: NÃO (Nenhum valor financeiro real é cobrado ou enviado para rede externa).
-- **Mercado Pago em DEV**: habilitado somente para homologação com Card Payment Brick, cartão de teste, uma parcela e `MERCADOPAGO_ENVIRONMENT=test`.
+- **Mercado Pago em DEV**: habilitado somente para homologação com Card Payment Brick ou Pix, credenciais de teste e `MERCADOPAGO_ENVIRONMENT=test`.
 - **Segurança & Idempotência**: O fluxo usa `fake_payment_gateway` com chave de idempotência `idem_pay_<booking_id>` e verificação transacional no banco PostgreSQL (`confirm_booking_payment` RPC).
 - **Produção Futura (Pagamentos Reais)**: continua desabilitada. Webhooks assinados permanecem obrigatórios antes de uma futura ativação produtiva para reconciliação e eventos posteriores.
 
@@ -13,17 +13,27 @@ Essa recomendação ainda não é uma decisão de ativação nem substitui uma p
 
 O ambiente DEV pode executar chamadas com credenciais de teste. Não há autorização para credenciais ou cobranças de produção.
 
-## Checkout online de teste — TASK-079
+## Checkout online de teste — TASK-079 e TASK-080
 
-- O modo Mercado Pago oferece apenas cartão; PIX e boleto ficam fora por dependerem de conclusão posterior.
+- O modo Mercado Pago oferece cartão e Pix de teste. O Pix exibe QR Code/copia e cola e permanece `PENDING` até confirmação posterior.
 - O Brick oficial tokeniza PAN/CVV; o MAZZI recebe somente token temporário.
 - A Edge Function autenticada ignora valores do browser, usa `payments.amount_in_cents` e envia `X-Idempotency-Key`.
-- Somente `approved` confirma a reserva; `pending`, `in_process` ou rejeição mantêm a reserva não confirmada.
+- Somente uma confirmação server-side aprovada confirma a reserva; `pending`, `in_process` ou rejeição mantêm a reserva não confirmada.
 - A chave pública fica em `VITE_MERCADOPAGO_PUBLIC_KEY`; Access Token fica somente nos secrets do Supabase.
 
-## Mercado Pago Marketplace / Split 1:1
+## Recebimento Pix e repasse manual — TASK-080
 
-Para o modelo MAZZI, o marketplace deve operar com três contas de teste no Mercado Pago:
+- O gateway é selecionado por `VITE_PAYMENT_GATEWAY_PROVIDER=fake|mercadopago`; `fake` continua sendo o padrão seguro.
+- A criação do Pix é online, mas a confirmação é posterior: o aluno permanece em `Aguardando pagamento` até o webhook assinado ou a atualização manual consultar o status autoritativo.
+- O backend valida valor em centavos, aluno/reserva, expiração, assinatura e idempotência antes de confirmar a reserva.
+- O PRO cadastra sua chave Pix no próprio app. O Admin vê repasses somente de reservas pagas e concluídas e registra o repasse manual com referência.
+- Split automático, OAuth e transferência Pix automática continuam fora desta entrega.
+
+## Mercado Pago Marketplace / Split 1:1 (futuro)
+
+Este cenário permanece apenas como referência para uma fase posterior. A implementação atual não usa OAuth, split automático nem transferência Pix automática.
+
+Para uma futura fase de marketplace, o modelo poderia operar com três contas de teste no Mercado Pago:
 
 - **Aluno**: comprador de teste usado no checkout.
 - **PRO / Prestador**: vendedor que autoriza a MAZZI via OAuth.
@@ -31,7 +41,7 @@ Para o modelo MAZZI, o marketplace deve operar com três contas de teste no Merc
 
 O fluxo correto para split 1:1 é:
 
-1. O PRO conecta sua conta Mercado Pago à MAZZI via OAuth.
+1. O PRO conecta sua conta Mercado Pago à MAZZI via OAuth, caso essa decisão seja aprovada futuramente.
 2. O backend salva, de forma privada, o `access_token` do vendedor vinculado ao prestador.
 3. O checkout no app Aluno usa a `public_key` da conta integradora MAZZI.
 4. A Edge Function cria o pagamento usando o `access_token` do vendedor/PRO.
@@ -57,16 +67,15 @@ export interface PaymentGateway {
 ## Modelo Financeiro (Tudo em Centavos)
 - Preço da Aula (`price_in_cents`): Definido pelo Fornecedor na Oferta (ex: R$ 120,00 = `12000`).
 - Taxa de Plataforma MAZZI (`platform_fee_in_cents`): Percentual configurável administrativamente via backend.
-- **[DECISÃO PENDENTE]:** O percentual definitivo de comissão comercial MAZZI será definido pela diretoria. O valor de 10% (`DEFAULT_DEVELOPMENT_PLATFORM_FEE_PERCENTAGE`) é meramente referencial para desenvolvimento e testes.
-- Total Pago pelo Aluno (`total_in_cents`): `price_in_cents + platform_fee_in_cents` (ou conforme política de *take rate* embutido).
-- Repasse Líquido ao Fornecedor: `price_in_cents` (ou `total - fee`).
+- **Comissão MAZZI:** Percentual configurável pelo Admin, limitado pelo teto combinado de taxas.
+- Total Pago pelo Aluno (`total_in_cents`): valor final congelado na cotação/reserva.
+- Repasse Líquido ao Fornecedor: total bruto menos taxa do Mercado Pago e comissão MAZZI efetiva, com limite combinado configurável.
 
 ## Ciclo de Vida do Repasse (Payout)
-1. `PENDING`: Criado no momento da confirmação do pagamento.
+1. `PENDING`: Criado quando a reserva é paga e ainda aguarda o período de segurança.
 2. `AVAILABLE`: Liberado automaticamente 24h após a aula ter status `COMPLETED`.
-3. `PROCESSING`: Enviado para processamento bancário via PIX/TED.
-4. `PAID`: Confirmado pelo banco/gateway.
-5. `BLOCKED`: Em caso de contestação, chargeback ou suspeita de fraude em análise.
+3. `PAID`: Repasse manual confirmado pelo Admin com referência.
+4. `BLOCKED`: Destino Pix ausente ou bloqueio financeiro que exige tratamento do Admin.
 
 ## Critérios obrigatórios para ativação futura
 

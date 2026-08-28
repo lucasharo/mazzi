@@ -23,6 +23,9 @@ import type { MercadoPagoCardPayload } from './MercadoPagoCardCheckout';
 const MercadoPagoCardCheckout = React.lazy(() =>
   import('./MercadoPagoCardCheckout').then((module) => ({ default: module.MercadoPagoCardCheckout }))
 );
+const MercadoPagoPixCheckout = React.lazy(() =>
+  import('./MercadoPagoPixCheckout').then((module) => ({ default: module.MercadoPagoPixCheckout }))
+);
 
 export interface CheckoutModalProps {
   isOpen: boolean;
@@ -116,7 +119,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [paymentAttemptId, setPaymentAttemptId] = useState<string | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>(
-    checkoutGatewayProvider === 'mercadopago' ? 'CREDIT_CARD' : 'PIX'
+    'PIX'
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -163,7 +166,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             const payRes = await dbService.createBookingPayment(
               resumeBooking.id,
               paymentMethod || 'PIX',
-              `idem_pay_${resumeBooking.id}`
+              `idem_pay_${resumeBooking.id}`,
+              checkoutGatewayProvider === 'mercadopago' ? 'mercadopago_test' : 'fake_payment_gateway'
             );
             if (payRes && (payRes.payment_id || payRes.id)) {
               realPayId = payRes.payment_id || payRes.id;
@@ -427,7 +431,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         const payRes = await dbService.createBookingPayment(
           realBookingId,
           paymentMethod,
-          `idem_pay_${realBookingId}`
+          `idem_pay_${realBookingId}`,
+          checkoutGatewayProvider === 'mercadopago' ? 'mercadopago_test' : 'fake_payment_gateway'
         );
         if (payRes && (payRes.payment_id || payRes.id)) {
           realPaymentId = payRes.payment_id || payRes.id;
@@ -500,7 +505,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           const newPayRes = await dbService.createBookingPayment(
             booking.id,
             paymentMethod,
-            retryIdempotencyKey
+            retryIdempotencyKey,
+            checkoutGatewayProvider === 'mercadopago' ? 'mercadopago_test' : 'fake_payment_gateway'
           );
           
           if (!newPayRes || (!newPayRes.payment_id && !newPayRes.id)) {
@@ -606,6 +612,78 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
+  const handleSelectPaymentMethod = async (nextMethod: PaymentMethodType) => {
+    if (isProcessing) return;
+    setPaymentMethod(nextMethod);
+  };
+
+  const handleMercadoPagoPixPayment = async () => {
+    if (!booking || !payment || !user || isProcessing) return;
+    setIsProcessing(true);
+    setErrorMessage(null);
+    try {
+      const result = await dbService.processMercadoPagoPixPayment(payment.id);
+      const nextPayment = {
+        ...payment,
+        gateway: 'MERCADOPAGO' as const,
+        method: 'PIX' as const,
+        status: result.status === 'PAID' || result.approved
+          ? 'PAID' as const
+          : result.status === 'FAILED'
+            ? 'FAILED' as const
+            : 'PENDING' as const,
+        externalPaymentId: result.externalPaymentId,
+        pixQrCode: result.pixQrCode || payment.pixQrCode,
+        pixQrCodeBase64: result.pixQrCodeBase64 || payment.pixQrCodeBase64,
+        pixExpiresAt: result.pixExpiresAt || payment.pixExpiresAt,
+        updatedAt: new Date().toISOString(),
+      };
+      setPayment(nextPayment);
+      if (result.approved || result.status === 'PAID') {
+        const confirmedBooking = { ...booking, status: 'CONFIRMED' as const, updatedAt: new Date().toISOString() };
+        setBooking(confirmedBooking);
+        setStep('SUCCESS');
+        onBookingConfirmed(confirmedBooking);
+      } else if (result.status === 'FAILED') {
+        setErrorMessage('O pagamento Pix não foi aprovado. Gere uma nova tentativa.');
+      }
+    } catch (error) {
+      setErrorMessage(friendlyCheckoutError(error, 'Não foi possível gerar o código Pix. Tente novamente.'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRefreshMercadoPagoPix = async () => {
+    if (!payment || isProcessing) return;
+    setIsProcessing(true);
+    setErrorMessage(null);
+    try {
+      const result = await dbService.processMercadoPagoPixPayment(payment.id);
+      setPayment((current) => current ? {
+        ...current,
+        status: result.status === 'PAID' ? 'PAID' : result.status,
+        externalPaymentId: result.externalPaymentId || current.externalPaymentId,
+        pixQrCode: result.pixQrCode || current.pixQrCode,
+        pixQrCodeBase64: result.pixQrCodeBase64 || current.pixQrCodeBase64,
+        pixExpiresAt: result.pixExpiresAt || current.pixExpiresAt,
+        updatedAt: new Date().toISOString(),
+      } : current);
+      if ((result.approved || result.status === 'PAID') && booking) {
+        const confirmedBooking = { ...booking, status: 'CONFIRMED' as const, updatedAt: new Date().toISOString() };
+        setBooking(confirmedBooking);
+        setStep('SUCCESS');
+        onBookingConfirmed(confirmedBooking);
+      } else if (result.status === 'FAILED') {
+        setErrorMessage('O pagamento Pix não foi aprovado. Gere uma nova tentativa.');
+      }
+    } catch (error) {
+      setErrorMessage(friendlyCheckoutError(error, 'Ainda não conseguimos consultar o pagamento. Tente novamente.'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const formatCountdown = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
     const secs = totalSec % 60;
@@ -647,8 +725,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {/* Environment Safety Banner */}
         <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-medium flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
-          <span>
-            <strong className="font-semibold text-slate-900">Ambiente de Testes:</strong> Pagamento simulado sem cobrança real.
+            <span>
+            <strong className="font-semibold text-slate-900">Ambiente de Testes:</strong> {checkoutGatewayProvider === 'fake' ? 'Pagamento simulado sem cobrança real.' : 'Mercado Pago configurado com credenciais de teste.'}
           </span>
         </div>
 
@@ -662,8 +740,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </div>
         )}
 
-        {/* Persistent Mock Validation Banner */}
-        {step !== 'SUCCESS' && (
+        {/* Payment environment banner */}
+        {step !== 'SUCCESS' && checkoutGatewayProvider === 'fake' && (
           <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 font-bold flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
             <span>Pagamento simulado — nenhum valor será cobrado.</span>
@@ -902,11 +980,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Payment Method Selector */}
-            {checkoutGatewayProvider === 'fake' && <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <ButtonBase
                 type="button"
                 aria-pressed={paymentMethod === 'PIX'}
-                onClick={() => setPaymentMethod('PIX')}
+                onClick={() => { void handleSelectPaymentMethod('PIX'); }}
                 className={`min-h-[44px] p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                   paymentMethod === 'PIX'
                     ? 'border-amber-400 bg-amber-50/80 shadow-2xs'
@@ -915,15 +993,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               >
                 <QrCode className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
-                  <span className="font-extrabold text-xs text-slate-900 block truncate">PIX Simulado</span>
-                  <span className="text-[10px] text-slate-500 font-medium block truncate">Aprovação instantânea</span>
+                  <span className="font-extrabold text-xs text-slate-900 block truncate">{checkoutGatewayProvider === 'fake' ? 'PIX Simulado' : 'Pix Mercado Pago'}</span>
+                  <span className="text-[10px] text-slate-500 font-medium block truncate">{checkoutGatewayProvider === 'fake' ? 'Aprovação instantânea' : 'QR Code de teste'}</span>
                 </div>
               </ButtonBase>
 
               <ButtonBase
                 type="button"
                 aria-pressed={paymentMethod === 'CREDIT_CARD'}
-                onClick={() => setPaymentMethod('CREDIT_CARD')}
+                onClick={() => { void handleSelectPaymentMethod('CREDIT_CARD'); }}
                 className={`min-h-[44px] p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                   paymentMethod === 'CREDIT_CARD'
                     ? 'border-amber-400 bg-amber-50/80 shadow-2xs'
@@ -936,7 +1014,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <span className="text-[10px] text-slate-500 font-medium block truncate">Testar cenários</span>
                 </div>
               </ButtonBase>
-            </div>}
+            </div>
 
             {/* PIX Fake View */}
             {checkoutGatewayProvider === 'fake' && paymentMethod === 'PIX' && (
@@ -974,6 +1052,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   </Button>
                 </div>
               </div>
+            )}
+
+            {checkoutGatewayProvider === 'mercadopago' && paymentMethod === 'PIX' && (
+              <React.Suspense fallback={<p role="status" className="py-6 text-center text-sm text-[var(--mazzi-text)]">Carregando pagamento seguro…</p>}>
+                <MercadoPagoPixCheckout
+                  amountInCents={payment.amountInCents}
+                  isProcessing={isProcessing}
+                  status={payment.status}
+                  pixQrCode={payment.pixQrCode}
+                  pixQrCodeBase64={payment.pixQrCodeBase64}
+                  pixExpiresAt={payment.pixExpiresAt}
+                  copied={copiedPix}
+                  onCreate={handleMercadoPagoPixPayment}
+                  onRefresh={handleRefreshMercadoPagoPix}
+                  onCopy={handleCopyPixCode}
+                />
+              </React.Suspense>
             )}
 
             {/* Credit Card Fake View */}
@@ -1015,7 +1110,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             )}
 
-            {checkoutGatewayProvider === 'mercadopago' && (
+            {checkoutGatewayProvider === 'mercadopago' && paymentMethod === 'CREDIT_CARD' && (
               <React.Suspense fallback={<p role="status" className="py-6 text-center text-sm text-[var(--mazzi-text)]">Carregando pagamento seguro…</p>}>
                 <MercadoPagoCardCheckout
                   amountInCents={payment.amountInCents}

@@ -23,6 +23,8 @@ export interface PlatformConfiguration {
   availabilityHorizonDays: number; // Default: 30
   minimumBookingNoticeHours: number; // Default: 2
   platformFeeDefaultPercentage: number; // Default: 10
+  mercadoPagoFeePercentage: number; // Default: 5, used only by Admin payout calculations
+  maxTotalFeePercentage: number; // Default: 10, MAZZI + gateway cap
   payoutSafetyPeriodHours: number; // Default: 24
   searchRadiusDefaultsKm: number; // Default: 15
   checkInWindowBeforeMinutes: number; // Default: 30
@@ -37,6 +39,8 @@ export const DEFAULT_PLATFORM_CONFIGURATION: PlatformConfiguration = {
   availabilityHorizonDays: 30,
   minimumBookingNoticeHours: 2,
   platformFeeDefaultPercentage: 10,
+  mercadoPagoFeePercentage: 5,
+  maxTotalFeePercentage: 10,
   payoutSafetyPeriodHours: 24,
   searchRadiusDefaultsKm: 15,
   checkInWindowBeforeMinutes: 30,
@@ -81,6 +85,18 @@ export function updatePlatformConfiguration(params: UpdatePlatformConfigParams):
       'A taxa da plataforma deve estar entre 0% e 100%.',
       400
     );
+  }
+
+  if (updates.mercadoPagoFeePercentage !== undefined && (updates.mercadoPagoFeePercentage < 0 || updates.mercadoPagoFeePercentage > 100)) {
+    throw new PlatformConfigDomainError('INVALID_GATEWAY_FEE_PERCENTAGE', 'A taxa estimada do Mercado Pago deve estar entre 0% e 100%.', 400);
+  }
+  if (updates.maxTotalFeePercentage !== undefined && (updates.maxTotalFeePercentage < 0 || updates.maxTotalFeePercentage > 100)) {
+    throw new PlatformConfigDomainError('INVALID_TOTAL_FEE_PERCENTAGE', 'O limite de taxas deve estar entre 0% e 100%.', 400);
+  }
+  const effectiveGatewayFee = updates.mercadoPagoFeePercentage ?? currentConfig.mercadoPagoFeePercentage;
+  const effectiveTotalCap = updates.maxTotalFeePercentage ?? currentConfig.maxTotalFeePercentage;
+  if (effectiveGatewayFee > effectiveTotalCap) {
+    throw new PlatformConfigDomainError('GATEWAY_FEE_EXCEEDS_TOTAL_FEE_CAP', 'A taxa do gateway não pode ultrapassar o limite total de taxas.', 400);
   }
 
   if (

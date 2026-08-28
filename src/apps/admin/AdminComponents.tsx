@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldAlert, FileCheck2, CalendarCheck, TrendingUp, History, CheckCircle2, XCircle, Eye, EyeOff, Search, Filter, UserCheck, AlertTriangle, FileText, ShieldCheck, Ban, Settings, DollarSign, Users, Lock, ArrowRightLeft, Info, Calendar, Layers, MapPin, RefreshCw, Car, ArrowRight, } from 'lucide-react';
 import {
-  Provider, ComplianceDocument, Vehicle, Booking, AuditLog, User, UserRole, BookingStatus, } from '../../types';
+  Provider, ComplianceDocument, Vehicle, Booking, AuditLog, User, UserRole, BookingStatus, Payout, } from '../../types';
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Input } from '../../components/ui/Input';
@@ -1451,9 +1451,12 @@ export const FinancialTab: React.FC<{
   auditLogs: AuditLog[];
   actor: AuthContext;
   onProcessRefund: (booking: Booking) => void;
-}> = ({ bookings, auditLogs, actor, onProcessRefund }) => {
+  payouts: Payout[];
+  onMarkManualPayout: (payout: Payout, transferReference: string) => void;
+}> = ({ bookings, auditLogs, actor, onProcessRefund, payouts, onMarkManualPayout }) => {
   const [activeSubTab, setActiveSubTab] = useState<'payouts' | 'ledger'>('ledger');
   const [selectedBookingId, setSelectedBookingId] = useState<string>('');
+  const [transferReferences, setTransferReferences] = useState<Record<string, string>>({});
 
   // Computes ledger
   const transactions = bookings.filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED' || b.status === 'REFUNDED');
@@ -1587,7 +1590,7 @@ export const FinancialTab: React.FC<{
             </div>
           </div>
 
-          <div className="border border-slate-200 rounded-2xl bg-white shadow-xs overflow-hidden">
+          <div className="border border-slate-200 rounded-2xl bg-white shadow-xs overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
                 <tr>
@@ -1600,18 +1603,45 @@ export const FinancialTab: React.FC<{
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {bookings.filter(b => b.status === 'COMPLETED').map((b, i) => (
-                  <tr key={i}>
-                    <td className="p-3 font-medium text-slate-600">Prestador</td>
-                    <td className="p-3">{b.providerName}</td>
-                    <td className="p-3 font-mono text-slate-500">{formatCentsToBRL(b.priceInCents)}</td>
-                    <td className="p-3 font-mono text-emerald-600 font-bold">{formatCentsToBRL(0)}</td>
-                    <td className="p-3 font-mono text-slate-400">---</td>
+                {payouts.map((payout) => (
+                  <tr key={payout.id}>
+                    <td className="p-3 font-medium text-slate-600">{payout.bookingId.slice(0, 8)}</td>
+                    <td className="p-3">{payout.recipientName || 'Prestador não identificado'}</td>
+                    <td className="p-3 font-mono text-slate-500">{formatCentsToBRL(payout.grossAmountInCents || 0)}</td>
+                    <td className="p-3 font-mono text-emerald-600 font-bold">{formatCentsToBRL(payout.amountInCents)}</td>
+                    <td className="p-3 font-mono text-slate-400">{payout.destinationKeyMasked || 'Sem chave Pix'}</td>
                     <td className="p-3">
-                      <StatusBadge status="PENDING" domain="payout" />
+                      <div className="flex min-w-[220px] flex-col gap-2">
+                        <StatusBadge status={payout.status} domain="payout" />
+                        {payout.status === 'AVAILABLE' && (
+                          <div className="flex gap-1.5">
+                            <Input
+                              aria-label={`Referência do repasse ${payout.bookingId.slice(0, 8)}`}
+                              placeholder="Referência Pix"
+                              value={transferReferences[payout.id] || ''}
+                              onChange={(event) => setTransferReferences((current) => ({ ...current, [payout.id]: event.target.value }))}
+                              className="min-h-9 rounded-xl px-2.5 py-1.5 text-[11px]"
+                            />
+                            <Button
+                              type="button"
+                              variant="primary"
+                              size="sm"
+                              className="min-h-9 shrink-0 px-2.5 text-[11px]"
+                              disabled={(transferReferences[payout.id] || '').trim().length < 3}
+                              onClick={() => onMarkManualPayout(payout, transferReferences[payout.id].trim())}
+                            >
+                              Registrar Pix
+                            </Button>
+                          </div>
+                        )}
+                        {payout.status === 'PENDING' && <span className="text-[11px] text-slate-500">Disponível após o período de segurança.</span>}
+                        {payout.status === 'BLOCKED' && <span className="text-[11px] text-rose-600">Cadastre uma chave Pix para liberar.</span>}
+                        {payout.status === 'PAID' && payout.transferReference && <span className="text-[11px] text-emerald-700">Ref.: {payout.transferReference}</span>}
+                      </div>
                     </td>
                   </tr>
                 ))}
+                {payouts.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-500">Nenhum repasse elegível no momento.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -1897,6 +1927,8 @@ export const SettingsTab: React.FC<{
 
   // Input states locally managed
   const [fee, setFee] = useState<number | ''>(config.platformFeeDefaultPercentage);
+  const [mercadoPagoFee, setMercadoPagoFee] = useState<number | ''>(config.mercadoPagoFeePercentage);
+  const [totalFeeCap, setTotalFeeCap] = useState<number | ''>(config.maxTotalFeePercentage);
   const [horizon, setHorizon] = useState<number | ''>(config.availabilityHorizonDays);
   const [quoteExp, setQuoteExp] = useState<number | ''>(config.quoteExpirationMinutes);
   const [minNotice, setMinNotice] = useState<number | ''>(config.minimumBookingNoticeHours);
@@ -1906,6 +1938,8 @@ export const SettingsTab: React.FC<{
 
   useEffect(() => {
     setFee(config.platformFeeDefaultPercentage);
+    setMercadoPagoFee(config.mercadoPagoFeePercentage);
+    setTotalFeeCap(config.maxTotalFeePercentage);
     setHorizon(config.availabilityHorizonDays);
     setQuoteExp(config.quoteExpirationMinutes);
     setMinNotice(config.minimumBookingNoticeHours);
@@ -1915,11 +1949,13 @@ export const SettingsTab: React.FC<{
 
   const handleSave = async () => {
     if (!isAuthorized) return;
-    if ([fee, horizon, quoteExp, minNotice, safetyPeriod, radius].some((value) => value === '')) return;
+    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius].some((value) => value === '')) return;
     try {
       setIsSaving(true);
       await onUpdateConfig({
         platformFeeDefaultPercentage: fee,
+        mercadoPagoFeePercentage: mercadoPagoFee,
+        maxTotalFeePercentage: totalFeeCap,
         availabilityHorizonDays: horizon,
         quoteExpirationMinutes: quoteExp,
         minimumBookingNoticeHours: minNotice,
@@ -1961,6 +1997,34 @@ export const SettingsTab: React.FC<{
               className="text-xs"
             />
             <span className="text-[10px] text-slate-400 block">Percentual recolhido por agendamento de aula prêmio.</span>
+          </div>
+
+          <div className="space-y-1">
+            <label className="mazzi-field-label block">Taxa estimada do Mercado Pago (%)</label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={mercadoPagoFee}
+              onChange={(e) => setMercadoPagoFee(e.target.value === '' ? '' : Number(e.target.value))}
+              disabled={!isAuthorized}
+              className="text-xs"
+            />
+            <span className="text-[10px] text-slate-400 block">Usada pelo Admin quando o gateway não retornar a taxa efetiva.</span>
+          </div>
+
+          <div className="space-y-1">
+            <label className="mazzi-field-label block">Limite combinado de taxas (%)</label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={totalFeeCap}
+              onChange={(e) => setTotalFeeCap(e.target.value === '' ? '' : Number(e.target.value))}
+              disabled={!isAuthorized}
+              className="text-xs"
+            />
+            <span className="text-[10px] text-slate-400 block">A soma MAZZI + Mercado Pago nunca ultrapassa este limite.</span>
           </div>
 
           <div className="space-y-1">

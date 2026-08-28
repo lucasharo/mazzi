@@ -160,10 +160,19 @@
 - **Data**: 2026-08-27
 - **Status**: `APROVADA & IMPLEMENTADA EM DEV` (Complementa a `DEC-010`)
 - **Tema**: Pagamentos, Segurança e Homologação
-- **Decisão**: Preservar o `FakePaymentGateway` como padrão e permitir selecionar `mercadopago` por `VITE_PAYMENT_GATEWAY_PROVIDER`. O modo Mercado Pago utiliza somente Card Payment Brick, uma parcela, captura online e credenciais de teste. PIX, boleto e meios de conclusão posterior não são oferecidos neste modo. A Edge Function exige `MERCADOPAGO_ENVIRONMENT=test`, usa valor persistido em centavos, autenticação e idempotência; somente resposta `approved` finaliza pagamento e reserva no backend.
+- **Decisão**: Preservar o `FakePaymentGateway` como padrão e permitir selecionar `mercadopago` por `VITE_PAYMENT_GATEWAY_PROVIDER`. O modo Mercado Pago utiliza Card Payment Brick e Pix, uma parcela no cartão, captura online e credenciais de teste. O Pix pode exigir conclusão posterior por webhook assinado ou consulta autoritativa. A Edge Function exige `MERCADOPAGO_ENVIRONMENT=test`, usa valor persistido em centavos, autenticação e idempotência; somente confirmação server-side `approved` finaliza pagamento e reserva no backend.
 - **Motivo**: Homologar a integração real de API e UX sem movimentar dinheiro nem remover o ambiente simulado.
 - **Impacto**: `MercadoPagoCardCheckout.tsx`, Edge Function `process-mercadopago-card-payment`, migration TASK-079 e variáveis documentadas em `.env.example`. Produção permanece desabilitada.
-- **Relacionado a**: [`MVP_RULES.md`](./MVP_RULES.md), [`09-payments.md`](../09-payments.md), `tasks/TASK-079/`.
+- **Relacionado a**: [`MVP_RULES.md`](./MVP_RULES.md), [`09-payments.md`](../09-payments.md), `tasks/TASK-079/`, `tasks/TASK-080/`.
 
+---
 
+## DEC-015: Pix Mercado Pago com Confirmação Posterior e Repasse Manual
+- **Data**: 2026-08-27
+- **Status**: `APROVADA & IMPLEMENTADA EM DEV`
+- **Tema**: Recebimento Pix, Segurança e Operação Financeira
+- **Decisão**: O checkout Mercado Pago passa a oferecer Pix em ambiente de teste. A criação do pagamento é online e retorna QR Code/copia e cola, mas a reserva permanece `PENDING_PAYMENT` até confirmação server-side por webhook assinado ou consulta autoritativa. O repasse ao prestador permanece manual pelo Admin; OAuth, split automático e transferência Pix automática continuam fora do escopo.
+- **Motivo**: Pix exige acompanhar o status após o aluno efetuar o pagamento; confirmar a reserva somente na criação do QR Code causaria reservas indevidamente confirmadas.
+- **Impacto**: Edge Functions de criação e webhook Pix, `payment_webhook_events`, destino Pix do PRO, painel financeiro do Admin e migration `20260828023332_pix_receiving_and_manual_payouts.sql`.
+- **Relacionado a**: [`MVP_RULES.md`](./MVP_RULES.md), [`09-payments.md`](../09-payments.md), `tasks/TASK-080/`.
 

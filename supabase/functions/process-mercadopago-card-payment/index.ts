@@ -12,6 +12,18 @@ const reply = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers });
 
 const isUuid = (value: unknown) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+const decimalToCents = (value: unknown) => {
+  const raw = String(value ?? '').trim().replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return null;
+  const [whole, fraction = ''] = raw.split('.');
+  const cents = Number(`${whole}${fraction.padEnd(2, '0')}`);
+  return Number.isSafeInteger(cents) ? cents : null;
+};
+const gatewayFeeInCents = (result: any) => {
+  const cents = (result?.fee_details || []).filter((item: any) => item?.type === 'mercadopago_fee')
+    .reduce((total: number, item: any) => total + (decimalToCents(item.amount) || 0), 0);
+  return cents > 0 ? cents : null;
+};
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers });
@@ -130,6 +142,17 @@ Deno.serve(async (request) => {
       approved: false,
       message: "Pagamento de teste recusado. Para simular uma aprovação, informe APRO como nome do titular e CPF 123.456.789-09.",
     });
+  }
+
+  const { error: methodUpdateError } = await service.from("payments").update({
+    method: "CREDIT_CARD",
+    gateway_provider: "mercadopago_test",
+    gateway_fee_in_cents: gatewayFeeInCents(result),
+    updated_at: new Date().toISOString(),
+  }).eq("id", payment.id).eq("status", "PENDING");
+  if (methodUpdateError) {
+    console.error("MERCADOPAGO_CARD_PAYMENT_PERSIST_FAILED", { code: methodUpdateError.code, message: methodUpdateError.message });
+    return reply(500, { message: "O pagamento foi aprovado, mas não conseguimos registrar a forma de pagamento." });
   }
 
   const { data: finalized, error: finalizeError } = await service.rpc("finalize_mercadopago_test_payment", {

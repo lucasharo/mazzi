@@ -179,6 +179,10 @@ export interface Database {
           gateway_provider: string;
           metadata: Json;
           paid_at: string | null;
+          pix_qr_code: string | null;
+          pix_qr_code_base64: string | null;
+          pix_expires_at: string | null;
+          gateway_fee_in_cents: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -196,11 +200,56 @@ export interface Database {
           released_at: string | null;
           external_payout_id: string | null;
           idempotency_key: string;
+          gross_amount_in_cents: number | null;
+          platform_fee_in_cents: number;
+          gateway_fee_in_cents: number;
+          gateway_fee_source: string;
+          transfer_method: string;
+          destination_key_type: string | null;
+          destination_key: string | null;
+          destination_key_masked: string | null;
+          recipient_name: string | null;
+          recipient_document: string | null;
+          processed_by: string | null;
+          processed_at: string | null;
+          transfer_reference: string | null;
+          failure_reason: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: Omit<Database['public']['Tables']['payouts']['Row'], 'created_at' | 'updated_at'>;
         Update: Partial<Database['public']['Tables']['payouts']['Insert']>;
+      };
+      provider_pix_destinations: {
+        Row: {
+          id: string;
+          provider_id: string;
+          key_type: string;
+          pix_key: string;
+          holder_name: string;
+          holder_document: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['provider_pix_destinations']['Row'], 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['provider_pix_destinations']['Insert']>;
+      };
+      payment_webhook_events: {
+        Row: {
+          id: string;
+          gateway: string;
+          external_event_id: string;
+          external_payment_id: string | null;
+          event_type: string;
+          payload_hash: string | null;
+          status: string;
+          error_message: string | null;
+          received_at: string;
+          processed_at: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['payment_webhook_events']['Row'], 'received_at'>;
+        Update: Partial<Database['public']['Tables']['payment_webhook_events']['Insert']>;
       };
       reviews: {
         Row: {

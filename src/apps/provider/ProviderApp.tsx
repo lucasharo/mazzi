@@ -19,6 +19,7 @@ import {
   DayOfWeek,
   ExceptionType,
   ExceptionReasonCategory,
+  PixDestination,
 } from '../../types';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
@@ -220,6 +221,8 @@ export const ProviderApp: React.FC = () => {
   const [profileFormError, setProfileFormError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
+  const [pixDestination, setPixDestination] = useState<PixDestination | null>(null);
+  const [isSavingPixDestination, setIsSavingPixDestination] = useState(false);
 
   // Vehicle Management Modal State
   const [isAddVehicleModalOpen, setIsAddVehicleModalOpen] = useState<boolean>(false);
@@ -393,8 +396,9 @@ export const ProviderApp: React.FC = () => {
           : await dbService.getBookings();
         setBookings(refreshedBookings || []);
       } else if (activeTab === 'profile') {
-        const avatarUrl = await getMyProfileAvatar();
+        const [avatarUrl, destination] = await Promise.all([getMyProfileAvatar(), dbService.getMyPixDestination()]);
         setProfileAvatar(avatarUrl);
+        setPixDestination(destination);
       } else {
         // Schedule and Management share the provider workspace source; only the
         // visible tab consumes the refreshed state below.
@@ -419,8 +423,22 @@ export const ProviderApp: React.FC = () => {
     setProfileAvatar(user?.avatarUrl);
     if (user?.id) {
       void getMyProfileAvatar().then((avatarUrl) => setProfileAvatar(avatarUrl)).catch(() => undefined);
+      void dbService.getMyPixDestination().then((destination) => setPixDestination(destination)).catch(() => undefined);
     }
   }, [user?.avatarUrl]);
+
+  const handleSavePixDestination = async (input: Pick<PixDestination, 'keyType' | 'pixKey' | 'holderName' | 'holderDocument'>) => {
+    if (isSavingPixDestination) return;
+    setIsSavingPixDestination(true);
+    try {
+      const saved = await dbService.saveMyPixDestination(input);
+      setPixDestination(saved);
+    } catch (error: any) {
+      setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o destino Pix.'));
+    } finally {
+      setIsSavingPixDestination(false);
+    }
+  };
 
   const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
 
@@ -1449,6 +1467,9 @@ status: 'IN_REVIEW',
             onSaveProfile={handleSaveProfile}
             formError={profileFormError}
             isSavingProfile={isSavingProfile}
+            pixDestination={pixDestination}
+            onSavePixDestination={handleSavePixDestination}
+            isSavingPixDestination={isSavingPixDestination}
             onLogout={logout}
           />
         )}

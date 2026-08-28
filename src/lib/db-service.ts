@@ -26,6 +26,8 @@ import {
   ProductAnalyticsEventName,
   AnalyticsPeriodPreset,
   PublicSearchProviderResult,
+  Payout,
+  PixDestination,
 } from '../types';
 import { normalizeComplianceStatus } from '../domain/compliance-status';
 import { formatDateBR, formatTimeBR } from './date-format';
@@ -1036,7 +1038,7 @@ export const dbService = {
     return data;
   },
 
-  async createBookingPayment(bookingId: string, method: string, idempotencyKey: string): Promise<any> {
+  async createBookingPayment(bookingId: string, method: string, idempotencyKey: string, gatewayProvider = 'fake_payment_gateway'): Promise<any> {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookingId);
     if (!isUuid) {
       throw new Error('PAYMENT_CREATE_FAILED: Invalid booking UUID');
@@ -1046,7 +1048,7 @@ export const dbService = {
       p_booking_id: bookingId,
       p_method: method,
       p_idempotency_key: idempotencyKey,
-      p_gateway_provider: 'fake_payment_gateway'
+      p_gateway_provider: gatewayProvider,
     });
     if (error) {
       console.error('PAYMENT_CREATE_FAILED:', error);
@@ -1099,6 +1101,54 @@ export const dbService = {
     if (error) throw error;
     if (!data?.approved) throw new Error(data?.message || 'PAYMENT_NOT_APPROVED');
     return data;
+  },
+
+  async processMercadoPagoPixPayment(paymentId: string): Promise<any> {
+    const { data, error } = await sp.functions.invoke('process-mercadopago-pix-payment', { body: { paymentId } });
+    if (error) throw error;
+    return data;
+  },
+
+  async getMyPaymentStatus(paymentId: string): Promise<any> {
+    const { data, error } = await sp.rpc('get_my_payment_status', { p_payment_id: paymentId });
+    if (error) throw error;
+    return data;
+  },
+
+  async getMyPixDestination(): Promise<PixDestination | null> {
+    const { data, error } = await sp.rpc('get_my_pix_destination');
+    if (error) throw error;
+    if (!data || !data.id) return null;
+    return {
+      id: data.id,
+      providerId: data.provider_id,
+      keyType: data.key_type,
+      pixKey: data.pix_key,
+      pixKeyMasked: data.pix_key_masked,
+      holderName: data.holder_name,
+      holderDocument: data.holder_document || undefined,
+      isActive: data.is_active !== false,
+      updatedAt: data.updated_at,
+    };
+  },
+
+  async saveMyPixDestination(input: Pick<PixDestination, 'keyType' | 'pixKey' | 'holderName' | 'holderDocument'>): Promise<PixDestination> {
+    const { data, error } = await sp.rpc('save_my_pix_destination', {
+      p_key_type: input.keyType,
+      p_pix_key: input.pixKey,
+      p_holder_name: input.holderName,
+      p_holder_document: input.holderDocument || null,
+    });
+    if (error) throw error;
+    return {
+      providerId: data.provider_id,
+      keyType: data.key_type,
+      pixKey: data.pix_key,
+      pixKeyMasked: data.pix_key_masked,
+      holderName: data.holder_name,
+      holderDocument: data.holder_document || undefined,
+      isActive: true,
+    };
   },
 
   async updateBookingStatus(id: string, status: string, extra: Record<string, any> = {}): Promise<void> {
@@ -1285,6 +1335,46 @@ export const dbService = {
     return rows
       .map((row: any) => mapBookingFromDb({ ...row, ...(namesByBooking.get(row.id) || {}) }, categoriesByBooking.get(row.id)))
       .sort((a: Booking, b: Booking) => new Date(a.scheduledStartAt || 0).getTime() - new Date(b.scheduledStartAt || 0).getTime());
+  },
+
+  async getAdminPayouts(): Promise<Payout[]> {
+    const { data, error } = await sp.rpc('get_admin_payouts');
+    if (error) throw error;
+    return (Array.isArray(data) ? data : []).map((row: any) => ({
+      id: row.id,
+      providerId: row.provider_id,
+      bookingId: row.booking_id,
+      amountInCents: Number(row.amount_in_cents || 0),
+      status: row.status,
+      scheduledReleaseAt: row.scheduled_release_at,
+      releasedAt: row.released_at || undefined,
+      externalPayoutId: row.external_payout_id || undefined,
+      idempotencyKey: row.idempotency_key || `payout_${row.booking_id}`,
+      grossAmountInCents: row.gross_amount_in_cents == null ? undefined : Number(row.gross_amount_in_cents),
+      platformFeeInCents: row.platform_fee_in_cents == null ? undefined : Number(row.platform_fee_in_cents),
+      gatewayFeeInCents: row.gateway_fee_in_cents == null ? undefined : Number(row.gateway_fee_in_cents),
+      gatewayFeeSource: row.gateway_fee_source,
+      transferMethod: row.transfer_method,
+      destinationKeyType: row.destination_key_type,
+      destinationKey: row.destination_key || undefined,
+      destinationKeyMasked: row.destination_key_masked || undefined,
+      recipientName: row.recipient_name || undefined,
+      recipientDocument: row.recipient_document || undefined,
+      transferReference: row.transfer_reference || undefined,
+      processedBy: row.processed_by || undefined,
+      processedAt: row.processed_at || undefined,
+      createdAt: row.created_at || new Date().toISOString(),
+      updatedAt: row.updated_at || new Date().toISOString(),
+    }));
+  },
+
+  async markManualPayout(payoutId: string, transferReference: string): Promise<any> {
+    const { data, error } = await sp.rpc('mark_manual_payout', {
+      p_payout_id: payoutId,
+      p_transfer_reference: transferReference,
+    });
+    if (error) throw error;
+    return data;
   },
 
   async addAdministrativeRole(userId: string, role: Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>): Promise<void> {

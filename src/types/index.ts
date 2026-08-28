@@ -589,8 +589,36 @@ export interface Payout {
   releasedAt?: string;
   externalPayoutId?: string;
   idempotencyKey: string;
+  grossAmountInCents?: number;
+  platformFeeInCents?: number;
+  gatewayFeeInCents?: number;
+  gatewayFeeSource?: 'GATEWAY_RESPONSE' | 'CONFIGURED_ESTIMATE';
+  transferMethod?: 'MANUAL_PIX';
+  destinationKeyType?: 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'RANDOM';
+  destinationKey?: string;
+  destinationKeyMasked?: string;
+  recipientName?: string;
+  recipientDocument?: string;
+  transferReference?: string;
+  processedBy?: string;
+  processedAt?: string;
+  failureReason?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type PixKeyType = 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'RANDOM';
+
+export interface PixDestination {
+  id?: string;
+  providerId: string;
+  keyType: PixKeyType;
+  pixKey: string;
+  pixKeyMasked?: string;
+  holderName: string;
+  holderDocument?: string;
+  isActive: boolean;
+  updatedAt?: string;
 }
 
 export type FinancialEventType =
