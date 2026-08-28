@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, } from 'lucide-react';
+import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, } from 'lucide-react';
 import {
-  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, } from '../../../types';
+  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, PixDestination, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
@@ -22,12 +22,14 @@ import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 import { VehicleCatalogPicker } from '../../../components/vehicles/VehicleCatalogPicker';
 import { getStatusPresentation } from '../../../domain/status-presentation';
+import { ProviderPixDestinationModal } from './ProviderPixDestinationModal';
+import { ProviderAccountTab } from './ProviderAccountTab';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
   isRefreshing?: boolean;
-  managementSubTab: 'vehicles' | 'offerings' | 'compliance' | 'memberships';
-  onSubTabChange: (tab: 'vehicles' | 'offerings' | 'compliance' | 'memberships') => void;
+  managementSubTab: 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account';
+  onSubTabChange: (tab: 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account') => void;
   vehicles: Vehicle[];
   offerings: ServiceOffering[];
   complianceDocs: ComplianceDocument[];
@@ -73,6 +75,9 @@ interface ProviderManagementTabProps {
   onViewComplianceDocument: (document: ComplianceDocument) => void;
   isAcceptingComplianceTerms?: boolean;
   complianceTermsError?: string | null;
+  pixDestination?: PixDestination | null;
+  onSavePixDestination?: (input: Pick<PixDestination, 'keyType' | 'pixKey' | 'holderName' | 'holderDocument'>) => Promise<void>;
+  isSavingPixDestination?: boolean;
 }
 
 export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
@@ -109,6 +114,9 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   onViewComplianceDocument,
   isAcceptingComplianceTerms = false,
   complianceTermsError,
+  pixDestination,
+  onSavePixDestination,
+  isSavingPixDestination = false,
 }) => {
   const [blockedVehicleId, setBlockedVehicleId] = useState<string | null>(null);
   const currentYear = new Date().getFullYear();
@@ -119,6 +127,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
     return (priority[a.status] ?? 3) - (priority[b.status] ?? 3);
   });
   const [isInviteInstructorModalOpen, setIsInviteInstructorModalOpen] = React.useState(false);
+  const [isPixDestinationModalOpen, setIsPixDestinationModalOpen] = useState(false);
   const isSchool = currentProvider.type === 'DRIVING_SCHOOL';
   const eligibleSchoolInstructors = schoolInstructors.filter((instructor) => {
     const compliance = schoolInstructorSummary.find((entry) => entry.membershipId === instructor.id);
@@ -145,17 +154,19 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" /> },
           { id: 'compliance', label: 'Compliance', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
           ...(isSchool ? [{ id: 'memberships' as const, label: 'Instrutores', icon: <Users className="h-3.5 w-3.5" /> }] : []),
+          { id: 'account', label: 'Conta Pix', icon: <WalletCards className="h-3.5 w-3.5" /> },
         ]}
         className="mazzi-segmented"
       />
 
-      <div className="flex justify-end">
-        {managementSubTab === 'vehicles' && (
+      {(managementSubTab === 'vehicles' || managementSubTab === 'offerings' || (managementSubTab === 'memberships' && currentProvider.type === 'DRIVING_SCHOOL')) && (
+        <div className="flex flex-wrap justify-end gap-2">
+          {managementSubTab === 'vehicles' && (
           <Button variant="primary" size="sm" onClick={onOpenAddVehicleModal} leftIcon={<Plus className="w-4 h-4" />}>
             Cadastrar Veículo
           </Button>
-        )}
-        {managementSubTab === 'offerings' && (
+          )}
+          {managementSubTab === 'offerings' && (
           <Button
             variant="primary"
             size="sm"
@@ -165,13 +176,14 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           >
             Cadastrar Oferta
           </Button>
-        )}
-        {managementSubTab === 'memberships' && currentProvider.type === 'DRIVING_SCHOOL' && (
+          )}
+          {managementSubTab === 'memberships' && currentProvider.type === 'DRIVING_SCHOOL' && (
           <Button variant="primary" size="sm" onClick={() => setIsInviteInstructorModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
             Convidar Instrutor
           </Button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {!isRefreshing && managementSubTab === 'offerings' && currentProvider.status !== 'ACTIVE' && (
         <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
@@ -358,11 +370,11 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                 .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
               const doc = docsForRequirement[0];
               const isTermsAcceptance = req.documentType === 'MAZZI_TERMS_ACCEPTANCE';
-const canResubmit = doc?.status === 'REJECTED';
+              const canResubmit = doc?.status === 'REJECTED' || doc?.status === 'EXPIRED';
               return (
                 <div
                   key={req.id}
-                  className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="mazzi-card flex flex-col gap-4 p-4 text-left"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -379,9 +391,9 @@ const canResubmit = doc?.status === 'REJECTED';
                     )}
                   </div>
 
-                  <div className="w-full sm:ml-auto sm:w-auto">
-                    <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
-                      <StatusBadge status={doc?.status ?? 'PENDING'} domain="compliance" />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <StatusBadge status={doc?.status ?? 'PENDING'} domain="compliance" />
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       {doc?.storagePath && !isTermsAcceptance && (
                         <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5" aria-hidden="true" />} onClick={() => onViewComplianceDocument(doc)}>
                           Ver arquivo
@@ -389,7 +401,7 @@ const canResubmit = doc?.status === 'REJECTED';
                       )}
                       {(!doc || canResubmit) && !isTermsAcceptance && (
                         <Button
-                          variant="outline"
+                          variant={canResubmit ? 'primary' : 'outline'}
                           size="sm"
                           leftIcon={<Upload className="w-3.5 h-3.5" />}
                           onClick={() => onUploadDocClick(req.documentType)}
@@ -415,6 +427,15 @@ const canResubmit = doc?.status === 'REJECTED';
             })}
           </div>
         </div>
+      )}
+
+      {/* ACCOUNT SUBTAB */}
+      {!isRefreshing && managementSubTab === 'account' && (
+        <ProviderAccountTab
+          pixDestination={pixDestination}
+          onOpenPixSettings={() => setIsPixDestinationModalOpen(true)}
+          showHeader={false}
+        />
       )}
 
       {/* ADD VEHICLE MODAL */}
@@ -571,6 +592,16 @@ const canResubmit = doc?.status === 'REJECTED';
           </div>
         </div>
       </Modal>
+
+      {onSavePixDestination && (
+        <ProviderPixDestinationModal
+          isOpen={isPixDestinationModalOpen}
+          onClose={() => setIsPixDestinationModalOpen(false)}
+          pixDestination={pixDestination}
+          onSave={onSavePixDestination}
+          isSaving={isSavingPixDestination}
+        />
+      )}
     </div>
   );
 };

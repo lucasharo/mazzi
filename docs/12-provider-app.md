@@ -9,6 +9,7 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 - `AppHomeHeader` apenas em Início; telas internas usam `AppPageHeader`.
 - Atualização no canto superior direito somente nas telas com recarga de dados; Perfil e Agenda não exibem esse controle.
 - Em “Minhas aulas”, as abas são **Todas**, **Hoje**, **Próximas** e **Histórico**, com ícones e rolagem horizontal segura no mobile.
+- A classificação temporal usa o fim da aula: aulas futuras e em andamento permanecem em Próximas/Hoje; somente após o horário final entram no Histórico.
 - Botões de ações de conteúdo ficam abaixo das abas, fora do header.
 - Perfil segue a composição do Aluno: avatar central, identificação, card de dados e edição no topo direito.
 - Listas vazias e ausência de próxima aula usam os componentes globais de estado vazio.

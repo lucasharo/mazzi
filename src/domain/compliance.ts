@@ -216,6 +216,31 @@ export const DEFAULT_COMPLIANCE_REQUIREMENTS: ComplianceRequirement[] = [
   },
 ];
 
+/**
+ * Returns the catalog requirement associated with a document type.
+ * CNH is kept as a legacy storage value and maps to the canonical CNH_EAR
+ * requirement used by the compliance catalog.
+ */
+export function getComplianceRequirementForDocumentType(
+  documentType: string,
+  catalog: ComplianceRequirement[] = DEFAULT_COMPLIANCE_REQUIREMENTS
+): ComplianceRequirement | undefined {
+  const canonicalType = documentType === 'CNH' ? 'CNH_EAR' : documentType;
+  return catalog.find((requirement) => requirement.documentType === canonicalType);
+}
+
+/**
+ * A validity date is mandatory only when the official requirement defines a
+ * finite validity period. Permanent and historical documents may be approved
+ * without an expiration date.
+ */
+export function requiresComplianceDocumentExpiration(
+  documentType: string,
+  catalog: ComplianceRequirement[] = DEFAULT_COMPLIANCE_REQUIREMENTS
+): boolean {
+  return getComplianceRequirementForDocumentType(documentType, catalog)?.validityPeriodDays !== undefined;
+}
+
 export interface ComplianceRequirementFilter {
   providerType: ProviderType;
   country?: string;
@@ -288,7 +313,7 @@ export function isComplianceDocumentExpired(
     return false;
   }
   const expiry = new Date(doc.expiresAt);
-  return expiry.getTime() < referenceDate.getTime();
+  return expiry.getTime() <= referenceDate.getTime();
 }
 
 /**

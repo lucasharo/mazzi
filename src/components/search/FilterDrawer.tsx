@@ -3,6 +3,7 @@ import { Calendar, Car, DollarSign, MapPin, ShieldCheck, Star, Check, ArrowUpDow
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { SearchRequest } from '../../types';
+import { formatCentsToBRL } from '../../domain/money';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { getBusinessDateOnly } from '../../lib/date-format';
 
@@ -11,6 +12,7 @@ export interface FilterDrawerProps {
   onClose: () => void;
   filters?: Partial<SearchRequest>;
   searchRequest?: Partial<SearchRequest>;
+  maxPriceLimitInCents?: number;
   onApplyFilters: (filters: Partial<SearchRequest>) => void;
   onResetFilters?: () => void;
 }
@@ -20,6 +22,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   onClose,
   filters,
   searchRequest,
+  maxPriceLimitInCents,
   onApplyFilters,
   onResetFilters,
 }) => {
@@ -85,6 +88,12 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   const isSelectedDate = (dateVal?: string) => currentDraft.date === dateVal;
   const isSelectedProvider = (type?: string) => (currentDraft.providerType || 'ALL') === type;
   const isSelectedTransmission = (trans?: string) => (currentDraft.transmission || 'ALL') === trans;
+  const radiusKm = Math.round((currentDraft.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000);
+  const ratingValue = currentDraft.minimumRating ?? 0;
+  const priceValueInCents = currentDraft.maxPriceInCents ?? 0;
+  const priceSliderMaxInCents = Math.max(maxPriceLimitInCents ?? 15000, 100);
+  const priceSliderValueInCents = Math.min(priceValueInCents, priceSliderMaxInCents);
+  const rangeClassName = 'h-2 w-full cursor-pointer appearance-none rounded-full bg-[var(--mazzi-yellow-soft)] accent-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)]';
 
   return (
     <Modal id="mazzi-filter-modal" isOpen={isOpen} onClose={onClose} title="Filtros" size="md" footer={footerContent}>
@@ -227,102 +236,94 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
 
         {/* 5. Search Radius */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-          <label className="mazzi-field-label flex items-center gap-1.5">
+          <div className="mb-2 flex items-center justify-between">
+            <label className="mazzi-field-label flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
               Raio Máximo de Busca
             </label>
-            <span className="text-xs font-bold text-[var(--mazzi-dark)] bg-[var(--mazzi-surface-soft)] px-2 py-0.5 rounded-md border border-[var(--mazzi-border)]">
-              {((currentDraft.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000).toFixed(0)} km
+            <span className="rounded-md border border-amber-200 bg-[var(--mazzi-yellow-soft)] px-2 py-0.5 text-xs font-bold text-[var(--mazzi-dark)]">
+              {radiusKm} km
             </span>
           </div>
-          <div className="grid grid-cols-5 gap-1.5">
-            {[2000, 5000, 10000, 20000, 50000].map((rMeters) => {
-              const active = (currentDraft.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) === rMeters;
-              return (
-                <ButtonBase
-                  key={rMeters}
-                  type="button"
-                  onClick={() => updateDraft({ radiusMeters: rMeters })}
-                  aria-pressed={active}
-                  className={`min-h-11 rounded-xl text-xs border transition cursor-pointer flex items-center justify-center gap-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
-                    active
-                      ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
-                      : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  {rMeters / 1000}km
-                </ButtonBase>
-              );
-            })}
+          <input
+            type="range"
+            min="2"
+            max="50"
+            step="1"
+            value={radiusKm}
+            onChange={(event) => updateDraft({ radiusMeters: Number(event.target.value) * 1000 })}
+            className={rangeClassName}
+            style={{ accentColor: 'var(--mazzi-yellow)' }}
+            aria-label="Raio máximo de busca"
+            aria-valuetext={`${radiusKm} quilômetros`}
+          />
+          <div className="mt-1 flex justify-between text-[11px] font-semibold text-[var(--mazzi-muted)]">
+            <span>2 km</span>
+            <span>50 km</span>
           </div>
         </div>
 
         {/* 6. Minimum Rating */}
         <div>
-          <label className="mazzi-field-label flex items-center gap-1.5 mb-2">
-            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" aria-hidden="true" />
-            Avaliação Mínima
-          </label>
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { val: undefined, label: 'Todas' },
-              { val: 4.0, label: '4.0★' },
-              { val: 4.5, label: '4.5★' },
-              { val: 4.8, label: '4.8★' },
-            ].map((rate) => {
-              const active = currentDraft.minimumRating === rate.val;
-              return (
-                <ButtonBase
-                  key={rate.label}
-                  type="button"
-                  onClick={() => updateDraft({ minimumRating: rate.val })}
-                  aria-pressed={active}
-                  className={`min-h-11 rounded-xl border text-center text-xs transition cursor-pointer flex items-center justify-center gap-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
-                    active
-                      ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
-                      : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <Star className="w-3 h-3 text-amber-500 fill-amber-500" aria-hidden="true" />
-                  <span>{rate.label}</span>
-                </ButtonBase>
-              );
-            })}
+          <div className="mb-2 flex items-center justify-between">
+            <label className="mazzi-field-label flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" aria-hidden="true" />
+              Avaliação Mínima
+            </label>
+            <span className="rounded-md border border-amber-200 bg-[var(--mazzi-yellow-soft)] px-2 py-0.5 text-xs font-bold text-[var(--mazzi-dark)]">
+              {ratingValue === 0 ? 'Todas' : `${ratingValue.toFixed(1)}★`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="5"
+            step="0.1"
+            value={ratingValue}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              updateDraft({ minimumRating: value === 0 ? undefined : value });
+            }}
+            className={rangeClassName}
+            style={{ accentColor: 'var(--mazzi-yellow)' }}
+            aria-label="Avaliação mínima"
+            aria-valuetext={ratingValue === 0 ? 'Todas as avaliações' : `${ratingValue.toFixed(1)} estrelas`}
+          />
+          <div className="mt-1 flex justify-between text-[11px] font-semibold text-[var(--mazzi-muted)]">
+            <span>Todas</span>
+            <span>5.0★</span>
           </div>
         </div>
 
         {/* 7. Price Range */}
         <div>
-          <label className="mazzi-field-label flex items-center gap-1.5 mb-2">
-            <DollarSign className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
-            Faixa de Preço Máxima por Aula
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { maxInCents: undefined, label: 'Qualquer Preço' },
-              { maxInCents: 10000, label: 'Até R$ 100' },
-              { maxInCents: 15000, label: 'Até R$ 150' },
-            ].map((p) => {
-              const active = currentDraft.maxPriceInCents === p.maxInCents;
-              return (
-                <ButtonBase
-                  key={p.label}
-                  type="button"
-                  onClick={() => updateDraft({ maxPriceInCents: p.maxInCents })}
-                  aria-pressed={active}
-                  className={`min-h-11 rounded-xl border px-2 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
-                    active
-                      ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
-                      : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <DollarSign className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  {p.label}
-                </ButtonBase>
-              );
-            })}
+          <div className="mb-2 flex items-center justify-between">
+            <label className="mazzi-field-label flex items-center gap-1.5">
+              <DollarSign className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
+              Faixa de Preço Máxima por Aula
+            </label>
+            <span className="rounded-md border border-amber-200 bg-[var(--mazzi-yellow-soft)] px-2 py-0.5 text-xs font-bold text-[var(--mazzi-dark)]">
+              {priceSliderValueInCents === 0 ? 'Qualquer preço' : `Até ${formatCentsToBRL(priceSliderValueInCents)}`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max={priceSliderMaxInCents}
+            step="1"
+            value={priceSliderValueInCents}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              updateDraft({ maxPriceInCents: value === 0 ? undefined : value });
+            }}
+            className={rangeClassName}
+            style={{ accentColor: 'var(--mazzi-yellow)' }}
+            aria-label="Preço máximo por aula"
+            aria-valuetext={priceSliderValueInCents === 0 ? 'Qualquer preço' : `Até ${formatCentsToBRL(priceSliderValueInCents)}`}
+          />
+          <div className="mt-1 flex justify-between text-[11px] font-semibold text-[var(--mazzi-muted)]">
+            <span>Qualquer preço</span>
+            <span>Até {formatCentsToBRL(priceSliderMaxInCents)}</span>
           </div>
         </div>
       </div>

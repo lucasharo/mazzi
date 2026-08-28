@@ -27,7 +27,18 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     expect(friendly).not.toContain('CHECKIN_REQUIRED');
   });
 
-  it('D. INVALID_STATUS returns friendly message without technical code', () => {
+  it('D. Invalid instructor compliance at lesson start explains why the action is blocked', () => {
+    const rawError = {
+      code: '42501',
+      message: 'INSTRUCTOR_COMPLIANCE_INVALID_AT_LESSON_START',
+    };
+    const friendly = mapFriendlyErrorMessage(rawError, 'Não foi possível iniciar a aula.');
+    expect(friendly).toBe('Não é possível iniciar a aula porque a documentação de compliance do instrutor não está válida no momento. Regularize os documentos no PRO e aguarde a aprovação administrativa.');
+    expect(friendly).not.toContain('42501');
+    expect(friendly).not.toContain('INSTRUCTOR_COMPLIANCE_INVALID_AT_LESSON_START');
+  });
+
+  it('E. INVALID_STATUS returns friendly message without technical code', () => {
     const rawError = {
       message: 'INVALID_STATUS: Somente aulas em andamento (IN_PROGRESS) podem ser concluídas.',
     };
@@ -36,7 +47,7 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     expect(friendly).not.toContain('INVALID_STATUS');
   });
 
-  it('E. COMPLETION_IDEMPOTENCY_KEY_REQUIRED returns friendly message without technical code', () => {
+  it('F. COMPLETION_IDEMPOTENCY_KEY_REQUIRED returns friendly message without technical code', () => {
     const rawError = {
       message: 'COMPLETION_IDEMPOTENCY_KEY_REQUIRED: A chave de idempotência é obrigatória para concluir a aula.',
     };
@@ -45,7 +56,7 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     expect(friendly).not.toContain('COMPLETION_IDEMPOTENCY_KEY_REQUIRED');
   });
 
-  it('F. IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST with code 23505 returns friendly message without technical code or SQLSTATE', () => {
+  it('G. IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST with code 23505 returns friendly message without technical code or SQLSTATE', () => {
     const rawError = {
       code: '23505',
       message: 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST: A chave de idempotência informada diverge da utilizada na conclusão deste agendamento.',
@@ -56,7 +67,7 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     expect(friendly).not.toContain('23505');
   });
 
-  it('G. Generic 23505 duplicate key error WITHOUT idempotency message is NOT incorrectly classified as lesson completion conflict', () => {
+  it('H. Generic 23505 duplicate key error WITHOUT idempotency message is NOT incorrectly classified as lesson completion conflict', () => {
     const genericUniqueError = {
       code: '23505',
       message: 'duplicate key value violates unique constraint "users_email_key"',
@@ -68,7 +79,7 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     expect(friendly).not.toContain('23505');
   });
 
-  it('H. UNAUTHORIZED_PROVIDER returns friendly authorization message without technical code', () => {
+  it('I. UNAUTHORIZED_PROVIDER returns friendly authorization message without technical code', () => {
     const rawError = {
       message: 'UNAUTHORIZED_PROVIDER: Acesso negado. Você não é o instrutor nem o responsável por este agendamento.',
     };
@@ -77,7 +88,7 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     expect(friendly).not.toContain('UNAUTHORIZED_PROVIDER');
   });
 
-  it('I. BOOKING_NOT_FOUND returns friendly message without technical code', () => {
+  it('J. BOOKING_NOT_FOUND returns friendly message without technical code', () => {
     const rawError = {
       message: 'BOOKING_NOT_FOUND: Agendamento não encontrado.',
     };
@@ -86,7 +97,7 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     expect(friendly).not.toContain('BOOKING_NOT_FOUND');
   });
 
-  it('J. Unknown error returns provided fallbackMessage without technical dump', () => {
+  it('K. Unknown error returns provided fallbackMessage without technical dump', () => {
     const unknownError = {
       code: 'PGRST999',
       message: 'postgres internal crash dump xyz',
@@ -97,7 +108,7 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     expect(friendly).not.toContain('postgres');
   });
 
-  it('K. Raw English errors are replaced with the Portuguese fallback', () => {
+  it('L. Raw English errors are replaced with the Portuguese fallback', () => {
     const friendly = mapFriendlyErrorMessage(
       { message: 'For security purposes, you can only request this after 9 seconds.' },
       'Não foi possível reenviar o código agora.',

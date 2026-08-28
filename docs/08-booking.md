@@ -48,6 +48,8 @@ A plataforma MAZZI separa rigidamente a fase de **Cotação Comercial (`Quote`)*
    +---> [DISPUTED] ---> [REFUNDED] / [PARTIALLY_REFUNDED]
 ```
 
+Quando o prazo de pagamento termina sem confirmação, `EXPIRED` é o status interno usado para liberar o horário. Na interface, essa situação é apresentada como **Pagamento não realizado**.
+
 ---
 
 ## 3. Garantias de Segurança e Proteção Anti-Double Booking

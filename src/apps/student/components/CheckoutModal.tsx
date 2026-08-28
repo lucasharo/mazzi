@@ -113,6 +113,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const checkoutGatewayProvider = getCheckoutGatewayProvider();
 
   const [step, setStep] = useState<CheckoutStep>('QUOTE_PREVIEW');
+  const [successAnimationPhase, setSuccessAnimationPhase] = useState<'LOADING' | 'TRANSITION' | 'COMPLETE'>('LOADING');
   const [quote, setQuote] = useState<Quote | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
@@ -333,7 +334,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       active = false;
       createQuoteInFlightRef.current = false;
     };
-  }, [isOpen, provider, vehicle, offering, scheduledDate, startTime, endTime, scheduledStartAt, user?.id]);
+  }, [isOpen, provider?.id, vehicle?.id, offering?.id, scheduledDate, startTime, endTime, scheduledStartAt, user?.id]);
+
+  useEffect(() => {
+    if (step !== 'SUCCESS') {
+      setSuccessAnimationPhase('LOADING');
+      return undefined;
+    }
+
+    const transitionTimer = window.setTimeout(() => setSuccessAnimationPhase('TRANSITION'), 700);
+    const completeTimer = window.setTimeout(() => setSuccessAnimationPhase('COMPLETE'), 1400);
+    return () => {
+      window.clearTimeout(transitionTimer);
+      window.clearTimeout(completeTimer);
+    };
+  }, [step]);
 
   // Quote Expiration Countdown Timer
   useEffect(() => {
@@ -356,19 +371,70 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   useEffect(() => {
     if (!booking || !booking.holdExpiresAt || step !== 'PAYMENT_SELECTION') return;
 
-    const timer = setInterval(() => {
+    let active = true;
+    let tick = 0;
+    let paymentStatusCheckInFlight = false;
+    const isRealSupabase = Boolean((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
+
+    const reconcilePaymentStatus = async (): Promise<'PAID' | 'NOT_PAID' | 'UNKNOWN'> => {
+      if (!active || paymentStatusCheckInFlight || !isRealSupabase || !payment?.id || !/^[0-9a-f-]{36}$/i.test(payment.id)) {
+        return 'UNKNOWN';
+      }
+
+      paymentStatusCheckInFlight = true;
+      try {
+        const currentStatus = await dbService.getMyPaymentStatus(payment.id);
+        const isPaid = currentStatus?.status === 'PAID' || currentStatus?.booking_status === 'CONFIRMED';
+        if (!active) return 'UNKNOWN';
+        if (!isPaid) return 'NOT_PAID';
+
+        const confirmedBooking = { ...booking, status: 'CONFIRMED' as const, updatedAt: new Date().toISOString() };
+        setBooking(confirmedBooking);
+        setPayment((current) => current ? {
+          ...current,
+          status: 'PAID',
+          externalPaymentId: currentStatus.external_payment_id || current.externalPaymentId,
+          paidAt: currentStatus.paid_at || current.paidAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } : current);
+        setStep('SUCCESS');
+        onBookingConfirmed(confirmedBooking);
+        return 'PAID';
+      } catch (statusError) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('PAYMENT_STATUS_RECONCILIATION_PENDING:', statusError);
+        }
+        return 'UNKNOWN';
+      } finally {
+        paymentStatusCheckInFlight = false;
+      }
+    };
+
+    const timer = setInterval(async () => {
+      if (!active) return;
       const remaining = Math.max(0, Math.floor((new Date(booking.holdExpiresAt!).getTime() - Date.now()) / 1000));
       setHoldTimeRemainingSec(remaining);
+      tick += 1;
 
-      if (remaining <= 0) {
+      // Reconcile periodically while the student is paying and always before
+      // expiring the hold. A confirmed payment must never become an expiration
+      // or slot-unavailable message because the client missed a response.
+      if (remaining > 0 && tick % 5 !== 0) return;
+      const paymentStatus = await reconcilePaymentStatus();
+      if (paymentStatus === 'PAID' || !active) return;
+
+      const canExpireHold = !isRealSupabase || !payment?.id || !/^[0-9a-f-]{36}$/i.test(payment.id) || paymentStatus === 'NOT_PAID';
+      if (remaining <= 0 && canExpireHold) {
         setErrorMessage('O tempo de retenção deste horário expirou.');
         setStep('ERROR_QUOTE_EXPIRED');
-        clearInterval(timer);
       }
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [booking, step]);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [booking, payment, step, onBookingConfirmed]);
 
   if (!isOpen) return null;
   if (!resumeBooking && (!provider || !vehicle || !offering)) return null;
@@ -801,10 +867,29 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       size="md"
     >
       <div className="space-y-4 text-left">
+        {step === 'SUCCESS' && successAnimationPhase !== 'COMPLETE' && (
+          <div
+            className={`fixed inset-0 z-[95] flex items-center justify-center bg-emerald-500 px-6 text-center text-white transition-opacity duration-500 ${
+              successAnimationPhase === 'TRANSITION' ? 'opacity-0' : 'opacity-100'
+            }`}
+            role="status"
+            aria-live="polite"
+            aria-label="Pagamento confirmado"
+          >
+            <div className={`mazzi-success-overlay-icon relative flex h-24 w-24 items-center justify-center rounded-[2rem] border-2 border-emerald-100 bg-emerald-50 text-emerald-600 shadow-[0_16px_36px_rgba(6,95,70,0.3)] ${
+              successAnimationPhase === 'TRANSITION' ? 'mazzi-success-overlay-icon-exit' : ''
+            }`}>
+              <CheckCircle2 className="h-14 w-14" strokeWidth={2.5} aria-hidden="true" />
+              <Sparkles className="absolute -right-2 -top-2 h-5 w-5 fill-emerald-300 text-emerald-50" aria-hidden="true" />
+              <Sparkles className="absolute -bottom-2 -left-2 h-4 w-4 fill-emerald-200 text-emerald-50" aria-hidden="true" />
+            </div>
+          </div>
+        )}
+
         {/* Environment Safety Banner */}
-        <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-medium flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
-            <span>
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 text-[11px] font-medium text-slate-700">
+          <Sparkles className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+          <span>
             <strong className="font-semibold text-slate-900">Ambiente de Testes:</strong> {checkoutGatewayProvider === 'fake' ? 'Pagamento simulado sem cobrança real.' : 'Mercado Pago configurado com credenciais de teste.'}
           </span>
         </div>
@@ -1212,30 +1297,40 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         {/* STEP: SUCCESS */}
         {step === 'SUCCESS' && booking && (
-          <div className="py-4 text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-[var(--mazzi-yellow)] text-slate-950 flex items-center justify-center mx-auto shadow-sm">
-              <CheckCircle2 className="w-8 h-8" aria-hidden="true" />
+          <div className="space-y-4 py-4 text-center">
+            <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
+              <div className={`relative flex h-16 w-16 items-center justify-center rounded-[1.5rem] border border-emerald-200 bg-emerald-50 text-emerald-600 shadow-sm ${
+                successAnimationPhase === 'LOADING' ? 'scale-75 opacity-0' : 'mazzi-success-final'
+              }`}>
+                <CheckCircle2 className="h-10 w-10" strokeWidth={2.5} aria-hidden="true" />
+                <Sparkles className="absolute -right-2 -top-2 h-4 w-4 fill-emerald-300 text-emerald-50" aria-hidden="true" />
+                <Sparkles className="absolute -bottom-2 -left-2 h-3.5 w-3.5 fill-emerald-200 text-emerald-50" aria-hidden="true" />
+              </div>
             </div>
 
-            <div>
-              <h3 className="font-black text-lg text-slate-900">Aula Agendada com Sucesso!</h3>
-              <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto">
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-extrabold text-emerald-700">
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                Reserva confirmada
+              </span>
+              <h3 className="text-xl font-black tracking-tight text-[var(--mazzi-text)]">Aula Agendada com Sucesso!</h3>
+              <p className="mx-auto max-w-xs text-xs leading-relaxed text-[var(--mazzi-muted)]">
                 Sua reserva está confirmada. Você pode acompanhar todos os detalhes na aba de Aulas.
               </p>
-              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100/90 border border-amber-300 text-amber-950 text-xs font-bold">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" aria-hidden="true" />
+              <div className="mx-auto inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-[var(--mazzi-yellow-hover)] px-3 py-1.5 text-xs font-bold text-amber-950">
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-amber-700" aria-hidden="true" />
                 <span>{checkoutGatewayProvider === 'fake' ? 'Reserva confirmada em ambiente de validação.' : 'Reserva confirmada em ambiente de teste.'}</span>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-1.5">
-              <p className="font-extrabold text-slate-900">{booking.instructorName || booking.providerName}</p>
-              <p className="text-slate-600">
+            <div className="space-y-1.5 rounded-2xl border border-amber-100 bg-[var(--mazzi-yellow-hover)]/35 p-4 text-left text-xs">
+              <p className="font-extrabold text-[var(--mazzi-text)]">{booking.instructorName || booking.providerName}</p>
+              <p className="text-[var(--mazzi-text)]">
                 {booking.scheduledStartAt
                   ? `${formatDateBR(booking.scheduledStartAt)} às ${formatTimeBR(booking.scheduledStartAt)}`
                   : `${formatDateBR(booking.scheduledDate)} às ${booking.startTime}`}
               </p>
-              <p className="text-slate-500">Ponto de Encontro: {formatMeetingPoint(booking.meetingPoint)}</p>
+              <p className="text-[var(--mazzi-muted)]">Ponto de Encontro: {formatMeetingPoint(booking.meetingPoint)}</p>
             </div>
 
             <Button

@@ -101,6 +101,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const isUpcoming = (booking.status === 'CONFIRMED' || (isPendingPayment && isHoldValid)) && !isExpired && !isLessonEnded;
   const isCancelled = booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER';
   const isCompleted = booking.status === 'COMPLETED';
+  const canOpenChat = !isExpired && booking.status !== 'PAYMENT_FAILED';
   const checkInAvailability = getCheckInAvailability({
     scheduledStartAt: booking.scheduledStartAt,
     status: booking.status,
@@ -185,7 +186,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             type="button"
             variant="primary"
             size="sm"
-            className={`${onOpenChat ? 'w-1/2' : 'w-full'} rounded-2xl font-bold shadow-md transition-all hover:shadow-lg`}
+            className={`${onOpenChat && canOpenChat ? 'w-1/2' : 'w-full'} rounded-2xl font-bold shadow-md transition-all hover:shadow-lg`}
             onClick={() => onReview(booking)}
             leftIcon={<Star className="h-4 w-4" aria-hidden="true" />}
             aria-label="Avaliar instrutor"
@@ -194,7 +195,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </Button>
         )}
 
-        {onOpenChat && (
+        {onOpenChat && canOpenChat && (
           <Button
             type="button"
             variant="outline"
@@ -214,7 +215,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             variant="dangerSoft"
             size="sm"
             onClick={() => setIsConfirmingCancel(true)}
-            className={onOpenChat ? 'w-1/2' : 'w-full'}
+            className={onOpenChat && canOpenChat ? 'w-1/2' : 'w-full'}
             aria-label="Cancelar esta aula"
             leftIcon={<XCircle className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />}
           >
@@ -549,7 +550,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <div role="status" className="p-3.5 rounded-2xl bg-slate-100 border border-slate-300 flex items-center gap-2 text-xs text-slate-700 font-medium">
               <AlertTriangle className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />
               <span>
-                Tempo para pagamento expirado. O tempo de retenção deste horário expirou. Por favor, faça um novo agendamento.
+                Pagamento não realizado. O prazo para confirmar este horário terminou. Por favor, faça um novo agendamento.
               </span>
             </div>
           )}

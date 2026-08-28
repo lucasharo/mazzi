@@ -24,6 +24,24 @@ export const BLOCKING_BOOKING_STATUSES: BookingStatus[] = [
   'IN_PROGRESS',
 ];
 
+export function getBookingStartTimestamp(booking: Booking): number {
+  const startIso = booking.scheduledStartAt || (booking.snapshot as any)?.scheduledStartAt;
+  if (startIso) {
+    const ts = new Date(startIso).getTime();
+    if (Number.isFinite(ts) && ts > 0) return ts;
+  }
+  if (booking.scheduledDate && booking.startTime) {
+    const ts = new Date(`${booking.scheduledDate}T${booking.startTime}:00`).getTime();
+    if (Number.isFinite(ts) && ts > 0) return ts;
+  }
+  return 0;
+}
+
+export function isBookingStarted(booking: Booking, nowMs = Date.now()): boolean {
+  const startTs = getBookingStartTimestamp(booking);
+  return startTs > 0 && startTs <= nowMs;
+}
+
 export function getBookingEndTimestamp(booking: Booking): number {
   const endIso = booking.scheduledEndAt || (booking.snapshot as any)?.scheduledEndAt;
   if (endIso) {

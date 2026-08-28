@@ -37,21 +37,15 @@ export function isDevelopmentRuntime(): boolean {
 
 export interface CanUseMockValidationPaymentOptions {
   isProduction: boolean;
-  paymentMode?: string;
 }
 
-export function canUseMockValidationPayment(options: CanUseMockValidationPaymentOptions): boolean {
-  if (!options.isProduction) {
-    return true;
-  }
-  const mode = (options.paymentMode || '').trim().toUpperCase();
-  return mode === 'MOCK_VALIDATION';
+export function canUseMockValidationPayment({ isProduction }: CanUseMockValidationPaymentOptions): boolean {
+  return !isProduction;
 }
 
 export function isMockValidationPaymentAllowed(): boolean {
   return canUseMockValidationPayment({
     isProduction: isProductionRuntime(),
-    paymentMode: getRuntimeEnvValue('VITE_PAYMENT_MODE') || getRuntimeEnvValue('PAYMENT_MODE'),
   });
 }
 

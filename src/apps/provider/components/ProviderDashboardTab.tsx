@@ -43,7 +43,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   isRefreshing = false,
 }) => {
   const complianceEligibility = evaluateProviderEligibility(currentProvider, providerDocs);
-  const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility);
+  const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility, providerDocs);
 
   return (
     <div className="space-y-6 text-left">
@@ -234,8 +234,11 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           <span>Alertas da Operação MAZZI Pro:</span>
         </div>
         <ul className="list-disc pl-5 space-y-1 text-amber-800 font-medium">
-{providerDocs.some((d) => d.status === 'PENDING' || d.status === 'IN_REVIEW') && (
+          {providerDocs.some((d) => d.status === 'PENDING' || d.status === 'IN_REVIEW') && (
             <li>Você possui documentos aguardando análise de compliance.</li>
+          )}
+          {providerDocs.some((d) => d.status === 'EXPIRED') && (
+            <li>Você possui documentos vencidos. Envie uma nova versão para atualizar o credenciamento.</li>
           )}
           {providerVehicles.length === 0 && (
             <li>

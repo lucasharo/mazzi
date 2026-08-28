@@ -517,6 +517,14 @@ function applyStrictProviderFilters(
 
   // Execute Public Search Engine
   const searchResponse = useMemo(() => realSearchResponse, [realSearchResponse]);
+  const maxRegisteredOfferPriceInCents = useMemo(() => {
+    const prices = (searchResponse?.results || [])
+      .flatMap((result) => result.publicOfferings || [])
+      .map((offering) => offering.priceInCents)
+      .filter((price): price is number => Number.isInteger(price) && price > 0);
+
+    return prices.length > 0 ? Math.max(...prices) : undefined;
+  }, [searchResponse]);
 
   useEffect(() => {
     const loadedResults = searchResponse?.results?.length || 0;
@@ -655,7 +663,7 @@ function applyStrictProviderFilters(
 
   const [nowMs, setNowMs] = useState(() => Date.now());
 
-  // Automatic transition timer: schedule lightweight re-evaluation at the exact moment the next active lesson ends
+  // Automatic transition timer: re-evaluate the lists when the next lesson ends.
   useEffect(() => {
     const futureEnds = confirmedBookings
       .map((b) => getBookingEndTimestamp(b))
@@ -678,7 +686,6 @@ function applyStrictProviderFilters(
     return confirmedBookings
       .filter((b) => {
         if (isBookingEnded(b, nowMs)) return false;
-        if (isBookingTodayInSaoPaulo(b)) return false;
 
         if (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') return true;
 
@@ -866,6 +873,7 @@ function applyStrictProviderFilters(
                 onClose={() => setIsFilterDrawerOpen(false)}
                 filters={searchRequest}
                 searchRequest={searchRequest}
+                maxPriceLimitInCents={maxRegisteredOfferPriceInCents}
                 onApplyFilters={(updated) => handleUpdateSearch(updated)}
                 onResetFilters={() =>
                   setSearchRequest({

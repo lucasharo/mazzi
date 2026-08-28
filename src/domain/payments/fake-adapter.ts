@@ -20,7 +20,7 @@ import { PaymentGatewayType, Provider, MazziPaymentStatus } from '../../types';
 import { isMockValidationPaymentAllowed } from '../../lib/runtime-env';
 
 const FAKE_GATEWAY_PRODUCTION_ERROR =
-  'FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: O gateway de pagamento simulado está bloqueado em produção a menos que VITE_PAYMENT_MODE=MOCK_VALIDATION esteja explicitamente configurado.';
+  'FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: O gateway de pagamento simulado está bloqueado em produção.';
 
 /**
  * FakePaymentGateway for MAZZI MVP Development & Validation Environment.

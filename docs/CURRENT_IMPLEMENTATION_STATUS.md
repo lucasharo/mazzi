@@ -90,7 +90,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Design System | Catálogo executável alinhado aos entrypoints Aluno/PRO | `IMPLEMENTADO` | [`src/apps/design-system/DesignSystemShowcase.tsx`](../src/apps/design-system/DesignSystemShowcase.tsx), [`docs/DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) | Inventário de 21 componentes públicos, referência do Aluno, abas reais e fluxo real de dias/horários com dados isolados |
 | Agendamento visual | Calendário e seleção de horários no catálogo | `IMPLEMENTADO` | [`src/apps/student/components/SlotSelectorModal.tsx`](../src/apps/student/components/SlotSelectorModal.tsx) | O modo de preview é opcional e não substitui a consulta real ao backend no produto |
 
-| Autoescola ↔ Instrutor | Convites, vínculo, compliance por escopo, elegibilidade e recontratação | `IMPLEMENTADO` | Migrations `20260821211805`, `20260821211815`, `20260821212128`, `20260821212131`, `20260821212134`, `20260821212313`, `20260821212317`, `20260821212518`, `20260821212857`, `20260821213335`, `20260821213422`, `20260821213516`; RPCs seguras e painel mínimo no MAZZI Pro | Backend LIVE aplicado; pagamentos continuam `FAKE / MOCK_VALIDATION` |
+| Autoescola ↔ Instrutor | Convites, vínculo, compliance por escopo, elegibilidade e recontratação | `IMPLEMENTADO` | Migrations `20260821211805`, `20260821211815`, `20260821212128`, `20260821212131`, `20260821212134`, `20260821212313`, `20260821212317`, `20260821212518`, `20260821212857`, `20260821213335`, `20260821213422`, `20260821213516`; RPCs seguras e painel mínimo no MAZZI Pro | Backend LIVE aplicado; pagamentos DEV usam Mercado Pago de teste e o fake é somente local |
 
 ---
 

@@ -57,6 +57,7 @@ O pagamento continua `FakePaymentGateway` de desenvolvimento. O Geoapify é o pr
 
 - a aba Minhas aulas mantém `dbService.getBookings()` como única fonte de bookings do aluno;
 - Próximas inclui `CONFIRMED`, `PENDING_PAYMENT` e `IN_PROGRESS`, ordenadas pela data/hora real;
+- A classificação temporal usa o fim da aula: Próximas inclui aulas futuras e em andamento, inclusive as de hoje; somente depois do horário de término a reserva sai de Hoje/Próximas e aparece no Histórico;
 - Histórico inclui os status encerrados e é ordenado da aula mais recente para a mais antiga;
 - cards de aluno exibem data, hora, instrutor, prestador quando diferente, veículo, câmbio, ponto de encontro, preço e status em linguagem humana;
 - detalhes usam o snapshot histórico da reserva para profissional, veículo e valores, sem exibir o UUID técnico;

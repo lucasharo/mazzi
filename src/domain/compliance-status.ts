@@ -1,4 +1,4 @@
-export type CanonicalComplianceStatus = 'PENDING' | 'IN_REVIEW' | 'REJECTED' | 'APPROVED';
+export type CanonicalComplianceStatus = 'PENDING' | 'IN_REVIEW' | 'REJECTED' | 'APPROVED' | 'EXPIRED';
 
 /**
  * Normalizes legacy document values at the application boundary. Provider and
@@ -12,6 +12,8 @@ export function normalizeComplianceStatus(value: unknown): CanonicalComplianceSt
       return 'IN_REVIEW';
     case 'REJECTED':
       return 'REJECTED';
+    case 'EXPIRED':
+      return 'EXPIRED';
     case 'PENDING':
     default:
       return 'PENDING';

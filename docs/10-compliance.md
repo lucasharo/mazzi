@@ -65,6 +65,10 @@ O compliance global do instrutor é separado do compliance do vínculo com uma a
 | `req_portaria_cfc_sp` | Portaria Credenciamento CFC DETRAN-SP | `CFC_AUTHORIZATION_STATE` | STATE (SP) | Portaria DETRAN-SP & Art. 120 da Resolução CONTRAN nº 1.020/2025 | `REQUIRES_REGULATORY_VALIDATION` | 1 ano |
 | `req_alvara_funcionamento_mun` | Alvará de Funcionamento | `CFC_ALVARA` | MUNICIPAL (SP) | Código de Posturas Municipal / Uso e Ocupação do Solo | `REQUIRES_REGULATORY_VALIDATION` | 1 ano |
 
+### Regra de aprovação da validade
+
+Na aprovação administrativa, a data de expiração é obrigatória para os documentos cujo requisito tenha período de validade finito: `CNH_EAR` (incluindo o valor legado `CNH`), `CREDENTIAL_DETRAN`, `CREDENTIAL_DETRAN_SP`, `CRIMINAL_BACKGROUND`, `CFC_AUTHORIZATION_STATE` e `CFC_ALVARA`. Documentos permanentes ou históricos podem ser aprovados sem data. Essa regra é aplicada na interface do Admin e reforçada pela RPC `review_compliance_document`.
+
 ---
 
 ## 3. Fluxos Operacionais e Tratamento de Documentos Rejeitados

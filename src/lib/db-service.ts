@@ -197,6 +197,13 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
 
 export function mapComplianceFromDb(row: any): ComplianceDocument {
   const documentType = row.document_type === 'CNH' ? 'CNH_EAR' : row.document_type;
+  const expiresAt = row.expires_at || undefined;
+  const normalizedStatus = normalizeComplianceStatus(row.status);
+  const isExpired = Boolean(
+    expiresAt &&
+    new Date(expiresAt).getTime() <= Date.now() &&
+    (normalizedStatus === 'APPROVED' || normalizedStatus === 'EXPIRED'),
+  );
   return {
     id: row.id,
     providerId: row.provider_id || '',
@@ -207,11 +214,11 @@ export function mapComplianceFromDb(row: any): ComplianceDocument {
     title: row.document_type === 'CNH' || row.document_type === 'CNH_EAR'
       ? 'Carteira Nacional de Habilitação com EAR'
       : row.document_type,
-    status: normalizeComplianceStatus(row.status),
+    status: isExpired ? 'EXPIRED' : normalizedStatus,
     fileName: row.storage_path ? row.storage_path.split('/').pop() || 'document.pdf' : 'document.pdf',
     storagePath: row.storage_path || '',
     uploadedAt: row.created_at,
-    expiresAt: row.expires_at || undefined,
+    expiresAt,
     reviewedBy: row.reviewed_by || undefined,
     reviewedAt: row.reviewed_at || undefined,
     rejectionReason: row.rejection_reason || undefined,
@@ -374,6 +381,8 @@ export const dbService = {
     availabilityRules: any[];
     availabilityExceptions: any[];
   }> {
+    const { error: expirationError } = await sp.rpc('refresh_expired_compliance_documents');
+    if (expirationError) throw expirationError;
     const [providerResult, vehiclesResult, offeringsResult, bookingsResult, documentsResult, rulesResult, exceptionsResult] = await Promise.all([
       sp.from('providers').select('*').eq('id', providerId).maybeSingle(),
       sp.from('vehicles').select('*').eq('provider_id', providerId).is('deleted_at', null),
@@ -1359,6 +1368,7 @@ export const dbService = {
       destinationKeyType: row.destination_key_type,
       destinationKey: row.destination_key || undefined,
       destinationKeyMasked: row.destination_key_masked || undefined,
+      providerName: row.provider_name || undefined,
       recipientName: row.recipient_name || undefined,
       recipientDocument: row.recipient_document || undefined,
       transferReference: row.transfer_reference || undefined,
@@ -1450,6 +1460,8 @@ export const dbService = {
 
   // 5. COMPLIANCE
   async getComplianceDocs(): Promise<ComplianceDocument[]> {
+    const { error: expirationError } = await sp.rpc('refresh_expired_compliance_documents');
+    if (expirationError) throw expirationError;
     const { data, error } = await sp
       .from('compliance_documents')
       .select('*');
@@ -1458,6 +1470,8 @@ export const dbService = {
   },
 
   async getAdminComplianceDocs(): Promise<ComplianceDocument[]> {
+    const { error: expirationError } = await sp.rpc('refresh_expired_compliance_documents');
+    if (expirationError) throw expirationError;
     const { data, error } = await sp
       .from('compliance_documents')
       .select('id,provider_id,user_id,membership_id,scope,document_type,status,storage_path,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
@@ -1502,6 +1516,8 @@ export const dbService = {
   },
 
   async listMyGlobalCompliance(): Promise<ComplianceDocument[]> {
+    const { error: expirationError } = await sp.rpc('refresh_expired_compliance_documents');
+    if (expirationError) throw expirationError;
     const { data, error } = await sp.rpc('list_my_global_compliance');
     if (error) throw error;
     return (data || []).map(mapComplianceFromDb);
@@ -1522,18 +1538,9 @@ export const dbService = {
       p_document_id: documentId,
       p_status: status,
       p_rejection_reason: rejectionReason || null,
+      p_expires_at: status === 'APPROVED' ? expiresAt || null : null,
     });
     if (error) throw error;
-    if (status === 'APPROVED' && expiresAt !== undefined) {
-      const { data: updated, error: updateError } = await sp
-        .from('compliance_documents')
-        .update({ expires_at: expiresAt || null, updated_at: new Date().toISOString() })
-        .eq('id', documentId)
-        .select('*')
-        .single();
-      if (updateError) throw updateError;
-      return mapComplianceFromDb(updated);
-    }
     return mapComplianceFromDb(data);
   },
 

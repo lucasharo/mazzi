@@ -105,7 +105,7 @@ export const SchoolMembershipPanel: React.FC<SchoolMembershipPanelProps> = ({ pr
                       <Badge variant={item.isActive ? 'success' : 'default'}>{membershipLabel}</Badge>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                      <Badge variant={compliance?.eligible ? 'success' : 'default'}>{compliance?.eligible ? 'Elegível' : 'Compliance pendente'}</Badge>
+                      <Badge variant={compliance?.eligible ? 'success' : 'warning'}>{compliance?.eligible ? 'Elegível' : 'Compliance pendente'}</Badge>
                       <div className="flex flex-wrap justify-end gap-2">
                         {item.membershipStatus === 'PENDING_COMPLIANCE' && <Button size="sm" variant="secondary" onClick={() => run(() => dbService.tryActivateSchoolInstructorMembership(item.id), 'Vínculo ativado.')} disabled={busy} leftIcon={<Check className="h-4 w-4" />}>Ativar</Button>}
                         {item.membershipStatus !== 'ENDED' && <Button size="sm" variant="dangerSoft" onClick={() => setMembershipToRemove(item)} disabled={busy} leftIcon={<CircleX className="h-4 w-4" />}>Remover instrutor</Button>}

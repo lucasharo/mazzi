@@ -19,9 +19,11 @@ import { ReasonChips } from '../../components/ui/ReasonChips';
 import { formatCentsToBRL } from '../../domain/money';
 import { PlatformConfiguration } from '../../domain/platform-config';
 import { AuthContext } from '../../domain/rbac';
+import { requiresComplianceDocumentExpiration } from '../../domain/compliance';
 import { isVehicleAwaitingAdminReview } from '../../domain/vehicles-offerings';
-import { getAuditActionLabel, getComplianceDocumentTypeLabel, getFriendlyAdminError, getUserRoleLabel } from '../../domain/status-presentation';
+import { getAuditActionLabel, getComplianceDocumentTypeLabel, getFriendlyAdminError, getStatusPresentation, getUserRoleLabel } from '../../domain/status-presentation';
 import { maskBrazilianPhone, maskCpf, maskCnpj, maskVehiclePlate } from '../../lib/input-masks';
+import { formatDateBR, formatTimeBR } from '../../lib/date-format';
 
 // Utility for masking plates
 export function formatMaskedPlate(plate: string, isExpanded: boolean): string {
@@ -717,6 +719,18 @@ export const ProvidersTab: React.FC<{
 // ============================================================================
 // 3. COMPLIANCE TAB
 // ============================================================================
+function isValidIsoCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+}
+
 export const ComplianceTab: React.FC<{
   complianceDocs: ComplianceDocument[];
   providers: Provider[];
@@ -755,6 +769,9 @@ export const ComplianceTab: React.FC<{
     providers.find((provider) => provider.id === doc.providerId)?.name || doc.providerName || 'Não informado';
   const selectedDoc = complianceDocs.find((d) => d.id === selectedDocId) || filteredDocs[0];
   const selectedDocOwnerName = selectedDoc ? getDocumentOwnerName(selectedDoc) : 'Não informado';
+  const expirationRequired = selectedDoc ? requiresComplianceDocumentExpiration(selectedDoc.type) : false;
+  const isValidExpirationDate = isValidIsoCalendarDate(expirationDate);
+  const canApproveSelectedDocument = !expirationRequired || isValidExpirationDate;
 
   useEffect(() => {
     setExpirationDate(selectedDoc?.expiresAt ? selectedDoc.expiresAt.slice(0, 10) : '');
@@ -762,6 +779,10 @@ export const ComplianceTab: React.FC<{
   }, [selectedDoc?.id, selectedDoc?.expiresAt]);
 
   const handleApprove = (doc: ComplianceDocument) => {
+    if (expirationRequired && !isValidExpirationDate) {
+      setExpirationError('Informe uma data de validade válida antes de aprovar este documento.');
+      return;
+    }
     setExpirationError(null);
     onApproveDoc(doc, expirationDate ? new Date(`${expirationDate}T23:59:59-03:00`).toISOString() : undefined);
   };
@@ -887,12 +908,14 @@ export const ComplianceTab: React.FC<{
             {(selectedDoc.status === 'PENDING' || selectedDoc.status === 'IN_REVIEW') && (
               <div className="rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-muted)] p-4">
                 <DateInput
-                  label="Data de validade"
+                  label={expirationRequired ? 'Data de validade *' : 'Data de validade'}
                   value={expirationDate}
                   onChange={(value) => { setExpirationDate(value); setExpirationError(null); }}
                 />
                 <p className="mt-1.5 text-[11px] text-[var(--mazzi-muted)]">
-                  Confira a validade no arquivo antes de aprovar. Para documentos permanentes, deixe em branco.
+                  {expirationRequired
+                    ? 'Obrigatória para este documento. Confira a validade no arquivo antes de aprovar.'
+                    : 'Confira a validade no arquivo. Para documentos permanentes, deixe em branco.'}
                 </p>
                 {expirationError && <p role="alert" className="mt-1.5 text-xs font-semibold text-rose-700">{expirationError}</p>}
               </div>
@@ -915,6 +938,7 @@ export const ComplianceTab: React.FC<{
                       size="sm"
                       leftIcon={<CheckCircle2 className="w-4 h-4" />}
                       onClick={() => handleApprove(selectedDoc)}
+                      disabled={!canApproveSelectedDocument}
                     >
                       Aprovar Documento
                     </Button>
@@ -1298,7 +1322,7 @@ export const BookingsTab: React.FC<{
               { value: 'NO_SHOW_PROVIDER', label: 'Instrutor ausente' },
               { value: 'REFUNDED', label: 'Reembolsadas' },
               { value: 'PARTIALLY_REFUNDED', label: 'Reembolso parcial' },
-              { value: 'EXPIRED', label: 'Expiradas' },
+              { value: 'EXPIRED', label: 'Pagamento não realizado' },
               { value: 'NO_SHOW_STUDENT', label: 'Falta do Aluno' },
               { value: 'NO_SHOW_PROVIDER', label: 'Falta do Instrutor' },
             ]}
@@ -1446,6 +1470,14 @@ export const BookingsTab: React.FC<{
 // ============================================================================
 // 6. FINANCIAL TAB
 // ============================================================================
+const normalizeFinancialFilterText = (value: string | null | undefined): string => (
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+    .replace(/[^a-z0-9]/g, '')
+);
+
 export const FinancialTab: React.FC<{
   bookings: Booking[];
   auditLogs: AuditLog[];
@@ -1457,9 +1489,41 @@ export const FinancialTab: React.FC<{
   const [activeSubTab, setActiveSubTab] = useState<'payouts' | 'ledger'>('ledger');
   const [selectedBookingId, setSelectedBookingId] = useState<string>('');
   const [transferReferences, setTransferReferences] = useState<Record<string, string>>({});
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [ledgerStatus, setLedgerStatus] = useState<'ALL' | BookingStatus>('ALL');
+  const [payoutSearch, setPayoutSearch] = useState('');
+  const [payoutStatus, setPayoutStatus] = useState<'ALL' | Payout['status']>('ALL');
+  const bookingsById = new Map<string, Booking>(bookings.map((booking) => [booking.id, booking]));
 
   // Computes ledger
   const transactions = bookings.filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED' || b.status === 'REFUNDED');
+  const normalizedLedgerSearch = normalizeFinancialFilterText(ledgerSearch);
+  const filteredTransactions = transactions.filter((transaction) => {
+    const matchesStatus = ledgerStatus === 'ALL' || transaction.status === ledgerStatus;
+    const searchableText = [
+      transaction.id,
+      transaction.studentName,
+      transaction.providerName,
+      transaction.scheduledDate,
+    ].filter(Boolean).map((value) => normalizeFinancialFilterText(String(value))).join('');
+    return matchesStatus && (!normalizedLedgerSearch || searchableText.includes(normalizedLedgerSearch));
+  });
+  const normalizedPayoutSearch = normalizeFinancialFilterText(payoutSearch);
+  const filteredPayouts = payouts.filter((payout) => {
+    const matchesStatus = payoutStatus === 'ALL' || payout.status === payoutStatus;
+    const booking = bookingsById.get(payout.bookingId);
+    const searchableText = [
+      payout.bookingId,
+      payout.providerName,
+      payout.recipientName,
+      payout.destinationKeyMasked,
+      payout.transferReference,
+      booking?.studentName,
+      booking?.providerName,
+      booking?.scheduledDate,
+    ].filter(Boolean).map((value) => normalizeFinancialFilterText(String(value))).join('');
+    return matchesStatus && (!normalizedPayoutSearch || searchableText.includes(normalizedPayoutSearch));
+  });
 
   const selectedBooking = bookings.find((b) => b.id === selectedBookingId);
 
@@ -1501,6 +1565,26 @@ export const FinancialTab: React.FC<{
           {/* Listagem ledger */}
           <div className="lg:col-span-2 space-y-3">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Histórico de Transações</h4>
+            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+              <Input
+                label="Pesquisar movimentação"
+                placeholder="Aluno, prestador ou referência..."
+                value={ledgerSearch}
+                onChange={(event) => setLedgerSearch(event.target.value)}
+              />
+              <Select
+                label="Status"
+                value={ledgerStatus}
+                onChange={(event) => setLedgerStatus(event.target.value as 'ALL' | BookingStatus)}
+                options={[
+                  { value: 'ALL', label: 'Todos os status' },
+                  ...(['CONFIRMED', 'COMPLETED', 'REFUNDED'] as BookingStatus[]).map((status) => ({
+                    value: status,
+                    label: getStatusPresentation(status, 'booking').label,
+                  })),
+                ]}
+              />
+            </div>
             <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-xs">
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
@@ -1515,13 +1599,13 @@ export const FinancialTab: React.FC<{
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {transactions.map((t) => (
+                  {filteredTransactions.map((t) => (
                     <tr
                       key={t.id}
                       onClick={() => setSelectedBookingId(t.id)}
                       className={`cursor-pointer transition hover:bg-slate-50/50 ${selectedBookingId === t.id ? 'bg-indigo-50/40 font-semibold' : ''}`}
                     >
-                      <td className="p-3 font-medium text-slate-700">Aula agendada</td>
+                      <td className="p-3 font-medium text-slate-700">{t.id.slice(0, 8)}</td>
                       <td className="p-3 font-semibold">{t.studentName || 'Aluno não identificado'}</td>
                       <td className="p-3 font-medium">{t.providerName}</td>
                       <td className="p-3 font-mono">{formatCentsToBRL(t.priceInCents)}</td>
@@ -1532,6 +1616,9 @@ export const FinancialTab: React.FC<{
                       </td>
                     </tr>
                   ))}
+                  {filteredTransactions.length === 0 && (
+                    <tr><td colSpan={7} className="p-8 text-center text-slate-500">Nenhuma movimentação encontrada com esses filtros.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1590,58 +1677,108 @@ export const FinancialTab: React.FC<{
             </div>
           </div>
 
+          <div className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+            <Input
+              label="Pesquisar repasse"
+              placeholder="Aluno, prestador, chave ou referência..."
+              value={payoutSearch}
+              onChange={(event) => setPayoutSearch(event.target.value)}
+            />
+            <Select
+              label="Status"
+              value={payoutStatus}
+              onChange={(event) => setPayoutStatus(event.target.value as 'ALL' | Payout['status'])}
+              options={[
+                { value: 'ALL', label: 'Todos os status' },
+                ...(['PENDING', 'AVAILABLE', 'PROCESSING', 'PAID', 'FAILED', 'BLOCKED'] as Payout['status'][]).map((status) => ({
+                  value: status,
+                  label: getStatusPresentation(status, 'payout').label,
+                })),
+              ]}
+            />
+          </div>
+
           <div className="border border-slate-200 rounded-2xl bg-white shadow-xs overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
                 <tr>
-                  <th className="p-3">Ref Parceiro</th>
-                  <th className="p-3">Razão Social / Nome</th>
+                  <th className="p-3">Ref Aula</th>
+                  <th className="p-3">Prestador</th>
+                  <th className="p-3">Titular da chave</th>
+                  <th className="p-3">Aluno / aula</th>
                   <th className="p-3">Em segurança</th>
                   <th className="p-3">Disponível</th>
-                  <th className="p-3">Último repasse</th>
+                  <th className="p-3">Data do repasse</th>
+                  <th className="p-3">Chave Pix</th>
                   <th className="p-3">Status de Processamento</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {payouts.map((payout) => (
-                  <tr key={payout.id}>
-                    <td className="p-3 font-medium text-slate-600">{payout.bookingId.slice(0, 8)}</td>
-                    <td className="p-3">{payout.recipientName || 'Prestador não identificado'}</td>
-                    <td className="p-3 font-mono text-slate-500">{formatCentsToBRL(payout.grossAmountInCents || 0)}</td>
-                    <td className="p-3 font-mono text-emerald-600 font-bold">{formatCentsToBRL(payout.amountInCents)}</td>
-                    <td className="p-3 font-mono text-slate-400">{payout.destinationKeyMasked || 'Sem chave Pix'}</td>
-                    <td className="p-3">
-                      <div className="flex min-w-[220px] flex-col gap-2">
-                        <StatusBadge status={payout.status} domain="payout" />
-                        {payout.status === 'AVAILABLE' && (
-                          <div className="flex gap-1.5">
-                            <Input
-                              aria-label={`Referência do repasse ${payout.bookingId.slice(0, 8)}`}
-                              placeholder="Referência Pix"
-                              value={transferReferences[payout.id] || ''}
-                              onChange={(event) => setTransferReferences((current) => ({ ...current, [payout.id]: event.target.value }))}
-                              className="min-h-9 rounded-xl px-2.5 py-1.5 text-[11px]"
-                            />
-                            <Button
-                              type="button"
-                              variant="primary"
-                              size="sm"
-                              className="min-h-9 shrink-0 px-2.5 text-[11px]"
-                              disabled={(transferReferences[payout.id] || '').trim().length < 3}
-                              onClick={() => onMarkManualPayout(payout, transferReferences[payout.id].trim())}
-                            >
-                              Registrar Pix
-                            </Button>
+                {filteredPayouts.map((payout) => {
+                  const booking = bookingsById.get(payout.bookingId);
+                  return (
+                    <tr key={payout.id}>
+                      <td className="p-3 font-medium text-slate-600">{payout.bookingId.slice(0, 8)}</td>
+                      <td className="p-3 font-semibold text-[var(--mazzi-text)]">{payout.providerName || booking?.providerName || 'PRO não identificado'}</td>
+                      <td className="p-3">{payout.recipientName || 'Titular não identificado'}</td>
+                      <td className="p-3">
+                        <div className="min-w-[180px]">
+                          <p className="font-semibold text-[var(--mazzi-text)]">{booking?.studentName || 'Aluno não identificado'}</p>
+                          {booking ? (
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              {formatDateBR(booking.scheduledDate)} · {booking.startTime} às {booking.endTime}
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-[11px] text-slate-500">Dados da aula indisponíveis</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3 font-mono text-slate-500">{formatCentsToBRL(payout.grossAmountInCents || 0)}</td>
+                      <td className="p-3 font-mono text-emerald-600 font-bold">{formatCentsToBRL(payout.amountInCents)}</td>
+                      <td className="p-3">
+                        {payout.processedAt ? (
+                          <div className="whitespace-nowrap">
+                            <p className="font-mono text-[var(--mazzi-text)]">{formatDateBR(payout.processedAt)}</p>
+                            <p className="mt-1 text-[11px] text-slate-500">{formatTimeBR(payout.processedAt)}</p>
                           </div>
+                        ) : (
+                          <span className="text-slate-400">Não realizado</span>
                         )}
-                        {payout.status === 'PENDING' && <span className="text-[11px] text-slate-500">Disponível após o período de segurança.</span>}
-                        {payout.status === 'BLOCKED' && <span className="text-[11px] text-rose-600">Cadastre uma chave Pix para liberar.</span>}
-                        {payout.status === 'PAID' && payout.transferReference && <span className="text-[11px] text-emerald-700">Ref.: {payout.transferReference}</span>}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {payouts.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-500">Nenhum repasse elegível no momento.</td></tr>}
+                      </td>
+                      <td className="p-3 font-mono text-slate-400">{payout.destinationKeyMasked || 'Sem chave Pix'}</td>
+                      <td className="p-3">
+                        <div className="flex min-w-[220px] flex-col gap-2">
+                          <StatusBadge status={payout.status} domain="payout" />
+                          {payout.status === 'AVAILABLE' && (
+                            <div className="flex gap-1.5">
+                              <Input
+                                aria-label={`Referência do repasse ${payout.bookingId.slice(0, 8)}`}
+                                placeholder="Referência Pix"
+                                value={transferReferences[payout.id] || ''}
+                                onChange={(event) => setTransferReferences((current) => ({ ...current, [payout.id]: event.target.value }))}
+                                className="min-h-9 rounded-xl px-2.5 py-1.5 text-[11px]"
+                              />
+                              <Button
+                                type="button"
+                                variant="primary"
+                                size="sm"
+                                className="min-h-9 shrink-0 px-2.5 text-[11px]"
+                                disabled={(transferReferences[payout.id] || '').trim().length < 3}
+                                onClick={() => onMarkManualPayout(payout, transferReferences[payout.id].trim())}
+                              >
+                                Registrar Pix
+                              </Button>
+                            </div>
+                          )}
+                          {payout.status === 'PENDING' && <span className="text-[11px] text-slate-500">Disponível após o período de segurança.</span>}
+                          {payout.status === 'BLOCKED' && <span className="text-[11px] text-rose-600">Cadastre uma chave Pix para liberar.</span>}
+                          {payout.status === 'PAID' && payout.transferReference && <span className="text-[11px] text-emerald-700">Ref.: {payout.transferReference}</span>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredPayouts.length === 0 && <tr><td colSpan={9} className="p-8 text-center text-slate-500">Nenhum repasse encontrado com esses filtros.</td></tr>}
               </tbody>
             </table>
           </div>

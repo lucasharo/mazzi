@@ -28,7 +28,7 @@ export const ProviderHeader: React.FC<ProviderHeaderProps> = ({
 
   return (
     <header className="bg-transparent text-[var(--mazzi-dark)]">
-      <div className="mx-auto w-full max-w-[680px] px-5 pt-5 sm:px-7">
+      <div className="mazzi-provider-content mx-auto w-full max-w-[680px] px-5 pt-5 sm:px-7 lg:max-w-[760px]">
         <AppHomeHeader
           eyebrow={isSchool ? 'Autoescola / CFC' : 'Instrutor MAZZI'}
           eyebrowIcon={isSchool ? <Building2 className="h-3 w-3" aria-hidden="true" /> : <UserCheck className="h-3 w-3" aria-hidden="true" />}

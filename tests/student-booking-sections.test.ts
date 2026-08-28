@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { getStudentBookingSection } from '../src/domain/booking';
+import { getStudentBookingSection, isBookingEnded } from '../src/domain/booking';
 
 const studentApp = fs.readFileSync(path.join(process.cwd(), 'src/apps/student/StudentApp.tsx'), 'utf8');
 
@@ -33,15 +33,24 @@ describe('Student booking sections', () => {
     expect(getStudentBookingSection('CONFIRMED', { cancellationReason: 'Mudança de horário' })).toBe('HISTORY');
   });
 
-  it('keeps temporal placement explicit: ended bookings leave Confirmadas and enter Histórico', () => {
+  it('keeps temporal placement explicit: only ended bookings leave Próximas and enter Histórico', () => {
     expect(studentApp).toContain("!isBookingEnded(b, nowMs)");
     expect(studentApp).toContain("isBookingEnded(b, nowMs)");
   });
 
-  it('uses the Próximas title, excludes today from that list, and preserves history filtering', () => {
+  it('considers a lesson historical only after its scheduled end time', () => {
+    const booking = {
+      scheduledStartAt: '2026-08-28T11:00:00-03:00',
+      scheduledEndAt: '2026-08-28T11:50:00-03:00',
+    } as any;
+    expect(isBookingEnded(booking, new Date('2026-08-28T11:30:00-03:00').getTime())).toBe(false);
+    expect(isBookingEnded(booking, new Date('2026-08-28T11:50:00-03:00').getTime())).toBe(true);
+  });
+
+  it('uses the Próximas title, includes future lessons from today, and preserves history filtering', () => {
     expect(studentApp).toContain('Próximas');
     expect(studentApp).not.toContain('Todas');
-    expect(studentApp).toContain('isBookingTodayInSaoPaulo(b)');
+    expect(studentApp).toContain('isBookingEnded(b, nowMs)');
     expect(studentApp).toContain("getStudentBookingSection(b.status, b) === 'HISTORY'");
     expect(studentApp).toContain('Você não possui aulas confirmadas no momento.');
   });

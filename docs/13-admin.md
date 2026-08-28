@@ -31,4 +31,4 @@ O fluxo de revisão também atende documentos globais do instrutor e documentos 
 - Configuração do tempo de expiração de Quotes (padrão: 10 minutos).
 - Trilha de Auditoria (`AuditLog`): Histórico cronológico detalhado com ator, ação, entidade, valores anteriores e novos; a leitura Admin retorna somente as colunas operacionais aprovadas.
 
-Pagamentos continuam `FAKE / MOCK_VALIDATION`. Disputas, reassignment e operações reais de payout permanecem deferidos.
+Pagamentos no ambiente DEV usam o Mercado Pago de teste; o gateway fake permanece restrito ao desenvolvimento local. Disputas, reassignment e operações reais de payout permanecem deferidos.

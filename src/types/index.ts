@@ -597,6 +597,7 @@ export interface Payout {
   destinationKeyType?: 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'RANDOM';
   destinationKey?: string;
   destinationKeyMasked?: string;
+  providerName?: string;
   recipientName?: string;
   recipientDocument?: string;
   transferReference?: string;

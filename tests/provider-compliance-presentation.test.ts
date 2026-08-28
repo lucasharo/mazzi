@@ -15,12 +15,21 @@ function presentation(statuses: ComplianceDocument['status'][], providerStatus: 
   return resolveProviderCompliancePresentation(current, eligibility);
 }
 
+function presentationWithNonMandatoryExpiredDocument() {
+  const current = { ...provider };
+  const eligibility = evaluateProviderEligibility(current, [doc('APPROVED')], [requirement!], at);
+  return resolveComplianceDocumentStatus(eligibility, [doc('EXPIRED')]);
+}
+
 describe('PRO compliance presentation precedence', () => {
   it('shows verified only when ACTIVE is eligible', () => expect(presentation(['APPROVED'])).toMatchObject({ status: 'ACTIVE', verified: true, title: 'Credenciamento Ativo • Verificado pela MAZZI' }));
+  it('shows an expired alert even when the expired document is not a mandatory blocker', () => {
+    expect(presentationWithNonMandatoryExpiredDocument()).toBe('EXPIRED');
+  });
   it('maps effective pending, rejected, expired and missing documents distinctly', () => {
     expect(presentation(['PENDING']).status).toBe('PENDING');
     expect(presentation(['REJECTED']).status).toBe('REJECTED');
-    expect(presentation(['APPROVED'], 'ACTIVE', '2026-08-01T00:00:00Z').status).toBe('REJECTED');
+    expect(presentation(['APPROVED'], 'ACTIVE', '2026-08-01T00:00:00Z').status).toBe('EXPIRED');
     expect(presentation([])).toMatchObject({ status: 'PENDING', title: 'Documentação pendente para verificação' });
   });
   it('prioritizes provider operational states and renders one title', () => {

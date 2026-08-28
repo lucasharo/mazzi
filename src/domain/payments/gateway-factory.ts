@@ -33,7 +33,7 @@ export class PaymentGatewayFactory {
 
     if (provider === 'fake') {
       if (!isMockValidationPaymentAllowed()) {
-        throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: O gateway de pagamento simulado está bloqueado em produção a menos que VITE_PAYMENT_MODE=MOCK_VALIDATION esteja explicitamente configurado.');
+        throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION: O gateway de pagamento simulado está bloqueado em produção.');
       }
       return new FakePaymentGateway();
     }

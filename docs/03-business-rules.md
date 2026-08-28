@@ -13,11 +13,12 @@
 
 ## 3. Confirmação de Pagamento
 
-### FASE ATUAL — MOCK_VALIDATION (Ambiente de Validação do MVP)
+### FASE ATUAL — MERCADO PAGO DE TESTE (Ambiente DEV)
 - **Zero Cobrança Real**: Nenhum dinheiro real é transacionado, debitado ou enviado para gateways bancários externos.
-- **Provedor Simulado**: Utiliza exclusivamente `fake_payment_gateway`.
-- **Confirmação em Validação**: A confirmação simulada via RPC transacional no banco PostgreSQL (`confirm_booking_payment`) é autorizada exclusivamente para testes e validação do fluxo do marketplace no ambiente `MOCK_VALIDATION`.
-- **Natureza Semântica**: O pagamento simulado não representa liquidação financeira real nem emissão de títulos de crédito.
+- **Provedor de Teste**: O ambiente DEV usa credenciais de teste do Mercado Pago; o gateway fake fica restrito ao desenvolvimento local.
+- **Confirmação em Validação**: A confirmação depende da resposta autorizada do backend e das regras transacionais do PostgreSQL (`confirm_booking_payment`).
+- **Bloqueio de Produção**: O gateway fake é sempre bloqueado em builds de produção, sem exceções por variável de ambiente.
+- **Natureza Semântica**: Os pagamentos de teste não representam liquidação financeira real nem emissão de títulos de crédito.
 
 ### FUTURO — PAGAMENTO FINANCEIRO REAL
 - O frontend **jamais** dita ou confirma o status `CONFIRMED` de pagamento real.

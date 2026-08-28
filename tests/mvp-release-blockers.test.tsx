@@ -74,27 +74,12 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
 
   // --- 2. PURE MOCK PAYMENT DECISION HELPER & MANDATORY MATRIX ---
   describe('Pure Mock Payment Decision Helper (canUseMockValidationPayment)', () => {
-    it('DEV + qualquer modo/fake -> ALLOWED (true)', () => {
-      expect(canUseMockValidationPayment({ isProduction: false, paymentMode: 'fake' })).toBe(true);
-      expect(canUseMockValidationPayment({ isProduction: false, paymentMode: undefined })).toBe(true);
+    it('DEV -> ALLOWED (true)', () => {
+      expect(canUseMockValidationPayment({ isProduction: false })).toBe(true);
     });
 
-    it('PROD + MOCK_VALIDATION -> ALLOWED (true)', () => {
-      expect(canUseMockValidationPayment({ isProduction: true, paymentMode: 'MOCK_VALIDATION' })).toBe(true);
-      expect(canUseMockValidationPayment({ isProduction: true, paymentMode: 'mock_validation' })).toBe(true);
-    });
-
-    it('PROD + unset -> BLOCKED (false)', () => {
-      expect(canUseMockValidationPayment({ isProduction: true, paymentMode: undefined })).toBe(false);
-      expect(canUseMockValidationPayment({ isProduction: true, paymentMode: '' })).toBe(false);
-    });
-
-    it('PROD + REAL_DISABLED -> BLOCKED (false)', () => {
-      expect(canUseMockValidationPayment({ isProduction: true, paymentMode: 'REAL_DISABLED' })).toBe(false);
-    });
-
-    it('PROD + UNKNOWN -> BLOCKED (false)', () => {
-      expect(canUseMockValidationPayment({ isProduction: true, paymentMode: 'SOME_OTHER_MODE' })).toBe(false);
+    it('PROD -> BLOCKED (false)', () => {
+      expect(canUseMockValidationPayment({ isProduction: true })).toBe(false);
     });
 
     it('Solicitação explícita do Mercado Pago lança REAL_PAYMENT_GATEWAY_NOT_ENABLED sem chamadas HTTP', () => {

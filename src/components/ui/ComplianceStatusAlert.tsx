@@ -3,7 +3,7 @@ import { AlertCircle } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 
 interface ComplianceStatusAlertProps {
-  status?: 'PENDING' | 'IN_REVIEW' | 'REJECTED' | 'APPROVED';
+  status?: 'PENDING' | 'IN_REVIEW' | 'REJECTED' | 'APPROVED' | 'EXPIRED';
 }
 
 function getComplianceAlertCopy(status: NonNullable<ComplianceStatusAlertProps['status']>) {
@@ -17,6 +17,11 @@ function getComplianceAlertCopy(status: NonNullable<ComplianceStatusAlertProps['
       return {
         title: 'Documentos rejeitados: correção necessária',
         description: 'Corrija e envie novamente os documentos rejeitados para concluir a verificação.',
+      };
+    case 'EXPIRED':
+      return {
+        title: 'Documentos vencidos: atualização necessária',
+        description: 'Um ou mais documentos perderam a validade. Envie uma nova versão para concluir a verificação.',
       };
     case 'APPROVED':
       return {

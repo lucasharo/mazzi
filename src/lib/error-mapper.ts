@@ -36,6 +36,10 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'Faça o check-in antes de iniciar a aula.';
   }
 
+  if (msg.includes('INSTRUCTOR_COMPLIANCE_INVALID_AT_LESSON_START')) {
+    return 'Não é possível iniciar a aula porque a documentação de compliance do instrutor não está válida no momento. Regularize os documentos no PRO e aguarde a aprovação administrativa.';
+  }
+
   if (msg.includes('UNAUTHORIZED_PROVIDER') || msg.includes('UNAUTHORIZED_STUDENT')) {
     return 'Você não tem permissão para realizar esta ação neste agendamento.';
   }

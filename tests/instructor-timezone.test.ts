@@ -48,4 +48,13 @@ describe('INSTRUCTOR TIMEZONE & TEMPORAL CLASSIFICATION (America/Sao_Paulo)', ()
     expect(isLessonEnded(pastBooking, mockNow)).toBe(true);
     expect(isLessonEnded(futureBooking, mockNow)).toBe(false);
   });
+
+  it('keeps an in-progress lesson out of history until its end time', () => {
+    const booking = {
+      scheduledStartAt: '2026-08-28T11:00:00-03:00',
+      scheduledEndAt: '2026-08-28T11:50:00-03:00',
+    };
+    expect(isLessonEnded(booking, new Date('2026-08-28T11:30:00-03:00'))).toBe(false);
+    expect(isLessonEnded(booking, new Date('2026-08-28T11:50:00-03:00'))).toBe(true);
+  });
 });

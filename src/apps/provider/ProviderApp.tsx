@@ -54,7 +54,7 @@ import {
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
 import { getStudentBookingSection } from '../../domain/booking';
-import { buildFullDayBlockRange, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
+import { buildFullDayBlockRange, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
 import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
@@ -104,13 +104,14 @@ export const ProviderApp: React.FC = () => {
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
   const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'management', 'profile']);
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
-  const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance' | 'memberships'>('vehicles');
+  const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account'>('vehicles');
   const [bookingFilterTab, setBookingFilterTab] = useState<'upcoming' | 'today' | 'history'>('upcoming');
   const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions' | 'simulator'>('rules');
 
   const [providers, setProviders] = useState<Provider[]>([]);
   const [complianceDocs, setComplianceDocs] = useState<ComplianceDocument[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookingClockMs, setBookingClockMs] = useState(() => Date.now());
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [offerings, setOfferings] = useState<ServiceOffering[]>([]);
   const [schoolInstructors, setSchoolInstructors] = useState<SchoolMembership[]>([]);
@@ -191,6 +192,20 @@ export const ProviderApp: React.FC = () => {
     locationMode: 'STANDARD_ADDRESS' as const,
   });
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
+
+  // Re-evaluate lesson lists automatically when the next lesson ends.
+  useEffect(() => {
+    const now = Date.now();
+    const futureEnds = bookings
+      .map((booking) => getCanonicalTimestamp(booking.scheduledEndAt, booking.scheduledDate, booking.endTime))
+      .filter((timestamp): timestamp is number => timestamp !== null && timestamp > now);
+
+    if (futureEnds.length === 0) return;
+
+    const nextEndMs = Math.min(...futureEnds);
+    const timer = setTimeout(() => setBookingClockMs(Date.now()), Math.max(1000, nextEndMs - Date.now() + 500));
+    return () => clearTimeout(timer);
+  }, [bookings, bookingClockMs]);
 
   // Upload Modal State
   const [uploadModalDocType, setUploadModalDocType] = useState<string | null>(null);
@@ -435,6 +450,7 @@ export const ProviderApp: React.FC = () => {
       setPixDestination(saved);
     } catch (error: any) {
       setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o destino Pix.'));
+      throw error;
     } finally {
       setIsSavingPixDestination(false);
     }
@@ -445,7 +461,7 @@ export const ProviderApp: React.FC = () => {
   if (isAuthLoading || workspaceLoading) {
     return (
       <div className="min-h-dvh bg-[#f7f5ef] text-[#202126] font-sans">
-        <div aria-busy="true" aria-label="Carregando painel do instrutor" className="mx-auto w-full max-w-[680px] space-y-5 px-5 py-6 sm:px-7">
+        <div aria-busy="true" aria-label="Carregando painel do instrutor" className="mazzi-provider-content mx-auto w-full max-w-[680px] space-y-5 px-5 py-6 sm:px-7 lg:max-w-[760px]">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <div className="h-3 w-28 animate-pulse rounded bg-slate-200" />
@@ -509,11 +525,11 @@ export const ProviderApp: React.FC = () => {
 
   const nextBooking = bookings.find((b) => {
     if (b.status !== 'CONFIRMED' && b.status !== 'IN_PROGRESS') return false;
-    return !isLessonEnded(b);
+    return !isLessonEnded(b, new Date(bookingClockMs));
   }) || null;
 
   const filteredBookings = bookings.filter((b) => {
-    const ended = isLessonEnded(b);
+    const ended = isLessonEnded(b, new Date(bookingClockMs));
 
     if (bookingFilterTab === 'today') {
       return (
@@ -1254,7 +1270,7 @@ status: 'IN_REVIEW',
       )}
 
       {/* Main Content Body */}
-      <main className="mazzi-mobile flex-1 space-y-6 pb-28">
+      <main className="mazzi-mobile mazzi-provider-content flex-1 space-y-6 pb-28">
         {/* Workspace Error Banner */}
         {workspaceError && (
           <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800 flex items-center justify-between">
@@ -1396,6 +1412,9 @@ status: 'IN_REVIEW',
             currentProvider={currentProvider}
             schoolInstructors={schoolInstructors}
             schoolInstructorSummary={schoolInstructorSummary}
+            pixDestination={pixDestination}
+            onSavePixDestination={handleSavePixDestination}
+            isSavingPixDestination={isSavingPixDestination}
             isAddVehicleModalOpen={isAddVehicleModalOpen}
             onOpenAddVehicleModal={handleOpenAddVehicle}
             onOpenEditVehicle={handleOpenEditVehicle}
@@ -1467,12 +1486,10 @@ status: 'IN_REVIEW',
             onSaveProfile={handleSaveProfile}
             formError={profileFormError}
             isSavingProfile={isSavingProfile}
-            pixDestination={pixDestination}
-            onSavePixDestination={handleSavePixDestination}
-            isSavingPixDestination={isSavingPixDestination}
             onLogout={logout}
           />
         )}
+
       </main>
 
       {/* Floating Bottom Navigation */}

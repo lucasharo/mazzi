@@ -42,7 +42,7 @@ const byDomain: Record<Exclude<StatusPresentationDomain, 'default'>, Record<stri
     IN_REVIEW: { label: 'Em análise', tone: 'info' },
     APPROVED: { label: 'Aprovado', tone: 'success' },
     REJECTED: { label: 'Reprovado', tone: 'danger' },
-    EXPIRED: { label: 'Vencido', tone: 'danger' },
+    EXPIRED: { label: 'Expirado', tone: 'danger' },
   },
   booking: {
     DRAFT: { label: 'Rascunho', tone: 'neutral' },
@@ -58,7 +58,8 @@ const byDomain: Record<Exclude<StatusPresentationDomain, 'default'>, Record<stri
     DISPUTED: { label: 'Em contestação', tone: 'warning' },
     REFUNDED: { label: 'Reembolsada', tone: 'neutral' },
     PARTIALLY_REFUNDED: { label: 'Reembolso parcial', tone: 'neutral' },
-    EXPIRED: { label: 'Expirada', tone: 'neutral' },
+    // O banco mantém EXPIRED para liberar o horário; na interface, significa que o pagamento não foi concluído.
+    EXPIRED: { label: 'Pagamento não realizado', tone: 'warning' },
   },
   payment: {
     PENDING: { label: 'Pendente', tone: 'warning' },
@@ -70,7 +71,7 @@ const byDomain: Record<Exclude<StatusPresentationDomain, 'default'>, Record<stri
   },
   payout: {
     PENDING: { label: 'Pendente', tone: 'warning' },
-    AVAILABLE: { label: 'Disponível', tone: 'success' },
+    AVAILABLE: { label: 'Disponível', tone: 'info' },
     PROCESSING: { label: 'Em processamento', tone: 'info', isPulsing: true },
     PAID: { label: 'Pago', tone: 'success' },
     FAILED: { label: 'Não processado', tone: 'danger' },

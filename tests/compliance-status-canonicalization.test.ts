@@ -10,7 +10,7 @@ describe('canonical compliance document statuses', () => {
     ['IN_REVIEW', 'IN_REVIEW'],
     ['APPROVED', 'APPROVED'],
     ['REJECTED', 'REJECTED'],
-    ['EXPIRED', 'PENDING'],
+    ['EXPIRED', 'EXPIRED'],
   ])('normalizes status input %s to %s', (input, expected) => {
     expect(normalizeComplianceStatus(input)).toBe(expected);
   });
