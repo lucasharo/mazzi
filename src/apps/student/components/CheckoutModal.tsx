@@ -113,6 +113,7 @@ function buildPendingMercadoPagoPayment(
   paymentId: string,
   method: PaymentMethodType,
   now = new Date(),
+  idempotencyKey = `idem_pay_${booking.id}`,
 ): Payment {
   const amountInCents = booking.snapshot.totalInCents || booking.totalInCents;
   const platformFeeInCents = booking.snapshot.platformFeeInCents || booking.platformFeeInCents;
@@ -124,7 +125,7 @@ function buildPendingMercadoPagoPayment(
     studentId: booking.studentId,
     providerId: booking.providerId,
     gateway: 'MERCADOPAGO',
-    idempotencyKey: `idem_pay_${booking.id}`,
+    idempotencyKey,
     method,
     status: 'PENDING',
     amountInCents,
@@ -802,7 +803,48 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   const handleSelectPaymentMethod = async (nextMethod: PaymentMethodType) => {
-    if (isProcessing) return;
+    if (isProcessing || nextMethod === paymentMethod) return;
+
+    const isRealSupabase = Boolean(
+      (import.meta as any).env?.VITE_SUPABASE_URL &&
+      !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'),
+    );
+
+    if (checkoutGatewayProvider === 'mercadopago' && isRealSupabase && booking && payment) {
+      setIsProcessing(true);
+      setErrorMessage(null);
+      try {
+        const attemptId = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        const idempotencyKey = `idem_pay_${booking.id}_${nextMethod.toLowerCase()}_${attemptId}`;
+        const payRes = await dbService.createBookingPayment(
+          booking.id,
+          nextMethod,
+          idempotencyKey,
+          'mercadopago_test',
+        );
+        const nextPaymentId = payRes?.payment_id || payRes?.id;
+        if (!nextPaymentId || !/^[0-9a-f-]{36}$/i.test(nextPaymentId)) {
+          throw new Error('PAYMENT_UUID_GENERATION_FAILED');
+        }
+
+        setPayment(buildPendingMercadoPagoPayment(
+          booking,
+          nextPaymentId,
+          nextMethod,
+          new Date(),
+          idempotencyKey,
+        ));
+        setPaymentMethod(nextMethod);
+      } catch (error) {
+        setErrorMessage(friendlyCheckoutError(error, 'Não foi possível trocar a forma de pagamento. Tente novamente.'));
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
     setPaymentMethod(nextMethod);
   };
 
