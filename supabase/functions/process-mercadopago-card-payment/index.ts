@@ -24,6 +24,7 @@ const gatewayFeeInCents = (result: any) => {
     .reduce((total: number, item: any) => total + (decimalToCents(item.amount) || 0), 0);
   return cents > 0 ? cents : null;
 };
+const isValidEmail = (value: unknown) => typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers });
@@ -111,6 +112,9 @@ Deno.serve(async (request) => {
   const cents = Number(payment.amount_in_cents);
   if (!Number.isSafeInteger(cents) || cents <= 0) return reply(409, { message: "O valor deste pagamento é inválido." });
   const payerIdentification = payload.payer?.identification;
+  const payerEmail = isValidEmail(payload.payer?.email)
+    ? payload.payer.email.trim()
+    : authData.user.email;
   const body = {
     transaction_amount: Number((cents / 100).toFixed(2)),
     token: payload.token,
@@ -121,7 +125,7 @@ Deno.serve(async (request) => {
     capture: true,
     external_reference: booking.id,
     payer: {
-      email: authData.user.email,
+      email: payerEmail,
       identification: payerIdentification?.number ? {
         type: payerIdentification.type || "CPF",
         number: String(payerIdentification.number).replace(/\D/g, ""),
