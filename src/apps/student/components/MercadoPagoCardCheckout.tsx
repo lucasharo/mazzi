@@ -35,7 +35,52 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
   const initialization = useMemo(() => ({ amount: amountInCents / 100 }), [amountInCents]);
   const customization = useMemo(() => ({
     paymentMethods: { maxInstallments: 1 },
-    visual: { style: { theme: 'default' as const } },
+    visual: {
+      hideFormTitle: true,
+      texts: {
+        cardNumber: { label: 'Número do cartão', placeholder: '0000 0000 0000 0000' },
+        cardExpirationDate: { label: 'Validade', placeholder: 'MM/AA' },
+        cardSecurityCode: { label: 'Código de segurança', placeholder: 'CVV' },
+        cardholderName: { label: 'Nome impresso no cartão', placeholder: 'Nome completo' },
+        cardholderIdentification: { label: 'Documento do titular' },
+        cardholderEmail: { label: 'E-mail' },
+        emailSectionTitle: 'Dados do titular',
+        formSubmit: 'Pagar agora',
+      },
+      style: {
+        theme: 'flat' as const,
+        customVariables: {
+          textPrimaryColor: '#1f2024',
+          textSecondaryColor: '#77766f',
+          inputBackgroundColor: '#ffffff',
+          formBackgroundColor: '#ffffff',
+          baseColor: '#f6c945',
+          baseColorFirstVariant: '#ffe797',
+          baseColorSecondVariant: '#fff4c7',
+          outlinePrimaryColor: '#e9e6de',
+          outlineSecondaryColor: '#f6c945',
+          buttonTextColor: '#202126',
+          errorColor: '#e11d48',
+          successColor: '#059669',
+          fontSizeExtraSmall: '12px',
+          fontSizeSmall: '13px',
+          fontSizeMedium: '14px',
+          fontSizeLarge: '16px',
+          fontWeightNormal: '400',
+          fontWeightSemiBold: '700',
+          inputVerticalPadding: '14px',
+          inputHorizontalPadding: '16px',
+          inputFocusedBoxShadow: '0 0 0 4px rgba(246, 201, 69, 0.35)',
+          inputErrorFocusedBoxShadow: '0 0 0 4px rgba(225, 29, 72, 0.16)',
+          inputBorderWidth: '1px',
+          inputFocusedBorderWidth: '1.5px',
+          borderRadiusSmall: '12px',
+          borderRadiusMedium: '16px',
+          borderRadiusLarge: '20px',
+          formPadding: '0px',
+        },
+      },
+    },
   }), []);
   const handleReady = useCallback(() => setIsReady(true), []);
   const handleError = useCallback(() => {

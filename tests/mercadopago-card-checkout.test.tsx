@@ -49,6 +49,25 @@ describe('checkout de cartão do Mercado Pago', () => {
     expect(updatedProps.onError).toBe(initialProps.onError);
     expect(updatedProps.onSubmit).toBe(initialProps.onSubmit);
 
+    expect(updatedProps.customization).toMatchObject({
+      visual: {
+        hideFormTitle: true,
+        texts: {
+          emailSectionTitle: 'Dados do titular',
+          formSubmit: 'Pagar agora',
+        },
+        style: {
+          theme: 'flat',
+          customVariables: {
+            baseColor: '#f6c945',
+            buttonTextColor: '#202126',
+            textPrimaryColor: '#1f2024',
+            borderRadiusMedium: '16px',
+          },
+        },
+      },
+    });
+
     const submit = updatedProps.onSubmit as (payload: unknown) => Promise<void>;
     const payload = {
       token: 'token-teste',
