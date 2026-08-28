@@ -40,8 +40,15 @@ export function AppBottomNav<T extends string>({ ariaLabel, activeId, items, onC
           >
             <span className="relative grid h-8 w-8 place-items-center rounded-xl" aria-hidden="true">
               {item.icon}
-              {!!item.badge && item.badge > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-600 px-1 text-[9px] font-bold text-white ring-2 ring-white">{item.badge}</span>}
             </span>
+            {!!item.badge && item.badge > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute -right-1.5 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[var(--mazzi-yellow)] bg-white px-1 text-[10px] font-black leading-none text-[var(--mazzi-dark)] shadow-sm"
+              >
+                {item.badge > 99 ? '99+' : item.badge}
+              </span>
+            )}
             {!active && <span className="mt-0.5 text-[10px] font-semibold leading-none">{item.label}</span>}
           </ButtonBase>
         );
