@@ -23,6 +23,14 @@ function formatExpiration(value?: string): string | null {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+function normalizeQrCodeImage(value?: string): string | null {
+  const normalized = value?.trim();
+  if (!normalized) return null;
+  return normalized.startsWith('data:')
+    ? normalized
+    : `data:image/png;base64,${normalized}`;
+}
+
 export const MercadoPagoPixCheckout: React.FC<Props> = ({
   amountInCents,
   isProcessing,
@@ -36,6 +44,7 @@ export const MercadoPagoPixCheckout: React.FC<Props> = ({
   onCopy,
 }) => {
   const expiration = formatExpiration(pixExpiresAt);
+  const qrCodeImage = normalizeQrCodeImage(pixQrCodeBase64);
 
   return (
     <div className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 sm:p-4">
@@ -57,9 +66,9 @@ export const MercadoPagoPixCheckout: React.FC<Props> = ({
         </div>
       ) : (
         <div className="space-y-3 text-center">
-          {pixQrCodeBase64 && (
+          {qrCodeImage && (
             <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-2xl border border-[var(--mazzi-border)] bg-white p-2">
-              <img src={`data:image/png;base64,${pixQrCodeBase64}`} alt="QR Code para pagamento Pix" className="h-full w-full object-contain" />
+              <img src={qrCodeImage} alt="QR Code para pagamento Pix" className="h-full w-full object-contain" />
             </div>
           )}
           <div>
