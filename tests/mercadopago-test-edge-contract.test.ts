@@ -43,9 +43,9 @@ describe('contrato seguro do pagamento Mercado Pago em DEV', () => {
     expect(source).not.toContain('cc_rejected_other_reason')
   });
 
-  it('envia o e-mail preenchido no Brick e normaliza apenas o documento', () => {
-    expect(source).toContain('const payerEmail = isValidEmail(payload.payer?.email)')
-    expect(source).toContain('email: payerEmail')
+  it('usa o e-mail do cadastro e normaliza apenas o documento', () => {
+    expect(source).toContain('email: authData.user.email')
+    expect(source).not.toContain('email: payerEmail')
     expect(source).toContain('number: String(payerIdentification.number).replace(/\\D/g, "")')
   });
 });
