@@ -36,5 +36,6 @@ describe('TASK-080 — Pix e repasse manual', () => {
     expect(migration).toContain("MANUAL_PIX_PAYOUT_COMPLETED");
     expect(migration).toContain("max_total_fee_percentage");
     expect(migration).toContain("'BLOCKED'::public.payout_status");
+    expect(migration).toContain('v_paid_at <= v_payment.pix_expires_at');
   });
 });

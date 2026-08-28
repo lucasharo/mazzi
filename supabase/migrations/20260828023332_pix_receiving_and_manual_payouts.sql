@@ -254,7 +254,9 @@ BEGIN
     gateway_fee_in_cents = COALESCE(p_gateway_fee_in_cents, gateway_fee_in_cents), paid_at = v_paid_at,
     metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('mercado_pago_payment_id', p_external_payment_id, 'gateway_fee_in_cents', p_gateway_fee_in_cents), updated_at = v_now
    WHERE id = v_payment.id;
-  IF v_booking.status = 'PENDING_PAYMENT' AND (v_booking.hold_expires_at IS NULL OR v_booking.hold_expires_at > v_now) THEN
+  IF v_booking.status = 'PENDING_PAYMENT'
+     AND (v_booking.hold_expires_at IS NULL OR v_booking.hold_expires_at > v_now)
+     AND (v_payment.pix_expires_at IS NULL OR v_paid_at <= v_payment.pix_expires_at) THEN
     UPDATE public.bookings SET status = 'CONFIRMED', confirmed_at = COALESCE(confirmed_at, v_paid_at), updated_at = v_now WHERE id = v_booking.id;
     RETURN jsonb_build_object('success', TRUE, 'is_idempotent', FALSE, 'payment_id', v_payment.id, 'booking_id', v_booking.id, 'payment_status', 'PAID', 'booking_status', 'CONFIRMED', 'paid_at', v_paid_at);
   END IF;
