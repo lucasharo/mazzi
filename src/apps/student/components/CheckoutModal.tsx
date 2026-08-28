@@ -465,7 +465,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         provider,
       });
 
-      setPayment({ ...createPayRes.payment, id: realPaymentId || createPayRes.payment.id });
+      const initialPayment = { ...createPayRes.payment, id: realPaymentId || createPayRes.payment.id };
+      if (checkoutGatewayProvider === 'mercadopago') {
+        // O PaymentService local monta o formato comum do pagamento, mas o
+        // payload Pix falso nunca deve aparecer na tela do Mercado Pago.
+        initialPayment.gateway = 'MERCADOPAGO';
+        initialPayment.pixQrCode = undefined;
+        initialPayment.pixQrCodeBase64 = undefined;
+        initialPayment.pixExpiresAt = undefined;
+      }
+      setPayment(initialPayment);
       setStep('PAYMENT_SELECTION');
     } catch (err: any) {
       if (err instanceof BookingDomainError && err.code === 'SLOT_NO_LONGER_AVAILABLE') {
@@ -1080,8 +1089,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               >
                 <CreditCard className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
-                  <span className="font-extrabold text-xs text-slate-900 block truncate">Cartão Simulado</span>
-                  <span className="text-[10px] text-slate-500 font-medium block truncate">Testar cenários</span>
+                  <span className="font-extrabold text-xs text-slate-900 block truncate">{checkoutGatewayProvider === 'fake' ? 'Cartão Simulado' : 'Cartão Mercado Pago'}</span>
+                  <span className="text-[10px] text-slate-500 font-medium block truncate">{checkoutGatewayProvider === 'fake' ? 'Testar cenários' : 'Cartão de teste'}</span>
                 </div>
               </ButtonBase>
             </div>

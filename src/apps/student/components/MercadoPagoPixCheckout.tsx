@@ -45,10 +45,11 @@ export const MercadoPagoPixCheckout: React.FC<Props> = ({
 }) => {
   const expiration = formatExpiration(pixExpiresAt);
   const qrCodeImage = normalizeQrCodeImage(pixQrCodeBase64);
+  const hasGeneratedPix = Boolean(pixQrCode?.trim() && !pixQrCode.trim().startsWith('FAKE_PIX_'));
 
   return (
     <div className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 sm:p-4">
-      {!pixQrCode ? (
+      {!hasGeneratedPix ? (
         <div className="space-y-3 py-3 text-center">
           <QrCode className="mx-auto h-10 w-10 text-amber-600" aria-hidden="true" />
           <div>
