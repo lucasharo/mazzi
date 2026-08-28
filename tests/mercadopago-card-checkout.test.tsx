@@ -32,7 +32,7 @@ describe('checkout de cartão do Mercado Pago', () => {
   it('mantém a mesma instância do Brick quando o componente pai renderiza novamente', async () => {
     const firstSubmit = vi.fn();
     const secondSubmit = vi.fn().mockResolvedValue(undefined);
-    const { rerender } = render(
+    const { container, rerender } = render(
       <MercadoPagoCardCheckout amountInCents={13000} isProcessing={false} onSubmit={firstSubmit} />,
     );
 
@@ -68,6 +68,12 @@ describe('checkout de cartão do Mercado Pago', () => {
         },
       },
     });
+
+    const processingContainer = container.querySelector('[aria-busy="true"]');
+    expect(processingContainer).not.toBeNull();
+    expect(processingContainer?.classList.contains('touch-manipulation')).toBe(true);
+    expect(processingContainer?.classList.contains('opacity-60')).toBe(true);
+    expect(processingContainer?.classList.contains('pointer-events-none')).toBe(false);
 
     const submit = updatedProps.onSubmit as (payload: unknown) => Promise<void>;
     const payload = {

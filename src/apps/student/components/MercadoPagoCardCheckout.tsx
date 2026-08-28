@@ -119,7 +119,10 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
       </div>
       {!isReady && !sdkError && <p role="status" className="py-4 text-center text-sm text-[var(--mazzi-text)]">Carregando pagamento seguro…</p>}
       {sdkError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{sdkError}</p>}
-      <div aria-busy={isProcessing} className={isProcessing ? 'pointer-events-none opacity-60' : ''}>
+      <div
+        aria-busy={isProcessing}
+        className={`min-w-0 touch-manipulation ${isProcessing ? 'opacity-60' : ''}`}
+      >
         <CardPayment
           initialization={initialization}
           locale="pt-BR"
