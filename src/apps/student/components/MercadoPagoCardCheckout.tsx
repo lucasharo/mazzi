@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CardPayment, initMercadoPago } from '@mercadopago/sdk-react';
 import { AlertCircle, ShieldCheck } from 'lucide-react';
 import { getMercadoPagoTestPublicKey } from '../../../lib/payment-gateway-config';
@@ -24,11 +24,38 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
   const publicKey = getMercadoPagoTestPublicKey();
   const [isReady, setIsReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
+  const onSubmitRef = useRef(onSubmit);
+  onSubmitRef.current = onSubmit;
 
   useEffect(() => {
     if (!publicKey) return;
     initMercadoPago(publicKey, { locale: 'pt-BR' });
   }, [publicKey]);
+
+  const initialization = useMemo(() => ({ amount: amountInCents / 100 }), [amountInCents]);
+  const customization = useMemo(() => ({
+    paymentMethods: { maxInstallments: 1 },
+    visual: { style: { theme: 'default' as const } },
+  }), []);
+  const handleReady = useCallback(() => setIsReady(true), []);
+  const handleError = useCallback(() => {
+    setSdkError('Não foi possível carregar o formulário de pagamento. Tente novamente.');
+  }, []);
+  const handleSubmit = useCallback(async (formData: {
+    token: string;
+    issuer_id: string;
+    payment_method_id: string;
+    installments: number;
+    payer: MercadoPagoCardPayload['payer'];
+  }) => {
+    await onSubmitRef.current({
+      token: formData.token,
+      issuerId: formData.issuer_id,
+      paymentMethodId: formData.payment_method_id,
+      installments: formData.installments,
+      payer: formData.payer,
+    });
+  }, []);
 
   if (!publicKey) {
     return (
@@ -49,23 +76,12 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
       {sdkError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{sdkError}</p>}
       <div aria-busy={isProcessing} className={isProcessing ? 'pointer-events-none opacity-60' : ''}>
         <CardPayment
-          initialization={{ amount: amountInCents / 100 }}
+          initialization={initialization}
           locale="pt-BR"
-          customization={{
-            paymentMethods: { maxInstallments: 1 },
-            visual: { style: { theme: 'default' } },
-          }}
-          onReady={() => setIsReady(true)}
-          onError={() => setSdkError('Não foi possível carregar o formulário de pagamento. Tente novamente.')}
-          onSubmit={async (formData) => {
-            await onSubmit({
-              token: formData.token,
-              issuerId: formData.issuer_id,
-              paymentMethodId: formData.payment_method_id,
-              installments: formData.installments,
-              payer: formData.payer,
-            });
-          }}
+          customization={customization}
+          onReady={handleReady}
+          onError={handleError}
+          onSubmit={handleSubmit}
         />
       </div>
     </div>

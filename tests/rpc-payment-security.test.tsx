@@ -7,6 +7,15 @@ import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest
 vi.mock('../src/components/auth/AuthContext', () => ({
   useAuth: () => ({ user: { id: 's-student-1', email: 'test@mazzi.com.br' }, isAuthenticated: true })
 }));
+
+vi.mock('../src/lib/payment-gateway-config', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../src/lib/payment-gateway-config')>();
+  return {
+    ...original,
+    getCheckoutGatewayProvider: () => 'fake' as const,
+  };
+});
+
 import { dbService } from '../src/lib/db-service';
 import { supabase } from '../src/lib/supabase';
 import { Client as PgClient } from 'pg';

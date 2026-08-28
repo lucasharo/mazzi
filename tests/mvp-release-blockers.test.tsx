@@ -9,6 +9,14 @@ vi.mock('../src/components/auth/AuthContext', () => ({
   useAuth: () => ({ user: { id: 'st_123', email: 'student@mazzi.com.br', name: 'Aluno Teste', fullName: 'Aluno Teste' }, isAuthenticated: true })
 }));
 
+vi.mock('../src/lib/payment-gateway-config', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../src/lib/payment-gateway-config')>();
+  return {
+    ...original,
+    getCheckoutGatewayProvider: () => 'fake' as const,
+  };
+});
+
 import { canUseMockValidationPayment, isMockValidationPaymentAllowed } from '../src/lib/runtime-env';
 import { PaymentGatewayFactory } from '../src/domain/payments/gateway-factory';
 import { BookingDetailsModal } from '../src/apps/student/components/BookingDetailsModal';
