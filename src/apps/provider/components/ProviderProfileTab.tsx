@@ -242,54 +242,48 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
               />
             </div>
 
+            {onSavePixDestination && (
+              <div className="border-t border-[var(--mazzi-border)] pt-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700"><QrCode className="h-5 w-5" aria-hidden="true" /></div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Destino para recebimentos Pix</h4>
+                    <p className="mt-1 text-xs text-[var(--mazzi-muted)]">Cadastre a chave usada pelo Admin nos repasses manuais.</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-pix-key-type">Tipo de chave *</label>
+                    <select id="provider-pix-key-type" value={pixKeyType} onChange={(event) => setPixKeyType(event.target.value as PixKeyType)} className="min-h-11 w-full rounded-2xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--mazzi-text)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)]">
+                      <option value="CPF">CPF</option><option value="CNPJ">CNPJ</option><option value="EMAIL">E-mail</option><option value="PHONE">Celular</option><option value="RANDOM">Chave aleatória</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-pix-key">Chave Pix *</label>
+                    <Input id="provider-pix-key" value={pixKey} onChange={(event) => setPixKey(event.target.value)} placeholder={pixKeyType === 'EMAIL' ? 'contato@exemplo.com.br' : 'Informe sua chave Pix'} />
+                  </div>
+                  <div>
+                    <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-pix-holder">Nome do titular *</label>
+                    <Input id="provider-pix-holder" value={pixHolderName} onChange={(event) => setPixHolderName(event.target.value)} placeholder="Nome completo ou razão social" />
+                  </div>
+                  <div>
+                    <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-pix-document">CPF/CNPJ do titular</label>
+                    <Input id="provider-pix-document" value={pixHolderDocument} onChange={(event) => setPixHolderDocument(event.target.value)} placeholder="Opcional" />
+                  </div>
+                </div>
+                {pixDestination?.pixKeyMasked && <p className="mt-3 text-xs text-[var(--mazzi-muted)]">Chave cadastrada: <strong className="text-[var(--mazzi-text)]">{pixDestination.pixKeyMasked}</strong></p>}
+                <div className="mt-4 flex justify-end">
+                  <Button type="button" variant="primary" size="sm" isLoading={isSavingPixDestination} disabled={isSavingPixDestination || pixKey.trim().length === 0 || pixHolderName.trim().length < 3} onClick={() => void onSavePixDestination({ keyType: pixKeyType, pixKey, holderName: pixHolderName, holderDocument: pixHolderDocument })} leftIcon={<Save className="h-4 w-4" aria-hidden="true" />}>
+                    Salvar chave Pix
+                  </Button>
+                </div>
+              </div>
+            )}
+
           </form>
           </Modal>
         )}
       </div>
-
-      {onSavePixDestination && canEditProfile && (
-        <form
-          className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void onSavePixDestination({ keyType: pixKeyType, pixKey, holderName: pixHolderName, holderDocument: pixHolderDocument });
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700"><QrCode className="h-5 w-5" aria-hidden="true" /></div>
-            <div>
-              <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Destino para recebimentos Pix</h4>
-              <p className="mt-1 text-xs text-[var(--mazzi-muted)]">Cadastre a chave que será usada pelo Admin nos repasses manuais.</p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-pix-key-type">Tipo de chave *</label>
-              <select id="provider-pix-key-type" value={pixKeyType} onChange={(event) => setPixKeyType(event.target.value as PixKeyType)} className="min-h-11 w-full rounded-2xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--mazzi-text)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)]">
-                <option value="CPF">CPF</option><option value="CNPJ">CNPJ</option><option value="EMAIL">E-mail</option><option value="PHONE">Celular</option><option value="RANDOM">Chave aleatória</option>
-              </select>
-            </div>
-            <div>
-              <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-pix-key">Chave Pix *</label>
-              <Input id="provider-pix-key" value={pixKey} onChange={(event) => setPixKey(event.target.value)} placeholder={pixKeyType === 'EMAIL' ? 'contato@exemplo.com.br' : 'Informe sua chave Pix'} required />
-            </div>
-            <div>
-              <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-pix-holder">Nome do titular *</label>
-              <Input id="provider-pix-holder" value={pixHolderName} onChange={(event) => setPixHolderName(event.target.value)} placeholder="Nome completo ou razão social" required />
-            </div>
-            <div>
-              <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-pix-document">CPF/CNPJ do titular</label>
-              <Input id="provider-pix-document" value={pixHolderDocument} onChange={(event) => setPixHolderDocument(event.target.value)} placeholder="Opcional" />
-            </div>
-          </div>
-          {pixDestination?.pixKeyMasked && <p className="mt-3 text-xs text-[var(--mazzi-muted)]">Chave cadastrada: <strong className="text-[var(--mazzi-text)]">{pixDestination.pixKeyMasked}</strong></p>}
-          <div className="mt-4 flex justify-end">
-            <Button type="submit" variant="primary" size="sm" isLoading={isSavingPixDestination} disabled={isSavingPixDestination || pixKey.trim().length === 0 || pixHolderName.trim().length < 3} leftIcon={<Save className="h-4 w-4" aria-hidden="true" />}>
-              Salvar chave Pix
-            </Button>
-          </div>
-        </form>
-      )}
 
       {/* Logout: same quiet footer action as Student */}
       <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4">
