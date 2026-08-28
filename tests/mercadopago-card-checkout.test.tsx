@@ -117,7 +117,10 @@ describe('checkout de cartão do Mercado Pago', () => {
     const props = mercadoPagoSdk.cardPaymentProps.at(-1)!;
     expect(props.initialization).toEqual({
       amount: 130,
-      payer: { email: 'aluno@teste.com' },
+      payer: {
+        email: 'aluno@teste.com',
+        identification: { type: 'CPF', number: '12345678909' },
+      },
     });
     expect(document.querySelector('[data-email-prefilled="true"]')).not.toBeNull();
   });

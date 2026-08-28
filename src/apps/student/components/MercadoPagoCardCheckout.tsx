@@ -3,6 +3,8 @@ import { CardPayment, initMercadoPago } from '@mercadopago/sdk-react';
 import { AlertCircle, ShieldCheck } from 'lucide-react';
 import { getMercadoPagoTestPublicKey } from '../../../lib/payment-gateway-config';
 
+const LOCAL_TEST_PAYER_IDENTIFICATION = { type: 'CPF', number: '12345678909' } as const;
+
 export interface MercadoPagoCardPayload {
   token: string;
   issuerId: string;
@@ -30,6 +32,9 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
   const normalizedPayerEmail = payerEmail?.trim() || undefined;
+  const localTestPayerIdentification = import.meta.env.DEV
+    ? LOCAL_TEST_PAYER_IDENTIFICATION
+    : undefined;
 
   useEffect(() => {
     if (!publicKey) return;
@@ -38,8 +43,13 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
 
   const initialization = useMemo(() => ({
     amount: amountInCents / 100,
-    ...(normalizedPayerEmail ? { payer: { email: normalizedPayerEmail } } : {}),
-  }), [amountInCents, normalizedPayerEmail]);
+    ...(normalizedPayerEmail ? {
+      payer: {
+        email: normalizedPayerEmail,
+        ...(localTestPayerIdentification ? { identification: localTestPayerIdentification } : {}),
+      },
+    } : {}),
+  }), [amountInCents, normalizedPayerEmail, localTestPayerIdentification]);
   const customization = useMemo(() => ({
     paymentMethods: { maxInstallments: 1 },
     visual: {
