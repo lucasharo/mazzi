@@ -18,22 +18,28 @@ export interface MercadoPagoCardPayload {
 interface Props {
   amountInCents: number;
   isProcessing: boolean;
+  payerEmail?: string;
   onSubmit: (payload: MercadoPagoCardPayload) => Promise<void>;
 }
 
-export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProcessing, onSubmit }) => {
+export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProcessing, payerEmail, onSubmit }) => {
   const publicKey = getMercadoPagoTestPublicKey();
   const [isReady, setIsReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
+  const cardPaymentContainerRef = useRef<HTMLDivElement>(null);
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
+  const normalizedPayerEmail = payerEmail?.trim() || undefined;
 
   useEffect(() => {
     if (!publicKey) return;
     initMercadoPago(publicKey, { locale: 'pt-BR' });
   }, [publicKey]);
 
-  const initialization = useMemo(() => ({ amount: amountInCents / 100 }), [amountInCents]);
+  const initialization = useMemo(() => ({
+    amount: amountInCents / 100,
+    ...(normalizedPayerEmail ? { payer: { email: normalizedPayerEmail } } : {}),
+  }), [amountInCents, normalizedPayerEmail]);
   const customization = useMemo(() => ({
     paymentMethods: { maxInstallments: 1 },
     visual: {
@@ -87,6 +93,30 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
   const handleError = useCallback(() => {
     setSdkError('Não foi possível carregar o formulário de pagamento. Tente novamente.');
   }, []);
+
+  useEffect(() => {
+    if (!normalizedPayerEmail) return;
+    const container = cardPaymentContainerRef.current;
+    if (!container) return;
+
+    const hidePayerEmail = () => {
+      const emailInput = container.querySelector<HTMLInputElement>('input[type="email"]');
+      if (!emailInput) return;
+
+      const candidates = Array.from(container.querySelectorAll('div')) as HTMLElement[];
+      const emailFieldCandidates = candidates
+        .filter((element) => element.contains(emailInput) && element.querySelectorAll('input').length === 1)
+        .filter((element) => /e-?mail/i.test(element.textContent || ''))
+        .sort((first, second) => first.textContent!.length - second.textContent!.length);
+      const emailField = emailFieldCandidates[0] || emailInput.parentElement;
+      emailField?.setAttribute('hidden', '');
+    };
+
+    hidePayerEmail();
+    const observer = new MutationObserver(hidePayerEmail);
+    observer.observe(container, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [normalizedPayerEmail]);
   const handleSubmit = useCallback(async (formData: {
     token: string;
     issuer_id: string;
@@ -122,6 +152,9 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
       {!isReady && !sdkError && <p role="status" className="py-4 text-center text-sm text-[var(--mazzi-text)]">Carregando pagamento seguro…</p>}
       {sdkError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{sdkError}</p>}
       <div
+        ref={cardPaymentContainerRef}
+        data-mazzi-card-payment="true"
+        data-email-prefilled={normalizedPayerEmail ? 'true' : 'false'}
         aria-busy={isProcessing}
         className={`min-w-0 touch-manipulation ${isProcessing ? 'opacity-60' : ''}`}
       >

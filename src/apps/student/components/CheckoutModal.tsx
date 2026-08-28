@@ -1202,6 +1202,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   key={cardCheckoutKey}
                   amountInCents={payment.amountInCents}
                   isProcessing={isProcessing}
+                  payerEmail={user.email}
                   onSubmit={handleMercadoPagoCardPayment}
                 />
               </React.Suspense>

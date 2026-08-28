@@ -6,13 +6,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const mercadoPagoSdk = vi.hoisted(() => ({
   init: vi.fn(),
   cardPaymentProps: [] as Array<Record<string, unknown>>,
+  renderEmailInput: false,
 }));
 
 vi.mock('@mercadopago/sdk-react', () => ({
   initMercadoPago: mercadoPagoSdk.init,
   CardPayment: (props: Record<string, unknown>) => {
     mercadoPagoSdk.cardPaymentProps.push(props);
-    return null;
+    return mercadoPagoSdk.renderEmailInput ? (
+      <div>
+        <label>E-mail</label>
+        <input type="email" defaultValue="aluno@teste.com" />
+      </div>
+    ) : null;
   },
 }));
 
@@ -26,6 +32,7 @@ afterEach(() => {
   cleanup();
   mercadoPagoSdk.init.mockReset();
   mercadoPagoSdk.cardPaymentProps.length = 0;
+  mercadoPagoSdk.renderEmailInput = false;
 });
 
 describe('checkout de cartão do Mercado Pago', () => {
@@ -95,6 +102,40 @@ describe('checkout de cartão do Mercado Pago', () => {
       cardholderName: '',
       payer: payload.payer,
     });
+  });
+
+  it('preenche o e-mail cadastrado e marca o campo para ocultação visual', () => {
+    render(
+      <MercadoPagoCardCheckout
+        amountInCents={13000}
+        isProcessing={false}
+        payerEmail=" aluno@teste.com "
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const props = mercadoPagoSdk.cardPaymentProps.at(-1)!;
+    expect(props.initialization).toEqual({
+      amount: 130,
+      payer: { email: 'aluno@teste.com' },
+    });
+    expect(document.querySelector('[data-email-prefilled="true"]')).not.toBeNull();
+  });
+
+  it('oculta o campo de e-mail do Brick quando o cadastro já foi informado', async () => {
+    mercadoPagoSdk.renderEmailInput = true;
+    render(
+      <MercadoPagoCardCheckout
+        amountInCents={13000}
+        isProcessing={false}
+        payerEmail="aluno@teste.com"
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await act(async () => {});
+
+    expect(document.querySelector('input[type="email"]')?.parentElement?.hasAttribute('hidden')).toBe(true);
   });
 
   it('encaminha o nome do titular recebido como dado adicional do Brick', async () => {
