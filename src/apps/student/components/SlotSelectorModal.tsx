@@ -5,7 +5,9 @@ import { Button, PrimaryButton, ButtonBase } from '../../../components/ui/Button
 import { supabase } from '../../../lib/supabase';
 import { formatCentsToBRL } from '../../../domain/money';
 import { STUDENT_BOOKING_HORIZON_DAYS } from '../../../domain/availability';
+import { BLOCKING_BOOKING_STATUSES, hasTimeIntervalOverlap } from '../../../domain/booking';
 import { getTodayInSaoPaulo } from '../../../lib/date-format';
+import type { Booking } from '../../../types';
 
 // Re-export and derive horizon constants from canonical domain source of truth
 export { STUDENT_BOOKING_HORIZON_DAYS };
@@ -63,6 +65,43 @@ export function timePeriod(time: string): 'Manhã' | 'Tarde' | 'Noite' {
   return hour < 12 ? 'Manhã' : hour < 18 ? 'Tarde' : 'Noite';
 }
 
+/**
+ * Applies the same student-overlap rule used by the booking RPC to the public
+ * calendar. The database remains authoritative; this is a UX guard that keeps
+ * already-blocked slots from being offered for selection.
+ */
+export function slotOverlapsExistingBooking(
+  slot: PublicSlot,
+  durationMinutes: number,
+  existingBookings: Booking[],
+  nowMs = Date.now(),
+): boolean {
+  const slotStartMs = new Date(slot.slot_start_at).getTime();
+  if (!Number.isFinite(slotStartMs)) return false;
+
+  const slotEnd = slot.slot_end_at
+    ? slot.slot_end_at
+    : new Date(slotStartMs + Math.max(1, durationMinutes) * 60 * 1000).toISOString();
+
+  return existingBookings.some((booking) => {
+    if (!BLOCKING_BOOKING_STATUSES.includes(booking.status)) return false;
+    if (booking.status === 'PENDING_PAYMENT' && booking.holdExpiresAt) {
+      const holdExpiresMs = new Date(booking.holdExpiresAt).getTime();
+      if (Number.isFinite(holdExpiresMs) && holdExpiresMs <= nowMs) return false;
+    }
+    return hasTimeIntervalOverlap(slot.slot_start_at, slotEnd, booking.scheduledStartAt, booking.scheduledEndAt);
+  });
+}
+
+export function filterSlotsForExistingBookings(
+  slots: PublicSlot[],
+  durationMinutes: number,
+  existingBookings: Booking[],
+  nowMs = Date.now(),
+): PublicSlot[] {
+  return slots.filter((slot) => !slotOverlapsExistingBooking(slot, durationMinutes, existingBookings, nowMs));
+}
+
 export interface SlotSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -73,6 +112,8 @@ export interface SlotSelectorModalProps {
   durationMinutes?: number;
   priceInCents?: number;
   transmission?: string;
+  /** Student bookings used to avoid offering slots the backend will reject. */
+  existingBookings?: Booking[];
   /** Static slots for isolated visual previews. Production omits this and loads from the backend. */
   previewSlots?: PublicSlot[];
 }
@@ -87,6 +128,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
   durationMinutes,
   priceInCents,
   transmission,
+  existingBookings = [],
   previewSlots,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -116,7 +158,11 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
         return (data as PublicSlot[]) || [];
       }));
 
-      const grouped = groupSlots(batches.flat());
+      const grouped = groupSlots(filterSlotsForExistingBookings(
+        batches.flat(),
+        durationMinutes || 50,
+        existingBookings,
+      ));
       setSlotsByDate(grouped);
 
       const firstAvailable = Object.keys(grouped).sort()[0] || null;
@@ -135,11 +181,15 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [offeringId, fromDate]);
+  }, [durationMinutes, existingBookings, fromDate, offeringId]);
 
   useEffect(() => {
     if (isOpen && previewSlots) {
-      const grouped = groupSlots(previewSlots);
+      const grouped = groupSlots(filterSlotsForExistingBookings(
+        previewSlots,
+        durationMinutes || 50,
+        existingBookings,
+      ));
       const firstAvailable = Object.keys(grouped).sort()[0] || null;
       setWindowDays(INITIAL_WINDOW_DAYS);
       setSlotsByDate(grouped);

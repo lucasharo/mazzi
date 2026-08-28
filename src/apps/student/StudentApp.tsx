@@ -1397,6 +1397,7 @@ function applyStrictProviderFilters(
           durationMinutes={checkoutOffering.durationMinutes}
           priceInCents={checkoutOffering.priceInCents}
           transmission={checkoutOffering.transmission}
+          existingBookings={confirmedBookings}
           onSelect={(slot) => {
             setSelectedSlot(slot);
             setIsSlotSelectorOpen(false);

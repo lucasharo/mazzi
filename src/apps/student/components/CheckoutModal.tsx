@@ -89,6 +89,21 @@ function friendlyCheckoutError(error: unknown, fallback: string): string {
   if (technicalMessage.includes('SELECTED_SLOT_NOT_AVAILABLE') || technicalMessage.includes('SLOT_NO_LONGER_AVAILABLE')) {
     return 'Esse horário acabou de ser reservado por outra pessoa. Escolha outro horário.';
   }
+  if (technicalMessage.includes('SLOT_MUST_BE_IN_FUTURE')) {
+    return 'Esse horário já passou. Escolha uma data e um horário futuros.';
+  }
+  if (technicalMessage.includes('OFFERING_NOT_FOUND_OR_INACTIVE')) {
+    return 'Esta oferta não está mais disponível. Escolha outro instrutor ou veículo.';
+  }
+  if (technicalMessage.includes('PROVIDER_NOT_ACTIVE') || technicalMessage.includes('OFFERING_PROVIDER_NOT_ACTIVE')) {
+    return 'Este prestador não está disponível para novas reservas no momento.';
+  }
+  if (technicalMessage.includes('VEHICLE_NOT_ACTIVE') || technicalMessage.includes('OFFERING_VEHICLE_NOT_ACTIVE')) {
+    return 'Este veículo não está disponível para novas reservas no momento.';
+  }
+  if (technicalMessage.includes('STUDENT_ID_MISMATCH')) {
+    return 'Sua sessão não corresponde ao aluno desta reserva. Atualize a página e tente novamente.';
+  }
 
   return fallback;
 }
