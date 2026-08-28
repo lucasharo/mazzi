@@ -11,6 +11,7 @@ LAST_UPDATED: 2026-08-28
 - O fake permanece disponível e é o padrão seguro.
 - O Mercado Pago é bloqueado fora de `test` na Edge Function.
 - O frontend não decide sucesso de pagamento; a reserva só é confirmada no backend.
+- O vencimento enviado ao Mercado Pago fica 20 segundos antes do prazo interno da reserva.
 - Valores financeiros usam centavos inteiros.
 - RLS/RBAC e idempotência foram aplicados ao fluxo Pix e ao repasse manual.
 - Documentação, `.env.example`, tipos, serviços, telas e testes foram atualizados.

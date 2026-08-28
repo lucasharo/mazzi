@@ -23,6 +23,7 @@ QA aprovado para merge/deploy de desenvolvimento. A confirmação automática vi
 
 - Gateway fake sem chamada ao Mercado Pago.
 - Pix Mercado Pago pendente com QR/copia e cola.
+- Expiração do Pix configurada 20 segundos antes do fim da reserva; no prazo padrão, são 9 minutos e 40 segundos.
 - Consulta manual ao status autoritativo.
 - Confirmação somente por RPC server-side aprovada.
 - Idempotência de pagamento, webhook e repasse.

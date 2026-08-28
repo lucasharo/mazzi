@@ -7,7 +7,7 @@ LAST_UPDATED: 2026-08-28
 
 ## Implementado
 
-- Pix Mercado Pago em ambiente de teste, alternável por `VITE_PAYMENT_GATEWAY_PROVIDER=fake|mercadopago`.
+- Pix Mercado Pago em ambiente de teste, alternável por `VITE_PAYMENT_GATEWAY_PROVIDER=fake|mercadopago`, com expiração externa 20 segundos antes do fim da reserva.
 - QR Code e código copia e cola no checkout do Aluno, sem confirmação imediata da reserva.
 - Consulta autoritativa manual no Mercado Pago pelo botão de atualização, além do webhook assinado.
 - Finalização server-side idempotente, com validação do valor persistido em centavos, aluno, reserva e expiração.

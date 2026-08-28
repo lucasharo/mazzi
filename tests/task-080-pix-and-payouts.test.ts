@@ -23,6 +23,7 @@ describe('TASK-080 — Pix e repasse manual', () => {
     expect(pixFunction).toContain('gatewayStatus');
     expect(pixFunction).toContain('amount_in_cents');
     expect(pixFunction).toContain('finalize_mercadopago_pix_payment');
+    expect(pixFunction).toContain('20 * 1000');
     expect(webhookFunction).toContain('MERCADOPAGO_WEBHOOK_SECRET');
     expect(webhookFunction).toContain('signaturesMatch');
     expect(webhookFunction).toContain('payment_webhook_events');
