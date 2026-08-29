@@ -89,7 +89,28 @@ VALUES
   ('11111111-1111-1111-1111-111111111104', 'marcos.instrutor@mazzi.com.br', 'Marcos Vinícius (Demo)', '11988880004', 'INSTRUCTOR', 'ACTIVE'),
   ('11111111-1111-1111-1111-111111111105', 'admin.master@mazzi.com.br', 'Administrador MAZZI (Demo)', '11988880099', 'PLATFORM_ADMIN', 'ACTIVE');
 
--- 4. SEED PROVIDERS (1 Instructor, 1 Driving School)
+-- 4. SEED GLOBAL INSTRUCTOR COMPLIANCE (DEVELOPMENT ONLY)
+-- Active demo offerings require all mandatory global documents to be approved.
+INSERT INTO compliance_documents (
+  provider_id,
+  user_id,
+  vehicle_id,
+  membership_id,
+  scope,
+  document_type,
+  storage_path,
+  status,
+  expires_at
+)
+VALUES
+  (NULL, '11111111-1111-1111-1111-111111111102', NULL, NULL, 'USER_GLOBAL', 'CNH', 'replay://demo/carlos/cnh', 'APPROVED', '2099-12-31T23:59:59Z'),
+  (NULL, '11111111-1111-1111-1111-111111111102', NULL, NULL, 'USER_GLOBAL', 'CREDENTIAL_DETRAN', 'replay://demo/carlos/credential-detran', 'APPROVED', '2099-12-31T23:59:59Z'),
+  (NULL, '11111111-1111-1111-1111-111111111102', NULL, NULL, 'USER_GLOBAL', 'CRIMINAL_BACKGROUND', 'replay://demo/carlos/criminal-background', 'APPROVED', '2099-12-31T23:59:59Z'),
+  (NULL, '11111111-1111-1111-1111-111111111104', NULL, NULL, 'USER_GLOBAL', 'CNH', 'replay://demo/marcos/cnh', 'APPROVED', '2099-12-31T23:59:59Z'),
+  (NULL, '11111111-1111-1111-1111-111111111104', NULL, NULL, 'USER_GLOBAL', 'CREDENTIAL_DETRAN', 'replay://demo/marcos/credential-detran', 'APPROVED', '2099-12-31T23:59:59Z'),
+  (NULL, '11111111-1111-1111-1111-111111111104', NULL, NULL, 'USER_GLOBAL', 'CRIMINAL_BACKGROUND', 'replay://demo/marcos/criminal-background', 'APPROVED', '2099-12-31T23:59:59Z');
+
+-- 5. SEED PROVIDERS (1 Instructor, 1 Driving School)
 INSERT INTO providers (
   id,
   user_id,
@@ -148,7 +169,7 @@ INSERT INTO driving_school_staff (school_id, user_id, role, is_active)
 VALUES
   ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111104', 'INSTRUCTOR', TRUE);
 
--- 5. SEED VEHICLES
+-- 6. SEED VEHICLES
 INSERT INTO vehicles (
   id,
   provider_id,
@@ -199,7 +220,7 @@ VALUES
     ARRAY['https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=600&auto=format&fit=crop&q=80']
   );
 
--- 6. SEED SERVICE OFFERINGS
+-- 7. SEED SERVICE OFFERINGS
 INSERT INTO service_offerings (
   id,
   provider_id,
@@ -235,7 +256,7 @@ VALUES
     TRUE
   );
 
--- 7. SEED AVAILABILITY PATTERNS (Monday to Friday, 08:00 to 18:00)
+-- 8. SEED AVAILABILITY PATTERNS (Monday to Friday, 08:00 to 18:00)
 INSERT INTO availabilities (provider_id, instructor_id, vehicle_id, day_of_week, start_time, end_time)
 VALUES
   ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111102', '33333333-3333-3333-3333-333333333301', 1, '08:00', '18:00'),
@@ -244,7 +265,7 @@ VALUES
   ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111102', '33333333-3333-3333-3333-333333333301', 4, '08:00', '18:00'),
   ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111102', '33333333-3333-3333-3333-333333333301', 5, '08:00', '18:00');
 
--- 8. SEED COMPLETED HISTORICAL BOOKING (For demonstration & review models)
+-- 9. SEED COMPLETED HISTORICAL BOOKING (For demonstration & review models)
 INSERT INTO bookings (
   id,
   student_id,

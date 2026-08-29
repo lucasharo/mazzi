@@ -479,4 +479,15 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(seedSql).toContain('ST_SetSRID(ST_MakePoint');
     expect(seedSql).toContain('Política Padrão de Desenvolvimento MAZZI');
   });
+
+  it('[SCHEMA TEST] keeps active demo offerings eligible under the current compliance gate', () => {
+    const seedSql = fs.readFileSync(seedPath, 'utf8');
+    expect(seedSql).toContain("scope,\n  document_type");
+    expect(seedSql).toContain("'USER_GLOBAL'");
+    expect(seedSql).toContain("'CREDENTIAL_DETRAN'");
+    expect(seedSql).toContain("'CRIMINAL_BACKGROUND'");
+    expect(seedSql).toContain("'replay://demo/carlos/cnh'");
+    expect(seedSql).toContain("'replay://demo/marcos/cnh'");
+    expect(seedSql).toContain("'APPROVED'");
+  });
 });
