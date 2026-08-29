@@ -488,6 +488,8 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(seedSql).toContain("'CRIMINAL_BACKGROUND'");
     expect(seedSql).toContain("'replay://demo/carlos/cnh'");
     expect(seedSql).toContain("'replay://demo/marcos/cnh'");
+    expect(seedSql).toContain('membership_status, is_active');
+    expect(seedSql).toContain("'INSTRUCTOR', 'ACTIVE', TRUE");
     expect(seedSql).toContain("'APPROVED'");
   });
 });

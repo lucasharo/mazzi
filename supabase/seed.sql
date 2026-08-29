@@ -165,9 +165,9 @@ VALUES
   );
 
 -- Staff link for Driving School
-INSERT INTO driving_school_staff (school_id, user_id, role, is_active)
+INSERT INTO driving_school_staff (school_id, user_id, role, membership_status, is_active)
 VALUES
-  ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111104', 'INSTRUCTOR', TRUE);
+  ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111104', 'INSTRUCTOR', 'ACTIVE', TRUE);
 
 -- 6. SEED VEHICLES
 INSERT INTO vehicles (
