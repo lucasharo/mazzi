@@ -101,7 +101,7 @@ O viewer de compliance não requer tornar storage público: o bucket `provider-c
 
 ## O que NÃO Alterar
 
-- `main`, Production, Cloudflare PRD, Vercel/aliases PRD e pagamento real.
+- `main`, Production, Cloudflare PRD e pagamento real.
 - Contratos de Student/PRO fora dos componentes compartilhados que precisarem de correção transversal.
 - Bucket privado, RLS existente ou grants fora do escopo de viewer/governança.
 - `admin_update_user_role` como caminho de preservação multi-role; ele não será reutilizado para esse fluxo.

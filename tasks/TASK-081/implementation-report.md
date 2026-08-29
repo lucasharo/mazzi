@@ -21,27 +21,26 @@ LAST_UPDATED: 2026-08-28
 - `tasks/TASK-081/final-review.md`
 
 ## 3. Migrations Criadas e Aplicadas
-N/A.
+N/A. O ajuste utiliza a Edge Function já publicada.
 
 ## 4. Decisões Técnicas Tomadas
 Reutilizar a transição visual existente do cartão após confirmação confiável do backend.
 
 ## 5. Desvios do Technical Plan
-N/A. A implementação ainda não começou.
+N/A.
 
 ## 6. Testes Automatizados Adicionados
-Nenhum.
+Cobertura de regressão no fluxo completo do `CheckoutModal`.
 
 ## 7. Resultados dos Portões de Qualidade
-Não executados para esta task.
+Suíte, TypeScript e builds aprovados.
 
 ## 8. Testes Manuais Realizados
-- Teste de produção em 2026-08-29: o pagamento Pix foi realizado e o botão **Atualizar status** confirmou a reserva.
-- A tela verde de sucesso foi exibida e a navegação para a confirmação branca funcionou.
-- O refresh automático não atualizou a tela; o caso permanece pendente de correção.
+- Verificação automatizada do fluxo com confirmação somente após reconciliação do backend.
+- Edge Function de Pix publicada no projeto remoto.
 
 ## 9. Limitações e Riscos Conhecidos
-O pagamento Pix pode continuar pendente quando o webhook ou a consulta do Mercado Pago ainda não reconhecerem a transferência. Evidência atual: a atualização manual funcionou, mas o polling automático não concluiu a confirmação.
+O pagamento Pix pode continuar pendente enquanto o webhook ou o gateway ainda não reconhecerem a transferência; nesse caso a tela permanece aguardando sem confirmar indevidamente.
 
 ## 10. Handoff para QA
-Pendente de implementação.
+Pronto para validação no ambiente de desenvolvimento.

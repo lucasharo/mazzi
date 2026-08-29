@@ -70,7 +70,7 @@
 
 - O destino de publicação adotado é Cloudflare Pages.
 - O GitHub Actions executa lint, testes e build dos três apps; a branch `feature/premium-ui-v2` publica os projetos DEV no Cloudflare Pages.
-- O fluxo antigo de Vercel não faz parte do processo atual. A documentação e os scripts devem referenciar Cloudflare/GitHub como fonte do deploy.
+- O processo atual usa exclusivamente Cloudflare/GitHub como fonte do deploy.
 - O backend e as migrações permanecem no Supabase; credenciais privadas não devem ser expostas no frontend ou no artefato de build.
 
 ## 8. Pendências que permanecem abertas
@@ -79,4 +79,3 @@
 - Implementação do adaptador real, endpoints server-side, webhooks assinados, split, repasses, estornos e reconciliação.
 - Validação jurídica e operacional do fluxo financeiro antes de produção.
 - Definição final da comissão comercial da MAZZI; os 10% atuais são apenas referência de desenvolvimento/testes.
-

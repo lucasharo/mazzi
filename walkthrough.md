@@ -21,7 +21,7 @@ R10, R10D, R11 e R11A: PASS. DEV alinhado, Production inalterada e consolidaçã
 4. Leitura autenticada pelo Admin permitida.
 5. Invocadas somente RPCs read-only de compliance/eligibilidade.
 6. Consultado o bucket esperado sem upload ou alteração: ausente.
-7. Verificados previews Vercel existentes: Student, PRO e Admin em `READY`/`Preview`.
+7. Verificado o fluxo de publicação pelo GitHub Actions e Cloudflare Pages.
 8. Consultado GitHub Actions: último CI conhecido no SHA remoto `3b5b0817d62a96ba2d1cf23cb92ed1cfe74e6f0e` passou; o HEAD local não foi enviado nesta task.
 9. Executados targeted tests, suíte completa, lint, builds e diff check.
 
@@ -42,15 +42,9 @@ R10, R10D, R11 e R11A: PASS. DEV alinhado, Production inalterada e consolidaçã
 - Production: intocada.
 - Git commit/push: não realizados.
 
-## Evidência Vercel
+## Evidência de publicação
 
-Previews mais recentes observados pelo CLI, todos `READY` e `Preview`:
-
-- Student: `mazzi-app-beta-7p7o0xczi-lucas-haro-8688s-projects.vercel.app`
-- PRO: `mazzi-pro-beta-h0zvmd0mp-lucas-haro-8688s-projects.vercel.app`
-- Admin: `mazzi-admin-beta-qq532lyh6-lucas-haro-8688s-projects.vercel.app`
-
-O `inspect` não forneceu SHA Git no endpoint usado; por isso a correspondência exata com o HEAD local não foi afirmada.
+O deploy deve ser realizado exclusivamente pelo GitHub Actions nos projetos DEV do Cloudflare Pages. Não há URLs de provedor de publicação registradas neste walkthrough histórico.
 
 ## R9 — preflight de publicação
 

@@ -58,7 +58,7 @@ describe('multi-role self-booking contract', () => {
     expect(studentCard).toContain('Ativar perfil profissional');
     expect(studentCard).toContain('acesse o aplicativo MAZZI PRO');
     expect(studentCard).not.toContain('Migrar para MAZZI PRO');
-    expect(studentCard).not.toMatch(/href\s*=|window\.open|location\.href|deep.?link|mazzi-pro-beta\.vercel\.app/i);
+    expect(studentCard).not.toMatch(/href\s*=|window\.open|location\.href|deep.?link|https?:\/\//i);
   });
 
   it('keeps the Student surface available for STUDENT plus INSTRUCTOR identities', () => {

@@ -54,6 +54,6 @@ O predicado canônico `is_provider_instructor_eligible` é usado pelas RPCs e tr
 
 - Os apps Aluno, PRO e Admin são compilados separadamente com Vite.
 - O GitHub Actions executa lint, testes e `npm run build:all`.
-- Pushes para `feature/premium-ui-v2` publicam os três artefatos no Cloudflare Pages nos projetos DEV configurados no workflow.
+- Pushes para `feature/premium-ui-v2` publicam os três artefatos no Cloudflare Pages nos projetos DEV configurados no workflow (`mazzi-aluno-dev`, `mazzi-profissional-dev` e `mazzi-admin-dev`).
 - O Supabase permanece como backend compartilhado e fonte de verdade para dados, autenticação, RLS, RPCs e Storage privado.
-- Não há fluxo de deploy por Vercel no ambiente atual.
+- Cloudflare Pages é o único destino de deploy do ambiente atual.

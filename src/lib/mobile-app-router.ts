@@ -11,7 +11,7 @@ function getRouteFromHash(appKey: string, fallback: MobileAppRoute): string {
 }
 
 /**
- * Small History API router for the mobile PWAs. Hash routes keep Vercel/static
+ * Small History API router for the mobile PWAs. Hash routes keep Cloudflare/static
  * hosting compatible while allowing the browser back button to restore tabs.
  */
 export function useMobileAppRoute<T extends MobileAppRoute>(

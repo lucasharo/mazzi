@@ -48,7 +48,7 @@ O deploy dos três apps é feito pelo GitHub Actions no Cloudflare Pages. Pushes
 - `mazzi-profissional-dev` — `dist/instructor`
 - `mazzi-admin-dev` — `dist/admin`
 
-O fluxo antigo de GitHub Pages/Vercel não faz parte do ambiente atual.
+O ambiente atual usa exclusivamente GitHub Actions e Cloudflare Pages.
 
 ---
 

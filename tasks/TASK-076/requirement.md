@@ -23,7 +23,7 @@ STUDENT, INSTRUCTOR, SCHOOL_ADMIN e PLATFORM_ADMIN.
 - Corrigir search paths inseguros e aplicar apenas hardening/performance de banco comprovadamente seguro, sempre em migrations forward-only.
 - Habilitar operações Admin existentes somente quando houver RPC transacional com RBAC, auditoria e idempotência.
 - Manter pagamento exclusivamente `MOCK_VALIDATION`/fake.
-- Homologar Student, PRO e Admin em browser mobile e desktop, publicar Git/Supabase/Vercel Preview e atualizar os aliases existentes.
+- Homologar Student, PRO e Admin em browser mobile e desktop, publicar Git/Supabase/Cloudflare Pages e atualizar os ambientes DEV.
 
 ## Fora de escopo
 
@@ -52,7 +52,7 @@ STUDENT, INSTRUCTOR, SCHOOL_ADMIN e PLATFORM_ADMIN.
 - AC25–AC29: Mapa carrega páginas adicionais até `MAX_MAP_RESULTS`, reinicia coleção em filtro/localização, não mistura requests antigos e não duplica markers.
 - AC30–AC36: Hardening de search path, grants, índices, RLS initplan e policies preserva a semântica de autorização; PostGIS permanece inalterado.
 - AC37–AC42: Operações Admin permitidas são transacionais, RBAC-protegidas, auditáveis e idempotentes; refund continua fake e limitado ao valor pago.
-- AC43: Testes locais, browser smoke, migrations LIVE, Git CI e três aliases Vercel são validados sem P0/P1 conhecido.
+- AC43: Testes locais, browser smoke, migrations LIVE, Git CI e os três projetos DEV do Cloudflare Pages são validados sem P0/P1 conhecido.
 
 ## Decisões resolvidas
 

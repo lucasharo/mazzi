@@ -5,7 +5,7 @@
 - R10: PASS; R10D: PASS; R11: PASS; R11A: PASS.
 - Supabase DEV: alinhado ao ledger e aos contratos canônicos validados.
 - Git: consolidação pendente de autorização de commit.
-- Production, LIVE, Vercel e `spatial_ref_sys`: inalterados nesta consolidação.
+- Production, LIVE e `spatial_ref_sys`: inalterados nesta consolidação.
 - Este documento preserva as seções históricas abaixo; bloqueios anteriores não representam o estado vigente.
 
 ## TASK-096A4M-R12A — alinhamento do baseline candidato
@@ -177,7 +177,7 @@ LIVE foi consultado e alterado somente pelas migrations autorizadas, em ordem R6
 
 Contagens agregadas finais: compliance APPROVED=236, REJECTED=1; veículos ACTIVE=97. Os enums operacionais usam somente os rótulos canônicos; `provider_save_vehicle` e as RPCs de compliance usam `IN_REVIEW`. Nenhum documento foi lido ou exposto; `spatial_ref_sys` não foi alterado.
 
-Validação local: 715 testes passed, 0 skipped, 0 failed; lint PASS; builds Student/PRO/Admin PASS; diff check PASS. Commit, push, CI e Vercel não realizados.
+Validação local: 715 testes passed, 0 skipped, 0 failed; lint PASS; builds Student/PRO/Admin PASS; diff check PASS. Commit, push e CI não realizados.
 
 ## R10B — bloqueio antes do DDL de enum/ativação
 

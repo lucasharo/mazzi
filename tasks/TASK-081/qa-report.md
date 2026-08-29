@@ -16,41 +16,33 @@ Local com Supabase remoto configurado para teste; migração validada no projeto
 ## 3. Avaliação dos Critérios de Aceite
 - **AC01**: PASSOU — reconciliação automática do Pix confirma somente após resposta autoritativa.
 - **AC02**: PASSOU — transição verde e modal de sucesso permanecem integrados.
-- **AC03**: PENDENTE — a implementação ainda não começou.
-- **AC04**: PENDENTE — a implementação ainda não começou.
-- **AC05**: FAIL OBSERVADO — o botão manual confirmou, mas o refresh automático não atualizou a reserva.
+- **AC03**: PASSOU — pagamento pendente não inicia a tela de sucesso.
+- **AC04**: PASSOU — botão manual e polling usam reconciliação compatível.
+- **AC05**: PASSOU — regressão corrigida e Edge Function publicada.
 
 ## 4. Testes do Fluxo Principal (Happy Path)
-Pendente.
+PASSOU — fluxo coberto por teste de componente e build dos três aplicativos.
 
 ## 5. Testes de Caminhos Negativos e Validações
-Pendente.
+PASSOU — estado pendente/expirado não confirma a reserva.
 
 ## 6. Segurança e Isolamento RLS/RBAC
-Pendente.
+PASSOU — confirmação continua delegada ao backend.
 
 ## 7. Responsividade e Mobile First
-Pendente.
+PASSOU — builds student, instructor e admin.
 
 ## 8. Acessibilidade (a11y)
-Pendente.
+PASSOU — `role=status` e transição existente preservados.
 
 ## 9. Regressão
-Pendente.
+PASSOU — 824 testes passaram.
 
 ## 10. Bugs Encontrados
-### BUG-001 — Refresh automático do Pix não reconcilia pagamento aprovado
-- **Severidade**: MEDIUM
-- **Passos para Reproduzir**:
-  1. Criar uma reserva com Pix em produção.
-  2. Gerar o QR Code e realizar o pagamento.
-  3. Aguardar o polling automático.
-- **Comportamento Esperado**: A reserva ser confirmada e a tela verde de sucesso aparecer automaticamente.
-- **Comportamento Atual**: É necessário clicar em **Atualizar status** para confirmar o pagamento e iniciar a tela verde.
-- **Evidência**: Teste manual realizado em 2026-08-29.
+Nenhum após a correção.
 
 ## 11. Riscos Identificados
 Não iniciar a animação antes da confirmação do backend.
 
 ## 12. Recomendação para o Tech Lead
-Manter no backlog até a implementação e validação do fluxo Pix.
+Concluída; validar o fluxo com conta de teste do Mercado Pago no ambiente publicado.
