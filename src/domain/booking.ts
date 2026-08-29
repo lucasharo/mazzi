@@ -24,6 +24,37 @@ export const BLOCKING_BOOKING_STATUSES: BookingStatus[] = [
   'IN_PROGRESS',
 ];
 
+/** Reservas operacionais que podem aparecer na aba Hoje, incluindo pagamento pendente. */
+export const TODAY_BOOKING_STATUSES: BookingStatus[] = [
+  'PENDING_PAYMENT',
+  'CONFIRMED',
+  'IN_PROGRESS',
+  'COMPLETED',
+];
+
+/** Status que não representam uma reserva com pagamento realizado. */
+export const UNPAID_BOOKING_STATUSES: BookingStatus[] = [
+  'PENDING_PAYMENT',
+  'PAYMENT_FAILED',
+  'EXPIRED',
+];
+
+/** Mantém a próxima aula no topo e envia aulas já encerradas para o final do dia. */
+export function sortBookingsForToday(bookings: Booking[], nowMs = Date.now()): Booking[] {
+  return [...bookings].sort((a, b) => {
+    // O status pode chegar momentaneamente como CONFIRMED enquanto o horário
+    // já terminou; nesse caso o card também precisa ir para o fim da lista.
+    const aCompleted = a.status.toUpperCase() === 'COMPLETED' || getBookingEndTimestamp(a) <= nowMs ? 1 : 0;
+    const bCompleted = b.status.toUpperCase() === 'COMPLETED' || getBookingEndTimestamp(b) <= nowMs ? 1 : 0;
+    if (aCompleted !== bCompleted) return aCompleted - bCompleted;
+
+    const aStart = getBookingStartTimestamp(a);
+    const bStart = getBookingStartTimestamp(b);
+    // Entre aulas já encerradas, exibe a mais recente primeiro.
+    return aCompleted === 1 ? bStart - aStart : aStart - bStart;
+  });
+}
+
 export function getBookingStartTimestamp(booking: Booking): number {
   const startIso = booking.scheduledStartAt || (booking.snapshot as any)?.scheduledStartAt;
   if (startIso) {

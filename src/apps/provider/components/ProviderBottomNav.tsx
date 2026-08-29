@@ -13,13 +13,15 @@ export type ProviderTabId = 'dashboard' | 'schedule' | 'bookings' | 'management'
 interface ProviderBottomNavProps {
   activeTab: string;
   onTabChange: (tabId: ProviderTabId) => void;
-  pendingBookingsCount?: number;
+  bookingUpdatesCount?: number;
+  showManagementAlert?: boolean;
 }
 
 export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
   activeTab,
   onTabChange,
-  pendingBookingsCount = 0,
+  bookingUpdatesCount = 0,
+  showManagementAlert = false,
 }) => {
   const NAV_ITEMS: AppBottomNavItem<ProviderTabId>[] = [
     {
@@ -36,12 +38,13 @@ export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
       id: 'bookings',
       label: 'Aulas',
       icon: <Clock className="w-5 h-5" />,
-      badge: pendingBookingsCount > 0 ? pendingBookingsCount : undefined,
+      showBadge: bookingUpdatesCount > 0,
     },
     {
       id: 'management',
       label: 'Gestão',
       icon: <SlidersHorizontal className="w-5 h-5" />,
+      showBadge: showManagementAlert,
     },
     {
       id: 'profile',

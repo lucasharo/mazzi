@@ -23,6 +23,7 @@ import { formatCentsToBRL } from '../../../domain/money';
 import { calculateLessonDurationMinutes, formatTransmissionLabel } from '../../../lib/date-format';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
+import { UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { formatTimeBR } from '../../../lib/date-format';
 
 interface ProviderBookingDetailsModalProps {
@@ -56,9 +57,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
 
   React.useEffect(() => {
     if (!isOpen || !booking) return undefined;
-    const timer = window.setInterval(() => setCheckInNow(new Date()), 60_000);
+    setCheckInNow(new Date());
+    const timer = window.setInterval(() => setCheckInNow(new Date()), 15_000);
     return () => window.clearInterval(timer);
-  }, [isOpen, booking]);
+  }, [isOpen, booking?.id]);
 
   if (!booking) return null;
 
@@ -87,6 +89,8 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     : isConfirmed && !booking.instructorCheckedIn;
   const checkInAvailability = getCheckInAvailability({
     scheduledStartAt: booking.scheduledStartAt,
+    scheduledDate: booking.scheduledDate,
+    startTime: booking.startTime,
     status: booking.status,
     alreadyCheckedIn: Boolean(booking.instructorCheckedIn),
     now: checkInNow,
@@ -161,7 +165,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Detalhes do Agendamento" size="md" footer={footer}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Detalhes do Agendamento" size="md" footer={UNPAID_BOOKING_STATUSES.includes(booking.status) ? undefined : footer}>
       <div className="space-y-4 text-left">
         {/* Same status hierarchy used by the Student reservation details. */}
         <div className="flex items-center justify-between rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">

@@ -13,7 +13,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
 
-import { getBookingEndTimestamp, getStudentBookingSection, isBookingEnded } from '../../domain/booking';
+import { getBookingEndTimestamp, getStudentBookingSection, isBookingEnded, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { SearchHeader } from '../../components/search/SearchHeader';
 import { FilterDrawer } from '../../components/search/FilterDrawer';
@@ -191,6 +191,7 @@ export const StudentApp: React.FC = () => {
 
   const searchRequestIdRef = useRef(0);
   const searchEndRef = useRef<HTMLDivElement | null>(null);
+  const shouldAutoSelectTodayRef = useRef(true);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -710,16 +711,28 @@ function applyStrictProviderFilters(
 
   const historyBookings = useMemo(() => {
     return confirmedBookings
-      .filter((b) => getStudentBookingSection(b.status, b) === 'HISTORY' || isBookingEnded(b, nowMs))
+      .filter((b) => !UNPAID_BOOKING_STATUSES.includes(b.status) && (getStudentBookingSection(b.status, b) === 'HISTORY' || isBookingEnded(b, nowMs)))
       .sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a));
   }, [confirmedBookings, nowMs]);
 
   const todayBookings = useMemo(
-    () => confirmedLessonBookings
-      .filter((booking) => isBookingTodayInSaoPaulo(booking))
-      .sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b)),
-    [confirmedLessonBookings],
+    () => sortBookingsForToday(confirmedBookings
+      .filter((booking) => TODAY_BOOKING_STATUSES.includes(booking.status) && isBookingTodayInSaoPaulo(booking)), nowMs),
+    [confirmedBookings, nowMs],
   );
+
+  // Ao entrar em "Aulas", prioriza as aulas de hoje uma única vez.
+  // A escolha manual do usuário permanece preservada até sair e entrar novamente.
+  useEffect(() => {
+    if (activeTab !== 'bookings') {
+      shouldAutoSelectTodayRef.current = true;
+      return;
+    }
+    if (!shouldAutoSelectTodayRef.current || bookingsLoading) return;
+
+    setBookingTab(todayBookings.length > 0 ? 'today' : 'confirmed');
+    shouldAutoSelectTodayRef.current = false;
+  }, [activeTab, bookingsLoading, todayBookings.length]);
 
   const chatBookings = useMemo(() => {
     const upcomingStatus = new Set(['CONFIRMED', 'PENDING_PAYMENT', 'IN_PROGRESS']);
@@ -1428,6 +1441,9 @@ function applyStrictProviderFilters(
             setResumeBooking(null);
             setSelectedSlot(null);
             setIsSlotSelectorOpen(true);
+          }}
+          onBookingCancelled={() => {
+            setBookingsRefreshKey((k) => k + 1);
           }}
           onBookingConfirmed={(updatedBooking) => {
             setConfirmedBookings((prev) => {

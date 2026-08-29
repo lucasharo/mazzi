@@ -161,7 +161,7 @@ describe('TASK-009 Security Hotfix — Real Behavioral Spies & Security Tests', 
         success: true,
         is_idempotent: false,
         payment_id: '8f7a9b0c-1d2e-3f4a-5b6c-7d8e9f0a1b2c',
-        booking_id: 'b-resume-100',
+        booking_id: 'b1000000-0000-4000-8000-000000000100',
         status: 'PENDING',
         amount_in_cents: 10000,
       } as any);
@@ -181,7 +181,7 @@ describe('TASK-009 Security Hotfix — Real Behavioral Spies & Security Tests', 
           endTime="14:50"
           onBookingConfirmed={onBookingConfirmedMock}
           resumeBooking={{
-            id: 'b-resume-100',
+            id: 'b1000000-0000-4000-8000-000000000100',
             quoteId: 'q-100',
             studentId: 's-student-1',
             providerId: 'p-1',
@@ -199,9 +199,9 @@ describe('TASK-009 Security Hotfix — Real Behavioral Spies & Security Tests', 
 
       // Wait for PAYMENT_SELECTION step to be visible and select CREDIT_CARD
       await waitFor(() => {
-        expect(screen.getByText(/Cartão Simulado/i)).toBeTruthy();
+      expect(screen.getByText(/Cartão de Crédito Simulado/i)).toBeTruthy();
       });
-      fireEvent.click(screen.getByText(/Cartão Simulado/i));
+      fireEvent.click(screen.getByText(/Cartão de Crédito Simulado/i));
 
       // Now the button should be visible
       await waitFor(() => {
@@ -217,7 +217,7 @@ describe('TASK-009 Security Hotfix — Real Behavioral Spies & Security Tests', 
         expect(mockMarkFailed).toHaveBeenCalledTimes(1);
       });
       
-      expect(spyCreatePayment).toHaveBeenCalledTimes(1); // It's called once when component mounts due to resumeBooking
+      expect(spyCreatePayment).toHaveBeenCalledTimes(1); // The payment is created only after the explicit card selection.
       expect(spyConfirmPayment).toHaveBeenCalledTimes(0);
       expect(onBookingConfirmedMock).toHaveBeenCalledTimes(0);
 

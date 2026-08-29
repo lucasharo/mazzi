@@ -327,7 +327,7 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
     it('G. atravessa a janela automaticamente e bloqueia double-click durante loading', async () => {
       vi.useFakeTimers();
       try {
-        vi.setSystemTime(new Date('2026-08-20T11:29:50Z'));
+        vi.setSystemTime(new Date('2026-08-20T11:44:50Z'));
         const windowBooking = {
           ...baseConfirmedBooking,
           scheduledStartAt: '2026-08-20T12:00:00Z',
@@ -508,14 +508,17 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
       // STEP 2: Avançar para booking hold
       fireEvent.click(screen.getByRole('button', { name: /Continuar para pagamento/i }));
 
-      // STEP 3: Na tela de pagamento PIX simulado
+      // STEP 3: O método precisa ser escolhido explicitamente antes de criar o pagamento
       await waitFor(() => {
         expect(screen.getByText('Pagamento simulado — nenhum valor será cobrado.')).toBeTruthy();
-        expect(screen.getByRole('button', { name: /Confirmar pagamento/i })).toBeTruthy();
+        expect(screen.getByRole('button', { name: /PIX Simulado/i })).toBeTruthy();
       });
 
+      fireEvent.click(screen.getByRole('button', { name: /PIX Simulado/i }));
+
       // STEP 4: Confirmar pagamento PIX
-      fireEvent.click(screen.getByRole('button', { name: /Confirmar pagamento/i }));
+      await waitFor(() => expect(screen.getByRole('button', { name: /Confirmar pagamento PIX/i })).toBeTruthy());
+      fireEvent.click(screen.getByRole('button', { name: /Confirmar pagamento PIX/i }));
 
       // STEP 5: Tela SUCCESS
       await waitFor(() => {

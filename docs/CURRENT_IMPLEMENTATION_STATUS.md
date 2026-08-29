@@ -1,6 +1,6 @@
 # MAZZI — Current Implementation Status
 
-**Última revisão**: 2026-08-27
+**Última revisão**: 2026-08-28
 *Nota: Este documento deve ser atualizado sempre que uma TASK alterar o estado de uma feature relevante.*
 
 ---
@@ -66,7 +66,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Cancelamento | Fluxo Comercial de Cancelamento | `IMPLEMENTADO` | [`src/domain/cancellation.ts`](../src/domain/cancellation.ts), `supabase/migrations/20260818000034_cancellation_flow_and_rpc.sql` | Tabela canônica DEC-013 (100% >=24h, 50% 6-24h, 0% <6h), RPC `cancel_booking_v2`, modal no App Aluno e modo Read-Only no Chat |
 | Comunicação | Chat Contextual por Aula | `IMPLEMENTADO` | [`src/components/chat/BookingChatPanel.tsx`](../src/components/chat/BookingChatPanel.tsx), `supabase/migrations/20260817000019_student_realtime_chat.sql` | Mensageria associada à reserva confirmada com Supabase Realtime |
 | Feedback | Avaliação do Prestador (1-5 Estrelas) | `IMPLEMENTADO` | [`src/components/reviews/ReviewModal.tsx`](../src/components/reviews/ReviewModal.tsx) | Avaliação didática, pontualidade, segurança e cordialidade |
-| Notificações | Painel de Notificações em Tempo Real | `IMPLEMENTADO` | [`src/components/notifications/NotificationsPanel.tsx`](../src/components/notifications/NotificationsPanel.tsx) | Notificações de confirmação, alteração de status e lembretes |
+| Notificações | Painel de Notificações em Tempo Real | `IMPLEMENTADO` | [`src/components/notifications/NotificationsPanel.tsx`](../src/components/notifications/NotificationsPanel.tsx), migration `lesson_concurrency_and_notifications` | Notificações de confirmação, check-in de cada participante, início e conclusão da aula |
 
 ---
 
@@ -76,8 +76,8 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 |---|---|---|---|---|
 | Prestador | Portal do Prestador (`src/apps/provider/`) | `IMPLEMENTADO` | [`src/apps/provider/`](../src/apps/provider/) | Gestão de perfil, horários de disponibilidade, veículos e ofertas |
 | Compliance | Gestão de Documentação Regulatória | `IMPLEMENTADO` | [`src/domain/compliance.ts`](../src/domain/compliance.ts) | Upload e moderação de CNH, CRLV, alvarás e inspeções |
-| Frota | Cadastro de Veículos e Transmissões | `IMPLEMENTADO` | [`src/domain/vehicles-offerings.ts`](../src/domain/vehicles-offerings.ts) | Homologação de veículos com pedal duplo e categoria |
-| Admin | Painel Administrativo (`src/apps/admin/`) | `IMPLEMENTADO` | [`src/apps/admin/`](../src/apps/admin/), [`src/entrypoints/admin/AdminRoot.tsx`](../src/entrypoints/admin/AdminRoot.tsx), migration `20260828023332_pix_receiving_and_manual_payouts` | MVP restrito a `PLATFORM_ADMIN`, leituras fail-closed, revisão de compliance alinhada à permissão canônica, configuração de taxas e repasse manual via Pix. Transferência automática permanece futura. |
+| Frota | Cadastro de Veículos e Transmissões | `IMPLEMENTADO` | [`src/domain/vehicles-offerings.ts`](../src/domain/vehicles-offerings.ts), migration `enforce_active_offering_requirements` | Homologação de veículos com pedal duplo e categoria; ofertas são automaticamente desativadas quando deixam de cumprir os requisitos, inclusive após desativação do veículo |
+| Admin | Painel Administrativo (`src/apps/admin/`) | `IMPLEMENTADO` | [`src/apps/admin/`](../src/apps/admin/), [`src/entrypoints/admin/AdminRoot.tsx`](../src/entrypoints/admin/AdminRoot.tsx), migration `20260828023332_pix_receiving_and_manual_payouts` | MVP restrito a `PLATFORM_ADMIN`, leituras fail-closed, revisão de compliance alinhada à permissão canônica, configuração de taxas, estorno Mercado Pago Sandbox via Edge Function e repasse manual via Pix. Transferência automática permanece futura. |
 | Auditoria | Registro Estruturado de Logs (`AuditLog`) | `IMPLEMENTADO` | `supabase/migrations/20260814000015_sprint15_security_hardening.sql` | Tabela `audit_logs` registrando ações críticas de sistema |
 
 ### 3.4. Premium UI V2 e Design System

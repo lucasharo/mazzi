@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import {
-  BarChart3, Calendar, Car, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
+  AlertTriangle, BarChart3, Calendar, Car, CreditCard, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { dbService } from '../../lib/db-service';
 import {
@@ -51,6 +51,9 @@ import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
 import { getFriendlyAdminError } from '../../domain/status-presentation';
 import { getUserRoleLabel } from '../../domain/status-presentation';
 import { useMobileAppRoute } from '../../lib/mobile-app-router';
+import { getCheckoutGatewayProvider } from '../../lib/payment-gateway-config';
+import { formatCentsToBRL } from '../../domain/money';
+import { formatDateBR, formatTimeBR } from '../../lib/date-format';
 
 const getAdminSkeletonMode = (tab: string): ContentSkeletonMode => {
   if (tab === 'dashboard') return 'dashboard';
@@ -63,11 +66,14 @@ const getAdminSkeletonMode = (tab: string): ContentSkeletonMode => {
 
 export const AdminApp: React.FC = () => {
   const { user, logout } = useAuth();
+  const isProductionEnvironment = Boolean(import.meta.env.PROD && import.meta.env.VITE_APP_ENV !== 'development');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
   const [savedProfileAvatar, setSavedProfileAvatar] = useState<string | undefined>();
   const [profileError, setProfileError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [refundCandidate, setRefundCandidate] = useState<Booking | null>(null);
+  const [isRefundSubmitting, setIsRefundSubmitting] = useState(false);
 
   const showFeedback = (type: ToastMessage['type'], title: string, description?: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -161,6 +167,7 @@ export const AdminApp: React.FC = () => {
               if (item.value?.minimum_notice_hours !== null && item.value?.minimum_notice_hours !== undefined) mappedConfig.minimumBookingNoticeHours = Number(item.value.minimum_notice_hours);
               if (item.value?.payout_safety_period_hours !== null && item.value?.payout_safety_period_hours !== undefined) mappedConfig.payoutSafetyPeriodHours = Number(item.value.payout_safety_period_hours);
               if (item.value?.search_radius_km !== null && item.value?.search_radius_km !== undefined) mappedConfig.searchRadiusDefaultsKm = Number(item.value.search_radius_km);
+              if (item.value?.checkin_window_before_minutes !== null && item.value?.checkin_window_before_minutes !== undefined) mappedConfig.checkInWindowBeforeMinutes = Number(item.value.checkin_window_before_minutes);
             }
           }
           setPlatformConfig(mappedConfig);
@@ -300,11 +307,38 @@ export const AdminApp: React.FC = () => {
   // REFUND HANDLER
   // ==========================================================================
   const handleProcessRefund = async (b: Booking) => {
+    setRefundCandidate(b);
+  };
+
+  const handleConfirmRefund = async () => {
+    if (!refundCandidate || isRefundSubmitting) return;
+
+    const bookingToRefund = refundCandidate;
+    const usesMercadoPago = getCheckoutGatewayProvider() === 'mercadopago';
+    setIsRefundSubmitting(true);
+
     try {
-      await dbService.adminRefundMockBooking(b.id);
-      setBookings((current) => current.map((item) => item.id === b.id ? { ...item, status: 'REFUNDED' } : item));
+      const result = usesMercadoPago
+        ? await dbService.processMercadoPagoRefund(bookingToRefund.id)
+        : await dbService.adminRefundMockBooking(bookingToRefund.id);
+
+      if (usesMercadoPago && result?.refundStatus === 'PENDING') {
+        setRefundCandidate(null);
+        showFeedback('info', 'Estorno em processamento', 'O Mercado Pago está processando a devolução. O webhook atualizará a reserva quando finalizar.');
+        return;
+      }
+
+      setBookings((current) => current.map((item) => item.id === bookingToRefund.id ? { ...item, status: 'REFUNDED' } : item));
+      setRefundCandidate(null);
+      showFeedback(
+        'success',
+        usesMercadoPago ? 'Estorno solicitado' : 'Estorno simulado',
+        usesMercadoPago ? 'O pagamento de teste foi estornado e a reserva foi atualizada.' : 'A movimentação local foi registrada para conferência.',
+      );
     } catch (error: any) {
-      showFeedback('error', 'Não foi possível processar o estorno de teste', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
+      showFeedback('error', usesMercadoPago ? 'Não foi possível solicitar o estorno' : 'Não foi possível processar o estorno de teste', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
+    } finally {
+      setIsRefundSubmitting(false);
     }
   };
 
@@ -519,6 +553,7 @@ export const AdminApp: React.FC = () => {
           <BookingsTab
             bookings={bookings}
             auditLogs={auditLogs}
+            platformFeePercentage={platformConfig.platformFeeDefaultPercentage}
           />
         )}
 
@@ -528,6 +563,9 @@ export const AdminApp: React.FC = () => {
             auditLogs={auditLogs}
             actor={activeActor}
             onProcessRefund={withActionLoading(handleProcessRefund)}
+            isMercadoPagoGateway={getCheckoutGatewayProvider() === 'mercadopago'}
+            isProductionEnvironment={isProductionEnvironment}
+            platformFeePercentage={platformConfig.platformFeeDefaultPercentage}
             payouts={payouts}
             onMarkManualPayout={withActionLoading(handleMarkManualPayout)}
           />
@@ -596,6 +634,60 @@ export const AdminApp: React.FC = () => {
         </div>
         </section>
       </main>
+      {refundCandidate && (
+        <Modal
+          isOpen
+          title="Confirmar estorno"
+          size="sm"
+          closeOnBackdrop={!isRefundSubmitting}
+          closeOnEscape={!isRefundSubmitting}
+          onClose={() => {
+            if (!isRefundSubmitting) setRefundCandidate(null);
+          }}
+          footer={(
+            <>
+              <Button
+                type="button"
+                variant="dangerSoft"
+                size="sm"
+                disabled={isRefundSubmitting}
+                onClick={() => setRefundCandidate(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                isLoading={isRefundSubmitting}
+                disabled={isRefundSubmitting}
+                onClick={() => { void handleConfirmRefund(); }}
+              >
+                Confirmar estorno
+              </Button>
+            </>
+          )}
+        >
+          <div className="space-y-4 text-left">
+            <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" aria-hidden="true" />
+              <p className="text-sm font-semibold">
+                {isProductionEnvironment
+                  ? 'Este estorno será solicitado ao Mercado Pago e devolverá o valor ao pagador.'
+                  : 'Este estorno será processado no ambiente de teste do Mercado Pago.'}
+              </p>
+            </div>
+            <dl className="space-y-2 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4 text-sm">
+              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Reserva</dt><dd className="font-mono font-bold text-[var(--mazzi-text)]">{refundCandidate.id.slice(0, 8)}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Aluno</dt><dd className="font-semibold text-right text-[var(--mazzi-text)]">{refundCandidate.studentName || 'Aluno não identificado'}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Aula</dt><dd className="font-semibold text-right text-[var(--mazzi-text)]">{formatDateBR(refundCandidate.scheduledStartAt)} às {formatTimeBR(refundCandidate.scheduledStartAt)}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="flex items-center gap-1.5 text-slate-500"><CreditCard className="h-3.5 w-3.5" aria-hidden="true" />Meio</dt><dd className="font-semibold text-[var(--mazzi-text)]">Mercado Pago</dd></div>
+              <div className="flex items-center justify-between gap-3 border-t border-[var(--mazzi-border)] pt-2"><dt className="font-bold text-[var(--mazzi-text)]">Valor</dt><dd className="font-mono font-bold text-[var(--mazzi-text)]">{formatCentsToBRL(refundCandidate.totalInCents)}</dd></div>
+            </dl>
+            <p className="text-xs leading-relaxed text-slate-500">A operação não deve ser repetida. Confirme somente depois de revisar os dados acima.</p>
+          </div>
+        </Modal>
+      )}
       <ToastContainer toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))} />
     </div>
   );

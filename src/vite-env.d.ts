@@ -1,4 +1,6 @@
 interface ImportMetaEnv {
+  readonly PROD: boolean;
+  readonly VITE_APP_ENV?: string;
   readonly VITE_PAYMENT_GATEWAY_PROVIDER?: string;
   readonly VITE_MERCADOPAGO_PUBLIC_KEY?: string;
   readonly DEV: boolean;

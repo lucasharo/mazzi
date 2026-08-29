@@ -12,7 +12,7 @@ import { Select } from '../../../components/ui/Select';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { VehicleCard } from '../../../components/ui/VehicleCard';
 import { formatCentsToBRL } from '../../../domain/money';
-import { DEFAULT_COMPLIANCE_REQUIREMENTS } from '../../../domain/compliance';
+import { DEFAULT_COMPLIANCE_REQUIREMENTS, evaluateProviderEligibility } from '../../../domain/compliance';
 import { formatTransmissionLabel } from '../../../lib/date-format';
 import { maskVehiclePlate, normalizeVehiclePlate, maskBRLInput } from '../../../lib/input-masks';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
@@ -284,6 +284,19 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
               {offerings.map((o) => {
                 const linkedVehicle = vehicles.find((v) => v.id === o.vehicleId);
                 const linkedInstructor = schoolInstructors.find((instructor) => instructor.userId === o.instructorId);
+                const providerComplianceEligible = isSchool
+                  ? Boolean(o.instructorId && eligibleSchoolInstructors.some((instructor) => instructor.userId === o.instructorId))
+                  : evaluateProviderEligibility(currentProvider, complianceDocs).isEligible;
+                const canActivateOffering = Boolean(
+                  currentProvider.status === 'ACTIVE' &&
+                  linkedVehicle?.status === 'ACTIVE' &&
+                  linkedVehicle.category === o.category &&
+                  linkedVehicle.transmission === o.transmission &&
+                  o.instructorId &&
+                  o.durationMinutes === 50 &&
+                  o.priceInCents > 0 &&
+                  providerComplianceEligible,
+                );
 
                 return (
                   <div
@@ -333,7 +346,8 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                       <Button
                         variant={o.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
                         size="sm"
-                        disabled={o.status !== 'ACTIVE'}
+                        disabled={o.status !== 'ACTIVE' && !canActivateOffering}
+                        title={o.status !== 'ACTIVE' && !canActivateOffering ? 'A oferta só pode ser ativada quando todos os requisitos forem atendidos.' : undefined}
                         onClick={() => onToggleOfferingStatus(o.id)}
                         leftIcon={o.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                       >

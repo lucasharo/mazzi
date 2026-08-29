@@ -79,28 +79,28 @@ export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification
 
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 p-4">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Bell className="w-5 h-5 text-slate-800" />
+      <div className="space-y-3 border-b border-slate-100 p-4">
+        <div className="flex min-w-0 items-start gap-2">
+          <div className="relative mt-0.5 shrink-0">
+            <Bell className="h-5 w-5 text-slate-800" />
             {unreadCount > 0 && (
               <span className="absolute -top-2 -right-2 min-w-4 h-4 rounded-full bg-amber-400 text-[10px] font-black text-slate-950 flex items-center justify-center px-1">
                 {unreadCount}
               </span>
             )}
           </div>
-          <div>
-            <h3 className="font-black text-sm text-slate-900">Notificações</h3>
-            <p className="text-[11px] text-slate-500">Atualizações importantes sobre suas aulas</p>
+          <div className="min-w-0">
+            <h3 className="text-sm font-black text-slate-900">Notificações</h3>
+            <p className="max-w-[22rem] text-[11px] leading-relaxed text-slate-500">Atualizações importantes sobre suas aulas</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap justify-end gap-2">
           {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={markAllAsRead} isLoading={isMarkingAll} leftIcon={<Check className="w-3.5 h-3.5" />}>
+            <Button className="min-w-0 flex-1 sm:flex-none" variant="ghost" size="sm" onClick={markAllAsRead} isLoading={isMarkingAll} leftIcon={<Check className="w-3.5 h-3.5" />}>
               Ler todas
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={loadNotifications} leftIcon={<RefreshCw className="w-3.5 h-3.5" />}>
+          <Button className="min-w-0 flex-1 sm:flex-none" variant="ghost" size="sm" onClick={loadNotifications} leftIcon={<RefreshCw className="w-3.5 h-3.5" />}>
             Atualizar
           </Button>
         </div>
@@ -125,13 +125,13 @@ export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification
           {notifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-4 flex items-start justify-between gap-3 ${
+              className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 p-4 ${
                 notification.isRead ? 'bg-white' : 'bg-amber-50/50'
               }`}
             >
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-black text-sm text-[var(--mazzi-text)] truncate">{notification.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="min-w-0 break-words font-black text-sm text-[var(--mazzi-text)]">{notification.title}</p>
                   {!notification.isRead && <Badge variant="primary">Nova</Badge>}
                 </div>
                 <p className="text-xs text-slate-600 mt-1">{notification.body}</p>

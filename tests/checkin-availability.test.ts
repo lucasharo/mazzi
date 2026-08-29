@@ -5,8 +5,8 @@ const start = '2026-08-27T08:00:00-03:00';
 
 describe('check-in availability window', () => {
   it.each([
-    ['07:29:59', false, 'NOT_OPEN_YET'],
-    ['07:30:00', true, 'AVAILABLE'],
+    ['07:44:59', false, 'NOT_OPEN_YET'],
+    ['07:45:00', true, 'AVAILABLE'],
     ['08:00:00', true, 'AVAILABLE'],
     ['08:50:00', true, 'AVAILABLE'],
     ['12:00:00', true, 'AVAILABLE'],

@@ -62,6 +62,21 @@ body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+/* Mantém a rolagem por toque, roda do mouse e teclado, mas remove a barra
+   visual que ocupa espaço nas telas mobile e nos painéis internos. */
+*,
+*::before,
+*::after {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* Canonical field label shared by Student, PRO, Admin and the Design System. */
 .mazzi-field-label {
   font-size: 10px;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
 import { supabase } from '../../lib/supabase';
@@ -53,7 +53,7 @@ import {
   LessonSession,
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
-import { getStudentBookingSection } from '../../domain/booking';
+import { getBookingStartTimestamp, getStudentBookingSection, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
 import { buildFullDayBlockRange, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
@@ -72,6 +72,7 @@ import { ProviderProfileTab } from './components/ProviderProfileTab';
 import { ProviderCancellationModal } from './components/ProviderCancellationModal';
 import { ProviderBookingDetailsModal } from './components/ProviderBookingDetailsModal';
 import { AlertCircle, Upload, ArrowRight, Info, RefreshCw, LogOut } from 'lucide-react';
+import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
 
 export function canProviderCommerciallyCancelBooking(
   booking: { status: string; providerId: string },
@@ -101,9 +102,13 @@ export function canProviderCommerciallyCancelBooking(
 
 export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
+  const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
   const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'management', 'profile']);
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
+  const [bookingUpdatesCount, setBookingUpdatesCount] = useState(0);
+  const shouldAutoSelectTodayRef = useRef(true);
+  const bookingSnapshotRef = useRef<string | null>(null);
   const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account'>('vehicles');
   const [bookingFilterTab, setBookingFilterTab] = useState<'upcoming' | 'today' | 'history'>('upcoming');
   const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions' | 'simulator'>('rules');
@@ -122,6 +127,13 @@ export const ProviderApp: React.FC = () => {
 
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showProviderFeedback = (type: ToastMessage['type'], title: string, description?: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((current) => [...current, { id, type, title, description }]);
+    window.setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== id)), 5000);
+  };
 
   // Active Provider Selection
   const [activeProviderId, setActiveProviderId] = useState<string>('');
@@ -431,6 +443,21 @@ export const ProviderApp: React.FC = () => {
   }, [user?.providerId]);
 
   useEffect(() => {
+    if (activeTab !== 'bookings') {
+      shouldAutoSelectTodayRef.current = true;
+      return;
+    }
+    if (!shouldAutoSelectTodayRef.current || workspaceLoading) return;
+
+    const hasTodayBooking = bookings.some((booking) =>
+      TODAY_BOOKING_STATUSES.includes(booking.status) && !UNPAID_BOOKING_STATUSES.includes(booking.status) &&
+      isBookingTodayInSaoPaulo(booking),
+    );
+    setBookingFilterTab(hasTodayBooking ? 'today' : 'upcoming');
+    shouldAutoSelectTodayRef.current = false;
+  }, [activeTab, bookings, bookingClockMs, workspaceLoading]);
+
+  useEffect(() => {
     setOfferingForm((previous) => ({ ...previous, instructorId: '' }));
   }, [activeProviderId]);
 
@@ -455,6 +482,81 @@ export const ProviderApp: React.FC = () => {
       setIsSavingPixDestination(false);
     }
   };
+
+  // Qualquer alteração de reserva gera um aviso no botão Aulas enquanto ele
+  // não estiver aberto. O Realtime cobre inserções, atualizações e exclusões.
+  useEffect(() => {
+    if (!isRealSupabase || !user?.id || !activeProviderId) return;
+
+    const channel = supabase.channel(`provider_booking_updates_${user.id}_${activeProviderId}`);
+    const onBookingChange = () => {
+      if (activeTab !== 'bookings') {
+        setBookingUpdatesCount((count) => Math.min(count + 1, 99));
+      }
+      void refreshCurrentTab();
+    };
+
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'bookings', filter: `instructor_id=eq.${user.id}` },
+      onBookingChange,
+    );
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'bookings', filter: `provider_id=eq.${activeProviderId}` },
+      onBookingChange,
+    );
+    void channel.subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [activeProviderId, activeTab, isRealSupabase, user?.id]);
+
+  // Fallback para ambientes em que a publicação do Realtime ainda não foi
+  // atualizada: detecta qualquer alteração na lista enquanto outra tela está aberta.
+  useEffect(() => {
+    const snapshot = JSON.stringify(
+      [...bookings]
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map((booking) => ({
+          id: booking.id,
+          status: booking.status,
+          updatedAt: booking.updatedAt,
+          scheduledStartAt: booking.scheduledStartAt,
+          scheduledEndAt: booking.scheduledEndAt,
+          checkinStudentAt: booking.checkinStudentAt,
+          checkinInstructorAt: booking.checkinInstructorAt,
+          lessonStartedAt: booking.lessonStartedAt,
+          completedAt: booking.completedAt,
+        })),
+    );
+    if (bookingSnapshotRef.current !== null && bookingSnapshotRef.current !== snapshot && activeTab !== 'bookings') {
+      setBookingUpdatesCount((count) => Math.min(count + 1, 99));
+    }
+    bookingSnapshotRef.current = snapshot;
+  }, [activeTab, bookings]);
+
+  useEffect(() => {
+    if (!isRealSupabase || !user?.id || !activeProviderId || activeTab === 'bookings') return;
+
+    const refreshBookings = async () => {
+      try {
+        const refreshedBookings = user.role === 'INSTRUCTOR' || user.roles?.includes('INSTRUCTOR')
+          ? await dbService.getMyUnifiedInstructorBookings()
+          : await dbService.getBookings();
+        setBookings(refreshedBookings || []);
+      } catch {
+        // O Realtime continua sendo a fonte principal; falha de polling não interrompe a tela.
+      }
+    };
+    const timer = window.setInterval(() => void refreshBookings(), 15000);
+    return () => window.clearInterval(timer);
+  }, [activeProviderId, activeTab, isRealSupabase, user]);
+
+  useEffect(() => {
+    if (activeTab === 'bookings') setBookingUpdatesCount(0);
+  }, [activeTab]);
 
   const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
 
@@ -518,10 +620,9 @@ export const ProviderApp: React.FC = () => {
   // Filter Bookings & Calculate Metrics using Canonical Timezone (America/Sao_Paulo)
   const todayStr = getTodayInSaoPaulo();
 
-  const todayBookings = bookings.filter((b) => isBookingTodayInSaoPaulo(b));
+  const todayBookings = sortBookingsForToday(bookings.filter((b) => TODAY_BOOKING_STATUSES.includes(b.status) && !UNPAID_BOOKING_STATUSES.includes(b.status) && isBookingTodayInSaoPaulo(b)), bookingClockMs);
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS');
   const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
-  const pendingPaymentBookings = bookings.filter((b) => b.status === 'PENDING_PAYMENT');
 
   const nextBooking = bookings.find((b) => {
     if (b.status !== 'CONFIRMED' && b.status !== 'IN_PROGRESS') return false;
@@ -529,25 +630,29 @@ export const ProviderApp: React.FC = () => {
   }) || null;
 
   const filteredBookings = bookings.filter((b) => {
+    if (UNPAID_BOOKING_STATUSES.includes(b.status)) return false;
     const ended = isLessonEnded(b, new Date(bookingClockMs));
 
     if (bookingFilterTab === 'today') {
       return (
-        (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'PENDING_PAYMENT') &&
-        !ended &&
+        TODAY_BOOKING_STATUSES.includes(b.status) &&
         isBookingTodayInSaoPaulo(b)
       );
     }
     if (bookingFilterTab === 'upcoming') {
       if (ended || b.status === 'EXPIRED') return false;
-      if (isBookingTodayInSaoPaulo(b)) return false;
-      return b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'PENDING_PAYMENT';
+      return b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS';
     }
     if (bookingFilterTab === 'history') {
       return getStudentBookingSection(b.status, b) === 'HISTORY' || ended;
     }
     return false;
   });
+  const orderedFilteredBookings = bookingFilterTab === 'today'
+    ? sortBookingsForToday(filteredBookings, bookingClockMs)
+    : bookingFilterTab === 'history'
+      ? [...filteredBookings].sort((a, b) => getBookingStartTimestamp(b) - getBookingStartTimestamp(a))
+      : filteredBookings;
 
   const getOrCreateSession = (b: Booking): LessonSession => {
     if (lessonSessions[b.id]) return lessonSessions[b.id];
@@ -773,7 +878,7 @@ export const ProviderApp: React.FC = () => {
       await dbService.deleteAvailabilityRule(ruleId);
       setAvailabilityRules((prev) => prev.filter((r) => r.id !== ruleId));
     } catch (err: any) {
-      alert(err.message || 'Ação não autorizada.');
+      showProviderFeedback('error', 'Não foi possível excluir a regra', mapFriendlyErrorMessage(err, 'Ação não autorizada.'));
     }
   };
 
@@ -851,7 +956,7 @@ export const ProviderApp: React.FC = () => {
       await dbService.deleteAvailabilityException(exceptionId);
       setAvailabilityExceptions((prev) => prev.filter((e) => e.id !== exceptionId));
     } catch (err: any) {
-      alert(mapFriendlyErrorMessage(err, 'Ação não autorizada.'));
+      showProviderFeedback('error', 'Não foi possível excluir o bloqueio', mapFriendlyErrorMessage(err, 'Ação não autorizada.'));
     }
   };
 
@@ -860,7 +965,7 @@ export const ProviderApp: React.FC = () => {
       await dbService.deactivateAvailabilityException(exceptionId);
       setAvailabilityExceptions((prev) => prev.map((exception) => exception.id === exceptionId ? { ...exception, isActive: false } : exception));
     } catch (err: any) {
-      alert(mapFriendlyErrorMessage(err, 'Não foi possível desativar o bloqueio.'));
+      showProviderFeedback('error', 'Não foi possível desativar o bloqueio', mapFriendlyErrorMessage(err, 'Tente novamente em instantes.'));
     }
   };
 
@@ -873,7 +978,7 @@ export const ProviderApp: React.FC = () => {
       await dbService.activateAvailabilityException(exceptionId);
       setAvailabilityExceptions((prev) => prev.map((exception) => exception.id === exceptionId ? { ...exception, isActive: true } : exception));
     } catch (err: any) {
-      alert(mapFriendlyErrorMessage(err, 'Não foi possível ativar o bloqueio.'));
+      showProviderFeedback('error', 'Não foi possível ativar o bloqueio', mapFriendlyErrorMessage(err, 'Tente novamente em instantes.'));
     }
   };
 
@@ -975,6 +1080,11 @@ export const ProviderApp: React.FC = () => {
         ? await dbService.activateVehicle(vehicleId)
         : (() => { throw new Error('A reativação do veículo depende de nova aprovação administrativa.'); })();
       setVehicles((prev) => prev.map((vehicle) => (vehicle.id === vehicleId ? savedVehicle : vehicle)));
+      if (targetVehicle.status === 'ACTIVE' && savedVehicle.status !== 'ACTIVE') {
+        setOfferings((prev) => prev.map((offering) =>
+          offering.vehicleId === vehicleId ? { ...offering, status: 'INACTIVE' } : offering,
+        ));
+      }
     } catch (err: any) {
       setVehicleError(mapFriendlyErrorMessage(err, 'Ação de ativação do veículo não permitida.'));
     }
@@ -1382,7 +1492,7 @@ status: 'IN_REVIEW',
           <ProviderBookingsTab
             bookingFilterTab={bookingFilterTab}
             onFilterTabChange={setBookingFilterTab}
-            filteredBookings={filteredBookings}
+            filteredBookings={orderedFilteredBookings}
             actionSuccessMessage={bookingActionSuccess}
             actionErrorMessage={bookingActionError}
             onSelectBooking={setSelectedBooking}
@@ -1496,7 +1606,8 @@ status: 'IN_REVIEW',
       <ProviderBottomNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        pendingBookingsCount={pendingPaymentBookings.length}
+        bookingUpdatesCount={bookingUpdatesCount}
+        showManagementAlert={!offerings.some((offering) => offering.status === 'ACTIVE') || !pixDestination}
       />
 
       {/* MODALS */}
@@ -1637,6 +1748,7 @@ status: 'IN_REVIEW',
           </div>
         </Modal>
       )}
+      <ToastContainer toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))} />
     </div>
   );
 };

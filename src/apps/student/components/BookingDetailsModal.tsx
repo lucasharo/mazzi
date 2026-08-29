@@ -8,6 +8,7 @@ import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
 import { formatCentsToBRL } from '../../../domain/money';
 import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
+import { UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { dbService } from '../../../lib/db-service';
 import { calculateCancellationPolicy } from '../../../domain/cancellation';
@@ -101,7 +102,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const isUpcoming = (booking.status === 'CONFIRMED' || (isPendingPayment && isHoldValid)) && !isExpired && !isLessonEnded;
   const isCancelled = booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER';
   const isCompleted = booking.status === 'COMPLETED';
-  const canOpenChat = !isExpired && booking.status !== 'PAYMENT_FAILED';
+  const isPaymentNotCompleted = UNPAID_BOOKING_STATUSES.includes(booking.status);
+  const canOpenChat = !isPaymentNotCompleted;
+  const shouldShowFooter = !isPaymentNotCompleted || (isPendingPayment && isHoldValid);
   const checkInAvailability = getCheckInAvailability({
     scheduledStartAt: booking.scheduledStartAt,
     status: booking.status,
@@ -186,7 +189,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             type="button"
             variant="primary"
             size="sm"
-            className={`${onOpenChat && canOpenChat ? 'w-1/2' : 'w-full'} rounded-2xl font-bold shadow-md transition-all hover:shadow-lg`}
+            className={`${onOpenChat && canOpenChat ? 'w-1/2' : 'w-full'} order-2 rounded-2xl font-bold shadow-md transition-all hover:shadow-lg`}
             onClick={() => onReview(booking)}
             leftIcon={<Star className="h-4 w-4" aria-hidden="true" />}
             aria-label="Avaliar instrutor"
@@ -200,7 +203,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             type="button"
             variant="outline"
             size="sm"
-            className={`${isUpcoming || (isCompleted && onReview) ? 'w-1/2' : 'w-full'} rounded-2xl border-slate-200 bg-white font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md`}
+            className={`${isUpcoming || (isCompleted && onReview) ? 'w-1/2' : 'w-full'} order-1 rounded-2xl border-slate-200 bg-white font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md`}
             onClick={() => onOpenChat(booking)}
             leftIcon={<MessageSquare className="h-4 w-4 text-slate-600" aria-hidden="true" />}
             aria-label="Abrir conversa no chat sobre esta reserva"
@@ -236,7 +239,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       }}
       title={isConfirmingCancel ? 'Cancelar Agendamento' : 'Detalhes da Reserva'}
       size="md"
-      footer={footerContent}
+      footer={shouldShowFooter ? footerContent : undefined}
     >
       {isConfirmingCancel ? (
         /* CANCELLATION CONFIRMATION VIEW (DEC-013) */

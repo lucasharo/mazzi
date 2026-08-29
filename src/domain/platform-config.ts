@@ -22,12 +22,12 @@ export interface PlatformConfiguration {
   quoteExpirationMinutes: number; // Default: 10
   availabilityHorizonDays: number; // Default: 30
   minimumBookingNoticeHours: number; // Default: 2
-  platformFeeDefaultPercentage: number; // Default: 10
+  platformFeeDefaultPercentage: number; // Default: 1
   mercadoPagoFeePercentage: number; // Default: 5, used only by Admin payout calculations
   maxTotalFeePercentage: number; // Default: 10, MAZZI + gateway cap
   payoutSafetyPeriodHours: number; // Default: 24
   searchRadiusDefaultsKm: number; // Default: 15
-  checkInWindowBeforeMinutes: number; // Default: 30
+  checkInWindowBeforeMinutes: number; // Default: 15
   checkInWindowAfterMinutes: number; // Default: 60
   updatedAt: string;
   updatedBy?: string;
@@ -38,12 +38,12 @@ export const DEFAULT_PLATFORM_CONFIGURATION: PlatformConfiguration = {
   quoteExpirationMinutes: 10,
   availabilityHorizonDays: 30,
   minimumBookingNoticeHours: 2,
-  platformFeeDefaultPercentage: 10,
+  platformFeeDefaultPercentage: 1,
   mercadoPagoFeePercentage: 5,
   maxTotalFeePercentage: 10,
   payoutSafetyPeriodHours: 24,
   searchRadiusDefaultsKm: 15,
-  checkInWindowBeforeMinutes: 30,
+  checkInWindowBeforeMinutes: 15,
   checkInWindowAfterMinutes: 60,
   updatedAt: '2026-08-15T00:00:00.000Z',
   updatedBy: 'system_initializer',
@@ -128,6 +128,17 @@ export function updatePlatformConfiguration(params: UpdatePlatformConfigParams):
     throw new PlatformConfigDomainError(
       'INVALID_PAYOUT_SAFETY_PERIOD',
       'O período de segurança de repasse não pode ser negativo.',
+      400
+    );
+  }
+
+  if (
+    updates.checkInWindowBeforeMinutes !== undefined &&
+    (updates.checkInWindowBeforeMinutes < 1 || updates.checkInWindowBeforeMinutes > 60)
+  ) {
+    throw new PlatformConfigDomainError(
+      'INVALID_CHECKIN_WINDOW',
+      'A abertura do check-in deve estar entre 1 e 60 minutos antes da aula.',
       400
     );
   }

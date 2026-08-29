@@ -28,9 +28,11 @@ function gatewayFeeInCents(result) {
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers });
   if (request.method !== "POST") return reply(405, { message: "Método não permitido." });
-  if (Deno.env.get("MERCADOPAGO_ENVIRONMENT") !== "test") {
-    return reply(503, { message: "O pagamento Pix de teste não está habilitado neste ambiente." });
+  const environment = (Deno.env.get("MERCADOPAGO_ENVIRONMENT") || "").trim().toLowerCase();
+  if (!["test", "production"].includes(environment)) {
+    return reply(503, { message: "O ambiente do Mercado Pago não está configurado corretamente." });
   }
+  const gatewayProvider = environment === "production" ? "mercadopago_production" : "mercadopago_test";
 
   const bearer = request.headers.get("Authorization") || "";
   const accessTokenHeader = bearer.replace(/^Bearer\s+/i, "");
@@ -175,7 +177,7 @@ Deno.serve(async (request) => {
     gateway_fee_in_cents: feeCents,
   };
   const { error: persistError } = await service.from("payments").update({
-    gateway_provider: "mercadopago_test",
+    gateway_provider: gatewayProvider,
     external_transaction_id: String(result.id),
     pix_qr_code: pixQrCode,
     pix_qr_code_base64: pixQrCodeBase64,

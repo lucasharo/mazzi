@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
 import React from 'react';
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mercadoPagoSdk = vi.hoisted(() => ({
   init: vi.fn(),
   cardPaymentProps: [] as Array<Record<string, unknown>>,
   renderEmailInput: false,
+  renderValidationMessage: false,
 }));
 
 vi.mock('@mercadopago/sdk-react', () => ({
@@ -17,6 +18,11 @@ vi.mock('@mercadopago/sdk-react', () => ({
       <div>
         <label>E-mail</label>
         <input type="email" defaultValue="aluno@teste.com" />
+      </div>
+    ) : mercadoPagoSdk.renderValidationMessage ? (
+      <div>
+        <input aria-invalid="true" />
+        <span>CARACTERES DE DATA INVÁLIDOS</span>
       </div>
     ) : null;
   },
@@ -33,6 +39,7 @@ afterEach(() => {
   mercadoPagoSdk.init.mockReset();
   mercadoPagoSdk.cardPaymentProps.length = 0;
   mercadoPagoSdk.renderEmailInput = false;
+  mercadoPagoSdk.renderValidationMessage = false;
 });
 
 describe('checkout de cartão do Mercado Pago', () => {
@@ -139,6 +146,24 @@ describe('checkout de cartão do Mercado Pago', () => {
     await act(async () => {});
 
     expect(document.querySelector('input[type="email"]')?.parentElement?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('oculta mensagens textuais de validação e preserva a indicação de campo inválido', async () => {
+    mercadoPagoSdk.renderValidationMessage = true;
+    render(
+      <MercadoPagoCardCheckout
+        amountInCents={13000}
+        isProcessing={false}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await act(async () => {});
+
+    const message = screen.getByText('CARACTERES DE DATA INVÁLIDOS', { exact: true });
+    expect(message.style.display).toBe('none');
+    expect(message.getAttribute('aria-hidden')).toBe('true');
+    expect(document.querySelector('input[aria-invalid="true"]')).not.toBeNull();
   });
 
   it('encaminha o nome do titular recebido como dado adicional do Brick', async () => {

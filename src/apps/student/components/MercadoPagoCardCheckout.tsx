@@ -26,6 +26,7 @@ interface Props {
 
 export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProcessing, payerEmail, onSubmit }) => {
   const publicKey = getMercadoPagoTestPublicKey();
+  const isProductionEnvironment = Boolean(import.meta.env.PROD && import.meta.env.VITE_APP_ENV !== 'development');
   const [isReady, setIsReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const cardPaymentContainerRef = useRef<HTMLDivElement>(null);
@@ -105,7 +106,6 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
   }, []);
 
   useEffect(() => {
-    if (!normalizedPayerEmail) return;
     const container = cardPaymentContainerRef.current;
     if (!container) return;
 
@@ -122,8 +122,36 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
       emailField?.setAttribute('hidden', '');
     };
 
+    // O Brick exibe textos técnicos em linha durante a validação de campos.
+    // Mantemos a indicação visual/semântica do campo e removemos somente a
+    // mensagem textual repetitiva, que quebra o layout compacto do aplicativo.
+    const hideValidationMessages = () => {
+      const elements = Array.from(container.querySelectorAll('*')) as HTMLElement[];
+      elements.forEach((element) => {
+        const text = element.textContent?.replace(/\s+/g, ' ').trim() || '';
+        const normalizedText = text.toLocaleUpperCase('pt-BR');
+        const isShortText = text.length > 0 && text.length <= 100;
+        const isValidationMessage = isShortText && (
+          normalizedText === 'DADO OBRIGATÓRIO'
+          || normalizedText.includes('INVÁLID')
+          || normalizedText.includes('CARACTERES DE DATA')
+          || normalizedText.includes('CAMPO OBRIGATÓRIO')
+          || normalizedText.includes('PREENCHA')
+        );
+        const containsControl = Boolean(element.querySelector('input, select, textarea, button'));
+        if (isValidationMessage && !containsControl) {
+          element.style.display = 'none';
+          element.setAttribute('aria-hidden', 'true');
+        }
+      });
+    };
+
     hidePayerEmail();
-    const observer = new MutationObserver(hidePayerEmail);
+    hideValidationMessages();
+    const observer = new MutationObserver(() => {
+      hidePayerEmail();
+      hideValidationMessages();
+    });
     observer.observe(container, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [normalizedPayerEmail]);
@@ -155,10 +183,10 @@ export const MercadoPagoCardCheckout: React.FC<Props> = ({ amountInCents, isProc
 
   return (
     <div className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 sm:p-4">
-      <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-[var(--mazzi-text)]">
+      {!isProductionEnvironment && <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-[var(--mazzi-text)]">
         <ShieldCheck className="h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
         <span>Ambiente de teste — use um cartão de teste e APRO como nome do titular.</span>
-      </div>
+      </div>}
       {!isReady && !sdkError && <p role="status" className="py-4 text-center text-sm text-[var(--mazzi-text)]">Carregando pagamento seguro…</p>}
       {sdkError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{sdkError}</p>}
       <div

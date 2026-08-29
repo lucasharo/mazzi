@@ -1,9 +1,10 @@
 ## FASE ATUAL DO PROJETO (MVP VALIDATION MODE)
 - **Modo de Pagamento**: alternável em DEV entre `fake` (padrão) e `mercadopago` por `VITE_PAYMENT_GATEWAY_PROVIDER`.
-- **Dinheiro Real**: NÃO (Nenhum valor financeiro real é cobrado ou enviado para rede externa).
-- **Mercado Pago em DEV**: habilitado somente para homologação com Card Payment Brick ou Pix, credenciais de teste e `MERCADOPAGO_ENVIRONMENT=test`.
+- **Dinheiro Real**: somente quando `MERCADOPAGO_ENVIRONMENT=production` estiver explicitamente configurado nos secrets do Supabase.
+- **Mercado Pago**: o ambiente é selecionado server-side por `MERCADOPAGO_ENVIRONMENT=test|production`; a credencial usada deve corresponder ao ambiente selecionado.
+- **Estorno Mercado Pago em DEV**: a solicitação real pelo sandbox é feita exclusivamente pela Edge Function autenticada do Admin, com chave de idempotência determinística; o gateway fake continua usando a simulação local.
 - **Segurança & Idempotência**: O fluxo usa `fake_payment_gateway` com chave de idempotência `idem_pay_<booking_id>` e verificação transacional no banco PostgreSQL (`confirm_booking_payment` RPC).
-- **Produção Futura (Pagamentos Reais)**: continua desabilitada. Webhooks assinados permanecem obrigatórios antes de uma futura ativação produtiva para reconciliação e eventos posteriores.
+- **Produção**: pagamentos reais exigem credenciais produtivas protegidas nos secrets do Supabase e webhook assinado para reconciliação.
 
 ## Direção de seleção do gateway
 
@@ -30,6 +31,14 @@ O ambiente DEV pode executar chamadas com credenciais de teste. Não há autoriz
 - O PRO cadastra sua chave Pix no próprio app. O Admin vê repasses somente de reservas pagas e concluídas e registra o repasse manual com referência.
 - Split automático, OAuth e transferência Pix automática continuam fora desta entrega.
 
+## Estorno real no sandbox
+
+- O Admin pode solicitar um estorno integral de um pagamento Mercado Pago pela Edge Function `process-mercadopago-refund`.
+- A função valida sessão, permissão `PLATFORM_ADMIN`, estado do pagamento e identificador externo antes de chamar `POST /v1/payments/{payment_id}/refunds`.
+- O `X-Idempotency-Key` é derivado do pagamento e do valor restante, evitando uma segunda devolução em retries.
+- O lançamento contábil local usa `process_booking_refund` somente após confirmação do Mercado Pago; respostas assíncronas permanecem pendentes e são reconciliadas pelo webhook.
+- A função e a migration precisam ser publicadas no projeto DEV antes de o botão operar contra o sandbox. Nenhuma credencial privada é enviada ao frontend.
+
 ## Mercado Pago Marketplace / Split 1:1 (futuro)
 
 Este cenário permanece apenas como referência para uma fase posterior. A implementação atual não usa OAuth, split automático nem transferência Pix automática.
@@ -49,7 +58,7 @@ O fluxo correto para split 1:1 é:
 5. A comissão da MAZZI é enviada na cobrança como taxa de marketplace (`marketplace_fee`), calculada em centavos a partir de `platform_fee_in_cents`.
 6. O Mercado Pago liquida a parte do vendedor e a parte da MAZZI conforme a configuração da cobrança e as regras da conta de teste.
 
-Enquanto `MERCADOPAGO_ENVIRONMENT=test`, somente contas e cartões de teste podem ser usados. Credenciais produtivas seguem proibidas neste ambiente.
+Enquanto `MERCADOPAGO_ENVIRONMENT=test`, somente contas e cartões de teste podem ser usados. Com `production`, a cobrança e o estorno são reais.
 
 ## Interface Abstrata: `PaymentGateway`
 O domínio MAZZI é completamente desacoplado de provedores específicos (como Asaas, Pagar.me, Stripe ou Mercado Pago).

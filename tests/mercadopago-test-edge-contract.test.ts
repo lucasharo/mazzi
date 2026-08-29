@@ -7,10 +7,11 @@ const source = fs.readFileSync(
   'utf8'
 );
 
-describe('contrato seguro do pagamento Mercado Pago em DEV', () => {
-  it('exige ambiente de teste, autenticação e idempotência', () => {
+describe('contrato seguro do pagamento Mercado Pago', () => {
+  it('exige ambiente explícito, autenticação e idempotência', () => {
     expect(source).toContain('MERCADOPAGO_ENVIRONMENT')
-    expect(source).toContain('!== "test"')
+    expect(source).toContain('["test", "production"].includes(environment)')
+    expect(source).toContain('mercadopago_production')
     expect(source).toContain('auth.getUser(token)')
     expect(source).toContain('X-Idempotency-Key')
   });

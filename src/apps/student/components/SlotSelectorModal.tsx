@@ -246,7 +246,10 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
       size="md"
       footer={footerContent}
     >
-      <div className="space-y-5 text-left" aria-busy={isLoading}>
+      <div
+        className="h-[min(68vh,38rem)] space-y-5 overflow-y-auto pr-1 text-left"
+        aria-busy={isLoading}
+      >
         {/* Scrollable Body Content */}
         <div className="space-y-5">
           <div>
@@ -259,12 +262,6 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
               <ButtonBase type="button" onClick={() => void fetchSlots(windowDays, true)} className="underline flex items-center gap-1 cursor-pointer font-bold">
                 <RefreshCw className="w-3.5 h-3.5" /> Tentar novamente
               </ButtonBase>
-            </div>
-          )}
-
-          {isLoading && (
-            <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 text-center text-sm font-semibold text-slate-500">
-              Carregando horários disponíveis...
             </div>
           )}
 

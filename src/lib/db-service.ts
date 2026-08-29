@@ -1119,6 +1119,18 @@ export const dbService = {
     return data;
   },
 
+  async processMercadoPagoRefund(bookingId: string, reason?: string): Promise<any> {
+    if (!isUuid(bookingId)) throw new Error('REFUND_INVALID_BOOKING_UUID');
+    const { data, error } = await sp.functions.invoke('process-mercadopago-refund', {
+      body: {
+        bookingId,
+        reason: reason || 'ADMIN_MERCADOPAGO_REFUND',
+      },
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async getMyPaymentStatus(paymentId: string): Promise<any> {
     const { data, error } = await sp.rpc('get_my_payment_status', { p_payment_id: paymentId });
     if (error) throw error;
@@ -1635,6 +1647,8 @@ export const dbService = {
       updates.quoteExpirationMinutes = Number(value.expiration_minutes);
     } else if (key === 'scheduling_settings' && value?.max_booking_horizon_days !== undefined) {
       updates.availabilityHorizonDays = Number(value.max_booking_horizon_days);
+    } else if (key === 'platform_operations' && value?.checkin_window_before_minutes !== undefined) {
+      updates.checkInWindowBeforeMinutes = Number(value.checkin_window_before_minutes);
     } else {
       throw new Error('Configuração de plataforma não suportada pelo fluxo transacional.');
     }
@@ -1697,6 +1711,19 @@ export const dbService = {
       p_booking_id: params.bookingId,
       p_reason: params.reason || null,
       p_reason_code: params.reasonCode || null,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async cancelPendingBooking(bookingId: string): Promise<{
+    success: boolean;
+    booking_id: string;
+    status: string;
+    cancelled_at?: string;
+  }> {
+    const { data, error } = await sp.rpc('cancel_pending_booking', {
+      p_booking_id: bookingId,
     });
     if (error) throw error;
     return data;

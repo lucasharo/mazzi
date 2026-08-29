@@ -28,9 +28,11 @@ const gatewayFeeInCents = (result: any) => {
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers });
   if (request.method !== "POST") return reply(405, { message: "Método não permitido." });
-  if (Deno.env.get("MERCADOPAGO_ENVIRONMENT") !== "test") {
-    return reply(503, { message: "O pagamento de teste não está habilitado neste ambiente." });
+  const environment = (Deno.env.get("MERCADOPAGO_ENVIRONMENT") || "").trim().toLowerCase();
+  if (!["test", "production"].includes(environment)) {
+    return reply(503, { message: "O ambiente do Mercado Pago não está configurado corretamente." });
   }
+  const gatewayProvider = environment === "production" ? "mercadopago_production" : "mercadopago_test";
 
   const authorization = request.headers.get("Authorization") || "";
   const token = authorization.replace(/^Bearer\s+/i, "");
@@ -173,7 +175,7 @@ Deno.serve(async (request) => {
   if (!isApproved) {
     await service.from("payments").update({
       status: "FAILED",
-      gateway_provider: "mercadopago_test",
+      gateway_provider: gatewayProvider,
       metadata: { mercado_pago_status: result.status || "rejected", mercado_pago_status_detail: result.status_detail || null },
       updated_at: new Date().toISOString(),
     }).eq("id", payment.id);
@@ -187,7 +189,7 @@ Deno.serve(async (request) => {
 
   const { error: methodUpdateError } = await service.from("payments").update({
     method: "CREDIT_CARD",
-    gateway_provider: "mercadopago_test",
+    gateway_provider: gatewayProvider,
     gateway_fee_in_cents: gatewayFeeInCents(result),
     updated_at: new Date().toISOString(),
   }).eq("id", payment.id).eq("status", "PENDING");

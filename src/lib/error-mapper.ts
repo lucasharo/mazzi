@@ -32,6 +32,14 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
   if (msg.includes('STUDENT_CHECKIN_REQUIRED')) {
     return 'O aluno precisa realizar o check-in antes do início da aula.';
   }
+
+  if (msg.includes('STUDENT_ALREADY_HAS_IN_PROGRESS_LESSON')) {
+    return 'Este aluno já possui uma aula em andamento. Conclua essa aula antes de iniciar outra.';
+  }
+
+  if (msg.includes('INSTRUCTOR_ALREADY_HAS_IN_PROGRESS_LESSON')) {
+    return 'Você já possui uma aula em andamento. Conclua essa aula antes de iniciar outra.';
+  }
   if (msg.includes('CHECKIN_REQUIRED')) {
     return 'Faça o check-in antes de iniciar a aula.';
   }

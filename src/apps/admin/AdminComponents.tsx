@@ -1270,7 +1270,8 @@ const [filterStatus, setFilterStatus] = useState<string>('AWAITING_REVIEW');
 export const BookingsTab: React.FC<{
   bookings: Booking[];
   auditLogs: AuditLog[];
-}> = ({ bookings, auditLogs }) => {
+  platformFeePercentage: number;
+}> = ({ bookings, auditLogs, platformFeePercentage }) => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedBookId, setSelectedBookId] = useState<string>('');
@@ -1388,10 +1389,10 @@ export const BookingsTab: React.FC<{
               <div className="text-xs space-y-1">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Valor Líquido do Prestador:</span>
-                  <span className="font-medium font-mono">{formatCentsToBRL(selectedBook.priceInCents)}</span>
+                  <span className="font-medium font-mono">{formatCentsToBRL(selectedBook.totalInCents - selectedBook.platformFeeInCents)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Taxa da Plataforma (10%):</span>
+                  <span className="text-slate-500">Taxa da Plataforma ({platformFeePercentage}%):</span>
                   <span className="font-medium font-mono text-amber-700">+{formatCentsToBRL(selectedBook.platformFeeInCents)}</span>
                 </div>
                 <div className="flex justify-between border-t border-slate-200 pt-1.5 font-bold">
@@ -1483,9 +1484,12 @@ export const FinancialTab: React.FC<{
   auditLogs: AuditLog[];
   actor: AuthContext;
   onProcessRefund: (booking: Booking) => void;
+  isMercadoPagoGateway: boolean;
+  isProductionEnvironment?: boolean;
+  platformFeePercentage: number;
   payouts: Payout[];
   onMarkManualPayout: (payout: Payout, transferReference: string) => void;
-}> = ({ bookings, auditLogs, actor, onProcessRefund, payouts, onMarkManualPayout }) => {
+}> = ({ bookings, auditLogs, actor, onProcessRefund, isMercadoPagoGateway, isProductionEnvironment = false, platformFeePercentage, payouts, onMarkManualPayout }) => {
   const [activeSubTab, setActiveSubTab] = useState<'payouts' | 'ledger'>('ledger');
   const [selectedBookingId, setSelectedBookingId] = useState<string>('');
   const [transferReferences, setTransferReferences] = useState<Record<string, string>>({});
@@ -1593,7 +1597,7 @@ export const FinancialTab: React.FC<{
                     <th className="p-3">Aluno</th>
                     <th className="p-3">Prestador</th>
                     <th className="p-3">Valor Líquido</th>
-                    <th className="p-3">Taxa (10%)</th>
+                    <th className="p-3">Taxa ({platformFeePercentage}%)</th>
                     <th className="p-3">Total Transacionado</th>
                     <th className="p-3">Status</th>
                   </tr>
@@ -1608,7 +1612,7 @@ export const FinancialTab: React.FC<{
                       <td className="p-3 font-medium text-slate-700">{t.id.slice(0, 8)}</td>
                       <td className="p-3 font-semibold">{t.studentName || 'Aluno não identificado'}</td>
                       <td className="p-3 font-medium">{t.providerName}</td>
-                      <td className="p-3 font-mono">{formatCentsToBRL(t.priceInCents)}</td>
+                      <td className="p-3 font-mono">{formatCentsToBRL(t.totalInCents - t.platformFeeInCents)}</td>
                       <td className="p-3 font-mono text-slate-500">+{formatCentsToBRL(t.platformFeeInCents)}</td>
                       <td className="p-3 font-mono font-bold">{formatCentsToBRL(t.totalInCents)}</td>
                       <td className="p-3">
@@ -1636,10 +1640,12 @@ export const FinancialTab: React.FC<{
                   <p className="text-slate-500">Total Transacionado: <strong className="font-mono text-slate-950">{formatCentsToBRL(selectedBooking.totalInCents)}</strong></p>
                 </div>
 
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 leading-relaxed font-medium">
-                  <strong>Ação em ambiente de teste</strong>
+                <div className={`p-3 rounded-2xl leading-relaxed font-medium ${isMercadoPagoGateway ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-amber-50 border border-amber-200 text-amber-800'}`}>
+                  <strong>{isMercadoPagoGateway ? 'Estorno pelo Mercado Pago' : 'Ação em ambiente de teste'}</strong>
                   <p className="mt-1">
-                    Esta ação simula um estorno e registra a movimentação para conferência, sem acionar um gateway de pagamento real.
+                    {isMercadoPagoGateway
+                      ? `O estorno será solicitado ao Mercado Pago ${isProductionEnvironment ? 'e devolvido ao pagador.' : 'no ambiente de teste e devolvido ao comprador de teste.'}`
+                      : 'Esta ação simula um estorno e registra a movimentação para conferência, sem acionar um gateway de pagamento real.'}
                   </p>
                 </div>
 
@@ -1652,7 +1658,7 @@ export const FinancialTab: React.FC<{
                     className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold"
                     onClick={() => handleRefund(selectedBooking)}
                   >
-                    Simular estorno
+                    {isMercadoPagoGateway ? 'Solicitar estorno' : 'Simular estorno'}
                   </Button>
                 )}
               </div>
@@ -2071,6 +2077,7 @@ export const SettingsTab: React.FC<{
   const [minNotice, setMinNotice] = useState<number | ''>(config.minimumBookingNoticeHours);
   const [safetyPeriod, setSafetyPeriod] = useState<number | ''>(config.payoutSafetyPeriodHours);
   const [radius, setRadius] = useState<number | ''>(config.searchRadiusDefaultsKm);
+  const [checkInWindowBefore, setCheckInWindowBefore] = useState<number | ''>(config.checkInWindowBeforeMinutes);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -2082,11 +2089,12 @@ export const SettingsTab: React.FC<{
     setMinNotice(config.minimumBookingNoticeHours);
     setSafetyPeriod(config.payoutSafetyPeriodHours);
     setRadius(config.searchRadiusDefaultsKm);
+    setCheckInWindowBefore(config.checkInWindowBeforeMinutes);
   }, [config]);
 
   const handleSave = async () => {
     if (!isAuthorized) return;
-    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius].some((value) => value === '')) return;
+    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius, checkInWindowBefore].some((value) => value === '')) return;
     try {
       setIsSaving(true);
       await onUpdateConfig({
@@ -2098,6 +2106,7 @@ export const SettingsTab: React.FC<{
         minimumBookingNoticeHours: minNotice,
         payoutSafetyPeriodHours: safetyPeriod,
         searchRadiusDefaultsKm: radius,
+        checkInWindowBeforeMinutes: checkInWindowBefore,
       });
     } finally {
       setIsSaving(false);
@@ -2222,6 +2231,20 @@ export const SettingsTab: React.FC<{
               className="text-xs"
             />
             <span className="text-[10px] text-slate-400 block">Distância padrão para filtros geolocalizados de aluno.</span>
+          </div>
+
+          <div className="space-y-1">
+            <label className="mazzi-field-label block">Abertura do Check-in (Minutos antes)</label>
+            <Input
+              type="number"
+              min={1}
+              max={60}
+              value={checkInWindowBefore}
+              onChange={(e) => setCheckInWindowBefore(e.target.value === '' ? '' : Number(e.target.value))}
+              disabled={!isAuthorized}
+              className="text-xs"
+            />
+            <span className="text-[10px] text-slate-400 block">Define com quantos minutos de antecedência aluno e prestador podem fazer check-in.</span>
           </div>
         </div>
 

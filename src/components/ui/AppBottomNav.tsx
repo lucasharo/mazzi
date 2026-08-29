@@ -6,6 +6,7 @@ export interface AppBottomNavItem<T extends string> {
   label: string;
   icon: React.ReactNode;
   badge?: number;
+  showBadge?: boolean;
 }
 
 interface AppBottomNavProps<T extends string> {
@@ -29,6 +30,7 @@ export function AppBottomNav<T extends string>({ ariaLabel, activeId, items, onC
     >
       {items.map((item) => {
         const active = item.id === activeId;
+        const hasBadgeValue = Boolean(item.badge && item.badge > 0) && !item.showBadge;
         return (
           <ButtonBase
             key={item.id}
@@ -41,12 +43,14 @@ export function AppBottomNav<T extends string>({ ariaLabel, activeId, items, onC
             <span className="relative grid h-8 w-8 place-items-center rounded-xl" aria-hidden="true">
               {item.icon}
             </span>
-            {!!item.badge && item.badge > 0 && (
+            {(item.showBadge || (!!item.badge && item.badge > 0)) && (
               <span
                 aria-hidden="true"
-                className="absolute -right-1.5 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[var(--mazzi-yellow)] bg-white px-1 text-[10px] font-black leading-none text-[var(--mazzi-dark)] shadow-sm"
+                className={hasBadgeValue
+                  ? 'absolute -right-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--mazzi-yellow)] px-1 text-[10px] font-black leading-none text-[var(--mazzi-dark)] shadow-sm'
+                  : 'absolute right-[calc(50%_-_22px)] top-1.5 z-10 h-3 w-3 rounded-full bg-rose-500 shadow-[0_1px_4px_rgba(244,63,94,0.28)]'}
               >
-                {item.badge > 99 ? '99+' : item.badge}
+                {hasBadgeValue ? (item.badge! > 99 ? '99+' : item.badge) : null}
               </span>
             )}
             {!active && <span className="mt-0.5 text-[10px] font-semibold leading-none">{item.label}</span>}
