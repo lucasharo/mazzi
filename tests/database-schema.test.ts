@@ -69,6 +69,14 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
     expect(sql).toContain('idempotency_key VARCHAR(255) NOT NULL UNIQUE');
   });
 
+  it('[SCHEMA TEST] guarantees payment-attempt status values exist for Pix/card switching', () => {
+    const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260829040000_repair_payment_status_enum.sql');
+    expect(fs.existsSync(migrationPath)).toBe(true);
+    const sql = fs.readFileSync(migrationPath, 'utf8');
+    expect(sql).toContain("ALTER TYPE public.payment_status ADD VALUE IF NOT EXISTS 'PARTIALLY_REFUNDED'");
+    expect(sql).toContain("ALTER TYPE public.payment_status ADD VALUE IF NOT EXISTS 'CANCELLED'");
+  });
+
   it('[SCHEMA TEST] verifies Row Level Security (RLS) is enabled on all tables', () => {
     const sql = fs.readFileSync(migration01Path, 'utf8');
     expect(sql).toContain('ALTER TABLE users ENABLE ROW LEVEL SECURITY');
