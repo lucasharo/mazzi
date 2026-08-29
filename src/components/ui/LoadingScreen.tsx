@@ -17,7 +17,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
         fullscreen ? 'min-h-[100dvh] w-full bg-[#f9c93d]' : 'w-full py-12'
       }`}
     >
-      <div className="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-[1.75rem] shadow-[0_14px_32px_rgba(32,33,38,.14)]">
+      <div className="relative flex h-28 w-28 items-center justify-center">
         <picture>
           <source media="(prefers-reduced-motion: reduce)" srcSet="/brand/mazzi-logo.png" />
           <img

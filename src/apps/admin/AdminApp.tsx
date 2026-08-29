@@ -423,9 +423,15 @@ export const AdminApp: React.FC = () => {
       {/* Brand stays in the upper-left corner; actions live in the workspace. */}
       <aside className="border-b border-[var(--mazzi-border)] bg-white px-4 py-4 sm:px-5 sm:py-5 md:min-h-[100dvh] md:border-b-0 md:border-r md:px-8 md:py-7">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow)] text-xl font-black text-[var(--mazzi-dark)] shadow-xs">
-            M
-          </div>
+          <img
+            src="/brand/mazzi-logo.png"
+            alt=""
+            width="40"
+            height="40"
+            decoding="async"
+            className="h-10 w-10 shrink-0 rounded-2xl object-cover shadow-xs"
+            aria-hidden="true"
+          />
           <div className="text-left">
             <div className="flex items-center gap-2">
               <span className="text-base font-black tracking-tight text-[var(--mazzi-dark)]">MAZZI</span>
