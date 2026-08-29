@@ -5,7 +5,7 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const appTarget = mode === 'student' || mode === 'instructor' || mode === 'admin' ? mode : '';
+  const appTarget = mode === 'student' || mode === 'instructor' || mode === 'admin' || mode === 'landing' ? mode : '';
   const appEntrypoint = appTarget ? `/src/entrypoints/${appTarget}/main.tsx` : '/src/main.tsx';
   const appOutDir = appTarget ? `dist/${appTarget}` : 'dist';
 
@@ -13,7 +13,15 @@ export default defineConfig(({ mode }) => {
     ? (appTarget === 'student' ? '/mazzi-student/' : appTarget === 'instructor' ? '/mazzi-pro/' : appTarget === 'admin' ? '/mazzi-admin/' : '/')
     : '/';
 
-  const appManifest = appTarget === 'student' ? '/manifest.student.webmanifest' : appTarget === 'instructor' ? '/manifest.instructor.webmanifest' : appTarget === 'admin' ? '/manifest.admin.webmanifest' : '/manifest.webmanifest';
+  const appManifest = appTarget === 'student'
+    ? '/manifest.student.webmanifest'
+    : appTarget === 'instructor'
+      ? '/manifest.instructor.webmanifest'
+      : appTarget === 'admin'
+        ? '/manifest.admin.webmanifest'
+        : appTarget === 'landing'
+          ? '/manifest.landing.webmanifest'
+          : '/manifest.webmanifest';
 
   const finalManifest = appManifest && appManifest.startsWith('/')
     ? `${base}${appManifest.slice(1)}`
@@ -56,7 +64,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_DEV_QUICK_LOGIN_ADMIN_PASSWORD': process.env.GITHUB_PAGES_DEPLOY === 'true' ? JSON.stringify('') : JSON.stringify(env.VITE_DEV_QUICK_LOGIN_ADMIN_PASSWORD || ''),
     },
     server: {
-      port: Number(env.VITE_APP_PORT || (appTarget === 'student' ? 3001 : appTarget === 'instructor' ? 3002 : appTarget === 'admin' ? 3003 : 3000)),
+      port: Number(env.VITE_APP_PORT || (appTarget === 'student' ? 3001 : appTarget === 'instructor' ? 3002 : appTarget === 'admin' ? 3003 : appTarget === 'landing' ? 3005 : 3000)),
       strictPort: Boolean(appTarget),
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       hmr: process.env.DISABLE_HMR !== 'true',

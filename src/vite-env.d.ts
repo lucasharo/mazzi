@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly MODE: string;
   readonly VITE_ENABLE_DEV_QUICK_LOGIN?: string;
   readonly VITE_GEOAPIFY_API_KEY?: string;
+  readonly VITE_STUDENT_APP_URL?: string;
+  readonly VITE_PROVIDER_APP_URL?: string;
   readonly VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD?: string;
   readonly VITE_DEV_QUICK_LOGIN_INSTRUCTOR_PASSWORD?: string;
   readonly VITE_DEV_QUICK_LOGIN_SCHOOL_PASSWORD?: string;

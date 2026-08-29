@@ -3,10 +3,10 @@
  */
 
 const basePath = self.location.pathname.substring(0, self.location.pathname.lastIndexOf('/') + 1);
-const CACHE_NAME = 'mazzi-public-assets-v2';
+const CACHE_NAME = 'mazzi-public-assets-v3';
 const APP_SHELL = [
   basePath,
-  basePath + 'manifest.student.webmanifest',
+  basePath + 'manifest.webmanifest',
   basePath + 'brand/mazzi-road-motion.gif',
   basePath + 'brand/pwa/icon-192x192.png'
 ];

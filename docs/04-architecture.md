@@ -53,7 +53,8 @@ O predicado canônico `is_provider_instructor_eligible` é usado pelas RPCs e tr
 ## Publicação e ambientes
 
 - Os apps Aluno, PRO e Admin são compilados separadamente com Vite.
+- A landing page pública é um quarto artefato Vite independente, executado localmente na porta `3005`.
 - O GitHub Actions executa lint, testes e `npm run build:all`.
-- Pushes para `feature/premium-ui-v2` publicam os três artefatos no Cloudflare Pages nos projetos DEV configurados no workflow (`mazzi-aluno-dev`, `mazzi-profissional-dev` e `mazzi-admin-dev`).
+- Pushes para `feature/premium-ui-v2` publicam os quatro artefatos no Cloudflare Pages nos projetos DEV configurados no workflow (`mazzi-aluno-dev`, `mazzi-profissional-dev`, `mazzi-admin-dev` e `mazzi-landing-dev`).
 - O Supabase permanece como backend compartilhado e fonte de verdade para dados, autenticação, RLS, RPCs e Storage privado.
 - Cloudflare Pages é o único destino de deploy do ambiente atual.

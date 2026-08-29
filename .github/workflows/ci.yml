@@ -130,6 +130,7 @@ jobs:
             "mazzi-aluno-dev:dist/student"
             "mazzi-profissional-dev:dist/instructor"
             "mazzi-admin-dev:dist/admin"
+            "mazzi-landing-dev:dist/landing"
           )
 
           deploy_failed=0
