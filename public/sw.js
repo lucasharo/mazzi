@@ -3,11 +3,12 @@
  */
 
 const basePath = self.location.pathname.substring(0, self.location.pathname.lastIndexOf('/') + 1);
-const CACHE_NAME = 'mazzi-public-assets-v1';
+const CACHE_NAME = 'mazzi-public-assets-v2';
 const APP_SHELL = [
   basePath,
   basePath + 'manifest.student.webmanifest',
-  basePath + 'icons/mazzi-icon.svg'
+  basePath + 'brand/mazzi-road-motion.gif',
+  basePath + 'brand/pwa/icon-192x192.png'
 ];
 
 function isPrivateOrDynamicRequest(request) {

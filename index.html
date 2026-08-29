@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MAZZI — Marketplace de Aulas de Direção</title>
     <meta name="description" content="Encontre, reserve e pague aulas práticas de direção em São Paulo." />
-    <meta name="theme-color" content="#fbbf24" />
+    <meta name="theme-color" content="#F9C93D" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" type="image/svg+xml" href="/icons/mazzi-icon.svg" />
+    <link rel="icon" type="image/x-icon" href="/brand/favicon/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/pwa/icon-192x192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="MAZZI" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -17,7 +19,30 @@
     <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="mazzi-initial-splash" role="status" aria-label="Carregando MAZZI">
+        <picture>
+          <source media="(prefers-reduced-motion: reduce)" srcset="/brand/mazzi-logo.png" />
+          <img src="/brand/mazzi-road-motion.gif" alt="" width="128" height="128" fetchpriority="high" />
+        </picture>
+      </div>
+    </div>
+    <style>
+      #mazzi-initial-splash {
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        background: #f9c93d;
+      }
+      #mazzi-initial-splash img {
+        display: block;
+        width: 128px;
+        height: 128px;
+        border-radius: 28px;
+        object-fit: cover;
+        box-shadow: 0 14px 32px rgba(32, 33, 38, .14);
+      }
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
