@@ -825,7 +825,7 @@ function applyStrictProviderFilters(
                   aria-label={`Próxima aula em ${formatDateBR(upcomingBookings[0].scheduledDate)} às ${upcomingBookings[0].startTime}. Toque para ver detalhes.`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-[#8b6800]">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-[0_8px_20px_rgba(246,201,69,0.38)]">
                       <CalendarClock className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <div className="min-w-0">
@@ -1180,10 +1180,10 @@ function applyStrictProviderFilters(
                       {/* 1. Card de Foto de Perfil */}
                       <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 space-y-2.5 shadow-2xs">
                         <div className="flex items-center justify-between pb-2 border-b border-[var(--mazzi-border)]">
-                          <span className="text-xs font-black uppercase tracking-wider text-[var(--mazzi-dark)]">
+                          <span className="mazzi-field-label">
                             Foto de perfil
                           </span>
-                          <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                          <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
                             Identificação
                           </span>
                         </div>
@@ -1210,25 +1210,23 @@ function applyStrictProviderFilters(
                         </div>
 
                         <div>
-                          <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[var(--mazzi-dark)]" htmlFor="student-profile-name">
-                            <User className="h-3.5 w-3.5 text-current" aria-hidden="true" />
-                            <span>Nome completo</span>
+                          <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-name">
+                            Nome completo
                           </label>
                           <Input
                             id="student-profile-name"
                             value={profileName}
                             onChange={(event) => setProfileName(event.target.value)}
                             disabled={profileSaving}
-                            className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-100 transition shadow-2xs"
+                            className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition shadow-2xs"
                             placeholder="Seu nome completo"
                           />
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[var(--mazzi-dark)]" htmlFor="student-profile-phone">
-                              <Phone className="h-3.5 w-3.5 text-current" aria-hidden="true" />
-                              <span>Telefone (WhatsApp)</span>
+                            <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-phone">
+                              Telefone
                             </label>
                             <MaskedInput
                               id="student-profile-phone"
@@ -1237,14 +1235,13 @@ function applyStrictProviderFilters(
                               onChange={setProfilePhone}
                               placeholder="(11) 99999-9999"
                               disabled={profileSaving}
-                              className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-100 transition shadow-2xs"
+                              className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition shadow-2xs"
                             />
                           </div>
 
                           <div>
-                            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[var(--mazzi-dark)]" htmlFor="student-profile-birthdate">
-                              <CalendarIcon className="h-3.5 w-3.5 text-current" aria-hidden="true" />
-                              <span>Data de nascimento</span>
+                            <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-birthdate">
+                              Data de nascimento
                             </label>
                             <Input
                               id="student-profile-birthdate"
@@ -1252,7 +1249,7 @@ function applyStrictProviderFilters(
                               onChange={(event) => setProfileBirthDate(formatDateMask(event.target.value))}
                               placeholder="DD/MM/AAAA"
                               disabled={profileSaving}
-                              className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-100 transition shadow-2xs"
+                              className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition shadow-2xs"
                             />
                           </div>
                         </div>
@@ -1274,9 +1271,8 @@ function applyStrictProviderFilters(
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-700" htmlFor="student-profile-cpf">
-                              <Lock className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
-                              <span>CPF</span>
+                            <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-cpf">
+                              CPF
                             </label>
                             <Input
                               id="student-profile-cpf"
@@ -1286,14 +1282,13 @@ function applyStrictProviderFilters(
                               className="w-full min-h-11 rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2.5 text-sm font-mono text-slate-600 cursor-not-allowed shadow-2xs"
                             />
                             <p className="mt-1 text-[10px] text-slate-400 font-medium">
-                              CPF protegido e vinculado à conta.
+                              CPF não pode ser alterado pelo aplicativo.
                             </p>
                           </div>
 
                           <div>
-                            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-700" htmlFor="student-profile-email">
-                              <Mail className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
-                              <span>E-mail</span>
+                            <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-email">
+                              E-mail
                             </label>
                             <Input
                               id="student-profile-email"
