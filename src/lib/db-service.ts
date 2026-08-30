@@ -32,6 +32,7 @@ import {
 import { normalizeComplianceStatus } from '../domain/compliance-status';
 import { formatDateBR, formatTimeBR } from './date-format';
 import { formatMeetingPoint } from './meeting-point';
+import { PAYMENT_HOLD_EXPIRATION_MINUTES } from '../domain/booking';
 
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
@@ -1041,7 +1042,8 @@ export const dbService = {
     const { data, error } = await sp.rpc('create_booking_hold', {
       p_quote_id: quoteId,
       p_student_id: studentId,
-      p_idempotency_key: `hold_${crypto.randomUUID()}`
+      p_idempotency_key: `hold_${crypto.randomUUID()}`,
+      p_hold_duration_minutes: PAYMENT_HOLD_EXPIRATION_MINUTES,
     });
     if (error) throw error;
     return data;
@@ -1721,6 +1723,8 @@ export const dbService = {
     booking_id: string;
     status: string;
     cancelled_at?: string;
+    cancellation_reason?: string;
+    refund_amount_in_cents?: number;
   }> {
     const { data, error } = await sp.rpc('cancel_pending_booking', {
       p_booking_id: bookingId,

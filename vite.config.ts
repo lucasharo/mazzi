@@ -66,6 +66,9 @@ export default defineConfig(({ mode }) => {
     server: {
       port: Number(env.VITE_APP_PORT || (appTarget === 'student' ? 3001 : appTarget === 'instructor' ? 3002 : appTarget === 'admin' ? 3003 : appTarget === 'landing' ? 3005 : 3000)),
       strictPort: Boolean(appTarget),
+      // Permite visualizar o servidor local por um Quick Tunnel do Cloudflare.
+      // O curinga é restrito ao domínio temporário de desenvolvimento.
+      allowedHosts: ['.trycloudflare.com'],
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.

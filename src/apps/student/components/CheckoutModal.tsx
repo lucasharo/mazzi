@@ -8,7 +8,7 @@ import { Input } from '../../../components/ui/Input';
 import { Badge } from '../../../components/ui/Badge';
 import { formatCentsToBRL } from '../../../domain/money';
 import { isQuoteExpired, QuoteDomainError } from '../../../domain/quote';
-import { createBookingHold, BookingDomainError } from '../../../domain/booking';
+import { createBookingHold, BookingDomainError, PAYMENT_HOLD_EXPIRATION_MINUTES } from '../../../domain/booking';
 import { PaymentService } from '../../../domain/payments/payment-service';
 import { FakePaymentGateway } from '../../../domain/payments/fake-adapter';
 import { useAuth } from '../../../components/auth/AuthContext';
@@ -479,6 +479,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         meetingPoint = { ...meetingPoint, address: studentAddress.trim(), latitude: geocoded.latitude, longitude: geocoded.longitude };
       }
       const idempotencyKey = `idem_hold_${quote.id}_${Date.now()}`;
+      let dbHold: any = null;
 
       // Validate the transaction locally before calling the backend.
       const holdResult = createBookingHold({
@@ -490,6 +491,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         offering,
         existingBookings,
         idempotencyKey,
+        holdDurationMinutes: PAYMENT_HOLD_EXPIRATION_MINUTES,
       });
 
       let realBookingId = holdResult.booking.id;
@@ -501,7 +503,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
 
       try {
-        const dbHold = await dbService.createBookingHoldAtMeetingPoint(quote.id, user.id, meetingPoint);
+        dbHold = await dbService.createBookingHoldAtMeetingPoint(quote.id, user.id, meetingPoint);
         if (dbHold && dbHold.booking_id) {
           realBookingId = dbHold.booking_id;
         }
@@ -515,7 +517,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
 
       // Sync local booking ID with real DB ID if needed
-      const syncedBooking = { ...holdResult.booking, id: realBookingId };
+      const syncedBooking = {
+        ...holdResult.booking,
+        id: realBookingId,
+        holdExpiresAt: dbHold?.hold_expires_at || holdResult.booking.holdExpiresAt,
+      };
       setBooking(syncedBooking);
       setPayment(null);
       setPaymentMethod(null);

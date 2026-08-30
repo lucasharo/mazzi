@@ -140,10 +140,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const finalReason = [selectedReasonChip, customReason.trim()].filter(Boolean).join(': ') || undefined;
 
     try {
-      const res = await dbService.cancelBooking({
-        bookingId: booking.id,
-        reason: finalReason,
-      });
+      const res = isPendingPayment
+        ? await dbService.cancelPendingBooking(booking.id)
+        : await dbService.cancelBooking({
+            bookingId: booking.id,
+            reason: finalReason,
+          });
 
       const updated: Booking = {
         ...booking,

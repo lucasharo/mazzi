@@ -44,9 +44,12 @@ describe('contrato seguro do pagamento Mercado Pago', () => {
     expect(source).not.toContain('cc_rejected_other_reason')
   });
 
-  it('usa o e-mail do cadastro e normaliza apenas o documento', () => {
-    expect(source).toContain('email: authData.user.email')
-    expect(source).not.toContain('email: payerEmail')
+  it('usa o comprador de teste no sandbox e o cadastro em produção', () => {
+    expect(source).toContain('MERCADOPAGO_TEST_BUYER_EMAIL')
+    expect(source).toContain('MERCADOPAGO_TEST_BUYER_IDENTIFICATION_TYPE')
+    expect(source).toContain('MERCADOPAGO_TEST_BUYER_IDENTIFICATION_NUMBER')
+    expect(source).toContain('email: payerEmail')
+    expect(source).toContain('(authData.user.email || "").trim()')
     expect(source).toContain('number: String(payerIdentification.number).replace(/\\D/g, "")')
     expect(source).toContain('first_name: cardholderName')
     expect(source).toContain('typeof payload.cardholderName !== "string"')

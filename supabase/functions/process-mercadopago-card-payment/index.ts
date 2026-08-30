@@ -50,6 +50,17 @@ Deno.serve(async (request) => {
   const { data: authData, error: authError } = await session.auth.getUser(token);
   if (authError || !authData.user) return reply(401, { message: "Sua sessão expirou. Entre novamente para continuar." });
 
+  const payerEmail = environment === "test"
+    ? (Deno.env.get("MERCADOPAGO_TEST_BUYER_EMAIL") || "").trim()
+    : (authData.user.email || "").trim();
+  if (!payerEmail) return reply(503, { message: "O comprador de teste do Mercado Pago não está configurado." });
+  const configuredPayerIdentification = environment === "test"
+    ? {
+        type: (Deno.env.get("MERCADOPAGO_TEST_BUYER_IDENTIFICATION_TYPE") || "").trim(),
+        number: (Deno.env.get("MERCADOPAGO_TEST_BUYER_IDENTIFICATION_NUMBER") || "").replace(/\D/g, ""),
+      }
+    : null;
+
   let payload: Record<string, any>;
   try { payload = await request.json(); } catch { return reply(400, { message: "Dados de pagamento inválidos." }); }
   if (!isUuid(payload.paymentId) || typeof payload.token !== "string" || !payload.token ||
@@ -114,7 +125,9 @@ Deno.serve(async (request) => {
   const cents = Number(payment.amount_in_cents);
   if (!Number.isSafeInteger(cents) || cents <= 0) return reply(409, { message: "O valor deste pagamento é inválido." });
   const cardholderName = payload.cardholderName.trim();
-  const payerIdentification = payload.payer?.identification;
+  const payerIdentification = environment === "test"
+    ? configuredPayerIdentification
+    : payload.payer?.identification;
   const body = {
     transaction_amount: Number((cents / 100).toFixed(2)),
     token: payload.token,
@@ -125,14 +138,14 @@ Deno.serve(async (request) => {
     capture: true,
     external_reference: booking.id,
     payer: {
-      email: authData.user.email,
+      email: payerEmail,
       first_name: cardholderName,
       identification: payerIdentification?.number ? {
         type: payerIdentification.type || "CPF",
         number: String(payerIdentification.number).replace(/\D/g, ""),
       } : undefined,
     },
-    metadata: { booking_id: booking.id, payment_id: payment.id, environment: "test" },
+    metadata: { booking_id: booking.id, payment_id: payment.id, environment },
   };
 
   let mpResponse: Response;
@@ -164,11 +177,22 @@ Deno.serve(async (request) => {
     // Não marca a tentativa como FAILED em HTTP 5xx, limite de requisições,
     // resposta inválida ou status intermediário. Qualquer um deles pode ocultar
     // uma cobrança aceita; por isso a mesma chave deve ser repetida com segurança.
-    return reply(503, {
+    console.error("MERCADOPAGO_CARD_PAYMENT_GATEWAY_UNCONFIRMED", {
+      httpStatus: mpResponse.status,
+      status: result?.status || null,
+      statusDetail: result?.status_detail || null,
+      error: result?.error || null,
+      cause: Array.isArray(result?.cause) ? result.cause.map((item: any) => ({ code: item?.code || null, description: item?.description || null })) : null,
+    });
+    return reply(mpResponse.status >= 500 ? 502 : 402, {
       approved: false,
       paymentStatus: "PENDING",
       retryable: true,
-      message: "Não foi possível confirmar o pagamento. Tente novamente.",
+      gatewayStatus: result?.status || null,
+      gatewayStatusDetail: result?.status_detail || null,
+      message: mpResponse.status >= 500
+        ? "O Mercado Pago está temporariamente indisponível. Tente novamente em instantes."
+        : "O Mercado Pago não aprovou este pagamento. Confira os dados e tente novamente.",
     });
   }
 

@@ -5,7 +5,7 @@
 A plataforma MAZZI separa rigidamente a fase de **Cotação Comercial (`Quote`)** da fase de **Reserva Transacional de Calendário (`Booking Hold`)**.
 
 - **`Quote` (Cotação Comercial)**: Concongela preços, taxas e dados operacionais de uma aula por 10 minutos. **NÃO reserva horário na agenda**.
-- **`Booking Hold` (Reserva Transacional)**: Valida a proposta, executa a limpeza de holds expirados e insere uma reserva temporária no status `PENDING_PAYMENT` com trava atômica `TSTZRANGE` e restrições de exclusão no PostgreSQL (`EXCLUDE USING gist`).
+- **`Booking Hold` (Reserva Transacional)**: Valida a proposta, executa a limpeza de holds expirados e insere uma reserva temporária no status `PENDING_PAYMENT` com trava atômica `TSTZRANGE` e restrições de exclusão no PostgreSQL (`EXCLUDE USING gist`). A cotação expira em 10 minutos; após criada, a retenção do horário fica em 31 minutos para atender ao prazo mínimo de 30 minutos do Pix do Mercado Pago.
 
 ---
 
@@ -26,7 +26,7 @@ A plataforma MAZZI separa rigidamente a fase de **Cotação Comercial (`Quote`)*
 
 ### Máquina de Estados do Booking (`booking_status`)
 ```
-[PENDING_PAYMENT] -------- (Passaram 10 min de Hold sem Pix/Cartão) -------> [EXPIRED]
+[PENDING_PAYMENT] -------- (Passaram 31 min de Hold sem Pix/Cartão) -------> [EXPIRED]
    |
    +---------------------- (Falha de Pagamento) --------------------------> [PAYMENT_FAILED]
    |

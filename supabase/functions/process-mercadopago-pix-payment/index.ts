@@ -48,6 +48,11 @@ Deno.serve(async (request) => {
   const { data: authData, error: authError } = await authClient.auth.getUser(accessTokenHeader);
   if (authError || !authData.user) return reply(401, { message: "Sua sessão expirou. Entre novamente para continuar." });
 
+  const payerEmail = environment === "test"
+    ? (Deno.env.get("MERCADOPAGO_TEST_BUYER_EMAIL") || "").trim()
+    : (authData.user.email || "").trim();
+  if (!payerEmail) return reply(503, { message: "O comprador de teste do Mercado Pago não está configurado." });
+
   let payload;
   try { payload = await request.json(); } catch { return reply(400, { message: "Dados do pagamento Pix inválidos." }); }
   if (!isUuid(payload?.paymentId)) return reply(400, { message: "Pagamento inválido." });
@@ -139,8 +144,8 @@ Deno.serve(async (request) => {
     payment_method_id: "pix",
     date_of_expiration: expiration,
     external_reference: booking.id,
-    payer: { email: authData.user.email },
-    metadata: { booking_id: booking.id, payment_id: payment.id, environment: "test" },
+    payer: { email: payerEmail },
+    metadata: { booking_id: booking.id, payment_id: payment.id, environment },
   };
 
   let mpResponse;
@@ -157,7 +162,13 @@ Deno.serve(async (request) => {
   const result = await mpResponse.json().catch(() => ({}));
   if (!mpResponse.ok || !result.id) {
     console.error("MERCADOPAGO_PIX_CREATE_FAILED", { status: mpResponse.status, detail: result.status_detail });
-    return reply(mpResponse.status >= 400 && mpResponse.status < 500 ? 402 : 502, { message: "Não foi possível gerar o código Pix de teste. Tente novamente." });
+    return reply(mpResponse.status >= 400 && mpResponse.status < 500 ? 402 : 502, {
+      gatewayStatus: result?.status || null,
+      gatewayStatusDetail: result?.status_detail || null,
+      message: mpResponse.status >= 500
+        ? "O Mercado Pago está temporariamente indisponível. Tente novamente em instantes."
+        : "Não foi possível gerar o código Pix. Confira os dados e tente novamente.",
+    });
   }
 
   const transactionData = result.point_of_interaction?.transaction_data || {};
@@ -167,7 +178,7 @@ Deno.serve(async (request) => {
   const feeCents = gatewayFeeInCents(result);
   const metadata = {
     ...(payment.metadata || {}),
-    environment: "test",
+    environment,
     mercado_pago_payment_id: String(result.id),
     mercado_pago_status: result.status || "pending",
     mercado_pago_status_detail: result.status_detail || null,
