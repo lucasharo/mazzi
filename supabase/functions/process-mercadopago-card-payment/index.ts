@@ -50,8 +50,12 @@ Deno.serve(async (request) => {
   const { data: authData, error: authError } = await session.auth.getUser(token);
   if (authError || !authData.user) return reply(401, { message: "Sua sessão expirou. Entre novamente para continuar." });
 
+  // O cartão usa o pagador autenticado em qualquer ambiente. O comprador de
+  // teste configurado para Pix não pode substituir o e-mail do aluno aqui.
   const payerEmail = (authData.user.email || "").trim();
-  if (!payerEmail) return reply(503, { message: "O e-mail do pagador não está configurado." });
+  if (!payerEmail) {
+    return reply(503, { message: "O e-mail do pagador não está configurado." });
+  }
 
   let payload: Record<string, any>;
   try { payload = await request.json(); } catch { return reply(400, { message: "Dados de pagamento inválidos." }); }

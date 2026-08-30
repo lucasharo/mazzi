@@ -6,6 +6,10 @@ const source = fs.readFileSync(
   path.resolve('supabase/functions/process-mercadopago-card-payment/index.ts'),
   'utf8'
 );
+const checkoutSource = fs.readFileSync(
+  path.resolve('src/apps/student/components/CheckoutModal.tsx'),
+  'utf8'
+);
 
 describe('contrato seguro do pagamento Mercado Pago', () => {
   it('exige ambiente explícito, autenticação e idempotência', () => {
@@ -44,9 +48,12 @@ describe('contrato seguro do pagamento Mercado Pago', () => {
     expect(source).not.toContain('cc_rejected_other_reason')
   });
 
-  it('usa o pagador autenticado e os dados enviados pelo formulário', () => {
+  it('usa o pagador autenticado no cartão em qualquer ambiente', () => {
     expect(source).toContain('email: payerEmail')
     expect(source).toContain('(authData.user.email || "").trim()')
+    expect(source).not.toContain('MERCADOPAGO_TEST_BUYER_EMAIL')
+    expect(checkoutSource).toContain('const checkoutPayerEmail = user?.email;')
+    expect(checkoutSource).not.toContain('VITE_MERCADOPAGO_TEST_BUYER_EMAIL')
     expect(source).toContain('const payerIdentification = payload.payer?.identification')
     expect(source).toContain('number: String(payerIdentification.number).replace(/\\D/g, "")')
     expect(source).toContain('first_name: cardholderName')

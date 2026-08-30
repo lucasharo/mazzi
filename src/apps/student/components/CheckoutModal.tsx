@@ -160,6 +160,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const checkoutGatewayProvider = getCheckoutGatewayProvider();
   const isProductionEnvironment = Boolean(import.meta.env.PROD && import.meta.env.VITE_APP_ENV !== 'development');
   const showTestCopy = !isProductionEnvironment;
+  // No cartão, o pagador é sempre o aluno autenticado. O comprador de teste
+  // é exclusivo do fluxo Pix e não deve substituir o e-mail do aluno no Brick.
+  const checkoutPayerEmail = user?.email;
 
   const [step, setStep] = useState<CheckoutStep>('QUOTE_PREVIEW');
   const [successAnimationPhase, setSuccessAnimationPhase] = useState<'LOADING' | 'TRANSITION' | 'COMPLETE'>('LOADING');
@@ -1391,7 +1394,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   key={cardCheckoutKey}
                   amountInCents={payment.amountInCents}
                   isProcessing={isProcessing}
-                  payerEmail={user.email}
+                  payerEmail={checkoutPayerEmail}
                   onSubmit={handleMercadoPagoCardPayment}
                 />
               </React.Suspense>
