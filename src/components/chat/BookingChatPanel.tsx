@@ -161,7 +161,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             aria-label="Voltar para os detalhes da aula"
           >
             <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Voltar</span>
+            <span>Voltar aos detalhes</span>
           </ButtonBase>
         )}
         <div className="flex items-start justify-between gap-3">

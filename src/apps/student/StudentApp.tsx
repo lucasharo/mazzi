@@ -186,7 +186,6 @@ export const StudentApp: React.FC = () => {
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
-  const [chatOrigin, setChatOrigin] = useState<'details' | 'list'>('list');
   const [resumeBooking, setResumeBooking] = useState<Booking | null>(null);
 
   const searchRequestIdRef = useRef(0);
@@ -1079,10 +1078,7 @@ function applyStrictProviderFilters(
                         key={b.id}
                         booking={b}
                         variant="student"
-                        onOpenChat={(bookingToChat) => {
-                          setChatOrigin('list');
-                          setSelectedBookingForChat(bookingToChat);
-                        }}
+                        onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}
                         onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
                       />
                     ))
@@ -1096,7 +1092,13 @@ function applyStrictProviderFilters(
                     <EmptyState title="Nenhuma aula para hoje" description="Suas aulas de hoje aparecerão aqui." />
                   ) : (
                     todayBookings.map((b) => (
-                      <BookingCard key={b.id} booking={b} variant="student" onOpenChat={(bookingToChat) => { setChatOrigin('list'); setSelectedBookingForChat(bookingToChat); }} onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)} />
+                      <BookingCard
+                        key={b.id}
+                        booking={b}
+                        variant="student"
+                        onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}
+                        onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
+                      />
                     ))
                   )}
                 </div>
@@ -1348,11 +1350,10 @@ function applyStrictProviderFilters(
           setSelectedBookingForDetails(null);
           setResumeBooking(bookingToResume);
         }}
-        onOpenChat={() => {
-          if (selectedBookingForDetails) {
-            setChatOrigin('details');
-            setSelectedBookingForChat(selectedBookingForDetails);
-            setSelectedBookingForDetails(null);
+        onOpenChat={(bookingToChat) => {
+          const target = bookingToChat || selectedBookingForDetails;
+          if (target) {
+            setSelectedBookingForChat(target);
           }
         }}
         onStudentCheckIn={async (bookingId) => {
@@ -1365,26 +1366,16 @@ function applyStrictProviderFilters(
 
       <Modal
         isOpen={!!selectedBookingForChat}
-        onClose={() => {
-          const target = selectedBookingForChat;
-          setSelectedBookingForChat(null);
-          if (chatOrigin === 'details' && target) {
-            setSelectedBookingForDetails(target);
-          }
-        }}
+        onClose={() => setSelectedBookingForChat(null)}
         title="Chat da aula"
         size="lg"
+        layer="nested"
+        useHistory={false}
       >
         {selectedBookingForChat && (
           <BookingChatPanel
             booking={selectedBookingForChat}
-            onBack={() => {
-              const target = selectedBookingForChat;
-              setSelectedBookingForChat(null);
-              if (chatOrigin === 'details' && target) {
-                setSelectedBookingForDetails(target);
-              }
-            }}
+            onBack={() => setSelectedBookingForChat(null)}
           />
         )}
       </Modal>
