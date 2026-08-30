@@ -784,10 +784,10 @@ function applyStrictProviderFilters(
           {activeTab === 'search' && (
             <div className="space-y-7">
               <AppHomeHeader
-                eyebrow="Aluno MAZZI"
-                eyebrowIcon={<UserRound className="h-3 w-3" aria-hidden="true" />}
-                title={`Olá, ${user?.name?.split(' ')[0] || 'aluno'}`}
-                subtitle="Encontre sua próxima aula e acompanhe seus agendamentos."
+                eyebrow="Aulas práticas"
+                eyebrowIcon={<UserRound className="h-5 w-5" aria-hidden="true" />}
+                title="Encontre perto de você"
+                subtitle={`Olá, ${user?.name?.split(' ')[0] || 'aluno'}. Busque por região e escolha o melhor horário para sua próxima aula.`}
                 onOpenNotifications={() => setIsNotificationsOpen(true)}
                 onRefresh={() => setSearchRefreshKey((value) => value + 1)}
                 isRefreshing={searchLoading}
@@ -810,8 +810,89 @@ function applyStrictProviderFilters(
                 }}
               />
 
+              {/* Widget de Próxima Aula Agendada (Acesso Rápido - Base Visual V3) */}
+              {upcomingBookings.length > 0 && (
+                <section
+                  className="mazzi-card flex items-center justify-between gap-3.5 p-3.5 sm:p-4 transition-all hover:shadow-md cursor-pointer active:scale-[0.99]"
+                  onClick={() => setSelectedBookingForDetails(upcomingBookings[0])}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedBookingForDetails(upcomingBookings[0]);
+                    }
+                  }}
+                  aria-label={`Próxima aula em ${formatDateBR(upcomingBookings[0].scheduledDate)} às ${upcomingBookings[0].startTime}. Toque para ver detalhes.`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-[#8b6800]">
+                      <CalendarClock className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="mazzi-eyebrow text-[9px] text-[#8b6800]">Próxima aula</p>
+                      <strong className="block truncate text-sm font-extrabold text-[var(--mazzi-dark)] sm:text-base">
+                        {formatDateBR(upcomingBookings[0].scheduledDate)} · {upcomingBookings[0].startTime}
+                      </strong>
+                      <span className="block truncate text-xs font-medium text-[var(--mazzi-muted)]">
+                        {upcomingBookings[0].instructorName || 'Instrutor'} · {upcomingBookings[0].snapshot?.durationMinutes || 50} min
+                      </span>
+                    </div>
+                  </div>
+                  <ButtonBase
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedBookingForDetails(upcomingBookings[0]);
+                    }}
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 cursor-pointer"
+                    aria-label="Ver detalhes da próxima aula"
+                  >
+                    <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                  </ButtonBase>
+                </section>
+              )}
+
               <section aria-labelledby="student-results-title" className="mt-8">
-                <div className="flex items-end justify-between gap-3"><div><h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2><p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">{locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}</p></div><div className="flex items-center gap-2"><ButtonBase type="button" onClick={() => setIsFilterDrawerOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-[var(--mazzi-surface-soft)] px-3 text-xs font-bold"><SlidersHorizontal className="h-4 w-4" aria-hidden="true"/>Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}</ButtonBase><div aria-label="Modo de visualização" className="flex rounded-xl bg-[var(--mazzi-surface-soft)] p-1"><ButtonBase type="button" aria-label="Exibir lista" aria-pressed={searchViewMode === 'list'} onClick={() => setSearchViewMode('list')} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}><List className="h-4 w-4"/></ButtonBase><ButtonBase type="button" aria-label="Exibir mapa" aria-pressed={searchViewMode === 'map'} onClick={() => { setSearchViewMode('map'); setSearchRequest((previous) => ({ ...previous, page: 1 })); }} className={`grid h-9 w-9 place-items-center rounded-lg ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}><MapIcon className="h-4 w-4"/></ButtonBase></div></div></div>
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <p className="mazzi-eyebrow mb-2 text-[9px]">Resultados na sua região</p>
+                    <h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2>
+                    <p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">
+                      {locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ButtonBase
+                      type="button"
+                      onClick={() => setIsFilterDrawerOpen(true)}
+                      className="flex h-11 items-center gap-2 rounded-xl border border-[var(--mazzi-border)] bg-white px-3 text-xs font-bold shadow-xs cursor-pointer"
+                    >
+                      <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                      Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}
+                    </ButtonBase>
+                    <div aria-label="Modo de visualização" className="flex rounded-xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
+                      <ButtonBase
+                        type="button"
+                        aria-label="Exibir lista"
+                        aria-pressed={searchViewMode === 'list'}
+                        onClick={() => setSearchViewMode('list')}
+                        className={`grid h-9 w-9 place-items-center rounded-lg cursor-pointer ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}
+                      >
+                        <List className="h-4 w-4" />
+                      </ButtonBase>
+                      <ButtonBase
+                        type="button"
+                        aria-label="Exibir mapa"
+                        aria-pressed={searchViewMode === 'map'}
+                        onClick={() => { setSearchViewMode('map'); setSearchRequest((previous) => ({ ...previous, page: 1 })); }}
+                        className={`grid h-9 w-9 place-items-center rounded-lg cursor-pointer ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}
+                      >
+                        <MapIcon className="h-4 w-4" />
+                      </ButtonBase>
+                    </div>
+                  </div>
+                </div>
               </section>
 
               {searchError && (

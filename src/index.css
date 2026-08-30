@@ -100,6 +100,13 @@ body {
 .mazzi-eyebrow { font-size: 11px; line-height: 1; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #9a7611; }
 .mazzi-title { font-size: clamp(28px, 8vw, 38px); line-height: 1.02; letter-spacing: -.045em; font-weight: 800; }
 .mazzi-section-title { font-size: 18px; line-height: 1.2; letter-spacing: -.025em; font-weight: 800; }
+.mazzi-brand-lockup { display: flex; align-items: center; gap: 11px; }
+.mazzi-brand-lockup > img { width: 42px; height: 42px; flex: 0 0 auto; border-radius: 0; object-fit: contain; }
+.mazzi-brand-lockup > span { display: grid; gap: 1px; }
+.mazzi-brand-lockup strong { color: var(--mazzi-dark); font-size: 15px; font-weight: 900; letter-spacing: -.025em; line-height: 1.1; }
+.mazzi-brand-lockup small { color: var(--mazzi-muted); font-size: 10px; font-weight: 650; line-height: 1.2; }
+.mazzi-heading-icon { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border-radius: 16px; background: var(--mazzi-yellow); color: var(--mazzi-dark); box-shadow: 0 10px 22px rgba(246,201,69,.23); }
+.mazzi-heading-icon > svg { width: 21px; height: 21px; }
 .mazzi-segmented { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--mazzi-border); border-radius: 16px; background: var(--mazzi-surface-soft); }
 .mazzi-segmented > button { min-height: 44px; flex: 1 1 0%; border-radius: 12px; padding: 10px 12px; color: var(--mazzi-muted); font-size: 12px; font-weight: 700; transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease; }
 .mazzi-segmented > button:hover { color: var(--mazzi-dark); background: rgba(255,255,255,.55); }
