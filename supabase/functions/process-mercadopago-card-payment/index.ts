@@ -50,16 +50,8 @@ Deno.serve(async (request) => {
   const { data: authData, error: authError } = await session.auth.getUser(token);
   if (authError || !authData.user) return reply(401, { message: "Sua sessão expirou. Entre novamente para continuar." });
 
-  const payerEmail = environment === "test"
-    ? (Deno.env.get("MERCADOPAGO_TEST_BUYER_EMAIL") || "").trim()
-    : (authData.user.email || "").trim();
-  if (!payerEmail) return reply(503, { message: "O comprador de teste do Mercado Pago não está configurado." });
-  const configuredPayerIdentification = environment === "test"
-    ? {
-        type: (Deno.env.get("MERCADOPAGO_TEST_BUYER_IDENTIFICATION_TYPE") || "").trim(),
-        number: (Deno.env.get("MERCADOPAGO_TEST_BUYER_IDENTIFICATION_NUMBER") || "").replace(/\D/g, ""),
-      }
-    : null;
+  const payerEmail = (authData.user.email || "").trim();
+  if (!payerEmail) return reply(503, { message: "O e-mail do pagador não está configurado." });
 
   let payload: Record<string, any>;
   try { payload = await request.json(); } catch { return reply(400, { message: "Dados de pagamento inválidos." }); }
@@ -125,9 +117,7 @@ Deno.serve(async (request) => {
   const cents = Number(payment.amount_in_cents);
   if (!Number.isSafeInteger(cents) || cents <= 0) return reply(409, { message: "O valor deste pagamento é inválido." });
   const cardholderName = payload.cardholderName.trim();
-  const payerIdentification = environment === "test"
-    ? configuredPayerIdentification
-    : payload.payer?.identification;
+  const payerIdentification = payload.payer?.identification;
   const body = {
     transaction_amount: Number((cents / 100).toFixed(2)),
     token: payload.token,

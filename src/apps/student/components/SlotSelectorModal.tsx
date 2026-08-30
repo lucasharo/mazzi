@@ -174,7 +174,10 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
       }
 
       const firstMonth = (firstAvailable || fromDate).slice(0, 7);
-      setVisibleMonth((prev) => prev || firstMonth);
+      // When the first available slot is in a later month, keep the calendar
+      // aligned with the automatically selected date instead of leaving the
+      // user viewing the current month with its selection off-screen.
+      setVisibleMonth((prev) => resetSelection ? firstMonth : (prev || firstMonth));
     } catch (err: any) {
       console.warn('[SlotSelectorModal] RPC call failed:', err);
       setError('Não foi possível carregar os horários. Tente novamente.');
@@ -352,7 +355,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
               onClick={() => {
                 const next = Math.min(MAX_HORIZON_DAYS, windowDays + LOAD_MORE_DAYS);
                 setWindowDays(next);
-                void fetchSlots(next, false);
+                void fetchSlots(next, !selectedDate);
               }}
               className="flex w-full cursor-pointer items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[var(--mazzi-muted)] transition hover:text-[var(--mazzi-dark)]"
             >
