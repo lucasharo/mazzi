@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, Car, } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, Car, Phone, ShieldCheck, Lock, Mail } from 'lucide-react';
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
 import {
   Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, } from '../../types';
@@ -1164,110 +1164,157 @@ function applyStrictProviderFilters(
                     isOpen={isEditingProfile}
                     onClose={handleCancelStudentProfile}
                     title="Editar perfil"
+                    size="md"
                     footer={(
                       <>
                         <Button type="button" variant="dangerSoft" size="sm" disabled={profileSaving} onClick={handleCancelStudentProfile}>
                           Cancelar
                         </Button>
                         <PrimaryButton type="button" size="sm" className="font-bold shadow-xs" isLoading={profileSaving} disabled={profileSaving || !studentProfileFormValid} onClick={() => { void handleSaveStudentProfile(); }}>
-                          Salvar perfil
+                          Salvar alterações
                         </PrimaryButton>
                       </>
                     )}
                   >
-                  <div className="space-y-4">
-                    <div>
-                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-photo">
-                        Foto de perfil
-                      </label>
-                      <div id="student-profile-photo">
-                        <ProfilePhotoPicker
-                          value={profileAvatar}
-                          name={profileName || user?.name}
-                          onChange={setProfileAvatar}
-                          disabled={profileSaving}
-                        />
+                    <div className="space-y-4 text-left">
+                      {/* 1. Card de Foto de Perfil */}
+                      <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 space-y-2.5 shadow-2xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-[var(--mazzi-border)]">
+                          <span className="text-xs font-black uppercase tracking-wider text-[var(--mazzi-dark)]">
+                            Foto de perfil
+                          </span>
+                          <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                            Identificação
+                          </span>
+                        </div>
+                        <div id="student-profile-photo">
+                          <ProfilePhotoPicker
+                            value={profileAvatar}
+                            name={profileName || user?.name}
+                            onChange={setProfileAvatar}
+                            disabled={profileSaving}
+                          />
+                        </div>
+                        <p className="text-[11px] text-[var(--mazzi-muted)] font-medium">
+                          Sua foto facilita sua identificação pelo instrutor no ponto de encontro.
+                        </p>
                       </div>
+
+                      {/* 2. Card de Dados Pessoais (Editáveis) */}
+                      <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 space-y-3.5 shadow-2xs">
+                        <div className="flex items-center gap-2 pb-2 border-b border-[var(--mazzi-border)] text-[var(--mazzi-dark)]">
+                          <UserRound className="h-4 w-4 text-current" aria-hidden="true" />
+                          <span className="text-xs font-black uppercase tracking-wider">
+                            Dados pessoais
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[var(--mazzi-dark)]" htmlFor="student-profile-name">
+                            <User className="h-3.5 w-3.5 text-current" aria-hidden="true" />
+                            <span>Nome completo</span>
+                          </label>
+                          <Input
+                            id="student-profile-name"
+                            value={profileName}
+                            onChange={(event) => setProfileName(event.target.value)}
+                            disabled={profileSaving}
+                            className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-100 transition shadow-2xs"
+                            placeholder="Seu nome completo"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[var(--mazzi-dark)]" htmlFor="student-profile-phone">
+                              <Phone className="h-3.5 w-3.5 text-current" aria-hidden="true" />
+                              <span>Telefone (WhatsApp)</span>
+                            </label>
+                            <MaskedInput
+                              id="student-profile-phone"
+                              value={profilePhone}
+                              mask={formatPhone}
+                              onChange={setProfilePhone}
+                              placeholder="(11) 99999-9999"
+                              disabled={profileSaving}
+                              className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-100 transition shadow-2xs"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[var(--mazzi-dark)]" htmlFor="student-profile-birthdate">
+                              <CalendarIcon className="h-3.5 w-3.5 text-current" aria-hidden="true" />
+                              <span>Data de nascimento</span>
+                            </label>
+                            <Input
+                              id="student-profile-birthdate"
+                              value={profileBirthDate}
+                              onChange={(event) => setProfileBirthDate(formatDateMask(event.target.value))}
+                              placeholder="DD/MM/AAAA"
+                              disabled={profileSaving}
+                              className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-100 transition shadow-2xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Card de Segurança da Conta (Protegido) */}
+                      <div className="rounded-2xl border border-[var(--mazzi-border)] bg-slate-50/70 p-4 space-y-3 shadow-2xs">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                          <div className="flex items-center gap-2 text-slate-700">
+                            <ShieldCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-700">
+                              Segurança da conta
+                            </span>
+                          </div>
+                          <span className="rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                            Protegido
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-700" htmlFor="student-profile-cpf">
+                              <Lock className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+                              <span>CPF</span>
+                            </label>
+                            <Input
+                              id="student-profile-cpf"
+                              value={maskCpf(user?.cpf)}
+                              readOnly
+                              aria-readonly="true"
+                              className="w-full min-h-11 rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2.5 text-sm font-mono text-slate-600 cursor-not-allowed shadow-2xs"
+                            />
+                            <p className="mt-1 text-[10px] text-slate-400 font-medium">
+                              CPF protegido e vinculado à conta.
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-700" htmlFor="student-profile-email">
+                              <Mail className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+                              <span>E-mail</span>
+                            </label>
+                            <Input
+                              id="student-profile-email"
+                              value={user?.email || ''}
+                              readOnly
+                              aria-readonly="true"
+                              className="w-full min-h-11 rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2.5 text-sm text-slate-600 cursor-not-allowed shadow-2xs"
+                            />
+                            <p className="mt-1 text-[10px] text-slate-400 font-medium">
+                              E-mail utilizado para acesso.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {profileError && (
+                        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
+                          {profileError}
+                        </div>
+                      )}
                     </div>
-
-                    <div>
-                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-name">
-                        Nome completo
-                      </label>
-                      <Input
-                        id="student-profile-name"
-                        value={profileName}
-                        onChange={(event) => setProfileName(event.target.value)}
-                        disabled={profileSaving}
-                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-phone">
-                        Telefone
-                      </label>
-                      <MaskedInput
-                        id="student-profile-phone"
-                        value={profilePhone}
-                        mask={formatPhone}
-                        onChange={setProfilePhone}
-                        placeholder="(11) 99999-9999"
-                        disabled={profileSaving}
-                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-birthdate">
-                        Data de nascimento
-                      </label>
-                      <Input
-                        id="student-profile-birthdate"
-                        value={profileBirthDate}
-                        onChange={(event) => setProfileBirthDate(formatDateMask(event.target.value))}
-                        placeholder="DD/MM/AAAA"
-                        disabled={profileSaving}
-                        className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-cpf">
-                        CPF
-                      </label>
-                      <Input
-                        id="student-profile-cpf"
-                        value={maskCpf(user?.cpf)}
-                        readOnly
-                        aria-readonly="true"
-                        className="w-full min-h-11 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500 cursor-not-allowed font-mono"
-                      />
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        CPF não pode ser alterado pelo aplicativo.
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-email">
-                        E-mail
-                      </label>
-                      <Input
-                        id="student-profile-email"
-                        value={user?.email || ''}
-                        readOnly
-                        aria-readonly="true"
-                        className="w-full min-h-11 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500 cursor-not-allowed"
-                      />
-                    </div>
-
-                    {profileError && (
-                      <p role="alert" className="text-xs font-semibold text-rose-700">
-                        {profileError}
-                      </p>
-                    )}
-
-                  </div>
                   </Modal>
                 ) : (
                   <dl className="mt-4 space-y-3 text-sm">

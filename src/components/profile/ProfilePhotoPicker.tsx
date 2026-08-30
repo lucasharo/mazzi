@@ -209,17 +209,17 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] text-[var(--mazzi-dark)] flex items-center justify-center font-black">
+    <div className="flex items-center gap-3.5">
+      <div className="relative h-16 w-16 sm:h-[72px] sm:w-[72px] shrink-0 overflow-hidden rounded-2xl bg-[var(--mazzi-yellow)] border border-[var(--mazzi-border)] text-[var(--mazzi-dark)] flex items-center justify-center font-black text-xl shadow-xs">
         {isUploading ? (
-          <Loader2 className="h-6 w-6 animate-spin text-[var(--mazzi-muted)]" aria-label="Enviando foto..." />
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--mazzi-dark)]" aria-label="Enviando foto..." />
         ) : value ? (
           <img src={value} alt="Foto do perfil" className="h-full w-full object-cover" />
         ) : (
           initials(name)
         )}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5 min-w-0 flex-1">
         <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFile} disabled={disabled || isUploading} className="hidden" />
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -228,7 +228,7 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
             size="sm"
             onClick={() => void openCamera()}
             disabled={disabled || isUploading}
-            leftIcon={<Camera className="h-4 w-4 text-amber-500" aria-hidden="true" />}
+            leftIcon={<Camera className="h-4 w-4 text-slate-700" aria-hidden="true" />}
           >
             Tirar foto
           </Button>
@@ -238,7 +238,7 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
             size="sm"
             onClick={() => galleryInputRef.current?.click()}
             disabled={disabled || isUploading}
-            leftIcon={<ImagePlus className="h-4 w-4 text-amber-500" aria-hidden="true" />}
+            leftIcon={<ImagePlus className="h-4 w-4 text-slate-700" aria-hidden="true" />}
           >
             Galeria
           </Button>
@@ -248,9 +248,9 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
             type="button"
             onClick={() => onChange(undefined)}
             disabled={disabled}
-            className="mt-1 inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-bold text-rose-600 transition hover:text-rose-700"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-bold text-rose-600 transition hover:text-rose-700 pt-0.5"
           >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            <Trash2 className="h-3 w-3" aria-hidden="true" />
             Remover foto
           </ButtonBase>
         )}
