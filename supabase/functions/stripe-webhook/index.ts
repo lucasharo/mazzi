@@ -154,7 +154,7 @@ Deno.serve(async (request) => {
   const payloadHash = await hmacHex(webhookSecret, rawBody);
   const externalPaymentId = getPaymentIntentId(eventType, object) || null;
 
-  const { data: webhookEvent, error: eventError } = await service
+  let { data: webhookEvent, error: eventError } = await service
     .from("payment_webhook_events")
     .insert({
       gateway: gatewayProvider,
@@ -168,7 +168,35 @@ Deno.serve(async (request) => {
     .maybeSingle();
 
   if (eventError?.code === "23505") {
-    return reply(200, { received: true, duplicate: true });
+    const { data: existingEvent, error: duplicateLookupError } = await service
+      .from("payment_webhook_events")
+      .select("id, status")
+      .eq("gateway", gatewayProvider)
+      .eq("external_event_id", eventId)
+      .maybeSingle();
+
+    if (duplicateLookupError || !existingEvent) {
+      return reply(500, { message: "Não foi possível consultar o webhook duplicado." });
+    }
+
+    if (["PROCESSED", "IGNORED"].includes(existingEvent.status)) {
+      return reply(200, { received: true, duplicate: true });
+    }
+
+    // Stripe can resend an event that failed after it was recorded. Reuse the
+    // original row so retries execute the business transition instead of
+    // being incorrectly acknowledged as already processed.
+    webhookEvent = existingEvent;
+    eventError = null;
+    await service
+      .from("payment_webhook_events")
+      .update({
+        status: "RECEIVED",
+        error_message: null,
+        processed_at: null,
+        payload_hash: payloadHash,
+      })
+      .eq("id", existingEvent.id);
   }
   if (eventError || !webhookEvent) {
     return reply(500, { message: "Não foi possível registrar o webhook." });
