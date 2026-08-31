@@ -21,6 +21,7 @@ O ambiente DEV pode executar chamadas com credenciais de teste. Não há autoriz
 - A Edge Function autenticada ignora valores do browser, usa `payments.amount_in_cents` e envia uma chave de idempotência ao Stripe.
 - Somente uma confirmação server-side aprovada confirma a reserva; `pending`, `in_process` ou rejeição mantêm a reserva não confirmada.
 - A chave pública fica em `VITE_STRIPE_PUBLISHABLE_KEY`; `STRIPE_SECRET_KEY` fica somente nos secrets do Supabase.
+- Em builds com `pk_test_`, a telemetria avançada opcional do Stripe é desativada para evitar falha de DNS em `m.stripe.com`; as proteções continuam ativas nos builds com `pk_live_`.
 
 ## Recebimento Pix e repasse manual — TASK-080
 

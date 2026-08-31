@@ -56,7 +56,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({ amountInCents, me
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 sm:p-4">
+    <form autoComplete="off" onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 sm:p-4">
       <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-[var(--mazzi-text)]">
         <span className="flex min-w-0 items-center gap-2">
           {method === 'PIX' ? <CreditCard className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" /> : <LockKeyhole className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />}
@@ -106,7 +106,19 @@ export const StripePaymentCheckout: React.FC<Props> = ({ clientSecret, amountInC
     || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test')
     || (typeof navigator !== 'undefined' && /happy-dom/i.test(navigator.userAgent));
   const stripePromise = useMemo(
-    () => !isTestRuntime && publishableKey ? loadStripe(publishableKey) : null,
+    () => {
+      if (isTestRuntime || !publishableKey) return null;
+
+      // The test browser was logging an optional Stripe Radar telemetry
+      // request to m.stripe.com when DNS/network access was unavailable.
+      // Keep the signal collection enabled for live payments, but disable it
+      // for pk_test builds where it is not required for the payment flow.
+      if (publishableKey.startsWith('pk_test_')) {
+        loadStripe.setLoadParameters({ advancedFraudSignals: false });
+      }
+
+      return loadStripe(publishableKey);
+    },
     [isTestRuntime, publishableKey],
   );
 
@@ -134,6 +146,8 @@ export const StripePaymentCheckout: React.FC<Props> = ({ clientSecret, amountInC
             borderRadius: '14px',
           },
         },
+        // Do not offer Link or browser wallet autofill in this checkout.
+        wallets: { link: 'never', applePay: 'never', googlePay: 'never' },
       }}
     >
       <StripePaymentForm
