@@ -21,7 +21,8 @@ export interface ModalProps {
   portal?: boolean;
   layer?: 'base' | 'nested';
   /** Render the dialog as an app screen instead of a centered overlay. */
-  presentation?: 'modal' | 'page';
+  presentation?: 'modal' | 'page' | 'fullscreen';
+  footerClassName?: string;
 }
 
 export function useDialogHistory({
@@ -95,6 +96,7 @@ export const Modal: React.FC<ModalProps> = ({
   portal = false,
   layer = 'base',
   presentation = 'modal',
+  footerClassName = '',
 }) => {
   const generatedId = useId();
   const titleId = `${id || generatedId}-title`;
@@ -116,7 +118,7 @@ export const Modal: React.FC<ModalProps> = ({
   const modalContent = (
     <div
       id={id || 'mazzi-modal'}
-      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'page' ? 'items-stretch justify-stretch bg-[var(--mazzi-bg)]' : 'items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs'} animate-in fade-in duration-150`}
+      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'modal' ? 'items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs' : 'items-stretch justify-stretch bg-[var(--mazzi-bg)]'} animate-in fade-in duration-150`}
       onClick={(e) => {
         if (presentation === 'modal' && closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
@@ -128,13 +130,13 @@ export const Modal: React.FC<ModalProps> = ({
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : ariaLabel || 'Janela de diálogo'}
         tabIndex={-1}
-        className={`relative w-full ${presentation === 'page'
-          ? 'h-full max-w-none rounded-none border-0 bg-[var(--mazzi-bg)] shadow-none'
+        className={`relative w-full ${presentation === 'page' || presentation === 'fullscreen'
+          ? `h-full max-w-none rounded-none border-0 ${presentation === 'fullscreen' ? 'bg-transparent' : 'bg-[var(--mazzi-bg)]'} shadow-none`
           : `${sizeStyles[size]} mb-8 max-h-[90vh] rounded-3xl border border-[var(--mazzi-border)] bg-white shadow-xl`}
-          } overflow-clip flex flex-col animate-in ${presentation === 'page' ? 'slide-in-from-bottom-2' : 'zoom-in-95'} duration-150 text-left`}
+          } overflow-clip flex flex-col animate-in ${presentation === 'modal' ? 'zoom-in-95' : presentation === 'page' ? 'slide-in-from-bottom-2' : ''} duration-150 text-left`}
       >
         {title && (
-          <div className={`${presentation === 'page' ? 'bg-[var(--mazzi-bg)]' : 'bg-white'} px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between`}>
+          <div className={`${presentation === 'modal' ? 'bg-white' : 'bg-[var(--mazzi-bg)]'} px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between`}>
             <h3 id={titleId} className="font-extrabold text-[var(--mazzi-dark)] text-base">{title}</h3>
             <div className="flex items-center gap-2">
               <EnvironmentBadge />
@@ -150,11 +152,11 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
 
-        <div className={`mazzi-modal-content ${presentation === 'page' ? 'p-4 sm:p-6' : 'p-6'} overflow-y-auto flex-1 min-h-0`}>
+        <div className={`mazzi-modal-content ${presentation === 'modal' ? 'p-6' : presentation === 'page' ? 'p-4 sm:p-6' : 'p-0'} overflow-y-auto flex-1 min-h-0`}>
           {presentation === 'page' ? <div className="mx-auto w-full max-w-2xl">{children}</div> : children}
         </div>
 
-        {footer && <ModalActionFooter align="right">{footer}</ModalActionFooter>}
+        {footer && <ModalActionFooter align="right" className={presentation === 'fullscreen' ? `!mx-0 ${footerClassName}` : footerClassName}>{footer}</ModalActionFooter>}
       </div>
     </div>
   );

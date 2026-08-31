@@ -160,6 +160,46 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [quoteTimeRemainingSec, setQuoteTimeRemainingSec] = useState<number>(600);
   const [holdTimeRemainingSec, setHoldTimeRemainingSec] = useState<number>(600);
 
+  // A pending booking already has a frozen commercial snapshot. Reuse it to
+  // render the same quote preview shown after selecting a new time slot.
+  const resumedQuote = React.useMemo<Quote | null>(() => {
+    if (!resumeBooking) return null;
+    const expiresAt = resumeBooking.holdExpiresAt || new Date(Date.now() + PAYMENT_HOLD_EXPIRATION_MINUTES * 60_000).toISOString();
+    return {
+      id: resumeBooking.quoteId || resumeBooking.id,
+      studentId: resumeBooking.studentId,
+      providerId: resumeBooking.providerId,
+      providerName: resumeBooking.snapshot?.providerName || resumeBooking.providerName,
+      instructorId: resumeBooking.instructorId,
+      instructorName: resumeBooking.snapshot?.instructorName || resumeBooking.instructorName,
+      vehicleId: resumeBooking.vehicleId,
+      vehicleName: resumeBooking.snapshot?.vehicleName || resumeBooking.vehicleName,
+      offeringId: resumeBooking.offeringId,
+      category: resumeBooking.snapshot?.category || resumeBooking.category,
+      transmission: resumeBooking.snapshot?.transmission || offering?.transmission || 'MANUAL',
+      scheduledDate: resumeBooking.scheduledDate,
+      startTime: resumeBooking.startTime,
+      endTime: resumeBooking.endTime,
+      scheduledStartAt: resumeBooking.scheduledStartAt,
+      scheduledEndAt: resumeBooking.scheduledEndAt,
+      durationMinutes: resumeBooking.snapshot?.durationMinutes || offering?.durationMinutes || 0,
+      priceInCents: resumeBooking.snapshot?.priceInCents ?? resumeBooking.priceInCents,
+      platformFeeInCents: resumeBooking.snapshot?.platformFeeInCents ?? resumeBooking.platformFeeInCents,
+      totalInCents: resumeBooking.snapshot?.totalInCents ?? resumeBooking.totalInCents,
+      status: 'ACTIVE',
+      createdAt: resumeBooking.createdAt,
+      expiresAt,
+      idempotencyKey: resumeBooking.idempotencyKey,
+    };
+  }, [offering?.durationMinutes, offering?.transmission, resumeBooking]);
+
+  const displayQuote = quote || resumedQuote;
+  const displayInstructorName = displayQuote?.instructorName || provider?.name || 'Instrutor';
+  const displayProviderName = displayQuote?.providerName || provider?.name || 'Autoescola';
+  const displayVehicleName = displayQuote?.vehicleName || (vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Veículo');
+  const displayCategory = displayQuote?.category || offering?.category || 'B';
+  const displayTransmission = displayQuote?.transmission || vehicle?.transmission || offering?.transmission;
+
   // The fake gateway is used only for the explicitly selected fake mode.
   const paymentService = React.useMemo(() => {
     return checkoutGatewayProvider === 'fake' ? new PaymentService(new FakePaymentGateway()) : null;
@@ -191,7 +231,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setBooking(resumeBooking);
       setPayment(null);
       setPaymentMethod(null);
-      setStep('PAYMENT_SELECTION');
+      const persistedMeetingPoint = resumeBooking.meetingPoint?.trim();
+      const providerMeetingPoint = resumeBooking.snapshot?.meetingPoint?.trim();
+      const hasStudentMeetingPoint = Boolean(
+        persistedMeetingPoint && providerMeetingPoint && persistedMeetingPoint !== providerMeetingPoint,
+      );
+      setMeetingPointType(hasStudentMeetingPoint ? 'STUDENT' : 'PROVIDER');
+      if (hasStudentMeetingPoint) {
+        setStudentAddress(resumeBooking.fullMeetingPoint || persistedMeetingPoint || '');
+        setStudentAddressLocation(null);
+      }
+      const resumeExpiresAt = resumeBooking.holdExpiresAt || new Date(Date.now() + PAYMENT_HOLD_EXPIRATION_MINUTES * 60_000).toISOString();
+      setQuoteTimeRemainingSec(Math.max(0, Math.floor((new Date(resumeExpiresAt).getTime() - Date.now()) / 1000)));
+      setStep('QUOTE_PREVIEW');
       return;
     }
 
@@ -310,7 +362,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       active = false;
       createQuoteInFlightRef.current = false;
     };
-  }, [isOpen, provider?.id, vehicle?.id, offering?.id, scheduledDate, startTime, endTime, scheduledStartAt, user?.id]);
+  }, [isOpen, provider?.id, vehicle?.id, offering?.id, scheduledDate, startTime, endTime, scheduledStartAt, user?.id, resumeBooking?.id]);
 
   useEffect(() => {
     if (step !== 'SUCCESS') {
@@ -328,20 +380,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   // Quote Expiration Countdown Timer
   useEffect(() => {
-    if (!quote || step !== 'QUOTE_PREVIEW') return;
+    if (!displayQuote || step !== 'QUOTE_PREVIEW') return;
 
     const timer = setInterval(() => {
-      const remaining = Math.max(0, Math.floor((new Date(quote.expiresAt).getTime() - Date.now()) / 1000));
+      const remaining = Math.max(0, Math.floor((new Date(displayQuote.expiresAt).getTime() - Date.now()) / 1000));
       setQuoteTimeRemainingSec(remaining);
 
-      if (remaining <= 0 || isQuoteExpired(quote)) {
+      if (remaining <= 0 || isQuoteExpired(displayQuote)) {
         setStep('ERROR_QUOTE_EXPIRED');
         clearInterval(timer);
       }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [quote, step]);
+  }, [displayQuote, step]);
 
   // Hold Expiration Countdown Timer
   useEffect(() => {
@@ -439,12 +491,43 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
-    if (!quote) return;
+    const activeQuote = displayQuote;
+    const activeBooking = booking || resumeBooking;
+    if (!activeQuote) return;
 
-    if (isQuoteExpired(quote)) {
+    if (isQuoteExpired(activeQuote)) {
       setStep('ERROR_QUOTE_EXPIRED');
       return;
     }
+
+    // Resuming a pending booking uses the same preview UI, but must continue
+    // the existing booking instead of creating another hold or reservation.
+    if (resumeBooking && activeBooking) {
+      setIsProcessing(true);
+      setErrorMessage(null);
+      setStripePaymentPending(false);
+      try {
+        setBooking(activeBooking);
+        if (checkoutGatewayProvider === 'stripe') {
+          const nextPayment = await createPaymentAttempt('CREDIT_CARD', activeBooking);
+          setPayment(nextPayment);
+          setPaymentMethod('CREDIT_CARD');
+          await handleStripeHostedCheckout(nextPayment);
+          return;
+        }
+
+        setPayment(null);
+        setPaymentMethod(null);
+        setStep('PAYMENT_SELECTION');
+      } catch (error) {
+        setErrorMessage(friendlyCheckoutError(error, 'Não foi possível iniciar o pagamento. Tente novamente.'));
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
+    if (!quote) return;
 
     setIsProcessing(true);
     setErrorMessage(null);
@@ -461,12 +544,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           : await geocodeAddress(studentAddress.trim());
         meetingPoint = { ...meetingPoint, address: studentAddress.trim(), latitude: geocoded.latitude, longitude: geocoded.longitude };
       }
-      const idempotencyKey = `idem_hold_${quote.id}_${Date.now()}`;
+      const idempotencyKey = `idem_hold_${activeQuote.id}_${Date.now()}`;
       let dbHold: any = null;
 
       // Validate the transaction locally before calling the backend.
       const holdResult = createBookingHold({
-        quote,
+        quote: activeQuote,
         studentId: user.id,
         studentName: user.name,
         provider,
@@ -480,13 +563,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       let realBookingId = holdResult.booking.id;
 
       // The booking hold and payment intent are always created transactionally in Supabase.
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quote.id);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeQuote.id);
       if (!isUuid) {
         throw new Error('REAL_DATABASE_QUOTE_ID_INVALID');
       }
 
       try {
-        dbHold = await dbService.createBookingHoldAtMeetingPoint(quote.id, user.id, meetingPoint);
+        dbHold = await dbService.createBookingHoldAtMeetingPoint(activeQuote.id, user.id, meetingPoint);
         if (dbHold && dbHold.booking_id) {
           realBookingId = dbHold.booking_id;
         }
@@ -867,12 +950,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
-  const durationMinutes = offering?.durationMinutes || resumeBooking?.snapshot?.durationMinutes;
+  const durationMinutes = displayQuote?.durationMinutes;
   const durationLabel = typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) && durationMinutes > 0
     ? ` (${durationMinutes} min)`
     : '';
   const checkoutFormValid = Boolean(
-    quote &&
+    displayQuote &&
     !isProcessing &&
     (meetingPointType === 'PROVIDER' || studentAddress.trim()),
   );
@@ -932,7 +1015,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         )}
 
         {/* STEP 1: QUOTE PREVIEW */}
-        {step === 'QUOTE_PREVIEW' && quote && (
+        {step === 'QUOTE_PREVIEW' && displayQuote && (
           <div className="space-y-4">
             {/* Countdown Badge */}
             <div className="flex items-center justify-between rounded-2xl bg-[#202126] border border-[#202126] p-3 text-white" aria-live="polite">
@@ -950,14 +1033,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <span className="font-extrabold text-slate-900 text-base block truncate">
-                    {offering.instructorName || provider.name}
+                    {displayInstructorName}
                   </span>
-                  {offering.instructorName && offering.instructorName !== provider.name && (
-                    <span className="text-[11px] text-slate-500 block truncate">{provider.name}</span>
+                  {displayInstructorName !== displayProviderName && (
+                    <span className="text-[11px] text-slate-500 block truncate">{displayProviderName}</span>
                   )}
                 </div>
                 <span className="shrink-0 bg-amber-100/80 text-amber-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
-                  Cat. {offering.category}
+                  Cat. {displayCategory}
                 </span>
               </div>
 
@@ -970,14 +1053,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
                   <span>
                     {scheduledStartAt ? formatTimeBR(scheduledStartAt) : `${startTime} - ${endTime}`}
-                    {offering.durationMinutes ? ` (${offering.durationMinutes} min)` : ''}
+                    {durationMinutes ? ` (${durationMinutes} min)` : ''}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 col-span-1 sm:col-span-2 text-slate-700 font-medium truncate">
                   <Car className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
                   <span className="truncate">
-                    {vehicle.brand} {vehicle.model}
-                    {vehicle.transmission === 'AUTOMATIC' ? ' (Automático)' : vehicle.transmission === 'MANUAL' ? ' (Manual)' : ''}
+                    {displayVehicleName}
+                    {displayTransmission === 'AUTOMATIC' ? ' (Automático)' : displayTransmission === 'MANUAL' ? ' (Manual)' : ''}
                   </span>
                 </div>
               </div>
@@ -987,11 +1070,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="rounded-2xl bg-white border border-[#e9e6de] p-4 space-y-2 text-slate-900 shadow-2xs">
               <div className="flex items-center justify-between text-xs font-medium text-slate-600">
                 <span>Aula prática{durationLabel}</span>
-                <span className="font-semibold text-slate-800">{formatCentsToBRL(quote.priceInCents)}</span>
+                <span className="font-semibold text-slate-800">{formatCentsToBRL(displayQuote.priceInCents)}</span>
               </div>
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-900">Total</span>
-                <span className="text-xl font-extrabold text-slate-950">{formatCentsToBRL(quote.totalInCents)}</span>
+                <span className="text-xl font-extrabold text-slate-950">{formatCentsToBRL(displayQuote.totalInCents)}</span>
               </div>
             </div>
 

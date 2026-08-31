@@ -197,9 +197,15 @@ describe('TASK-009 Security Hotfix — Real Behavioral Spies & Security Tests', 
         />
       );
 
-      // Wait for PAYMENT_SELECTION step to be visible and select CREDIT_CARD
+      // Resume payment now opens the same reservation preview used by the
+      // booking flow. Continue from that preview to the payment method step.
       await waitFor(() => {
-      expect(screen.getByText(/Cartão de Crédito Simulado/i)).toBeTruthy();
+        expect(screen.getByText(/Continuar para pagamento/i)).toBeTruthy();
+      });
+      fireEvent.click(screen.getByText(/Continuar para pagamento/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Cartão de Crédito Simulado/i)).toBeTruthy();
       });
       fireEvent.click(screen.getByText(/Cartão de Crédito Simulado/i));
 

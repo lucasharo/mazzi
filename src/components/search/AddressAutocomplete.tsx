@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { LoaderCircle, MapPin, X } from 'lucide-react';
+import { LoaderCircle, MapPin, Pencil, X } from 'lucide-react';
 import { activeGeocodingProvider, LocationSuggestion } from '../../domain/maps/geocoding-provider';
 import { ButtonBase } from '../ui/Button';
 
@@ -12,9 +12,16 @@ interface AddressAutocompleteProps {
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
+  inputWrapperClassName?: string;
+  inputLabel?: React.ReactNode;
+  inputLeading?: React.ReactNode;
+  inputTrailing?: React.ReactNode;
   inputClassName?: string;
   proximity?: { longitude: number; latitude: number };
   dropdownAlignment?: 'input' | 'viewport';
+  suggestionsMode?: 'dropdown' | 'list';
+  searchInitialValue?: boolean;
+  onEditSuggestion?: (suggestion: LocationSuggestion) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   showClearButton?: boolean;
@@ -31,9 +38,16 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   placeholder = 'Digite um endereço, bairro ou local',
   ariaLabel = 'Buscar endereço ou local',
   className = '',
+  inputWrapperClassName = '',
+  inputLabel,
+  inputLeading,
+  inputTrailing,
   inputClassName = '',
   proximity,
   dropdownAlignment = 'input',
+  suggestionsMode = 'dropdown',
+  searchInitialValue = false,
+  onEditSuggestion,
   onFocus,
   onBlur,
   showClearButton = true,
@@ -72,7 +86,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   useEffect(() => {
     const query = value.trim();
     abortRef.current?.abort();
-    if (!hasUserEditedRef.current) {
+    if (!hasUserEditedRef.current && !searchInitialValue) {
       setSuggestions([]);
       setIsLoading(false);
       setError(null);
@@ -123,7 +137,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       }
     }, 325);
     return () => window.clearTimeout(timer);
-  }, [value, proximity?.latitude, proximity?.longitude]);
+  }, [value, proximity?.latitude, proximity?.longitude, searchInitialValue]);
 
   const selectSuggestion = (suggestion: LocationSuggestion) => {
     skipNextLookupRef.current = true;
@@ -161,15 +175,17 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="relative">
+      <div className={`relative ${inputWrapperClassName}`}>
+        {inputLabel}
         <input
           id={id}
           ref={inputRef}
           role="combobox"
           aria-label={ariaLabel}
-          aria-expanded={suggestions.length > 0}
+          aria-expanded={suggestions.length > 0 || isLoading}
           aria-controls={listboxId}
           aria-activedescendant={activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined}
+          aria-busy={isLoading}
           value={value}
           onChange={(event) => {
             hasUserEditedRef.current = true;
@@ -182,23 +198,30 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           className={`w-full ${inputClassName}`}
           autoComplete="off"
         />
-        {isLoading && <LoaderCircle className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[var(--mazzi-muted)]" aria-label="Buscando endereços" />}
+        {inputLeading}
         {!isLoading && showClearButton && value.trim() && <ButtonBase type="button" onClick={clearInput} aria-label="Limpar localização" title="Limpar localização" className="absolute right-1 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-[var(--mazzi-muted)] transition hover:bg-slate-100 hover:text-[var(--mazzi-dark)]"><X className="h-4 w-4" aria-hidden="true" /></ButtonBase>}
+        {inputTrailing}
       </div>
       {error && <p className="mt-1 text-xs text-rose-700" role="alert">{error}</p>}
-      {suggestions.length > 0 && (
+      {(suggestions.length > 0 || isLoading) && (
         <ul
           id={listboxId}
           role="listbox"
-          style={dropdownAlignment === 'viewport' && viewportDropdownTop !== null ? { top: viewportDropdownTop } : undefined}
-          className={`${dropdownAlignment === 'viewport' ? 'fixed left-1/2' : 'absolute left-1/2 mt-2'} z-50 max-h-72 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-2xl border border-[var(--mazzi-border)] bg-white p-1 shadow-[0_14px_32px_rgba(16,24,40,0.14)]`}
+          style={suggestionsMode === 'dropdown' && dropdownAlignment === 'viewport' && viewportDropdownTop !== null ? { top: viewportDropdownTop } : undefined}
+          className={suggestionsMode === 'list'
+            ? 'mt-3 w-full overflow-y-auto rounded-2xl border border-[var(--mazzi-border)] bg-white p-1 shadow-[0_14px_32px_rgba(16,24,40,0.08)]'
+            : `${dropdownAlignment === 'viewport' ? 'fixed left-1/2' : 'absolute left-1/2 mt-2'} z-50 max-h-72 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-2xl border border-[var(--mazzi-border)] bg-white p-1 shadow-[0_14px_32px_rgba(16,24,40,0.14)]`}
         >
+          {isLoading && <li role="status" className="flex min-h-12 items-center gap-2 rounded-xl px-3 py-3 text-xs font-semibold text-[var(--mazzi-muted)]"><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> Buscando endereços…</li>}
           {suggestions.map((suggestion, index) => (
             <li key={`${suggestion.placeId || suggestion.formattedAddress}-${index}`} id={`${listboxId}-${index}`} role="option" aria-selected={index === activeIndex}>
-              <ButtonBase type="button" className={`flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition ${index === activeIndex ? 'bg-amber-50' : 'hover:bg-amber-50'}`} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)}>
-                <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-50 text-[var(--mazzi-yellow-dark)]"><MapPin className="h-3.5 w-3.5" aria-hidden="true" /></span>
-                <span className="min-w-0 flex-1"><span className="block truncate text-xs font-bold leading-4 text-[var(--mazzi-text)]">{suggestion.addressLine1 || suggestion.formattedAddress}</span><span className="mt-0.5 block truncate text-[10px] font-medium leading-4 text-[var(--mazzi-muted)]">{suggestion.addressLine2 || suggestion.formattedAddress}</span></span>
-              </ButtonBase>
+              <div className={`flex min-h-14 items-stretch gap-1 rounded-xl transition ${index === activeIndex ? 'bg-amber-50' : 'hover:bg-amber-50'}`}>
+                <ButtonBase type="button" className="flex min-w-0 flex-1 items-start gap-2.5 rounded-xl px-3 py-3 text-left transition" onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)}>
+                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-50 text-[var(--mazzi-yellow-dark)]"><MapPin className="h-3.5 w-3.5" aria-hidden="true" /></span>
+                  <span className="min-w-0 flex-1"><span className={`${suggestionsMode === 'list' ? 'break-words' : 'truncate'} block text-xs font-bold leading-4 text-[var(--mazzi-text)]`}>{suggestion.addressLine1 || suggestion.formattedAddress}</span><span className={`${suggestionsMode === 'list' ? 'break-words' : 'truncate'} mt-0.5 block text-[10px] font-medium leading-4 text-[var(--mazzi-muted)]`}>{suggestion.addressLine2 || suggestion.formattedAddress}</span></span>
+                </ButtonBase>
+                {suggestionsMode === 'list' && onEditSuggestion && <ButtonBase type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onEditSuggestion(suggestion)} aria-label={`Editar endereço ${suggestion.formattedAddress}`} title="Editar endereço" className="grid min-h-11 w-11 shrink-0 place-items-center self-center rounded-xl text-[var(--mazzi-muted)] transition hover:bg-white hover:text-[var(--mazzi-dark)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"><Pencil className="h-4 w-4" aria-hidden="true" /></ButtonBase>}
+              </div>
             </li>
           ))}
         </ul>

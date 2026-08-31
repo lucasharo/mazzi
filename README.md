@@ -42,11 +42,12 @@ npm run build
 
 ### Publicação
 
-O deploy dos três apps é feito pelo GitHub Actions no Cloudflare Pages. Pushes para a branch `feature/premium-ui-v2` executam lint, testes, build e publicação dos ambientes DEV configurados para:
+O deploy dos quatro apps é feito pelo GitHub Actions no Cloudflare Pages. Pushes para a branch `feature/premium-ui-v2` executam lint, testes, build e publicação dos ambientes DEV configurados para:
 
 - `mazzi-aluno-dev` — `dist/student`
 - `mazzi-profissional-dev` — `dist/instructor`
 - `mazzi-admin-dev` — `dist/admin`
+- `mazzi-landing-dev` — `dist/landing`
 
 O ambiente atual usa exclusivamente GitHub Actions e Cloudflare Pages.
 

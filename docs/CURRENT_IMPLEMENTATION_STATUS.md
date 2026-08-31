@@ -45,7 +45,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Perfil | RPC `update_my_profile` Hardening | `IMPLEMENTADO` | `supabase/migrations/20260818000032_harden_update_my_profile_and_reconcile_migrations.sql` | RPC `SECURITY DEFINER`, `search_path = public, pg_temp`, `RETURNS void`, sem vazamento de dados |
 | Perfil | Foto de Perfil / Avatar Upload | `IMPLEMENTADO` | [`src/components/profile/ProfilePhotoPicker.tsx`](../src/components/profile/ProfilePhotoPicker.tsx), `supabase/migrations/20260817000027_storage_avatars_bucket.sql` | Storage bucket `avatars` com RLS |
 | Ferramental Dev | DevQuickLogin (Hardened / Sem Senhas Versionadas) | `MOCK/DEV` | [`src/components/auth/dev/DevQuickLogin.tsx`](../src/components/auth/dev/DevQuickLogin.tsx), [`src/components/auth/dev/demo-accounts.ts`](../src/components/auth/dev/demo-accounts.ts) | Lista mantida em DEV (`DEV=true` + `VITE_ENABLE_DEV_QUICK_LOGIN="true"`), sem senhas versionadas; credenciais rotacionadas e lidas exclusivamente do `.env.local` (`DEC-012`) |
-| Infra / CI | GitHub Actions CI Workflow (`MAZZI CI`) | `IMPLEMENTADO` | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | Automação de lint, testes, build dos três apps e publicação DEV no Cloudflare Pages para pushes em `feature/premium-ui-v2` |
+| Infra / CI | GitHub Actions CI Workflow (`MAZZI CI`) | `IMPLEMENTADO` | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | Automação de lint, testes, build dos quatro apps e publicação DEV no Cloudflare Pages para pushes em `feature/premium-ui-v2` |
 
 ---
 
@@ -98,4 +98,17 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 
 1. **Operação e observabilidade (`Dev`):** acompanhar a execução do fluxo já implementado de cancelamento DEC-013 e do ciclo Autoescola ↔ Instrutor.
 2. **Gateway de pagamento (`Product/Dev`):** Stripe está configurado para cartão e Pix no checkout customizado; fake permanece disponível somente como fallback explícito para testes locais. O webhook assinado, as credenciais Stripe e as Edge Functions de criação/estorno estão publicados no Supabase; produção exige apenas a troca controlada para chaves `pk_live_`/`sk_live_` após homologação.
-3. **Publicação (`Dev`):** acompanhar o workflow GitHub Actions e os três projetos Cloudflare Pages DEV após cada push da branch `feature/premium-ui-v2`.
+3. **Publicação (`Dev`):** acompanhar o workflow GitHub Actions e os quatro projetos Cloudflare Pages DEV após cada push da branch `feature/premium-ui-v2`.
+
+---
+
+## 5. Atualização de implementação — 2026-08-30 e 2026-08-31
+
+O histórico detalhado das alterações realizadas nos dois últimos dias está em [`docs/23-change-log-2026-08-30-31.md`](./23-change-log-2026-08-30-31.md). Em resumo, foram concluídos:
+
+- migração do checkout do Mercado Pago para Stripe Checkout hospedado, com métodos dinâmicos, retorno controlado e confirmação server-side por webhook;
+- correções no fluxo de pagamento pendente, retomada de reserva sem criar novo hold e reaproveitamento da mesma prévia do fluxo de reservar agenda;
+- perfil do prestador aberto a partir do mapa e compactação da tela de resumo da reserva;
+- autocomplete de endereço reutilizável, modal independente, localização atual, edição de rua/número e confirmação exclusivamente por seleção da lista;
+- padronização visual dos headers, labels, sombras, cores, telas de sucesso e estados de checkout;
+- atualização da suíte de segurança para validar a retomada de pagamento pela prévia compartilhada.
