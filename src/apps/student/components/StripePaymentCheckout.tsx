@@ -146,6 +146,7 @@ export const StripePaymentCheckout: React.FC<Props> = ({ clientSecret, amountInC
             borderRadius: '14px',
           },
         },
+        paymentMethodOrder: method === 'PIX' ? ['pix', 'card'] : ['card', 'pix'],
         // Do not offer Link or browser wallet autofill in this checkout.
         wallets: { link: 'never', applePay: 'never', googlePay: 'never' },
       }}

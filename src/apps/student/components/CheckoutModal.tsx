@@ -98,6 +98,9 @@ function friendlyCheckoutError(error: unknown, fallback: string): string {
   if (technicalMessage.includes('STUDENT_ID_MISMATCH')) {
     return 'Sua sessão não corresponde ao aluno desta reserva. Atualize a página e tente novamente.';
   }
+  if (technicalMessage.includes('STRIPE_PIX_NOT_ENABLED')) {
+    return 'O Pix ainda não está habilitado na conta Stripe. Ative Pix em Payment methods no Dashboard e tente novamente.';
+  }
 
   return fallback;
 }

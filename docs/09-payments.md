@@ -16,12 +16,15 @@ O ambiente DEV pode executar chamadas com credenciais de teste. Não há autoriz
 
 ## Checkout online de teste — TASK-079 e TASK-080
 
-- O modo Stripe oferece cartão e Pix pelo Payment Element. O Pix exibe QR Code/copia e cola e permanece `PENDING` até confirmação posterior.
+- O modo Stripe oferece cartão e Pix pelo Payment Element usando métodos de pagamento dinâmicos. O Pix exibe QR Code/copia e cola e permanece `PENDING` até confirmação posterior.
 - O Stripe Elements tokeniza os dados sensíveis; o MAZZI recebe somente o `client_secret` do PaymentIntent autenticado.
 - A Edge Function autenticada ignora valores do browser, usa `payments.amount_in_cents` e envia uma chave de idempotência ao Stripe.
 - Somente uma confirmação server-side aprovada confirma a reserva; `pending`, `in_process` ou rejeição mantêm a reserva não confirmada.
 - A chave pública fica em `VITE_STRIPE_PUBLISHABLE_KEY`; `STRIPE_SECRET_KEY` fica somente nos secrets do Supabase.
 - Em builds com `pk_test_`, a telemetria avançada opcional do Stripe é desativada para evitar falha de DNS em `m.stripe.com`; as proteções continuam ativas nos builds com `pk_live_`.
+- Pix precisa estar habilitado no Stripe Dashboard em **Settings > Payment methods** em cada ambiente. Se `pix.available=false`, a API rejeita o PaymentIntent e não existe QR Code para exibir.
+- Quando o Stripe recusa a criação do PaymentIntent, a tentativa local é marcada como `FAILED` e a reserva continua `PENDING_PAYMENT`, permitindo tentar outro método sem deixar pagamentos pendentes órfãos.
+- A Edge Function não envia `payment_method_types[]=pix`; ela usa `automatic_payment_methods[enabled]=true` e verifica se o método solicitado está disponível antes de entregar o `client_secret`.
 
 ## Recebimento Pix e repasse manual — TASK-080
 
