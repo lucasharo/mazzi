@@ -392,12 +392,44 @@ export const StudentApp: React.FC = () => {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(paymentId);
 
     if (checkoutState === 'cancelled') {
-      clearStripeCheckoutReturnParams();
-      setStripeCheckoutReturn({
-        status: 'CANCELLED',
-        message: 'Nenhuma cobrança foi confirmada. Você pode voltar e tentar outra forma de pagamento.',
-      });
-      return undefined;
+      let active = true;
+      const reopenPreviousCheckout = async () => {
+        try {
+          const [paymentStatus, bookings] = await Promise.all([
+            dbService.getMyPaymentStatus(paymentId),
+            dbService.getBookings(),
+          ]);
+          if (!active) return;
+
+          const bookingId = paymentStatus?.booking_id || paymentStatus?.bookingId;
+          const pendingBooking = bookings.find((booking) => (
+            booking.id === bookingId && booking.status === 'PENDING_PAYMENT'
+          ));
+
+          if (pendingBooking) {
+            setConfirmedBookings(bookings);
+            clearStripeCheckoutReturnParams();
+            setStripeCheckoutReturn(null);
+            setResumeBooking(pendingBooking);
+            return;
+          }
+        } catch (error) {
+          if (import.meta.env.DEV) console.warn('STRIPE_CANCEL_RETURN_REOPEN_FAILED', error);
+        }
+
+        if (active) {
+          clearStripeCheckoutReturnParams();
+          setStripeCheckoutReturn({
+            status: 'CANCELLED',
+            message: 'Nenhuma cobrança foi confirmada. Você pode voltar e tentar outra forma de pagamento.',
+          });
+        }
+      };
+
+      void reopenPreviousCheckout();
+      return () => {
+        active = false;
+      };
     }
 
     if (checkoutState !== 'success' || !isUuid) {

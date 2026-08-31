@@ -16,6 +16,7 @@ interface AddressAutocompleteProps {
   dropdownAlignment?: 'input' | 'viewport';
   onFocus?: () => void;
   onBlur?: () => void;
+  showClearButton?: boolean;
 }
 
 const cache = new Map<string, { expiresAt: number; results: LocationSuggestion[] }>();
@@ -33,6 +34,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   dropdownAlignment = 'input',
   onFocus,
   onBlur,
+  showClearButton = true,
 }) => {
   const listboxId = useId();
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -178,7 +180,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           autoComplete="off"
         />
         {isLoading && <LoaderCircle className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[var(--mazzi-muted)]" aria-label="Buscando endereços" />}
-        {!isLoading && value.trim() && <ButtonBase type="button" onClick={clearInput} aria-label="Limpar localização" title="Limpar localização" className="absolute right-1 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-[var(--mazzi-muted)] transition hover:bg-slate-100 hover:text-[var(--mazzi-dark)]"><X className="h-4 w-4" aria-hidden="true" /></ButtonBase>}
+        {!isLoading && showClearButton && value.trim() && <ButtonBase type="button" onClick={clearInput} aria-label="Limpar localização" title="Limpar localização" className="absolute right-1 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-[var(--mazzi-muted)] transition hover:bg-slate-100 hover:text-[var(--mazzi-dark)]"><X className="h-4 w-4" aria-hidden="true" /></ButtonBase>}
       </div>
       {error && <p className="mt-1 text-xs text-rose-700" role="alert">{error}</p>}
       {suggestions.length > 0 && (

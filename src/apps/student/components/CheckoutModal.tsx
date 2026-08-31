@@ -19,7 +19,7 @@ import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { geocodeAddress } from '../../../lib/geocoding';
 import { getCheckoutGatewayProvider, getStripeEnvironment, getStripePublishableKey } from '../../../lib/payment-gateway-config';
 import { StripeHostedCheckout } from './StripeHostedCheckout';
-import { AddressAutocomplete } from '../../../components/search/AddressAutocomplete';
+import { ConfirmableAddressAutocomplete } from '../../../components/search/ConfirmableAddressAutocomplete';
 import { LocationSuggestion } from '../../../domain/maps/geocoding-provider';
 
 export interface CheckoutModalProps {
@@ -648,7 +648,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const createPaymentAttempt = async (nextMethod: PaymentMethodType, bookingOverride?: Booking): Promise<Payment> => {
     const activeBooking = bookingOverride || booking;
-    if (!activeBooking || !user || !provider) throw new Error('PAYMENT_CONTEXT_UNAVAILABLE');
+    if (!activeBooking || !user) throw new Error('PAYMENT_CONTEXT_UNAVAILABLE');
 
     const isRealSupabase = Boolean(
       (import.meta as any).env?.VITE_SUPABASE_URL &&
@@ -1031,28 +1031,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <label htmlFor="checkout-student-address" className="mazzi-field-label mb-1.5 block">
                     Endereço completo para o ponto de encontro
                   </label>
-                  <AddressAutocomplete
+                  <ConfirmableAddressAutocomplete
                     value={studentAddress}
                     onChange={(value) => {
                       setStudentAddress(value);
                       setStudentAddressLocation(null);
                     }}
-                    onSelect={(suggestion: LocationSuggestion) => {
-                      setStudentAddress(suggestion.formattedAddress);
-                      setStudentAddressLocation({
-                        formattedAddress: suggestion.formattedAddress,
-                        latitude: suggestion.latitude,
-                        longitude: suggestion.longitude,
-                        postalCode: suggestion.postalCode,
-                        placeId: suggestion.placeId,
-                        addressLine1: suggestion.addressLine1,
-                        addressLine2: suggestion.addressLine2,
-                        neighborhood: suggestion.neighborhood,
-                        city: suggestion.city,
-                        state: suggestion.stateCode || suggestion.state,
-                        country: suggestion.country,
-                      });
+                    onConfirm={(suggestion: LocationSuggestion | null) => {
+                      if (suggestion) {
+                        setStudentAddressLocation({
+                          formattedAddress: suggestion.formattedAddress,
+                          latitude: suggestion.latitude,
+                          longitude: suggestion.longitude,
+                          postalCode: suggestion.postalCode,
+                          placeId: suggestion.placeId,
+                          addressLine1: suggestion.addressLine1,
+                          addressLine2: suggestion.addressLine2,
+                          neighborhood: suggestion.neighborhood,
+                          city: suggestion.city,
+                          state: suggestion.stateCode || suggestion.state,
+                          country: suggestion.country,
+                        });
+                      }
                     }}
+                    onClear={() => setStudentAddressLocation(null)}
                     placeholder="Digite seu endereço com número e bairro"
                     ariaLabel="Endereço completo para o ponto de encontro"
                     dropdownAlignment="viewport"
