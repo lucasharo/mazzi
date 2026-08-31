@@ -27,7 +27,7 @@
 - **Veículo do Profissional**: Toda aula é ministrada obrigatoriamente no veículo fornecido e homologado pelo instrutor/CFC;
 - **Busca com Filtros Estritos**: Busca geoespacial e por disponibilidade com matching integral de filtros;
 - **Agendamento com Horizonte Canônico de 60 Dias**: Visualização progressiva de 30 + 30 dias;
-- **Pagamentos Integrados**: Pagamento dentro do aplicativo (PIX e Cartão de Crédito). *Nota: o checkout fake continua padrão. Em DEV, a configuração `mercadopago` permite homologar cartão e Pix com credenciais de teste; o Pix aguarda confirmação server-side posterior e não movimenta produção (DEC-015).*
+- **Pagamentos Integrados**: Pagamento dentro do aplicativo (PIX e Cartão de Crédito) via Stripe Payment Element. *Nota: o checkout fake continua disponível para testes locais; o checkout Stripe aguarda confirmação server-side posterior por webhook assinado.*
 - **Chat Contextual**: Mensageria interna associada à reserva confirmada;
 - **Avaliações**: Sistema de 1 a 5 estrelas e depoimento após a conclusão da aula.
 

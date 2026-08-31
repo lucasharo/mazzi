@@ -1,67 +1,64 @@
 ## FASE ATUAL DO PROJETO (MVP VALIDATION MODE)
-- **Modo de Pagamento**: alternável em DEV entre `fake` (padrão) e `mercadopago` por `VITE_PAYMENT_GATEWAY_PROVIDER`.
-- **Dinheiro Real**: somente quando `MERCADOPAGO_ENVIRONMENT=production` estiver explicitamente configurado nos secrets do Supabase.
-- **Mercado Pago**: o ambiente é selecionado server-side por `MERCADOPAGO_ENVIRONMENT=test|production`; a credencial usada deve corresponder ao ambiente selecionado.
-- **Estorno Mercado Pago em DEV**: a solicitação real pelo sandbox é feita exclusivamente pela Edge Function autenticada do Admin, com chave de idempotência determinística; o gateway fake continua usando a simulação local.
+- **Modo de Pagamento**: alternável em DEV entre `fake` (padrão) e `stripe` por `VITE_PAYMENT_GATEWAY_PROVIDER`.
+- **Dinheiro Real**: somente quando uma chave `STRIPE_SECRET_KEY` de produção estiver explicitamente configurada nos secrets do Supabase.
+- **Stripe**: o ambiente é definido pela chave pública `pk_test_`/`pk_live_`; a chave secreta fica exclusivamente no servidor.
+- **Estorno Stripe**: a solicitação é feita exclusivamente pela Edge Function autenticada do Admin, com chave de idempotência determinística; o gateway fake continua usando a simulação local.
 - **Segurança & Idempotência**: O fluxo usa `fake_payment_gateway` com chave de idempotência `idem_pay_<booking_id>` e verificação transacional no banco PostgreSQL (`confirm_booking_payment` RPC).
 - **Produção**: pagamentos reais exigem credenciais produtivas protegidas nos secrets do Supabase e webhook assinado para reconciliação.
 
 ## Direção de seleção do gateway
 
-Foi realizada uma comparação inicial entre Mercado Pago, Stripe Connect, Asaas e Pagar.me para o modelo de marketplace da MAZZI. A recomendação inicial é avaliar primeiro o **Mercado Pago**, pela aderência ao mercado brasileiro, disponibilidade de Pix, cartão, parcelamento e split nativo para marketplace.
+Foi realizada uma comparação inicial entre Mercado Pago, Stripe Connect, Asaas e Pagar.me para o modelo de marketplace da MAZZI. A decisão atual é usar **Stripe** no checkout customizado, com Payment Element para cartão e Pix e webhook assinado para confirmação.
 
-Essa recomendação ainda não é uma decisão de ativação nem substitui uma proposta comercial. O custo efetivo deverá considerar método de pagamento, parcelamento, prazo de recebimento, antecipação, chargebacks, estornos e cada repasse ao prestador. O Mercado Pago documenta split 1:1 para Checkout Pro e Checkout Transparente, com vínculo dos vendedores por OAuth e comissão da plataforma configurada na cobrança.
+O custo efetivo deverá considerar método de pagamento, parcelamento, prazo de recebimento, antecipação, chargebacks, estornos e cada repasse ao prestador. A ativação de produção exige validação comercial e operacional antes de cobrar clientes reais.
 
 O ambiente DEV pode executar chamadas com credenciais de teste. Não há autorização para credenciais ou cobranças de produção.
 
 ## Checkout online de teste — TASK-079 e TASK-080
 
-- O modo Mercado Pago oferece cartão e Pix de teste. O Pix exibe QR Code/copia e cola e permanece `PENDING` até confirmação posterior.
-- O Brick oficial tokeniza PAN/CVV; o MAZZI recebe somente token temporário.
-- A Edge Function autenticada ignora valores do browser, usa `payments.amount_in_cents` e envia `X-Idempotency-Key`.
+- O modo Stripe oferece cartão e Pix pelo Payment Element. O Pix exibe QR Code/copia e cola e permanece `PENDING` até confirmação posterior.
+- O Stripe Elements tokeniza os dados sensíveis; o MAZZI recebe somente o `client_secret` do PaymentIntent autenticado.
+- A Edge Function autenticada ignora valores do browser, usa `payments.amount_in_cents` e envia uma chave de idempotência ao Stripe.
 - Somente uma confirmação server-side aprovada confirma a reserva; `pending`, `in_process` ou rejeição mantêm a reserva não confirmada.
-- A chave pública fica em `VITE_MERCADOPAGO_PUBLIC_KEY`; Access Token fica somente nos secrets do Supabase.
+- A chave pública fica em `VITE_STRIPE_PUBLISHABLE_KEY`; `STRIPE_SECRET_KEY` fica somente nos secrets do Supabase.
 
 ## Recebimento Pix e repasse manual — TASK-080
 
-- O gateway é selecionado por `VITE_PAYMENT_GATEWAY_PROVIDER=fake|mercadopago`; `fake` continua sendo o padrão seguro.
+- O gateway é selecionado por `VITE_PAYMENT_GATEWAY_PROVIDER=fake|stripe`; `fake` continua sendo o padrão seguro.
 - A criação do Pix é online, mas a confirmação é posterior: o aluno permanece em `Aguardando pagamento` até o webhook assinado ou a atualização manual consultar o status autoritativo.
-- O webhook configurado para esta integração deve receber notificações de pagamento (`payment.updated`). Eventos de Orders (`order.processed`) são aceitos e ignorados porque não pertencem ao fluxo Pix atual.
+- O webhook Stripe configurado para esta integração recebe eventos de `payment_intent.*`, reembolsos e disputas. A assinatura é validada antes de qualquer alteração local.
 - O backend valida valor em centavos, aluno/reserva, expiração, assinatura e idempotência antes de confirmar a reserva.
-- O PRO cadastra sua chave Pix no próprio app. O Admin vê repasses somente de reservas pagas e concluídas e registra o repasse manual com referência.
+- O PRO cadastra sua conta bancária no próprio app. O Admin vê repasses somente de reservas pagas e concluídas e registra o repasse manual com referência. Chaves Pix cadastradas antes desta mudança permanecem legíveis apenas como legado.
 - Split automático, OAuth e transferência Pix automática continuam fora desta entrega.
 
 ## Estorno real no sandbox
 
-- O Admin pode solicitar um estorno integral de um pagamento Mercado Pago pela Edge Function `process-mercadopago-refund`.
-- A função valida sessão, permissão `PLATFORM_ADMIN`, estado do pagamento e identificador externo antes de chamar `POST /v1/payments/{payment_id}/refunds`.
-- O `X-Idempotency-Key` é derivado do pagamento e do valor restante, evitando uma segunda devolução em retries.
-- O lançamento contábil local usa `process_booking_refund` somente após confirmação do Mercado Pago; respostas assíncronas permanecem pendentes e são reconciliadas pelo webhook.
+- O Admin pode solicitar um estorno integral de um pagamento Stripe pela Edge Function `process-stripe-refund`.
+- A função valida sessão, permissão `PLATFORM_ADMIN`, estado do pagamento e identificador externo antes de chamar `POST /v1/refunds`.
+- A chave de idempotência é derivada do pagamento e do valor restante, evitando uma segunda devolução em retries.
+- O lançamento contábil local usa `process_booking_refund` somente após confirmação do Stripe; respostas assíncronas permanecem pendentes e são reconciliadas pelo webhook.
 - A função e a migration precisam ser publicadas no projeto DEV antes de o botão operar contra o sandbox. Nenhuma credencial privada é enviada ao frontend.
 
-## Mercado Pago Marketplace / Split 1:1 (futuro)
+## Stripe Connect / Split (futuro)
 
-Este cenário permanece apenas como referência para uma fase posterior. A implementação atual não usa OAuth, split automático nem transferência Pix automática.
+Este cenário permanece apenas como referência para uma fase posterior. A implementação atual não usa Connect, split automático nem transferência bancária automática.
 
-Para uma futura fase de marketplace, o modelo poderia operar com três contas de teste no Mercado Pago:
+Para uma futura fase de marketplace, o modelo poderá operar com contas conectadas Stripe:
 
-- **Aluno**: comprador de teste usado no checkout.
-- **PRO / Prestador**: vendedor que autoriza a MAZZI via OAuth.
-- **MAZZI**: integrador/marketplace, dono da aplicação e da chave pública usada no frontend.
+- **Aluno**: cliente do checkout.
+- **PRO / Prestador**: conta conectada que recebe o repasse.
+- **MAZZI**: plataforma responsável pela cobrança e comissão.
 
 O fluxo correto para split 1:1 é:
 
-1. O PRO conecta sua conta Mercado Pago à MAZZI via OAuth, caso essa decisão seja aprovada futuramente.
-2. O backend salva, de forma privada, o `access_token` do vendedor vinculado ao prestador.
-3. O checkout no app Aluno usa a `public_key` da conta integradora MAZZI.
-4. A Edge Function cria o pagamento usando o `access_token` do vendedor/PRO.
-5. A comissão da MAZZI é enviada na cobrança como taxa de marketplace (`marketplace_fee`), calculada em centavos a partir de `platform_fee_in_cents`.
-6. O Mercado Pago liquida a parte do vendedor e a parte da MAZZI conforme a configuração da cobrança e as regras da conta de teste.
-
-Enquanto `MERCADOPAGO_ENVIRONMENT=test`, somente contas e cartões de teste podem ser usados. Com `production`, a cobrança e o estorno são reais.
+1. O PRO conclui o onboarding da conta conectada Stripe.
+2. O backend salva somente o identificador da conta conectada e seus estados de capacidade.
+3. A Edge Function cria o PaymentIntent no contexto definido pela plataforma.
+4. A comissão da MAZZI é calculada em centavos e aplicada conforme a configuração do Connect.
+5. O Stripe liquida a parte do prestador e a parte da MAZZI conforme as responsabilidades definidas.
 
 ## Interface Abstrata: `PaymentGateway`
-O domínio MAZZI é completamente desacoplado de provedores específicos (como Asaas, Pagar.me, Stripe ou Mercado Pago).
+O domínio MAZZI é completamente desacoplado de provedores específicos.
 
 ```typescript
 export interface PaymentGateway {
@@ -79,7 +76,7 @@ export interface PaymentGateway {
 - Taxa de Plataforma MAZZI (`platform_fee_in_cents`): Percentual configurável administrativamente via backend.
 - **Comissão MAZZI:** Percentual configurável pelo Admin, limitado pelo teto combinado de taxas.
 - Total Pago pelo Aluno (`total_in_cents`): valor final congelado na cotação/reserva.
-- Repasse Líquido ao Fornecedor: total bruto menos taxa do Mercado Pago e comissão MAZZI efetiva, com limite combinado configurável.
+- Repasse Líquido ao Fornecedor: total bruto menos taxa do Stripe e comissão MAZZI efetiva, com limite combinado configurável.
 
 ## Ciclo de Vida do Repasse (Payout)
 1. `PENDING`: Criado quando a reserva é paga e ainda aguarda o período de segurança.

@@ -28,6 +28,7 @@ import {
   PublicSearchProviderResult,
   Payout,
   PixDestination,
+  BankAccount,
 } from '../types';
 import { normalizeComplianceStatus } from '../domain/compliance-status';
 import { formatDateBR, formatTimeBR } from './date-format';
@@ -818,6 +819,14 @@ export const dbService = {
     return mapOfferingFromDb(data);
   },
 
+  async replaceActiveOffering(offeringId: string): Promise<ServiceOffering> {
+    const { data, error } = await sp.rpc('provider_replace_active_service_offering', {
+      p_offering_id: offeringId,
+    });
+    if (error) throw error;
+    return mapOfferingFromDb(data);
+  },
+
   async updateProviderProfile(
     providerId: string,
     profileData: {
@@ -1100,34 +1109,34 @@ export const dbService = {
     return data;
   },
 
-  async processMercadoPagoCardPayment(payload: {
-    paymentId: string;
-    token: string;
-    issuerId: string;
-    paymentMethodId: string;
-    installments: number;
-    cardholderName: string;
-    payer: { email?: string; identification?: { type?: string; number?: string } };
-  }): Promise<any> {
-    const { data, error } = await sp.functions.invoke('process-mercadopago-card-payment', { body: payload });
-    if (error) throw error;
-    if (!data?.approved) throw new Error(data?.message || 'PAYMENT_NOT_APPROVED');
+  async createStripePaymentIntent(paymentId: string, method: 'PIX' | 'CREDIT_CARD', payerEmail?: string): Promise<any> {
+    if (!isUuid(paymentId)) throw new Error('STRIPE_PAYMENT_INVALID_UUID');
+    const { data, error } = await sp.functions.invoke('create-stripe-payment-intent', {
+      body: { paymentId, method, payerEmail: payerEmail?.trim() || undefined },
+    });
+    if (error) {
+      let gatewayData: Record<string, unknown> = {};
+      const response = (error as any)?.context;
+      if (response && typeof response.clone === 'function') {
+        const parsed = await response.clone().json().catch(() => ({}));
+        gatewayData = parsed && typeof parsed === 'object' ? parsed : {};
+      }
+      const paymentError = new Error(
+        (gatewayData.message as string | undefined) || error.message || 'STRIPE_PAYMENT_INTENT_FAILED',
+      ) as Error & Record<string, unknown>;
+      Object.assign(paymentError, gatewayData, { cause: error });
+      throw paymentError;
+    }
+    if (!data?.clientSecret || !data?.paymentIntentId) {
+      throw new Error('STRIPE_PAYMENT_INTENT_INCOMPLETE');
+    }
     return data;
   },
 
-  async processMercadoPagoPixPayment(paymentId: string): Promise<any> {
-    const { data, error } = await sp.functions.invoke('process-mercadopago-pix-payment', { body: { paymentId } });
-    if (error) throw error;
-    return data;
-  },
-
-  async processMercadoPagoRefund(bookingId: string, reason?: string): Promise<any> {
+  async processStripeRefund(bookingId: string, reason?: string): Promise<any> {
     if (!isUuid(bookingId)) throw new Error('REFUND_INVALID_BOOKING_UUID');
-    const { data, error } = await sp.functions.invoke('process-mercadopago-refund', {
-      body: {
-        bookingId,
-        reason: reason || 'ADMIN_MERCADOPAGO_REFUND',
-      },
+    const { data, error } = await sp.functions.invoke('process-stripe-refund', {
+      body: { bookingId, reason: reason || 'ADMIN_STRIPE_REFUND' },
     });
     if (error) throw error;
     return data;
@@ -1172,6 +1181,53 @@ export const dbService = {
       holderName: data.holder_name,
       holderDocument: data.holder_document || undefined,
       isActive: true,
+    };
+  },
+
+  async getMyBankAccount(): Promise<BankAccount | null> {
+    const { data, error } = await sp.rpc('get_my_bank_account');
+    if (error) throw error;
+    if (!data || !data.id) return null;
+    return {
+      id: data.id,
+      providerId: data.provider_id,
+      bankCode: data.bank_code,
+      branchNumber: data.branch_number,
+      accountNumber: '',
+      accountDigit: '',
+      accountType: data.account_type,
+      holderName: data.holder_name,
+      holderDocument: data.holder_document || undefined,
+      accountNumberMasked: data.account_number_masked,
+      isActive: data.is_active !== false,
+      updatedAt: data.updated_at,
+    };
+  },
+
+  async saveMyBankAccount(input: Omit<BankAccount, 'id' | 'providerId' | 'isActive' | 'updatedAt' | 'accountNumberMasked'>): Promise<BankAccount> {
+    const { data, error } = await sp.rpc('save_my_bank_account', {
+      p_bank_code: input.bankCode,
+      p_branch_number: input.branchNumber,
+      p_account_number: input.accountNumber,
+      p_account_digit: input.accountDigit,
+      p_account_type: input.accountType,
+      p_holder_name: input.holderName,
+      p_holder_document: input.holderDocument || null,
+    });
+    if (error) throw error;
+    return {
+      id: data.id,
+      providerId: data.provider_id,
+      bankCode: data.bank_code,
+      branchNumber: data.branch_number,
+      accountNumber: '',
+      accountDigit: '',
+      accountType: data.account_type,
+      holderName: data.holder_name,
+      holderDocument: data.holder_document || undefined,
+      accountNumberMasked: data.account_number_masked,
+      isActive: data.is_active !== false,
+      updatedAt: data.updated_at,
     };
   },
 

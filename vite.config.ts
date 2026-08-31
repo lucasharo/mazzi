@@ -56,7 +56,9 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
       'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || ''),
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
-      'import.meta.env.VITE_PAYMENT_GATEWAY_PROVIDER': JSON.stringify(env.VITE_PAYMENT_GATEWAY_PROVIDER || env.PAYMENT_GATEWAY_PROVIDER || 'fake'),
+      // Never let automated DOM tests initialize a real payment SDK.
+      'import.meta.env.VITE_PAYMENT_GATEWAY_PROVIDER': JSON.stringify(mode === 'test' ? 'fake' : (env.VITE_PAYMENT_GATEWAY_PROVIDER || env.PAYMENT_GATEWAY_PROVIDER || 'fake')),
+      'import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY': JSON.stringify(env.VITE_STRIPE_PUBLISHABLE_KEY || env.STRIPE_PUBLISHABLE_KEY || ''),
       'import.meta.env.VITE_ENABLE_DEV_QUICK_LOGIN': process.env.GITHUB_PAGES_DEPLOY === 'true' ? JSON.stringify('false') : JSON.stringify(env.VITE_ENABLE_DEV_QUICK_LOGIN || 'true'),
       'import.meta.env.VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD': process.env.GITHUB_PAGES_DEPLOY === 'true' ? JSON.stringify('') : JSON.stringify(env.VITE_DEV_QUICK_LOGIN_STUDENT_PASSWORD || ''),
       'import.meta.env.VITE_DEV_QUICK_LOGIN_INSTRUCTOR_PASSWORD': process.env.GITHUB_PAGES_DEPLOY === 'true' ? JSON.stringify('') : JSON.stringify(env.VITE_DEV_QUICK_LOGIN_INSTRUCTOR_PASSWORD || ''),

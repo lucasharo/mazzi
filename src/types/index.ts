@@ -553,6 +553,7 @@ export interface Payment {
   pixQrCode?: string; // PIX "Copia e Cola" string
   pixQrCodeBase64?: string; // QR code image representation
   pixExpiresAt?: string; // ISO 8601 UTC timestamp
+  stripeClientSecret?: string; // Client secret scoped to the authenticated payer
   cardLast4?: string;
   cardBrand?: string;
   metadata?: Record<string, any>;
@@ -618,6 +619,24 @@ export interface PixDestination {
   pixKeyMasked?: string;
   holderName: string;
   holderDocument?: string;
+  isActive: boolean;
+  updatedAt?: string;
+}
+
+export type BankAccountType = 'CHECKING' | 'SAVINGS';
+
+/** Dados bancários privados usados para repasses ao prestador. */
+export interface BankAccount {
+  id?: string;
+  providerId: string;
+  bankCode: string;
+  branchNumber: string;
+  accountNumber: string;
+  accountDigit: string;
+  accountType: BankAccountType;
+  holderName: string;
+  holderDocument?: string;
+  accountNumberMasked?: string;
   isActive: boolean;
   updatedAt?: string;
 }

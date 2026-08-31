@@ -72,9 +72,10 @@ src/
 2. **Gateway Ativo Atual (`FakePaymentGateway`)**:
    - Por padrão em desenvolvimento (`DEC-010`), o sistema utiliza `FakePaymentGateway` (`fake-adapter.ts`).
    - Simula respostas autorizadas de PIX e Cartão de Crédito sem realizar chamadas HTTP reais ou movimentar dinheiro real.
-3. **Mercado Pago em Homologação DEV**:
-   - O Card Payment Brick tokeniza o cartão no browser; a Edge Function autenticada cria a cobrança com credencial de teste e idempotência.
-   - A seleção `fake|mercadopago` é feita por variável de ambiente. O backend exige ambiente `test`; produção continua desabilitada.
+3. **Stripe no Checkout Atual**:
+   - O Stripe Payment Element tokeniza cartão e Pix no browser; a Edge Function autenticada cria o PaymentIntent usando o valor persistido e idempotência.
+   - A seleção operacional é `fake|stripe` por `VITE_PAYMENT_GATEWAY_PROVIDER`. A confirmação da reserva ocorre somente pelo webhook Stripe assinado.
+   - Registros e funções Mercado Pago permanecem somente para compatibilidade histórica e não são chamados pelo checkout atual.
 
 ---
 

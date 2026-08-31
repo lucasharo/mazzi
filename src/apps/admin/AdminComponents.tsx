@@ -1484,12 +1484,12 @@ export const FinancialTab: React.FC<{
   auditLogs: AuditLog[];
   actor: AuthContext;
   onProcessRefund: (booking: Booking) => void;
-  isMercadoPagoGateway: boolean;
+  isStripeGateway: boolean;
   isProductionEnvironment?: boolean;
   platformFeePercentage: number;
   payouts: Payout[];
   onMarkManualPayout: (payout: Payout, transferReference: string) => void;
-}> = ({ bookings, auditLogs, actor, onProcessRefund, isMercadoPagoGateway, isProductionEnvironment = false, platformFeePercentage, payouts, onMarkManualPayout }) => {
+}> = ({ bookings, auditLogs, actor, onProcessRefund, isStripeGateway, isProductionEnvironment = false, platformFeePercentage, payouts, onMarkManualPayout }) => {
   const [activeSubTab, setActiveSubTab] = useState<'payouts' | 'ledger'>('ledger');
   const [selectedBookingId, setSelectedBookingId] = useState<string>('');
   const [transferReferences, setTransferReferences] = useState<Record<string, string>>({});
@@ -1640,11 +1640,11 @@ export const FinancialTab: React.FC<{
                   <p className="text-slate-500">Total Transacionado: <strong className="font-mono text-slate-950">{formatCentsToBRL(selectedBooking.totalInCents)}</strong></p>
                 </div>
 
-                <div className={`p-3 rounded-2xl leading-relaxed font-medium ${isMercadoPagoGateway ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-amber-50 border border-amber-200 text-amber-800'}`}>
-                  <strong>{isMercadoPagoGateway ? 'Estorno pelo Mercado Pago' : 'Ação em ambiente de teste'}</strong>
+                <div className={`p-3 rounded-2xl leading-relaxed font-medium ${isStripeGateway ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-amber-50 border border-amber-200 text-amber-800'}`}>
+                  <strong>{isStripeGateway ? 'Estorno pelo Stripe' : 'Ação em ambiente de teste'}</strong>
                   <p className="mt-1">
-                    {isMercadoPagoGateway
-                      ? `O estorno será solicitado ao Mercado Pago ${isProductionEnvironment ? 'e devolvido ao pagador.' : 'no ambiente de teste e devolvido ao comprador de teste.'}`
+                    {isStripeGateway
+                      ? `O estorno será solicitado ao Stripe ${isProductionEnvironment ? 'e devolvido ao pagador.' : 'no ambiente de teste.'}`
                       : 'Esta ação simula um estorno e registra a movimentação para conferência, sem acionar um gateway de pagamento real.'}
                   </p>
                 </div>
@@ -1658,7 +1658,7 @@ export const FinancialTab: React.FC<{
                     className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold"
                     onClick={() => handleRefund(selectedBooking)}
                   >
-                    {isMercadoPagoGateway ? 'Solicitar estorno' : 'Simular estorno'}
+                    {isStripeGateway ? 'Solicitar estorno' : 'Simular estorno'}
                   </Button>
                 )}
               </div>
@@ -1715,7 +1715,7 @@ export const FinancialTab: React.FC<{
                   <th className="p-3">Em segurança</th>
                   <th className="p-3">Disponível</th>
                   <th className="p-3">Data do repasse</th>
-                  <th className="p-3">Chave Pix</th>
+                  <th className="p-3">Destino do repasse</th>
                   <th className="p-3">Status de Processamento</th>
                 </tr>
               </thead>
@@ -1751,7 +1751,7 @@ export const FinancialTab: React.FC<{
                           <span className="text-slate-400">Não realizado</span>
                         )}
                       </td>
-                      <td className="p-3 font-mono text-slate-400">{payout.destinationKeyMasked || 'Sem chave Pix'}</td>
+                      <td className="p-3 font-mono text-slate-400">{payout.destinationKeyMasked || 'Sem conta bancária'}</td>
                       <td className="p-3">
                         <div className="flex min-w-[220px] flex-col gap-2">
                           <StatusBadge status={payout.status} domain="payout" />
@@ -1772,12 +1772,12 @@ export const FinancialTab: React.FC<{
                                 disabled={(transferReferences[payout.id] || '').trim().length < 3}
                                 onClick={() => onMarkManualPayout(payout, transferReferences[payout.id].trim())}
                               >
-                                Registrar Pix
+                                Registrar repasse
                               </Button>
                             </div>
                           )}
                           {payout.status === 'PENDING' && <span className="text-[11px] text-slate-500">Disponível após o período de segurança.</span>}
-                          {payout.status === 'BLOCKED' && <span className="text-[11px] text-rose-600">Cadastre uma chave Pix para liberar.</span>}
+                          {payout.status === 'BLOCKED' && <span className="text-[11px] text-rose-600">Cadastre uma conta bancária para liberar.</span>}
                           {payout.status === 'PAID' && payout.transferReference && <span className="text-[11px] text-emerald-700">Ref.: {payout.transferReference}</span>}
                         </div>
                       </td>
@@ -2146,7 +2146,7 @@ export const SettingsTab: React.FC<{
           </div>
 
           <div className="space-y-1">
-            <label className="mazzi-field-label block">Taxa estimada do Mercado Pago (%)</label>
+            <label className="mazzi-field-label block">Taxa estimada do Stripe (%)</label>
             <Input
               type="number"
               min={0}
@@ -2170,7 +2170,7 @@ export const SettingsTab: React.FC<{
               disabled={!isAuthorized}
               className="text-xs"
             />
-            <span className="text-[10px] text-slate-400 block">A soma MAZZI + Mercado Pago nunca ultrapassa este limite.</span>
+            <span className="text-[10px] text-slate-400 block">A soma MAZZI + Stripe nunca ultrapassa este limite.</span>
           </div>
 
           <div className="space-y-1">

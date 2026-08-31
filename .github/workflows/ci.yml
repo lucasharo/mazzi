@@ -51,8 +51,8 @@ jobs:
         env:
           VITE_GEOAPIFY_API_KEY: ${{ secrets.VITE_GEOAPIFY_API_KEY }}
           VITE_APP_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
-          VITE_PAYMENT_GATEWAY_PROVIDER: ${{ vars.VITE_PAYMENT_GATEWAY_PROVIDER || 'mercadopago' }}
-          VITE_MERCADOPAGO_PUBLIC_KEY: ${{ secrets.VITE_MERCADOPAGO_PUBLIC_KEY }}
+          VITE_PAYMENT_GATEWAY_PROVIDER: ${{ vars.VITE_PAYMENT_GATEWAY_PROVIDER || 'stripe' }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY || secrets.STRIPE_PUBLISHABLE_KEY }}
           VITE_ENABLE_DEV_QUICK_LOGIN: 'false'
         run: npm run build:all
 

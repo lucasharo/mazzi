@@ -17,15 +17,8 @@ import { dbService } from '../../../lib/db-service';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { geocodeAddress } from '../../../lib/geocoding';
-import { getCheckoutGatewayProvider } from '../../../lib/payment-gateway-config';
-import type { MercadoPagoCardPayload } from './MercadoPagoCardCheckout';
-
-const MercadoPagoCardCheckout = React.lazy(() =>
-  import('./MercadoPagoCardCheckout').then((module) => ({ default: module.MercadoPagoCardCheckout }))
-);
-const MercadoPagoPixCheckout = React.lazy(() =>
-  import('./MercadoPagoPixCheckout').then((module) => ({ default: module.MercadoPagoPixCheckout }))
-);
+import { getCheckoutGatewayProvider, getStripeEnvironment, getStripePublishableKey } from '../../../lib/payment-gateway-config';
+import { StripePaymentCheckout, type StripePaymentResult } from './StripePaymentCheckout';
 
 export interface CheckoutModalProps {
   isOpen: boolean;
@@ -109,36 +102,6 @@ function friendlyCheckoutError(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function buildPendingMercadoPagoPayment(
-  booking: Booking,
-  paymentId: string,
-  method: PaymentMethodType,
-  now = new Date(),
-  idempotencyKey = `idem_pay_${booking.id}`,
-): Payment {
-  const amountInCents = booking.snapshot?.totalInCents || booking.totalInCents;
-  const platformFeeInCents = booking.snapshot?.platformFeeInCents || booking.platformFeeInCents;
-  const providerAmountInCents = booking.snapshot?.priceInCents || (amountInCents - platformFeeInCents);
-
-  return {
-    id: paymentId,
-    bookingId: booking.id,
-    studentId: booking.studentId,
-    providerId: booking.providerId,
-    gateway: 'MERCADOPAGO',
-    idempotencyKey,
-    method,
-    status: 'PENDING',
-    amountInCents,
-    platformFeeInCents,
-    providerAmountInCents,
-    pixExpiresAt: method === 'PIX' ? booking.holdExpiresAt : undefined,
-    metadata: { gatewayProvider: 'mercadopago_test' },
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-  };
-}
-
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
@@ -158,11 +121,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 }) => {
   const { user, isAuthenticated } = useAuth();
   const checkoutGatewayProvider = getCheckoutGatewayProvider();
-  const isProductionEnvironment = Boolean(import.meta.env.PROD && import.meta.env.VITE_APP_ENV !== 'development');
-  const showTestCopy = !isProductionEnvironment;
-  // No cartão, o pagador é sempre o aluno autenticado. O comprador de teste
-  // é exclusivo do fluxo Pix e não deve substituir o e-mail do aluno no Brick.
-  const checkoutPayerEmail = user?.email;
+  const stripeEnvironment = getStripeEnvironment(getStripePublishableKey());
+  const showTestCopy = checkoutGatewayProvider === 'fake' || stripeEnvironment === 'test';
 
   const [step, setStep] = useState<CheckoutStep>('QUOTE_PREVIEW');
   const [successAnimationPhase, setSuccessAnimationPhase] = useState<'LOADING' | 'TRANSITION' | 'COMPLETE'>('LOADING');
@@ -170,7 +130,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [booking, setBooking] = useState<Booking | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
   const [paymentAttemptId, setPaymentAttemptId] = useState<string | null>(null);
-  const [cardCheckoutKey, setCardCheckoutKey] = useState(0);
+  const [stripePaymentPending, setStripePaymentPending] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -184,7 +144,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [holdTimeRemainingSec, setHoldTimeRemainingSec] = useState<number>(600);
 
   // The fake gateway is used only for the explicitly selected fake mode.
-  // Mercado Pago payments are represented by the real Supabase payment record.
   const paymentService = React.useMemo(() => {
     return checkoutGatewayProvider === 'fake' ? new PaymentService(new FakePaymentGateway()) : null;
   }, [checkoutGatewayProvider]);
@@ -201,7 +160,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setBooking(null);
     setPayment(null);
     setPaymentMethod(null);
-    setCardCheckoutKey(0);
+    setStripePaymentPending(false);
     setStep('QUOTE_PREVIEW');
 
     if (!isOpen) {
@@ -374,28 +333,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     let paymentStatusCheckInFlight = false;
     const isRealSupabase = Boolean((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
-    const hasGeneratedPixAttempt = Boolean(
-      payment?.method === 'PIX' && (
-        payment.externalPaymentId ||
-        (payment.pixQrCode && !payment.pixQrCode.startsWith('FAKE_PIX_'))
-      ),
+    const hasGeneratedGatewayAttempt = Boolean(
+      stripePaymentPending && payment?.gateway === 'STRIPE' && payment.externalPaymentId,
     );
 
     const reconcilePaymentStatus = async (): Promise<'PAID' | 'NOT_PAID' | 'UNKNOWN'> => {
-      if (!active || paymentStatusCheckInFlight || !isRealSupabase || !payment?.id || !/^[0-9a-f-]{36}$/i.test(payment.id) || !hasGeneratedPixAttempt) {
+      if (!active || paymentStatusCheckInFlight || !isRealSupabase || !payment?.id || !/^[0-9a-f-]{36}$/i.test(payment.id) || !hasGeneratedGatewayAttempt) {
         return 'UNKNOWN';
       }
 
       paymentStatusCheckInFlight = true;
       try {
-        // Use the same authoritative gateway reconciliation as the manual
-        // button. A local status RPC can remain PENDING until the webhook is
-        // processed, even when Mercado Pago already approved the Pix.
-        const currentStatus = await dbService.processMercadoPagoPixPayment(payment.id);
+        // The local database is authoritative. Stripe's webhook confirms the
+        // booking; the browser only reconciles the local status.
+        const currentStatus = await dbService.getMyPaymentStatus(payment.id);
         const isPaid = currentStatus?.status === 'PAID' || currentStatus?.approved;
         if (!active) return 'UNKNOWN';
         if (!isPaid) {
           if (currentStatus?.status === 'FAILED') {
+            setStripePaymentPending(false);
             setPayment((current) => current ? { ...current, status: 'FAILED', updatedAt: new Date().toISOString() } : current);
             return 'NOT_PAID';
           }
@@ -437,7 +393,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       const paymentStatus = await reconcilePaymentStatus();
       if (paymentStatus === 'PAID' || !active) return;
 
-      const canExpireHold = !isRealSupabase || !payment?.id || !/^[0-9a-f-]{36}$/i.test(payment.id) || !hasGeneratedPixAttempt || paymentStatus === 'NOT_PAID';
+      const canExpireHold = !isRealSupabase || !payment?.id || !/^[0-9a-f-]{36}$/i.test(payment.id) || !hasGeneratedGatewayAttempt || paymentStatus === 'NOT_PAID';
       if (remaining <= 0 && canExpireHold) {
         setErrorMessage('O tempo de retenção deste horário expirou.');
         setStep('ERROR_QUOTE_EXPIRED');
@@ -448,7 +404,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       active = false;
       clearInterval(timer);
     };
-  }, [booking, payment, step, onBookingConfirmed]);
+  }, [booking, stripePaymentPending, payment, step, onBookingConfirmed]);
 
   if (!isOpen) return null;
   if (!resumeBooking && (!provider || !vehicle || !offering)) return null;
@@ -471,6 +427,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     setIsProcessing(true);
     setErrorMessage(null);
+    setStripePaymentPending(false);
 
     try {
       let meetingPoint: { type: 'STUDENT_ADDRESS' | 'PROVIDER_ADDRESS'; address?: string; latitude?: number; longitude?: number } = {
@@ -570,7 +527,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             booking.id,
             paymentMethod,
             retryIdempotencyKey,
-            checkoutGatewayProvider === 'mercadopago' ? 'mercadopago_test' : 'fake_payment_gateway'
+            checkoutGatewayProvider === 'stripe' ? 'stripe' : 'fake_payment_gateway'
           );
           
           if (!newPayRes || (!newPayRes.payment_id && !newPayRes.id)) {
@@ -647,103 +604,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
-  const handleMercadoPagoCardPayment = async (cardPayload: MercadoPagoCardPayload) => {
-    if (!booking || !payment || !user || isProcessing) return;
-    setIsProcessing(true);
-    setErrorMessage(null);
-    try {
-      const result = await dbService.processMercadoPagoCardPayment({
-        paymentId: payment.id,
-        ...cardPayload,
-      });
-      const confirmedBooking = { ...booking, status: 'CONFIRMED' as const, updatedAt: new Date().toISOString() };
-      setBooking(confirmedBooking);
-      setPayment({
-        ...payment,
-        gateway: 'MERCADOPAGO',
-        method: 'CREDIT_CARD',
-        status: 'PAID',
-        externalPaymentId: result.externalPaymentId,
-        paidAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      setStep('SUCCESS');
-      onBookingConfirmed(confirmedBooking);
-    } catch (error) {
-      const isRealSupabase = (import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder');
-      let paymentWasConfirmed = false;
-
-      if (isRealSupabase && /^[0-9a-f-]{36}$/i.test(payment.id)) {
-        try {
-          // A função pode retornar erro depois que o Mercado Pago aceitou a
-          // cobrança. Sempre reconcilia o estado autoritativo antes de criar
-          // uma nova tentativa.
-          const currentStatus = await dbService.getMyPaymentStatus(payment.id);
-          if (currentStatus?.status === 'PAID' || currentStatus?.booking_status === 'CONFIRMED') {
-            const confirmedBooking = { ...booking, status: 'CONFIRMED' as const, updatedAt: new Date().toISOString() };
-            setBooking(confirmedBooking);
-            setPayment({
-              ...payment,
-              gateway: 'MERCADOPAGO',
-              method: 'CREDIT_CARD',
-              status: 'PAID',
-              externalPaymentId: currentStatus.external_payment_id || payment.externalPaymentId,
-              paidAt: currentStatus.paid_at || payment.paidAt || new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            });
-            setStep('SUCCESS');
-            onBookingConfirmed(confirmedBooking);
-            paymentWasConfirmed = true;
-          } else if (currentStatus?.status === 'FAILED') {
-            // Somente uma recusa definitiva recebe uma nova chave de
-            // idempotência e uma nova tentativa no Mercado Pago.
-            const retryIdempotencyKey = `idem_card_retry_${booking.id}_${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
-            const retryPayment = await dbService.createBookingPayment(
-              booking.id,
-              'CREDIT_CARD',
-              retryIdempotencyKey,
-              'mercadopago_test'
-            );
-            const retryPaymentId = retryPayment?.payment_id || retryPayment?.id;
-            if (!retryPaymentId) throw new Error('PAYMENT_UUID_GENERATION_FAILED_ON_RETRY');
-
-            setPayment({
-              ...payment,
-              id: retryPaymentId,
-              gateway: 'MERCADOPAGO',
-              method: 'CREDIT_CARD',
-              status: 'PENDING',
-              externalPaymentId: undefined,
-              paidAt: undefined,
-              updatedAt: new Date().toISOString(),
-            });
-            setPaymentAttemptId(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `att_${Date.now()}`);
-            setCardCheckoutKey((current) => current + 1);
-          } else {
-            // Pendente/desconhecido significa que a requisição pode ter chegado
-            // ao gateway. Reutiliza a mesma tentativa e chave, mas remonta o
-            // Brick para o botão voltar a ficar interativo.
-            setCardCheckoutKey((current) => current + 1);
-          }
-        } catch (verificationError) {
-          console.error('MERCADOPAGO_CARD_PAYMENT_RECONCILIATION_FAILED', verificationError);
-          // Se a reconciliação falhar, nunca cria uma segunda tentativa. O
-          // mesmo pagamento pode ser repetido com segurança porque sua chave
-          // de idempotência permanece inalterada.
-          setCardCheckoutKey((current) => current + 1);
-        }
-      } else {
-        setCardCheckoutKey((current) => current + 1);
-      }
-
-      if (!paymentWasConfirmed) {
-        setErrorMessage(friendlyCheckoutError(error, 'Pagamento não aprovado. Confira os dados do cartão de teste e tente novamente.'));
-      }
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const createPaymentAttempt = async (nextMethod: PaymentMethodType): Promise<Payment> => {
     if (!booking || !user || !provider) throw new Error('PAYMENT_CONTEXT_UNAVAILABLE');
 
@@ -762,19 +622,36 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         booking.id,
         nextMethod,
         idempotencyKey,
-        checkoutGatewayProvider === 'mercadopago' ? 'mercadopago_test' : 'fake_payment_gateway',
+        checkoutGatewayProvider === 'stripe' ? 'stripe' : 'fake_payment_gateway',
       );
       const nextPaymentId = payRes?.payment_id || payRes?.id;
       if (!nextPaymentId || !/^[0-9a-f-]{36}$/i.test(nextPaymentId)) {
         throw new Error('PAYMENT_UUID_GENERATION_FAILED');
       }
-      if (checkoutGatewayProvider === 'mercadopago') {
-        return buildPendingMercadoPagoPayment(booking, nextPaymentId, nextMethod, new Date(), idempotencyKey);
-      }
-
       const now = new Date().toISOString();
       const amountInCents = booking.snapshot?.totalInCents || booking.totalInCents;
       const platformFeeInCents = booking.snapshot?.platformFeeInCents || booking.platformFeeInCents;
+      if (checkoutGatewayProvider === 'stripe') {
+        const stripeIntent = await dbService.createStripePaymentIntent(nextPaymentId, nextMethod, user.email);
+        return {
+          id: nextPaymentId,
+          bookingId: booking.id,
+          studentId: booking.studentId,
+          providerId: booking.providerId,
+          gateway: 'STRIPE',
+          externalPaymentId: stripeIntent.paymentIntentId,
+          stripeClientSecret: stripeIntent.clientSecret,
+          idempotencyKey,
+          method: nextMethod,
+          status: 'PENDING',
+          amountInCents,
+          platformFeeInCents,
+          providerAmountInCents: booking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
+          metadata: { stripeStatus: stripeIntent.status },
+          createdAt: now,
+          updatedAt: now,
+        };
+      }
       return {
         id: nextPaymentId,
         bookingId: booking.id,
@@ -815,10 +692,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   const handleSelectPaymentMethod = async (nextMethod: PaymentMethodType) => {
-    if (isProcessing || (nextMethod === paymentMethod && payment?.status !== 'FAILED') || !booking || !user) return;
+    if (isProcessing || stripePaymentPending || (nextMethod === paymentMethod && payment?.status !== 'FAILED') || !booking || !user) return;
 
     setIsProcessing(true);
     setErrorMessage(null);
+    setStripePaymentPending(false);
     try {
       const nextPayment = await createPaymentAttempt(nextMethod);
       setPayment(nextPayment);
@@ -830,65 +708,45 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
-  const handleMercadoPagoPixPayment = async () => {
-    if (!booking || !payment || !user || isProcessing) return;
-    setIsProcessing(true);
-    setErrorMessage(null);
-    try {
-      const result = await dbService.processMercadoPagoPixPayment(payment.id);
-      const nextPayment = {
-        ...payment,
-        gateway: 'MERCADOPAGO' as const,
-        method: 'PIX' as const,
-        status: result.status === 'PAID' || result.approved
-          ? 'PAID' as const
-          : result.status === 'FAILED'
-            ? 'FAILED' as const
-            : 'PENDING' as const,
-        externalPaymentId: result.externalPaymentId,
-        pixQrCode: result.pixQrCode || payment.pixQrCode,
-        pixQrCodeBase64: result.pixQrCodeBase64 || payment.pixQrCodeBase64,
-        pixExpiresAt: result.pixExpiresAt || payment.pixExpiresAt,
-        updatedAt: new Date().toISOString(),
-      };
-      setPayment(nextPayment);
-      if (result.approved || result.status === 'PAID') {
-        const confirmedBooking = { ...booking, status: 'CONFIRMED' as const, updatedAt: new Date().toISOString() };
-        setBooking(confirmedBooking);
-        setStep('SUCCESS');
-        onBookingConfirmed(confirmedBooking);
-      } else if (result.status === 'FAILED') {
-        setErrorMessage('O pagamento Pix não foi aprovado. Gere uma nova tentativa.');
-      }
-    } catch (error) {
-      setErrorMessage(friendlyCheckoutError(error, 'Não foi possível gerar o código Pix. Tente novamente.'));
-    } finally {
-      setIsProcessing(false);
+  const handleStripePayment = async (result: StripePaymentResult) => {
+    if (!payment) return;
+    if (result.status === 'error') {
+      setStripePaymentPending(false);
+      setErrorMessage(result.errorMessage || 'Não foi possível confirmar o pagamento Stripe.');
+      return;
     }
+    setStripePaymentPending(true);
+    setPayment((current) => current ? {
+      ...current,
+      gateway: 'STRIPE',
+      externalPaymentId: result.paymentIntentId || current.externalPaymentId,
+      status: 'PENDING',
+      metadata: { ...(current.metadata || {}), stripeStatus: result.status },
+      updatedAt: new Date().toISOString(),
+    } : current);
+    setErrorMessage(result.status === 'succeeded'
+      ? 'Pagamento aprovado. Aguardando confirmação segura da reserva.'
+      : 'Pagamento enviado. Aguardando confirmação segura da reserva.');
   };
 
-  const handleRefreshMercadoPagoPix = async () => {
-    if (!payment || isProcessing) return;
+  const handleRefreshStripePayment = async () => {
+    if (!payment || !booking || isProcessing) return;
     setIsProcessing(true);
     setErrorMessage(null);
     try {
-      const result = await dbService.processMercadoPagoPixPayment(payment.id);
-      setPayment((current) => current ? {
-        ...current,
-        status: result.status === 'PAID' ? 'PAID' : result.status,
-        externalPaymentId: result.externalPaymentId || current.externalPaymentId,
-        pixQrCode: result.pixQrCode || current.pixQrCode,
-        pixQrCodeBase64: result.pixQrCodeBase64 || current.pixQrCodeBase64,
-        pixExpiresAt: result.pixExpiresAt || current.pixExpiresAt,
-        updatedAt: new Date().toISOString(),
-      } : current);
-      if ((result.approved || result.status === 'PAID') && booking) {
+      const currentStatus = await dbService.getMyPaymentStatus(payment.id);
+      if (currentStatus?.status === 'PAID' || currentStatus?.booking_status === 'CONFIRMED') {
         const confirmedBooking = { ...booking, status: 'CONFIRMED' as const, updatedAt: new Date().toISOString() };
         setBooking(confirmedBooking);
+        setPayment((current) => current ? { ...current, status: 'PAID', paidAt: currentStatus.paid_at || new Date().toISOString(), updatedAt: new Date().toISOString() } : current);
         setStep('SUCCESS');
         onBookingConfirmed(confirmedBooking);
-      } else if (result.status === 'FAILED') {
-        setErrorMessage('O pagamento Pix não foi aprovado. Gere uma nova tentativa.');
+      } else if (currentStatus?.status === 'FAILED') {
+        setStripePaymentPending(false);
+        setPayment((current) => current ? { ...current, status: 'FAILED', updatedAt: new Date().toISOString() } : current);
+        setErrorMessage('O pagamento não foi aprovado. Escolha outra forma de pagamento.');
+      } else {
+        setErrorMessage('O pagamento ainda está sendo processado.');
       }
     } catch (error) {
       setErrorMessage(friendlyCheckoutError(error, 'Ainda não conseguimos consultar o pagamento. Tente novamente.'));
@@ -975,14 +833,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {showTestCopy && <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 text-[11px] font-medium text-slate-700">
           <Sparkles className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
           <span>
-            <strong className="font-semibold text-slate-900">Ambiente de Testes:</strong> {checkoutGatewayProvider === 'fake' ? 'Pagamento simulado sem cobrança real.' : 'Mercado Pago configurado com credenciais de teste.'}
+            <strong className="font-semibold text-slate-900">Ambiente de Testes:</strong> {checkoutGatewayProvider === 'fake' ? 'Pagamento simulado sem cobrança real.' : 'Stripe configurado com credenciais de teste.'}
           </span>
         </div>}
 
         {/* Global Error Banner */}
         {errorMessage && (
-          <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2">
-            <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />
+          <div role={stripePaymentPending ? 'status' : 'alert'} aria-live="polite" className={`p-3.5 rounded-2xl text-xs font-semibold flex items-start gap-2 ${stripePaymentPending ? 'bg-amber-50 border border-amber-200 text-amber-950' : 'bg-rose-50 border border-rose-200 text-rose-800'}`}>
+            {stripePaymentPending
+              ? <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
+              : <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />}
             <div className="flex-1">
               <p>{errorMessage}</p>
             </div>
@@ -1247,7 +1107,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <ButtonBase
                 type="button"
                 aria-pressed={paymentMethod === 'PIX'}
-                disabled={isProcessing}
+                disabled={isProcessing || stripePaymentPending}
                 onClick={() => { void handleSelectPaymentMethod('PIX'); }}
                 className={`min-h-[44px] p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                   paymentMethod === 'PIX'
@@ -1265,7 +1125,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <ButtonBase
                 type="button"
                 aria-pressed={paymentMethod === 'CREDIT_CARD'}
-                disabled={isProcessing}
+                disabled={isProcessing || stripePaymentPending}
                 onClick={() => { void handleSelectPaymentMethod('CREDIT_CARD'); }}
                 className={`min-h-[44px] p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                   paymentMethod === 'CREDIT_CARD'
@@ -1287,10 +1147,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </p>
             )}
 
-            {showTestCopy && checkoutGatewayProvider === 'mercadopago' && paymentMethod === 'PIX' && (
+            {showTestCopy && checkoutGatewayProvider === 'stripe' && paymentMethod === 'PIX' && (
               <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-[var(--mazzi-text)]">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
-                <span>Pix de teste Mercado Pago. A reserva só será confirmada após a identificação do pagamento.</span>
+                <span>Pix de teste Stripe. A reserva só será confirmada após a identificação do pagamento.</span>
               </div>
             )}
 
@@ -1332,21 +1192,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             )}
 
-            {checkoutGatewayProvider === 'mercadopago' && paymentMethod === 'PIX' && payment && (
-              <React.Suspense fallback={<p role="status" className="py-6 text-center text-sm text-[var(--mazzi-text)]">Carregando pagamento seguro…</p>}>
-                <MercadoPagoPixCheckout
-                  amountInCents={payment.amountInCents}
-                  isProcessing={isProcessing}
-                  status={payment.status}
-                  pixQrCode={payment.pixQrCode}
-                  pixQrCodeBase64={payment.pixQrCodeBase64}
-                  pixExpiresAt={payment.pixExpiresAt}
-                  copied={copiedPix}
-                  onCreate={handleMercadoPagoPixPayment}
-                  onRefresh={handleRefreshMercadoPagoPix}
-                  onCopy={handleCopyPixCode}
-                />
-              </React.Suspense>
+            {checkoutGatewayProvider === 'stripe' && paymentMethod && payment?.stripeClientSecret && (
+              <StripePaymentCheckout
+                clientSecret={payment.stripeClientSecret}
+                amountInCents={payment.amountInCents}
+                method={paymentMethod}
+                isProcessing={isProcessing || stripePaymentPending}
+                onResult={handleStripePayment}
+              />
             )}
 
             {/* Credit Card Fake View */}
@@ -1388,16 +1241,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             )}
 
-            {checkoutGatewayProvider === 'mercadopago' && paymentMethod === 'CREDIT_CARD' && payment && (
-              <React.Suspense fallback={<p role="status" className="py-6 text-center text-sm text-[var(--mazzi-text)]">Carregando pagamento seguro…</p>}>
-                <MercadoPagoCardCheckout
-                  key={cardCheckoutKey}
-                  amountInCents={payment.amountInCents}
-                  isProcessing={isProcessing}
-                  payerEmail={checkoutPayerEmail}
-                  onSubmit={handleMercadoPagoCardPayment}
-                />
-              </React.Suspense>
+            {checkoutGatewayProvider === 'stripe' && stripePaymentPending && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full font-bold"
+                isLoading={isProcessing}
+                disabled={isProcessing}
+                onClick={() => { void handleRefreshStripePayment(); }}
+              >
+                Atualizar status do pagamento
+              </Button>
             )}
 
             <Button
@@ -1406,7 +1261,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               size="sm"
               className="w-full min-h-11 font-extrabold text-[var(--mazzi-text)]"
               isLoading={isProcessing}
-              disabled={isProcessing}
+              disabled={isProcessing || stripePaymentPending}
               onClick={() => { void handleCancelPendingBooking(); }}
               aria-label="Cancelar a reserva e escolher outro horário"
             >
@@ -1419,7 +1274,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'SUCCESS' && booking && (
           <div className="space-y-4 py-4 text-center">
             <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
-              <div className={`relative flex h-16 w-16 items-center justify-center rounded-[1.5rem] border border-emerald-200 bg-emerald-50 text-emerald-600 shadow-sm ${
+              <div className={`relative flex h-16 w-16 items-center justify-center rounded-[1.5rem] border border-emerald-200 bg-emerald-50 text-emerald-600 ${
                 successAnimationPhase === 'LOADING' ? 'scale-75 opacity-0' : 'mazzi-success-final'
               }`}>
                 <CheckCircle2 className="h-10 w-10" strokeWidth={2.5} aria-hidden="true" />

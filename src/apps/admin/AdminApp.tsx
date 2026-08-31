@@ -314,17 +314,17 @@ export const AdminApp: React.FC = () => {
     if (!refundCandidate || isRefundSubmitting) return;
 
     const bookingToRefund = refundCandidate;
-    const usesMercadoPago = getCheckoutGatewayProvider() === 'mercadopago';
+    const usesStripe = getCheckoutGatewayProvider() === 'stripe';
     setIsRefundSubmitting(true);
 
     try {
-      const result = usesMercadoPago
-        ? await dbService.processMercadoPagoRefund(bookingToRefund.id)
+      const result = usesStripe
+        ? await dbService.processStripeRefund(bookingToRefund.id)
         : await dbService.adminRefundMockBooking(bookingToRefund.id);
 
-      if (usesMercadoPago && result?.refundStatus === 'PENDING') {
+      if (usesStripe && result?.refundStatus === 'PENDING') {
         setRefundCandidate(null);
-        showFeedback('info', 'Estorno em processamento', 'O Mercado Pago está processando a devolução. O webhook atualizará a reserva quando finalizar.');
+        showFeedback('info', 'Estorno em processamento', 'O Stripe está processando a devolução. O webhook atualizará a reserva quando finalizar.');
         return;
       }
 
@@ -332,11 +332,11 @@ export const AdminApp: React.FC = () => {
       setRefundCandidate(null);
       showFeedback(
         'success',
-        usesMercadoPago ? 'Estorno solicitado' : 'Estorno simulado',
-        usesMercadoPago ? 'O pagamento de teste foi estornado e a reserva foi atualizada.' : 'A movimentação local foi registrada para conferência.',
+        usesStripe ? 'Estorno solicitado' : 'Estorno simulado',
+        usesStripe ? 'O pagamento foi estornado e a reserva foi atualizada.' : 'A movimentação local foi registrada para conferência.',
       );
     } catch (error: any) {
-      showFeedback('error', usesMercadoPago ? 'Não foi possível solicitar o estorno' : 'Não foi possível processar o estorno de teste', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
+      showFeedback('error', usesStripe ? 'Não foi possível solicitar o estorno' : 'Não foi possível processar o estorno de teste', getFriendlyAdminError(error, 'Tente novamente em instantes.'));
     } finally {
       setIsRefundSubmitting(false);
     }
@@ -429,7 +429,7 @@ export const AdminApp: React.FC = () => {
             width="40"
             height="40"
             decoding="async"
-            className="h-10 w-10 shrink-0 rounded-2xl object-cover shadow-xs"
+            className="h-10 w-10 shrink-0 rounded-2xl object-cover"
             aria-hidden="true"
           />
           <div className="text-left">
@@ -569,7 +569,7 @@ export const AdminApp: React.FC = () => {
             auditLogs={auditLogs}
             actor={activeActor}
             onProcessRefund={withActionLoading(handleProcessRefund)}
-            isMercadoPagoGateway={getCheckoutGatewayProvider() === 'mercadopago'}
+            isStripeGateway={getCheckoutGatewayProvider() === 'stripe'}
             isProductionEnvironment={isProductionEnvironment}
             platformFeePercentage={platformConfig.platformFeeDefaultPercentage}
             payouts={payouts}
@@ -616,7 +616,7 @@ export const AdminApp: React.FC = () => {
 
             <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
               <div className="flex flex-col items-center gap-4 border-b border-[var(--mazzi-border)] pb-6 text-center">
-                {isEditingProfile ? <ProfilePhotoPicker value={profileAvatar} name={user?.name} onChange={setProfileAvatar} /> : <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold text-[var(--mazzi-dark)] shadow-[var(--mazzi-shadow)]">{profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (user?.name || 'Admin').split(/\s+/).map((n) => n[0]).slice(0, 2).join('').toUpperCase()}</div>}
+                {isEditingProfile ? <ProfilePhotoPicker value={profileAvatar} name={user?.name} onChange={setProfileAvatar} /> : <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold text-[var(--mazzi-dark)]">{profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (user?.name || 'Admin').split(/\s+/).map((n) => n[0]).slice(0, 2).join('').toUpperCase()}</div>}
                 <div className="space-y-1">
                   <h3 className="text-2xl font-bold tracking-[-0.02em] text-[var(--mazzi-dark)]">{user?.name || 'Nome não informado'}</h3>
                   <p className="text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p>
@@ -679,15 +679,15 @@ export const AdminApp: React.FC = () => {
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" aria-hidden="true" />
               <p className="text-sm font-semibold">
                 {isProductionEnvironment
-                  ? 'Este estorno será solicitado ao Mercado Pago e devolverá o valor ao pagador.'
-                  : 'Este estorno será processado no ambiente de teste do Mercado Pago.'}
+                  ? 'Este estorno será solicitado ao Stripe e devolverá o valor ao pagador.'
+                  : 'Este estorno será processado no ambiente de teste do Stripe.'}
               </p>
             </div>
             <dl className="space-y-2 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4 text-sm">
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Reserva</dt><dd className="font-mono font-bold text-[var(--mazzi-text)]">{refundCandidate.id.slice(0, 8)}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Aluno</dt><dd className="font-semibold text-right text-[var(--mazzi-text)]">{refundCandidate.studentName || 'Aluno não identificado'}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Aula</dt><dd className="font-semibold text-right text-[var(--mazzi-text)]">{formatDateBR(refundCandidate.scheduledStartAt)} às {formatTimeBR(refundCandidate.scheduledStartAt)}</dd></div>
-              <div className="flex items-center justify-between gap-3"><dt className="flex items-center gap-1.5 text-slate-500"><CreditCard className="h-3.5 w-3.5" aria-hidden="true" />Meio</dt><dd className="font-semibold text-[var(--mazzi-text)]">Mercado Pago</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="flex items-center gap-1.5 text-slate-500"><CreditCard className="h-3.5 w-3.5" aria-hidden="true" />Meio</dt><dd className="font-semibold text-[var(--mazzi-text)]">Stripe</dd></div>
               <div className="flex items-center justify-between gap-3 border-t border-[var(--mazzi-border)] pt-2"><dt className="font-bold text-[var(--mazzi-text)]">Valor</dt><dd className="font-mono font-bold text-[var(--mazzi-text)]">{formatCentsToBRL(refundCandidate.totalInCents)}</dd></div>
             </dl>
             <p className="text-xs leading-relaxed text-slate-500">A operação não deve ser repetida. Confirme somente depois de revisar os dados acima.</p>
