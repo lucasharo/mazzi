@@ -1126,7 +1126,10 @@ function applyStrictProviderFilters(
                 <div className="space-y-3">
                   <MapView
                     results={searchResponse?.results || []}
-                    onSelectProvider={(id) => handleOpenCheckoutByProviderId(id)}
+                    onSelectProvider={(id) => {
+                      const providerResult = (searchResponse?.results || []).find((result) => result.providerId === id);
+                      if (providerResult) setSelectedPublicProfile(providerResult);
+                    }}
                     height="360px"
                     userLocation={userLocation}
                     searchedLocation={searchedLocation}
