@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { IconButton } from './IconButton';
 import { useAccessibleDialog } from './useAccessibleDialog';
 import { useDialogHistory } from './Modal';
+import { EnvironmentBadge } from './EnvironmentBadge';
 
 export interface BottomSheetProps {
   isOpen: boolean;
@@ -47,14 +48,17 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         {title && (
           <div className="px-6 py-3 border-b border-[var(--mazzi-border)] flex items-center justify-between">
             <h3 id={titleId} className="font-extrabold text-[var(--mazzi-dark)] text-base">{title}</h3>
-            <IconButton
-              label="Fechar painel"
-              onClick={onClose}
-              data-dialog-autofocus="true"
-              className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors"
-            >
-              <X className="w-4 h-4" aria-hidden="true" />
-            </IconButton>
+            <div className="flex items-center gap-2">
+              <EnvironmentBadge />
+              <IconButton
+                label="Fechar painel"
+                onClick={onClose}
+                data-dialog-autofocus="true"
+                className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </IconButton>
+            </div>
           </div>
         )}
 

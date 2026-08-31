@@ -2,6 +2,7 @@ import { ButtonBase } from './Button';
 import React from 'react';
 import { Bell, RefreshCw } from 'lucide-react';
 import { NotificationIndicator } from './NotificationIndicator';
+import { EnvironmentBadge } from './EnvironmentBadge';
 import type { Notification } from '../../types';
 
 interface AppHomeHeaderProps {
@@ -40,6 +41,7 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <EnvironmentBadge />
           <ButtonBase
             type="button"
             onClick={onOpenNotifications}

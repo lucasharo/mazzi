@@ -2,11 +2,15 @@ import React from 'react';
 import { AuthProvider, useAuth } from '../../components/auth/AuthContext';
 import { AppLogin } from '../../components/auth/AppLogin';
 import { ProviderApp } from '../../apps/provider/ProviderApp';
-import { LoadingScreen } from '../../components/ui/LoadingScreen';
+import { dismissInitialSplash } from '../../lib/initial-splash';
 
 const InstructorGate: React.FC = () => {
   const auth = useAuth();
-  if (auth.isLoading) return <LoadingScreen />;
+  React.useEffect(() => {
+    if (!auth.isLoading) dismissInitialSplash();
+  }, [auth.isLoading]);
+
+  if (auth.isLoading) return null;
   if (auth.recoveryInProgress) return <AppLogin kind="instructor" />;
   if (auth.isInstructorOnboarding) return <AppLogin kind="instructor" />;
   if (!auth.isAuthenticated) return <AppLogin kind="instructor" />;

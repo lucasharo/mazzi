@@ -200,11 +200,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     }
 
     if (userLocation) {
-      const userIcon = L.divIcon({ className: 'custom-mazzi-user-marker', html: '<div style="background:#2563EB;border:3px solid #fff;border-radius:9999px;width:18px;height:18px;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+      const userIcon = L.divIcon({ className: 'custom-mazzi-user-marker', html: '<div style="background:#2563EB;border:3px solid #fff;border-radius:9999px;width:18px;height:18px"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
       L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(group).bindPopup('Sua localização');
     }
     if (searchedLocation && (!userLocation || searchedLocation.lat !== userLocation.lat || searchedLocation.lng !== userLocation.lng)) {
-      const searchIcon = L.divIcon({ className: 'custom-mazzi-search-marker', html: '<div style="background:#DC2626;border:3px solid #fff;border-radius:9999px 9999px 9999px 0;width:20px;height:20px;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>', iconSize: [20, 20], iconAnchor: [4, 18] });
+      const searchIcon = L.divIcon({ className: 'custom-mazzi-search-marker', html: '<div style="background:#DC2626;border:3px solid #fff;border-radius:9999px 9999px 9999px 0;width:20px;height:20px;transform:rotate(-45deg)"></div>', iconSize: [20, 20], iconAnchor: [4, 18] });
       L.marker([searchedLocation.lat, searchedLocation.lng], { icon: searchIcon }).addTo(group).bindPopup(searchedLocation.label || 'Endereço pesquisado');
     }
   }, [providers, selectedProvider, showCoverageRadius, meetingPoint, userLocation, searchedLocation]);

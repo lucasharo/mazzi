@@ -72,7 +72,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
       {/* 1. Top Section: Avatar + Identity + Rating */}
       <div className="flex items-start gap-3 sm:gap-3.5 pr-1">
         {/* Avatar */}
-        <div className="mazzi-avatar !overflow-visible h-14 w-14 sm:h-16 sm:w-16 shrink-0 text-base sm:text-lg font-bold shadow-xs ring-1 ring-black/5 relative">
+        <div className="mazzi-avatar !overflow-visible h-14 w-14 sm:h-16 sm:w-16 shrink-0 text-base sm:text-lg font-bold ring-1 ring-black/5 relative">
           {result.avatarUrl ? (
             <img
               src={result.avatarUrl}
@@ -87,7 +87,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
           )}
           {result.isVerified && (
             <span
-              className="absolute bottom-0 right-0 z-20 inline-flex h-6 w-6 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full border-2 border-white bg-emerald-50 text-emerald-700 shadow-sm"
+              className="absolute bottom-0 right-0 z-20 inline-flex h-6 w-6 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full border-2 border-white bg-emerald-50 text-emerald-700"
               aria-label="Prestador verificado"
               title="Verificado"
             >

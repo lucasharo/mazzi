@@ -19,7 +19,7 @@ import {
   DayOfWeek,
   ExceptionType,
   ExceptionReasonCategory,
-  PixDestination,
+  BankAccount,
 } from '../../types';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
@@ -248,8 +248,8 @@ export const ProviderApp: React.FC = () => {
   const [profileFormError, setProfileFormError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
-  const [pixDestination, setPixDestination] = useState<PixDestination | null>(null);
-  const [isSavingPixDestination, setIsSavingPixDestination] = useState(false);
+  const [bankAccount, setBankAccount] = useState<BankAccount | null>(null);
+  const [isSavingBankAccount, setIsSavingBankAccount] = useState(false);
 
   // Vehicle Management Modal State
   const [isAddVehicleModalOpen, setIsAddVehicleModalOpen] = useState<boolean>(false);
@@ -423,9 +423,9 @@ export const ProviderApp: React.FC = () => {
           : await dbService.getBookings();
         setBookings(refreshedBookings || []);
       } else if (activeTab === 'profile') {
-        const [avatarUrl, destination] = await Promise.all([getMyProfileAvatar(), dbService.getMyPixDestination()]);
+        const [avatarUrl, destination] = await Promise.all([getMyProfileAvatar(), dbService.getMyBankAccount()]);
         setProfileAvatar(avatarUrl);
-        setPixDestination(destination);
+        setBankAccount(destination);
       } else {
         // Schedule and Management share the provider workspace source; only the
         // visible tab consumes the refreshed state below.
@@ -465,21 +465,21 @@ export const ProviderApp: React.FC = () => {
     setProfileAvatar(user?.avatarUrl);
     if (user?.id) {
       void getMyProfileAvatar().then((avatarUrl) => setProfileAvatar(avatarUrl)).catch(() => undefined);
-      void dbService.getMyPixDestination().then((destination) => setPixDestination(destination)).catch(() => undefined);
+      void dbService.getMyBankAccount().then((destination) => setBankAccount(destination)).catch(() => undefined);
     }
   }, [user?.avatarUrl]);
 
-  const handleSavePixDestination = async (input: Pick<PixDestination, 'keyType' | 'pixKey' | 'holderName' | 'holderDocument'>) => {
-    if (isSavingPixDestination) return;
-    setIsSavingPixDestination(true);
+  const handleSaveBankAccount = async (input: Omit<BankAccount, 'id' | 'providerId' | 'isActive' | 'updatedAt' | 'accountNumberMasked'>) => {
+    if (isSavingBankAccount) return;
+    setIsSavingBankAccount(true);
     try {
-      const saved = await dbService.saveMyPixDestination(input);
-      setPixDestination(saved);
+      const saved = await dbService.saveMyBankAccount(input);
+      setBankAccount(saved);
     } catch (error: any) {
-      setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar o destino Pix.'));
+      setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar a conta bancária.'));
       throw error;
     } finally {
-      setIsSavingPixDestination(false);
+      setIsSavingBankAccount(false);
     }
   };
 
@@ -1168,6 +1168,19 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
+  const handleReplaceActiveOffering = async (offeringId: string, previousOfferingId: string) => {
+    try {
+      const savedOffering = await dbService.replaceActiveOffering(offeringId);
+      setOfferings((prev) => prev.map((offering) => {
+        if (offering.id === offeringId) return savedOffering;
+        if (offering.id === previousOfferingId) return { ...offering, status: 'INACTIVE' };
+        return offering;
+      }));
+    } catch (err: any) {
+      setOfferingError(mapFriendlyErrorMessage(err, 'Não foi possível trocar a oferta ativa.'));
+    }
+  };
+
   const handleViewComplianceDocument = async (document: ComplianceDocument) => {
     try {
       const signedUrl = await dbService.createComplianceDocumentSignedUrl(document);
@@ -1522,9 +1535,9 @@ status: 'IN_REVIEW',
             currentProvider={currentProvider}
             schoolInstructors={schoolInstructors}
             schoolInstructorSummary={schoolInstructorSummary}
-            pixDestination={pixDestination}
-            onSavePixDestination={handleSavePixDestination}
-            isSavingPixDestination={isSavingPixDestination}
+            bankAccount={bankAccount}
+            onSaveBankAccount={handleSaveBankAccount}
+            isSavingBankAccount={isSavingBankAccount}
             isAddVehicleModalOpen={isAddVehicleModalOpen}
             onOpenAddVehicleModal={handleOpenAddVehicle}
             onOpenEditVehicle={handleOpenEditVehicle}
@@ -1541,6 +1554,7 @@ status: 'IN_REVIEW',
             onOfferingFormChange={setOfferingForm}
             onSaveOffering={handleCreateOffering}
             onToggleOfferingStatus={handleToggleOfferingStatus}
+            onReplaceActiveOffering={handleReplaceActiveOffering}
             offeringError={offeringError}
             offeringNotice={offeringNotice}
             onUploadDocClick={(type) => setUploadModalDocType(type)}
@@ -1607,7 +1621,7 @@ status: 'IN_REVIEW',
         activeTab={activeTab}
         onTabChange={setActiveTab}
         bookingUpdatesCount={bookingUpdatesCount}
-        showManagementAlert={!offerings.some((offering) => offering.status === 'ACTIVE') || !pixDestination}
+        showManagementAlert={!offerings.some((offering) => offering.status === 'ACTIVE') || !bankAccount}
       />
 
       {/* MODALS */}

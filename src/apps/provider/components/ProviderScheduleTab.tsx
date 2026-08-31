@@ -125,7 +125,7 @@ const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt,
       </div>
       {reason && <p className="text-sm font-bold leading-snug text-[var(--mazzi-text)] break-words">{reason}</p>}
       </div>
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-600 border border-amber-200/60 shadow-2xs">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-600 border border-amber-200/60">
         {kind === 'quick' ? <Clock3 className="h-5 w-5" aria-hidden="true" /> : <CalendarIcon className="h-5 w-5" aria-hidden="true" />}
       </div>
     </div>

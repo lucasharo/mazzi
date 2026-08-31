@@ -219,7 +219,7 @@ export const DesignSystemShowcase: React.FC = () => {
       <header className="sticky top-0 z-50 bg-[#202126] text-white px-4 py-3 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-[#f6c945] text-[#202126] font-black flex items-center justify-center text-lg tracking-tighter shadow-sm">
+            <div className="w-9 h-9 rounded-2xl bg-[#f6c945] text-[#202126] font-black flex items-center justify-center text-lg tracking-tighter">
               M
             </div>
             <div>
@@ -1007,7 +1007,7 @@ export const DesignSystemShowcase: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
                     <NotificationIndicator className="h-full w-full items-center justify-center">
-                      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--mazzi-border)] bg-white text-[var(--mazzi-dark)] shadow-xs">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--mazzi-border)] bg-white text-[var(--mazzi-dark)]">
                         <Bell className="h-5 w-5" aria-hidden="true" />
                       </span>
                     </NotificationIndicator>
@@ -1249,7 +1249,7 @@ export const DesignSystemShowcase: React.FC = () => {
                             action={<IconButton label="Editar perfil" className="mazzi-icon-button"><Pencil className="h-5 w-5" aria-hidden="true" /></IconButton>}
                           />
                           <div className="pt-2 text-center">
-                            <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold shadow-[var(--mazzi-shadow)]">
+                            <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold">
                               {studentProfilePhoto ? <img src={studentProfilePhoto} alt="Foto do perfil" className="h-full w-full object-cover" /> : 'AS'}
                             </div>
                             <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">Ana Beatriz Souza</h3>
@@ -1350,6 +1350,30 @@ export const DesignSystemShowcase: React.FC = () => {
         onClose={() => setIsCancelModalOpen(false)}
         title="Cancelar Agendamento"
         size="md"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              className="min-w-0 flex-1 !whitespace-normal !px-2 text-center leading-tight min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white"
+              onClick={() => setIsCancelModalOpen(false)}
+              leftIcon={<ArrowLeft className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />}
+            >
+              Manter aula
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              className="min-w-0 flex-1 !whitespace-normal !px-2 text-center leading-tight"
+              onClick={() => setIsCancelModalOpen(false)}
+              leftIcon={<XCircle className="w-4 h-4 text-white shrink-0" aria-hidden="true" />}
+            >
+              Cancelar aula
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4 text-xs text-slate-700">
           <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1">
@@ -1358,28 +1382,6 @@ export const DesignSystemShowcase: React.FC = () => {
               Confirmação de Cancelamento (DEC-013)
             </p>
             <p>100% Reembolso garantido por estar a mais de 24h da aula.</p>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              className="w-1/2 min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white"
-              onClick={() => setIsCancelModalOpen(false)}
-            >
-              <ArrowLeft className="w-4 h-4 text-slate-500 mr-1 inline" />
-              Manter aula
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              className="w-1/2"
-              onClick={() => setIsCancelModalOpen(false)}
-            >
-              <XCircle className="w-4 h-4 text-white mr-1 inline" />
-              Confirmar cancelamento
-            </Button>
           </div>
         </div>
       </Modal>

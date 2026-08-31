@@ -169,6 +169,33 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     }
   };
 
+  const cancellationFooter = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        leftIcon={<ArrowLeft className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />}
+        className="min-w-0 flex-1 !whitespace-normal !px-2 text-center leading-tight min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-sm text-xs"
+        disabled={isCancelling}
+        onClick={() => setIsConfirmingCancel(false)}
+      >
+        Manter aula
+      </Button>
+      <Button
+        type="button"
+        variant="danger"
+        size="sm"
+        leftIcon={<XCircle className="w-4 h-4 text-white shrink-0" aria-hidden="true" />}
+        className="min-w-0 flex-1 !whitespace-normal !px-2 text-center leading-tight"
+        isLoading={isCancelling}
+        onClick={handleConfirmCancel}
+      >
+        Cancelar aula
+      </Button>
+    </>
+  );
+
   const footerContent = !isConfirmingCancel ? (
     <div className="flex w-full flex-col gap-2.5">
       {isPendingPayment && isHoldValid && onContinuePayment && (
@@ -241,7 +268,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       }}
       title={isConfirmingCancel ? 'Cancelar Agendamento' : 'Detalhes da Reserva'}
       size="md"
-      footer={shouldShowFooter ? footerContent : undefined}
+      footer={shouldShowFooter ? (isConfirmingCancel ? cancellationFooter : footerContent) : undefined}
     >
       {isConfirmingCancel ? (
         /* CANCELLATION CONFIRMATION VIEW (DEC-013) */
@@ -330,31 +357,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Action buttons - Side-by-side confirmation footer (LADO A LADO) */}
-          <div className="flex items-center gap-2.5 pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              leftIcon={<ArrowLeft className="w-4 h-4 text-slate-500 shrink-0" aria-hidden="true" />}
-              className="w-1/2 min-h-[48px] font-bold rounded-2xl border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-sm text-xs"
-              disabled={isCancelling}
-              onClick={() => setIsConfirmingCancel(false)}
-            >
-              Manter aula
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              leftIcon={<XCircle className="w-4 h-4 text-white shrink-0" aria-hidden="true" />}
-              className="w-1/2"
-              isLoading={isCancelling}
-              onClick={handleConfirmCancel}
-            >
-              Confirmar cancelamento
-            </Button>
-          </div>
         </div>
       ) : (
         /* STANDARD DETAILS VIEW */
@@ -506,11 +508,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <div className="flex items-center justify-between text-xs text-slate-700">
               <span>Valor da Aula Prática</span>
               <span className="font-bold">{formatCentsToBRL(snapshot.priceInCents)}</span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-slate-700">
-              <span>Taxa de Serviço MAZZI</span>
-              <span className="font-bold">{formatCentsToBRL(snapshot.platformFeeInCents)}</span>
             </div>
 
             <div className="pt-2 border-t border-[var(--mazzi-border)] flex items-center justify-between text-sm font-bold text-[var(--mazzi-dark)]">

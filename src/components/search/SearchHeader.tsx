@@ -104,7 +104,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             disabled={isLocating}
             aria-label="Usar minha localização atual"
             title="Usar minha localização atual"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-[0_8px_20px_rgba(246,201,69,0.38)] transition hover:brightness-95 active:scale-95 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] transition hover:brightness-95 active:scale-95 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
           >
             <Navigation className={`h-5 w-5 ${isLocating ? 'animate-spin' : ''}`} aria-hidden="true" />
           </ButtonBase>

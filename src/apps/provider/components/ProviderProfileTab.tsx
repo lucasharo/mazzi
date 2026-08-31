@@ -85,7 +85,7 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
 
       {/* Profile identity: same hierarchy as Student */}
       <div className="text-center pt-2">
-        <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold text-[var(--mazzi-dark)] shadow-[var(--mazzi-shadow)]">
+        <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold text-[var(--mazzi-dark)]">
           {profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (currentProvider.name || userName || 'Instrutor').split(/\s+/).map((n) => n[0]).slice(0, 2).join('').toUpperCase()}
         </div>
         <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">{currentProvider.name || userName || 'Instrutor'}</h3>

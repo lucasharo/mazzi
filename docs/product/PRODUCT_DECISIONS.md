@@ -182,7 +182,7 @@
 - **Data**: 2026-08-30
 - **Status**: `APROVADA & IMPLEMENTADA`
 - **Tema**: Checkout, Segurança e Reconciliação Financeira
-- **Decisão**: O checkout novo usa Stripe Payment Element para cartão de crédito e Pix. O backend cria PaymentIntents exclusivamente com o valor da reserva persistido em centavos, aplica idempotência, confirma a reserva somente por webhook Stripe com assinatura validada e executa estornos pela Edge Function autenticada do Admin.
+- **Decisão**: O checkout novo usa Stripe Checkout hospedado externamente para cartão de crédito e Pix. O backend cria Checkout Sessions exclusivamente com o valor da reserva persistido em centavos, aplica idempotência, confirma a reserva somente por webhook Stripe com assinatura validada e executa estornos pela Edge Function autenticada do Admin.
 - **Motivo**: Substituir a integração de checkout Mercado Pago/Bricks por uma integração customizada única, com confirmação server-side e suporte aos dois meios de pagamento.
-- **Impacto**: `StripePaymentCheckout.tsx`, `create-stripe-payment-intent`, `stripe-webhook`, `process-stripe-refund`, migration `stripe_checkout_gateway` e variáveis `VITE_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET`. Mercado Pago não é mais selecionável no checkout novo.
+- **Impacto**: `StripeHostedCheckout.tsx`, `create-stripe-checkout-session`, `stripe-webhook`, `process-stripe-refund`, migration `stripe_checkout_gateway` e variáveis `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET`. Mercado Pago não é mais selecionável no checkout novo.
 - **Relacionado a**: [`09-payments.md`](../09-payments.md), [`CURRENT_IMPLEMENTATION_STATUS.md`](../CURRENT_IMPLEMENTATION_STATUS.md).

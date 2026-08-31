@@ -73,7 +73,7 @@ src/
    - Por padrão em desenvolvimento (`DEC-010`), o sistema utiliza `FakePaymentGateway` (`fake-adapter.ts`).
    - Simula respostas autorizadas de PIX e Cartão de Crédito sem realizar chamadas HTTP reais ou movimentar dinheiro real.
 3. **Stripe no Checkout Atual**:
-   - O Stripe Payment Element tokeniza cartão e Pix no browser; a Edge Function autenticada cria o PaymentIntent usando o valor persistido e idempotência.
+   - A Edge Function autenticada cria uma Checkout Session hospedada pela Stripe usando o valor persistido e idempotência; o browser apenas redireciona para a URL externa e nunca confirma a reserva.
    - A seleção operacional é `fake|stripe` por `VITE_PAYMENT_GATEWAY_PROVIDER`. A confirmação da reserva ocorre somente pelo webhook Stripe assinado.
    - Registros e funções Mercado Pago permanecem somente para compatibilidade histórica e não são chamados pelo checkout atual.
 

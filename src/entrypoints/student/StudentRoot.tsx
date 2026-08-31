@@ -3,8 +3,8 @@ import { AuthProvider, useAuth } from '../../components/auth/AuthContext';
 import { AppLogin } from '../../components/auth/AppLogin';
 import { AccessDenied } from '../../components/auth/AccessDenied';
 import { StudentApp } from '../../apps/student/StudentApp';
-import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { Button } from '../../components/ui/Button';
+import { dismissInitialSplash } from '../../lib/initial-splash';
 
 const ProfessionalOnlyScreen: React.FC = () => {
   const { logout } = useAuth();
@@ -25,7 +25,11 @@ const ProfessionalOnlyScreen: React.FC = () => {
 
 const StudentGate: React.FC = () => {
   const auth = useAuth();
-  if (auth.isLoading) return <LoadingScreen />;
+  React.useEffect(() => {
+    if (!auth.isLoading) dismissInitialSplash();
+  }, [auth.isLoading]);
+
+  if (auth.isLoading) return null;
   if (auth.recoveryInProgress) return <AppLogin kind="student" />;
   if (!auth.isAuthenticated) return <AppLogin kind="student" />;
   if (auth.isInstructorOnboarding) return <AppLogin kind="instructor" />;

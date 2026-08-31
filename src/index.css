@@ -79,12 +79,12 @@ body {
 
 /* Canonical field label shared by Student, PRO, Admin and the Design System. */
 .mazzi-field-label {
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.25;
-  letter-spacing: .08em;
+  letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--mazzi-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .mazzi-list-empty-state {
@@ -105,7 +105,7 @@ body {
 .mazzi-brand-lockup > span { display: grid; gap: 1px; }
 .mazzi-brand-lockup strong { color: var(--mazzi-dark); font-size: 15px; font-weight: 900; letter-spacing: -.025em; line-height: 1.1; }
 .mazzi-brand-lockup small { color: var(--mazzi-muted); font-size: 10px; font-weight: 650; line-height: 1.2; }
-.mazzi-heading-icon { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border-radius: 16px; background: var(--mazzi-yellow); color: var(--mazzi-dark); box-shadow: 0 12px 28px rgba(246,201,69,.45); }
+.mazzi-heading-icon { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border-radius: 16px; background: var(--mazzi-yellow); color: var(--mazzi-dark); }
 .mazzi-heading-icon > svg { width: 21px; height: 21px; }
 .mazzi-segmented { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--mazzi-border); border-radius: 16px; background: var(--mazzi-surface-soft); }
 .mazzi-segmented > button { min-height: 44px; flex: 1 1 0%; border-radius: 12px; padding: 10px 12px; color: var(--mazzi-muted); font-size: 12px; font-weight: 700; transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease; }
@@ -117,9 +117,9 @@ body {
 .mazzi-hero > :first-child { background: linear-gradient(135deg, var(--mazzi-yellow-soft), var(--mazzi-yellow)); color: var(--mazzi-dark); }
 .mazzi-hero > :last-child { background: linear-gradient(145deg, #303138, var(--mazzi-dark)); color: white; }
 .mazzi-bottom-nav { position: fixed; z-index: 50; left: 16px; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom)); display: grid; align-items: center; border-radius: 24px; background: rgba(255,255,255,.96); border: 1px solid var(--mazzi-border); padding: 8px 10px; box-shadow: var(--mazzi-shadow-float); backdrop-filter: blur(18px); }
-.mazzi-avatar { overflow: hidden; border-radius: 18px; background: var(--mazzi-yellow); color: var(--mazzi-dark); box-shadow: 0 12px 28px rgba(246,201,69,.42); }
-.mazzi-icon-button { position: relative; display: grid; min-height: 48px; min-width: 48px; place-items: center; border: 1px solid var(--mazzi-border); border-radius: 16px; background: white; color: var(--mazzi-dark); box-shadow: 0 2px 8px rgba(32,33,38,.06); transition: color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
-.mazzi-icon-button:hover { color: #111216; box-shadow: 0 5px 14px rgba(32,33,38,.1); }
+.mazzi-avatar { overflow: hidden; border-radius: 18px; background: var(--mazzi-yellow); color: var(--mazzi-dark); }
+.mazzi-icon-button { position: relative; display: grid; min-height: 48px; min-width: 48px; place-items: center; border: 1px solid var(--mazzi-border); border-radius: 16px; background: white; color: var(--mazzi-dark); transition: color 150ms ease, transform 150ms ease; }
+.mazzi-icon-button:hover { color: #111216; }
 .mazzi-icon-button:active { transform: scale(.95); }
 .mazzi-icon-button:focus-visible { outline: 2px solid var(--mazzi-dark); outline-offset: 2px; box-shadow: 0 0 0 4px var(--mazzi-focus-glow); }
 .mazzi-status { border-radius: 9px; padding: 5px 8px; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
@@ -141,6 +141,7 @@ body {
 .mazzi-success-final { animation: mazzi-success-final 700ms cubic-bezier(.22, 1, .36, 1) both; }
 .mazzi-success-overlay-icon { animation: mazzi-success-final 640ms cubic-bezier(.22, 1, .36, 1) both; }
 .mazzi-success-overlay-icon-exit { animation: mazzi-success-overlay-exit 700ms cubic-bezier(.22, 1, .36, 1) both; }
+.mazzi-checkout-return-success-icon { animation: mazzi-success-final 1600ms cubic-bezier(.22, 1, .36, 1) both; }
 @media (min-width: 720px) {
   .mazzi-mobile { max-width: 680px; margin-inline: auto; padding-inline: 28px; }
   .mazzi-bottom-nav { left: 50%; right: auto; width: min(640px, calc(100% - 32px)); transform: translateX(-50%); }

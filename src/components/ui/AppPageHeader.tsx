@@ -1,4 +1,5 @@
 import React from 'react';
+import { EnvironmentBadge } from './EnvironmentBadge';
 
 interface AppPageHeaderProps {
   eyebrow: string;
@@ -14,6 +15,9 @@ export const AppPageHeader: React.FC<AppPageHeaderProps> = ({ eyebrow, title, su
       <h1 className="mt-1 text-2xl font-extrabold leading-tight tracking-[-0.03em] text-[var(--mazzi-dark)] sm:text-[32px]">{title}</h1>
       {subtitle && <p className="mt-1 max-w-[42ch] text-xs font-medium leading-relaxed text-slate-500 sm:text-sm">{subtitle}</p>}
     </div>
-    {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+    <div className="flex shrink-0 items-center gap-2">
+      <EnvironmentBadge />
+      {action}
+    </div>
   </header>
 );

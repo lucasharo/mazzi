@@ -92,7 +92,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       {/* 1. HERO: Prominent Date, Time & Status in Evidence */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--mazzi-border)]">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-text)] border border-amber-200/60 shadow-2xs">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-text)] border border-amber-200/60">
             <Calendar className="h-5 w-5 text-amber-600" aria-hidden="true" />
           </div>
           <div className="min-w-0">
@@ -115,7 +115,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       {/* 2. Provider / Person Info (Render name ONLY ONCE) */}
       <div className="flex items-center gap-3">
         {/* Avatar */}
-        <div className="mazzi-avatar h-12 w-12 shrink-0 text-sm font-bold shadow-xs ring-1 ring-black/5">
+        <div className="mazzi-avatar h-12 w-12 shrink-0 text-sm font-bold ring-1 ring-black/5">
           <span
             className="flex h-full w-full items-center justify-center bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-text)]"
             aria-hidden="true"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, CreditCard, QrCode, Clock, AlertCircle, CheckCircle2, XCircle, Copy, Check, Building2, Car, UserCheck, Calendar, Lock, Sparkles, ArrowLeft, KeyRound, MapPin, AlertTriangle, } from 'lucide-react';
 import {
-  Provider, Vehicle, ServiceOffering, Quote, Booking, Payment, PaymentMethodType, } from '../../../types';
+  Provider, Vehicle, ServiceOffering, Quote, Booking, Payment, PaymentMethodType, StudentSavedAddress, } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
@@ -18,11 +18,14 @@ import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { geocodeAddress } from '../../../lib/geocoding';
 import { getCheckoutGatewayProvider, getStripeEnvironment, getStripePublishableKey } from '../../../lib/payment-gateway-config';
-import { StripePaymentCheckout, type StripePaymentResult } from './StripePaymentCheckout';
+import { StripeHostedCheckout } from './StripeHostedCheckout';
+import { AddressAutocomplete } from '../../../components/search/AddressAutocomplete';
+import { LocationSuggestion } from '../../../domain/maps/geocoding-provider';
 
 export interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
+  presentation?: 'modal' | 'page';
   provider: Provider | null;
   vehicle: Vehicle | null;
   offering: ServiceOffering | null;
@@ -105,9 +108,19 @@ function friendlyCheckoutError(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function formatCheckoutDate(value?: string | null): string {
+  if (!value) return 'Data não informada';
+  try {
+    return formatDateBR(value);
+  } catch {
+    return value;
+  }
+}
+
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
+  presentation = 'modal',
   provider,
   vehicle,
   offering,
@@ -141,6 +154,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [copiedPix, setCopiedPix] = useState(false);
   const [meetingPointType, setMeetingPointType] = useState<'PROVIDER' | 'STUDENT'>('PROVIDER');
   const [studentAddress, setStudentAddress] = useState('');
+  const [studentAddressLocation, setStudentAddressLocation] = useState<StudentSavedAddress | null>(null);
 
   // Time remaining counters
   const [quoteTimeRemainingSec, setQuoteTimeRemainingSec] = useState<number>(600);
@@ -164,6 +178,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setPayment(null);
     setPaymentMethod(null);
     setStripePaymentPending(false);
+    setStudentAddress(user?.studentSavedAddress?.formattedAddress || '');
+    setStudentAddressLocation(user?.studentSavedAddress || null);
     setStep('QUOTE_PREVIEW');
 
     if (!isOpen) {
@@ -337,7 +353,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     const isRealSupabase = Boolean((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
     const hasGeneratedGatewayAttempt = Boolean(
-      stripePaymentPending && payment?.gateway === 'STRIPE' && payment.externalPaymentId,
+      stripePaymentPending && payment?.gateway === 'STRIPE' && (
+        payment.externalPaymentId || payment.metadata?.stripe_checkout_session_id
+      ),
     );
 
     const reconcilePaymentStatus = async (): Promise<'PAID' | 'NOT_PAID' | 'UNKNOWN'> => {
@@ -438,7 +456,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       };
       if (meetingPointType === 'STUDENT') {
         if (!studentAddress.trim()) throw new Error('Informe o endereço do aluno para calcular a distância.');
-        const geocoded = await geocodeAddress(studentAddress.trim());
+        const geocoded = studentAddressLocation?.formattedAddress === studentAddress.trim()
+          ? studentAddressLocation
+          : await geocodeAddress(studentAddress.trim());
         meetingPoint = { ...meetingPoint, address: studentAddress.trim(), latitude: geocoded.latitude, longitude: geocoded.longitude };
       }
       const idempotencyKey = `idem_hold_${quote.id}_${Date.now()}`;
@@ -477,6 +497,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           throw new BookingDomainError('Este horário já foi reservado por outro aluno.', 'SLOT_NO_LONGER_AVAILABLE');
         }
         throw dbErr;
+      }
+
+      if (meetingPointType === 'STUDENT' && meetingPoint.latitude !== undefined && meetingPoint.longitude !== undefined) {
+        const savedAddress: StudentSavedAddress = studentAddressLocation?.formattedAddress === studentAddress.trim()
+          ? studentAddressLocation
+          : { formattedAddress: studentAddress.trim(), latitude: meetingPoint.latitude, longitude: meetingPoint.longitude };
+        void dbService.updateMyStudentAddress(savedAddress).catch((error) => {
+          if (import.meta.env.DEV) console.warn('STUDENT_ADDRESS_SAVE_FAILED', error);
+        });
       }
 
       // Sync local booking ID with real DB ID if needed
@@ -635,22 +664,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       const amountInCents = booking.snapshot?.totalInCents || booking.totalInCents;
       const platformFeeInCents = booking.snapshot?.platformFeeInCents || booking.platformFeeInCents;
       if (checkoutGatewayProvider === 'stripe') {
-        const stripeIntent = await dbService.createStripePaymentIntent(nextPaymentId, nextMethod, user.email);
         return {
           id: nextPaymentId,
           bookingId: booking.id,
           studentId: booking.studentId,
           providerId: booking.providerId,
           gateway: 'STRIPE',
-          externalPaymentId: stripeIntent.paymentIntentId,
-          stripeClientSecret: stripeIntent.clientSecret,
           idempotencyKey,
           method: nextMethod,
           status: 'PENDING',
           amountInCents,
           platformFeeInCents,
           providerAmountInCents: booking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
-          metadata: { stripeStatus: stripeIntent.status },
+          metadata: { stripeStatus: 'NOT_STARTED', stripe_payment_method: nextMethod },
           createdAt: now,
           updatedAt: now,
         };
@@ -711,25 +737,64 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
-  const handleStripePayment = async (result: StripePaymentResult) => {
-    if (!payment) return;
-    if (result.status === 'error') {
-      setStripePaymentPending(false);
-      setErrorMessage(result.errorMessage || 'Não foi possível confirmar o pagamento Stripe.');
-      return;
+  // Stripe Checkout owns the payment-method choice. The local payment row is
+  // created once with a neutral card value because the database requires a
+  // method before the hosted session exists; the signed webhook remains the
+  // source of truth for the actual method and payment result.
+  useEffect(() => {
+    if (checkoutGatewayProvider !== 'stripe' || step !== 'PAYMENT_SELECTION' || !booking || !user || payment) return undefined;
+    let active = true;
+    setIsProcessing(true);
+    setErrorMessage(null);
+    void createPaymentAttempt('CREDIT_CARD')
+      .then((nextPayment) => {
+        if (!active) return;
+        setPayment(nextPayment);
+        setPaymentMethod('CREDIT_CARD');
+      })
+      .catch((error) => {
+        if (active) setErrorMessage(friendlyCheckoutError(error, 'Não foi possível iniciar o checkout. Tente novamente.'));
+      })
+      .finally(() => {
+        if (active) setIsProcessing(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [checkoutGatewayProvider, step, booking?.id, user?.id, payment]);
+
+  const handleStripeHostedCheckout = async () => {
+    if (!payment || !paymentMethod || !user || isProcessing || stripePaymentPending) return;
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+    let redirected = false;
+    try {
+      const session = await dbService.createStripeCheckoutSession(
+        payment.id,
+        paymentMethod,
+        user.email,
+        window.location.origin,
+      );
+      setPayment((current) => current ? {
+        ...current,
+        gateway: 'STRIPE',
+        status: 'PENDING',
+        metadata: {
+          ...(current.metadata || {}),
+          stripe_checkout_session_id: session.checkoutSessionId,
+          stripe_checkout_status: session.status,
+        },
+        updatedAt: new Date().toISOString(),
+      } : current);
+      setStripePaymentPending(true);
+      redirected = true;
+      window.location.assign(session.checkoutUrl);
+    } catch (error) {
+      setErrorMessage(friendlyCheckoutError(error, 'Não foi possível abrir o Checkout Stripe. Tente novamente.'));
+    } finally {
+      if (!redirected) setIsProcessing(false);
     }
-    setStripePaymentPending(true);
-    setPayment((current) => current ? {
-      ...current,
-      gateway: 'STRIPE',
-      externalPaymentId: result.paymentIntentId || current.externalPaymentId,
-      status: 'PENDING',
-      metadata: { ...(current.metadata || {}), stripeStatus: result.status },
-      updatedAt: new Date().toISOString(),
-    } : current);
-    setErrorMessage(result.status === 'succeeded'
-      ? 'Pagamento aprovado. Aguardando confirmação segura da reserva.'
-      : 'Pagamento enviado. Aguardando confirmação segura da reserva.');
   };
 
   const handleRefreshStripePayment = async () => {
@@ -807,10 +872,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         step === 'SUCCESS'
           ? 'Aula confirmada'
           : step === 'PAYMENT_SELECTION'
-          ? 'Confirmar pagamento'
+          ? 'Resumo da reserva'
           : 'Confirmar sua aula'
       }
       size="md"
+      presentation={presentation}
     >
       <div className="space-y-4 text-left">
         {step === 'SUCCESS' && successAnimationPhase !== 'COMPLETE' && (
@@ -831,14 +897,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
           </div>
         )}
-
-        {/* Environment Safety Banner */}
-        {showTestCopy && <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 text-[11px] font-medium text-slate-700">
-          <Sparkles className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
-          <span>
-            <strong className="font-semibold text-slate-900">Ambiente de Testes:</strong> {checkoutGatewayProvider === 'fake' ? 'Pagamento simulado sem cobrança real.' : 'Stripe configurado com credenciais de teste.'}
-          </span>
-        </div>}
 
         {/* Global Error Banner */}
         {errorMessage && (
@@ -918,10 +976,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span>Aula prática{durationLabel}</span>
                 <span className="font-semibold text-slate-800">{formatCentsToBRL(quote.priceInCents)}</span>
               </div>
-              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
-                <span>Taxa de serviço</span>
-                <span className="font-semibold text-slate-800">{formatCentsToBRL(quote.platformFeeInCents)}</span>
-              </div>
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-900">Total</span>
                 <span className="text-xl font-extrabold text-slate-950">{formatCentsToBRL(quote.totalInCents)}</span>
@@ -964,13 +1018,32 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <label htmlFor="checkout-student-address" className="mazzi-field-label mb-1.5 block">
                     Endereço completo para o ponto de encontro
                   </label>
-                  <Input
-                    id="checkout-student-address"
+                  <AddressAutocomplete
                     value={studentAddress}
-                    onChange={(event) => setStudentAddress(event.target.value)}
+                    onChange={(value) => {
+                      setStudentAddress(value);
+                      setStudentAddressLocation(null);
+                    }}
+                    onSelect={(suggestion: LocationSuggestion) => {
+                      setStudentAddress(suggestion.formattedAddress);
+                      setStudentAddressLocation({
+                        formattedAddress: suggestion.formattedAddress,
+                        latitude: suggestion.latitude,
+                        longitude: suggestion.longitude,
+                        postalCode: suggestion.postalCode,
+                        placeId: suggestion.placeId,
+                        addressLine1: suggestion.addressLine1,
+                        addressLine2: suggestion.addressLine2,
+                        neighborhood: suggestion.neighborhood,
+                        city: suggestion.city,
+                        state: suggestion.stateCode || suggestion.state,
+                        country: suggestion.country,
+                      });
+                    }}
                     placeholder="Digite seu endereço com número e bairro"
-                    className="min-h-[44px] w-full rounded-xl border border-[#e9e6de] bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                    required
+                    ariaLabel="Endereço completo para o ponto de encontro"
+                    dropdownAlignment="viewport"
+                    inputClassName="min-h-[44px] rounded-xl border border-[#e9e6de] bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   />
                 </div>
               )}
@@ -1099,14 +1172,73 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </span>
             </div>
 
-            {/* Total summary banner */}
-            <div className="rounded-2xl bg-amber-50/60 border border-amber-200/60 p-4 flex items-center justify-between text-slate-900">
-              <span className="text-xs font-bold text-slate-700">Total a pagar</span>
-              <span className="text-xl font-extrabold text-slate-950">{formatCentsToBRL(payment?.amountInCents ?? booking.totalInCents)}</span>
+            {/* Reservation summary: the student reviews the selected details before leaving for Stripe. */}
+            <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 shadow-2xs">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div>
+                  <p className="mazzi-field-label">Confira sua aula</p>
+                  <p className="mt-0.5 text-sm font-extrabold text-[var(--mazzi-dark)]">Resumo da reserva</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase text-amber-900">
+                  Cat. {booking.snapshot?.category ?? booking.category}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-3 border-y border-slate-100">
+                <div className="col-span-2 flex items-start gap-2.5 border-b border-slate-100 py-2.5">
+                  <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-slate-500">Data e horário</p>
+                    <p className="text-sm font-extrabold text-[var(--mazzi-dark)]">
+                      {formatCheckoutDate(booking.scheduledDate)} · {booking.startTime || '--:--'} às {booking.endTime || '--:--'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex min-w-0 items-start gap-2.5 border-b border-slate-100 py-2.5">
+                  <UserCheck className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-slate-500">Instrutor</p>
+                    <p className="break-words text-[13px] font-extrabold leading-snug text-[var(--mazzi-dark)]">{booking.snapshot?.instructorName ?? booking.instructorName}</p>
+                    <p className="break-words text-[11px] font-medium leading-snug text-slate-500">{booking.snapshot?.providerName ?? booking.providerName}</p>
+                  </div>
+                </div>
+
+                <div className="flex min-w-0 items-start gap-2.5 border-b border-slate-100 py-2.5">
+                  <Car className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-slate-500">Veículo</p>
+                    <p className="break-words text-[13px] font-extrabold leading-snug text-[var(--mazzi-dark)]">{booking.snapshot?.vehicleName ?? booking.vehicleName}</p>
+                    <p className="text-[11px] font-medium leading-snug text-slate-500">
+                      {booking.snapshot?.transmission === 'AUTOMATIC' ? 'Automático' : booking.snapshot?.transmission === 'MANUAL' ? 'Manual' : 'Câmbio não informado'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="col-span-2 flex items-start gap-2.5 py-2.5">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-slate-500">Ponto de encontro</p>
+                    <p className="text-sm font-extrabold text-[var(--mazzi-dark)]">{formatMeetingPoint(booking.meetingPoint) || 'Local do instrutor'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Payment Method Selector */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Price summary */}
+            <div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-3 text-slate-900">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                <span>Aula prática</span>
+                <span className="font-semibold text-slate-800">{formatCentsToBRL(booking.snapshot?.priceInCents ?? booking.priceInCents)}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between border-t border-amber-200/70 pt-2">
+                <span className="text-sm font-bold text-slate-800">Total a pagar</span>
+                <span className="text-xl font-extrabold text-slate-950">{formatCentsToBRL(payment?.amountInCents ?? booking.totalInCents)}</span>
+              </div>
+            </div>
+
+            {/* Payment Method Selector — retained for the fake gateway only. */}
+            {checkoutGatewayProvider === 'fake' && <div className="grid grid-cols-2 gap-2">
               <ButtonBase
                 type="button"
                 aria-pressed={paymentMethod === 'PIX'}
@@ -1142,19 +1274,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   {showTestCopy && <span className="text-[10px] text-slate-500 font-medium block truncate">{checkoutGatewayProvider === 'fake' ? 'Testar cenários' : 'Cartão de teste'}</span>}
                 </div>
               </ButtonBase>
-            </div>
+            </div>}
 
-            {!paymentMethod && (
+            {checkoutGatewayProvider === 'stripe' && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-center">
+                <p className="text-sm font-extrabold text-[var(--mazzi-dark)]">Pagamento seguro</p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--mazzi-muted)]">
+                  Na próxima tela, a Stripe exibirá as formas de pagamento disponíveis para você.
+                </p>
+              </div>
+            )}
+
+            {checkoutGatewayProvider === 'fake' && !paymentMethod && (
               <p role="status" className="rounded-xl bg-slate-50 px-3 py-2 text-center text-xs font-semibold text-[var(--mazzi-muted)]">
                 Selecione uma forma de pagamento para continuar.
               </p>
-            )}
-
-            {showTestCopy && checkoutGatewayProvider === 'stripe' && paymentMethod === 'PIX' && (
-              <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-[var(--mazzi-text)]">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
-                <span>Pix de teste Stripe. A reserva só será confirmada após a identificação do pagamento.</span>
-              </div>
             )}
 
             {/* PIX Fake View */}
@@ -1195,13 +1329,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             )}
 
-            {checkoutGatewayProvider === 'stripe' && paymentMethod && payment?.stripeClientSecret && (
-              <StripePaymentCheckout
-                clientSecret={payment.stripeClientSecret}
+            {checkoutGatewayProvider === 'stripe' && paymentMethod && payment && (
+              <StripeHostedCheckout
                 amountInCents={payment.amountInCents}
-                method={paymentMethod}
                 isProcessing={isProcessing || stripePaymentPending}
-                onResult={handleStripePayment}
+                onCheckout={() => { void handleStripeHostedCheckout(); }}
               />
             )}
 

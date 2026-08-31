@@ -68,7 +68,7 @@ Deno.serve(async (request) => {
   const service = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: payment, error: paymentError } = await service
     .from("payments")
-    .select("id, booking_id, amount_in_cents, idempotency_key, status, external_transaction_id")
+    .select("id, booking_id, amount_in_cents, idempotency_key, status, external_transaction_id, metadata")
     .eq("id", payload.paymentId)
     .maybeSingle();
   if (paymentError) {
@@ -178,15 +178,47 @@ Deno.serve(async (request) => {
       error: result?.error || null,
       cause: Array.isArray(result?.cause) ? result.cause.map((item: any) => ({ code: item?.code || null, description: item?.description || null })) : null,
     });
-    return reply(mpResponse.status >= 500 ? 502 : 402, {
+    const externalPaymentId = result?.id ? String(result.id) : payment.external_transaction_id || null;
+    const { error: pendingPersistError } = await service.from("payments").update({
+      method: "CREDIT_CARD",
+      gateway_provider: gatewayProvider,
+      external_transaction_id: externalPaymentId,
+      metadata: {
+        ...(payment.metadata || {}),
+        mercado_pago_status: result?.status || null,
+        mercado_pago_status_detail: result?.status_detail || null,
+        environment,
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", payment.id).eq("status", "PENDING");
+    if (pendingPersistError) {
+      console.error("MERCADOPAGO_CARD_PENDING_PERSIST_FAILED", {
+        code: pendingPersistError.code,
+        message: pendingPersistError.message,
+      });
+      return reply(502, {
+        approved: false,
+        paymentStatus: "PENDING",
+        retryable: true,
+        gatewayStatus: result?.status || null,
+        gatewayStatusDetail: result?.status_detail || null,
+        message: "O pagamento foi recebido e está em análise, mas ainda não conseguimos registrar o acompanhamento. Tente atualizar em instantes.",
+      });
+    }
+
+    const isGatewayReview = result?.status === "in_process" || result?.status_detail === "pending_review_manual";
+    return reply(mpResponse.status >= 500 ? 502 : isGatewayReview ? 200 : 402, {
       approved: false,
       paymentStatus: "PENDING",
       retryable: true,
+      externalPaymentId: externalPaymentId || undefined,
       gatewayStatus: result?.status || null,
       gatewayStatusDetail: result?.status_detail || null,
       message: mpResponse.status >= 500
         ? "O Mercado Pago está temporariamente indisponível. Tente novamente em instantes."
-        : "O Mercado Pago não aprovou este pagamento. Confira os dados e tente novamente.",
+        : isGatewayReview
+          ? "Pagamento enviado e em análise pelo Mercado Pago. Aguarde a confirmação; não envie os dados novamente."
+          : "O Mercado Pago não aprovou este pagamento. Confira os dados e tente novamente.",
     });
   }
 
@@ -201,7 +233,9 @@ Deno.serve(async (request) => {
       approved: false,
       paymentStatus: "FAILED",
       retryable: true,
-      message: "Pagamento de teste recusado. Para simular uma aprovação, informe APRO como nome do titular e CPF 123.456.789-09.",
+      message: environment === "test"
+        ? "Pagamento de teste recusado. Para simular uma aprovação, informe APRO como nome do titular e CPF 123.456.789-09."
+        : "Pagamento recusado pelo Mercado Pago. Confira os dados do cartão e tente novamente.",
     });
   }
 

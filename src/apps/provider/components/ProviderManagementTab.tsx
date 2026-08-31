@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, } from 'lucide-react';
 import {
-  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, PixDestination, } from '../../../types';
+  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, BankAccount, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
@@ -22,7 +22,7 @@ import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 import { VehicleCatalogPicker } from '../../../components/vehicles/VehicleCatalogPicker';
 import { getStatusPresentation } from '../../../domain/status-presentation';
-import { ProviderPixDestinationModal } from './ProviderPixDestinationModal';
+import { ProviderBankAccountModal } from './ProviderBankAccountModal';
 import { ProviderAccountTab } from './ProviderAccountTab';
 
 interface ProviderManagementTabProps {
@@ -68,6 +68,7 @@ interface ProviderManagementTabProps {
   onOfferingFormChange: (form: any) => void;
   onSaveOffering: () => void;
   onToggleOfferingStatus: (offeringId: string) => void;
+  onReplaceActiveOffering: (offeringId: string, previousOfferingId: string) => Promise<void>;
   offeringError: string | null;
   offeringNotice?: string | null;
   onUploadDocClick: (docType: string) => void;
@@ -75,9 +76,9 @@ interface ProviderManagementTabProps {
   onViewComplianceDocument: (document: ComplianceDocument) => void;
   isAcceptingComplianceTerms?: boolean;
   complianceTermsError?: string | null;
-  pixDestination?: PixDestination | null;
-  onSavePixDestination?: (input: Pick<PixDestination, 'keyType' | 'pixKey' | 'holderName' | 'holderDocument'>) => Promise<void>;
-  isSavingPixDestination?: boolean;
+  bankAccount?: BankAccount | null;
+  onSaveBankAccount?: (input: Omit<BankAccount, 'id' | 'providerId' | 'isActive' | 'updatedAt' | 'accountNumberMasked'>) => Promise<void>;
+  isSavingBankAccount?: boolean;
 }
 
 export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
@@ -107,6 +108,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   onOfferingFormChange,
   onSaveOffering,
   onToggleOfferingStatus,
+  onReplaceActiveOffering,
   offeringError,
   offeringNotice,
   onUploadDocClick,
@@ -114,9 +116,9 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   onViewComplianceDocument,
   isAcceptingComplianceTerms = false,
   complianceTermsError,
-  pixDestination,
-  onSavePixDestination,
-  isSavingPixDestination = false,
+  bankAccount,
+  onSaveBankAccount,
+  isSavingBankAccount = false,
 }) => {
   const [blockedVehicleId, setBlockedVehicleId] = useState<string | null>(null);
   const currentYear = new Date().getFullYear();
@@ -127,7 +129,8 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
     return (priority[a.status] ?? 3) - (priority[b.status] ?? 3);
   });
   const [isInviteInstructorModalOpen, setIsInviteInstructorModalOpen] = React.useState(false);
-  const [isPixDestinationModalOpen, setIsPixDestinationModalOpen] = useState(false);
+  const [isBankAccountModalOpen, setIsBankAccountModalOpen] = useState(false);
+  const [pendingOfferingSwap, setPendingOfferingSwap] = useState<{ target: ServiceOffering; current: ServiceOffering } | null>(null);
   const isSchool = currentProvider.type === 'DRIVING_SCHOOL';
   const eligibleSchoolInstructors = schoolInstructors.filter((instructor) => {
     const compliance = schoolInstructorSummary.find((entry) => entry.membershipId === instructor.id);
@@ -284,6 +287,9 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
               {offerings.map((o) => {
                 const linkedVehicle = vehicles.find((v) => v.id === o.vehicleId);
                 const linkedInstructor = schoolInstructors.find((instructor) => instructor.userId === o.instructorId);
+                const activeEquivalent = o.status !== 'ACTIVE'
+                  ? offerings.find((candidate) => candidate.id !== o.id && candidate.status === 'ACTIVE' && candidate.providerId === o.providerId && candidate.instructorId === o.instructorId && candidate.vehicleId === o.vehicleId && candidate.category === o.category && candidate.transmission === o.transmission && candidate.durationMinutes === o.durationMinutes)
+                  : undefined;
                 const providerComplianceEligible = isSchool
                   ? Boolean(o.instructorId && eligibleSchoolInstructors.some((instructor) => instructor.userId === o.instructorId))
                   : evaluateProviderEligibility(currentProvider, complianceDocs).isEligible;
@@ -348,7 +354,13 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                         size="sm"
                         disabled={o.status !== 'ACTIVE' && !canActivateOffering}
                         title={o.status !== 'ACTIVE' && !canActivateOffering ? 'A oferta só pode ser ativada quando todos os requisitos forem atendidos.' : undefined}
-                        onClick={() => onToggleOfferingStatus(o.id)}
+                        onClick={() => {
+                          if (activeEquivalent) {
+                            setPendingOfferingSwap({ target: o, current: activeEquivalent });
+                            return;
+                          }
+                          onToggleOfferingStatus(o.id);
+                        }}
                         leftIcon={o.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                       >
                         {o.status === 'ACTIVE' ? 'Desativar Oferta' : 'Ativar Oferta'}
@@ -446,8 +458,8 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       {/* ACCOUNT SUBTAB */}
       {!isRefreshing && managementSubTab === 'account' && (
         <ProviderAccountTab
-          pixDestination={pixDestination}
-          onOpenPixSettings={() => setIsPixDestinationModalOpen(true)}
+          bankAccount={bankAccount}
+          onOpenBankAccountSettings={() => setIsBankAccountModalOpen(true)}
           showHeader={false}
         />
       )}
@@ -607,13 +619,50 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         </div>
       </Modal>
 
-      {onSavePixDestination && (
-        <ProviderPixDestinationModal
-          isOpen={isPixDestinationModalOpen}
-          onClose={() => setIsPixDestinationModalOpen(false)}
-          pixDestination={pixDestination}
-          onSave={onSavePixDestination}
-          isSaving={isSavingPixDestination}
+      <Modal
+        isOpen={Boolean(pendingOfferingSwap)}
+        onClose={() => setPendingOfferingSwap(null)}
+        title="Oferta semelhante já ativa"
+        size="sm"
+      >
+        <div className="space-y-4 text-left">
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+            <p className="text-sm leading-relaxed">
+              Já existe uma oferta ativa com o mesmo instrutor, veículo, categoria e transmissão. Deseja trocar para esta oferta?
+            </p>
+          </div>
+          <p className="text-xs leading-relaxed text-slate-500">
+            A oferta atualmente ativa será desativada e a oferta escolhida será ativada. Reservas já realizadas não serão alteradas.
+          </p>
+          <div className="mazzi-modal-actions flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPendingOfferingSwap(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (!pendingOfferingSwap) return;
+                const { target, current } = pendingOfferingSwap;
+                setPendingOfferingSwap(null);
+                void onReplaceActiveOffering(target.id, current.id);
+              }}
+              leftIcon={<Power className="h-4 w-4" />}
+            >
+              Trocar oferta
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {onSaveBankAccount && (
+        <ProviderBankAccountModal
+          isOpen={isBankAccountModalOpen}
+          onClose={() => setIsBankAccountModalOpen(false)}
+          bankAccount={bankAccount}
+          onSave={onSaveBankAccount}
+          isSaving={isSavingBankAccount}
         />
       )}
     </div>

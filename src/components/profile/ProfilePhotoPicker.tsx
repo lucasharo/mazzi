@@ -210,7 +210,7 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
 
   return (
     <div className="flex items-center gap-3.5">
-      <div className="relative h-16 w-16 sm:h-[72px] sm:w-[72px] shrink-0 overflow-hidden rounded-2xl bg-[var(--mazzi-yellow)] border border-[var(--mazzi-border)] text-[var(--mazzi-dark)] flex items-center justify-center font-black text-xl shadow-[0_12px_28px_rgba(246,201,69,0.42)]">
+      <div className="relative h-16 w-16 sm:h-[72px] sm:w-[72px] shrink-0 overflow-hidden rounded-2xl bg-[var(--mazzi-yellow)] border border-[var(--mazzi-border)] text-[var(--mazzi-dark)] flex items-center justify-center font-black text-xl">
         {isUploading ? (
           <Loader2 className="h-6 w-6 animate-spin text-[var(--mazzi-dark)]" aria-label="Enviando foto..." />
         ) : value ? (

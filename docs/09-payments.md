@@ -8,7 +8,7 @@
 
 ## Direção de seleção do gateway
 
-Foi realizada uma comparação inicial entre Mercado Pago, Stripe Connect, Asaas e Pagar.me para o modelo de marketplace da MAZZI. A decisão atual é usar **Stripe** no checkout customizado, com Payment Element para cartão e Pix e webhook assinado para confirmação.
+Foi realizada uma comparação inicial entre Mercado Pago, Stripe Connect, Asaas e Pagar.me para o modelo de marketplace da MAZZI. A decisão atual é usar **Stripe** com Checkout hospedado externo para cartão e Pix e webhook assinado para confirmação.
 
 O custo efetivo deverá considerar método de pagamento, parcelamento, prazo de recebimento, antecipação, chargebacks, estornos e cada repasse ao prestador. A ativação de produção exige validação comercial e operacional antes de cobrar clientes reais.
 
@@ -16,21 +16,20 @@ O ambiente DEV pode executar chamadas com credenciais de teste. Não há autoriz
 
 ## Checkout online de teste — TASK-079 e TASK-080
 
-- O modo Stripe oferece cartão e Pix pelo Payment Element usando métodos de pagamento dinâmicos. O Pix exibe QR Code/copia e cola e permanece `PENDING` até confirmação posterior.
-- O Stripe Elements tokeniza os dados sensíveis; o MAZZI recebe somente o `client_secret` do PaymentIntent autenticado.
-- A Edge Function autenticada ignora valores do browser, usa `payments.amount_in_cents` e envia uma chave de idempotência ao Stripe.
+- O modo Stripe usa o Checkout hospedado da Stripe: o aluno escolhe uma preferência no MAZZI, e o clique em pagar cria uma Checkout Session e redireciona para a página externa segura da Stripe.
+- A Edge Function autenticada ignora valores do browser, usa `payments.amount_in_cents`, envia uma chave de idempotência e associa `payment_id`/`booking_id` por metadata.
+- A reserva retorna ao app após o checkout para uma tela dedicada de confirmação, mas a confirmação continua dependente do webhook assinado; o retorno do navegador nunca confirma pagamento sozinho.
 - Somente uma confirmação server-side aprovada confirma a reserva; `pending`, `in_process` ou rejeição mantêm a reserva não confirmada.
-- A chave pública fica em `VITE_STRIPE_PUBLISHABLE_KEY`; `STRIPE_SECRET_KEY` fica somente nos secrets do Supabase.
-- Em builds com `pk_test_`, a telemetria avançada opcional do Stripe é desativada para evitar falha de DNS em `m.stripe.com`; as proteções continuam ativas nos builds com `pk_live_`.
-- Pix precisa estar habilitado no Stripe Dashboard em **Settings > Payment methods** em cada ambiente. Se `pix.available=false`, a API rejeita o PaymentIntent e não existe QR Code para exibir.
-- Quando o Stripe recusa a criação do PaymentIntent, a tentativa local é marcada como `FAILED` e a reserva continua `PENDING_PAYMENT`, permitindo tentar outro método sem deixar pagamentos pendentes órfãos.
-- A Edge Function não envia `payment_method_types[]=pix`; ela usa `automatic_payment_methods[enabled]=true` e verifica se o método solicitado está disponível antes de entregar o `client_secret`.
+- `STRIPE_SECRET_KEY` fica somente nos secrets do Supabase; a Checkout Session não expõe credenciais privadas ao browser.
+- Pix precisa estar habilitado no Stripe Dashboard em **Settings > Payment methods** em cada ambiente. Se o método não estiver disponível, a API rejeita a Checkout Session e não cria uma cobrança.
+- Quando o Stripe recusa a criação da Checkout Session, a tentativa local permanece sem cobrança externa e a reserva continua `PENDING_PAYMENT`, permitindo tentar novamente sem deixar sessão órfã.
+- A Edge Function de Checkout usa métodos dinâmicos gerenciados pela Stripe, deixando o aluno escolher Pix ou cartão dentro do Checkout hospedado. Pix aparece automaticamente quando estiver habilitado e elegível para a conta; se estiver indisponível, a Stripe mostra apenas os métodos elegíveis.
 
 ## Recebimento Pix e repasse manual — TASK-080
 
 - O gateway é selecionado por `VITE_PAYMENT_GATEWAY_PROVIDER=fake|stripe`; `fake` continua sendo o padrão seguro.
 - A criação do Pix é online, mas a confirmação é posterior: o aluno permanece em `Aguardando pagamento` até o webhook assinado ou a atualização manual consultar o status autoritativo.
-- O webhook Stripe configurado para esta integração recebe eventos de `payment_intent.*`, reembolsos e disputas. A assinatura é validada antes de qualquer alteração local.
+- O webhook Stripe configurado para esta integração recebe eventos de `checkout.session.*`, `payment_intent.*`, reembolsos e disputas. A assinatura é validada antes de qualquer alteração local.
 - O backend valida valor em centavos, aluno/reserva, expiração, assinatura e idempotência antes de confirmar a reserva.
 - O PRO cadastra sua conta bancária no próprio app. O Admin vê repasses somente de reservas pagas e concluídas e registra o repasse manual com referência. Chaves Pix cadastradas antes desta mudança permanecem legíveis apenas como legado.
 - Split automático, OAuth e transferência Pix automática continuam fora desta entrega.

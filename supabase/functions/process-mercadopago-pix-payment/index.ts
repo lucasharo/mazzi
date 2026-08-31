@@ -48,8 +48,17 @@ Deno.serve(async (request) => {
   const { data: authData, error: authError } = await authClient.auth.getUser(accessTokenHeader);
   if (authError || !authData.user) return reply(401, { message: "Sua sessão expirou. Entre novamente para continuar." });
 
-  const payerEmail = (authData.user.email || "").trim();
-  if (!payerEmail) return reply(503, { message: "O e-mail do pagador não está configurado." });
+  const configuredTestBuyerEmail = (Deno.env.get("MERCADOPAGO_TEST_BUYER_EMAIL") || "").trim();
+  const payerEmail = environment === "test"
+    ? configuredTestBuyerEmail
+    : (authData.user.email || "").trim();
+  if (!payerEmail) {
+    return reply(503, {
+      message: environment === "test"
+        ? "O comprador de teste do Mercado Pago não está configurado."
+        : "O e-mail do pagador não está configurado.",
+    });
+  }
 
   let payload;
   try { payload = await request.json(); } catch { return reply(400, { message: "Dados do pagamento Pix inválidos." }); }

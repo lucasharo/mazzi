@@ -87,7 +87,8 @@ function mergeMetadata(metadata: unknown, values: Record<string, unknown>) {
 
 function getPaymentIntentId(eventType: string, object: Record<string, any>) {
   if (eventType.startsWith("payment_intent.")) return String(object.id || "");
-  return String(object.payment_intent || "");
+  if (typeof object.payment_intent === "string") return object.payment_intent;
+  return String(object.payment_intent?.id || "");
 }
 
 function getRefundDetails(eventType: string, object: Record<string, any>) {
@@ -268,10 +269,21 @@ Deno.serve(async (request) => {
     stripe_event_type: eventType,
     stripe_status: object.status || null,
     stripe_payment_intent_id: externalPaymentId,
+    ...(eventType.startsWith("checkout.session.")
+      ? { stripe_checkout_session_id: object.id || null, stripe_checkout_payment_status: object.payment_status || null }
+      : {}),
   });
 
-  if (eventType === "payment_intent.succeeded") {
-    const amount = asCents(object.amount_received || object.amount);
+  const checkoutSessionSucceeded =
+    (eventType === "checkout.session.completed" || eventType === "checkout.session.async_payment_succeeded") &&
+    (object.payment_status === "paid" || eventType === "checkout.session.async_payment_succeeded");
+
+  if (checkoutSessionSucceeded || eventType === "payment_intent.succeeded") {
+    const amount = asCents(
+      eventType.startsWith("checkout.session.")
+        ? object.amount_total
+        : object.amount_received || object.amount,
+    );
     if (amount !== localPayment.amount_in_cents) {
       processingError = "Valor do PaymentIntent divergente do pagamento local.";
     } else {
@@ -284,6 +296,30 @@ Deno.serve(async (request) => {
       });
       if (error) processingError = error.message;
     }
+  } else if (eventType === "checkout.session.async_payment_failed") {
+    const { error } = await service
+      .from("payments")
+      .update({
+        status: "FAILED",
+        failed_at: new Date().toISOString(),
+        metadata: eventMetadata,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", localPayment.id)
+      .in("status", ["PENDING", "AUTHORIZED"]);
+    if (error) processingError = error.message;
+  } else if (eventType === "checkout.session.expired") {
+    const { error } = await service
+      .from("payments")
+      .update({
+        status: "CANCELLED",
+        cancelled_at: new Date().toISOString(),
+        metadata: eventMetadata,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", localPayment.id)
+      .in("status", ["PENDING", "AUTHORIZED"]);
+    if (error) processingError = error.message;
   } else if (eventType === "payment_intent.processing") {
     const { error } = await service
       .from("payments")

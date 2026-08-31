@@ -48,6 +48,7 @@ import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { ContentSkeleton, ContentSkeletonMode } from '../../components/ui/ContentSkeleton';
 import { Modal } from '../../components/ui/Modal';
 import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
+import { EnvironmentBadge } from '../../components/ui/EnvironmentBadge';
 import { getFriendlyAdminError } from '../../domain/status-presentation';
 import { getUserRoleLabel } from '../../domain/status-presentation';
 import { useMobileAppRoute } from '../../lib/mobile-app-router';
@@ -437,7 +438,10 @@ export const AdminApp: React.FC = () => {
               <span className="text-base font-black tracking-tight text-[var(--mazzi-dark)]">MAZZI</span>
               <span className="text-[10px] font-bold uppercase tracking-[.15em] text-[var(--mazzi-orange)]">Admin</span>
             </div>
-            <p className="text-[11px] font-medium text-[var(--mazzi-muted)]">Central de operação</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <p className="text-[11px] font-medium text-[var(--mazzi-muted)]">Central de operação</p>
+              <EnvironmentBadge />
+            </div>
           </div>
         </div>
         <nav className="mt-5 flex snap-x gap-1 overflow-x-auto pb-2 md:mt-7 md:flex-col md:overflow-visible md:pb-0">

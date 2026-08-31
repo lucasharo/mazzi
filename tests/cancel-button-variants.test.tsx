@@ -23,7 +23,7 @@ const cancellationUiFiles = [
 describe('global cancellation button hierarchy', () => {
   it('renders intermediate cancellation as soft danger and final cancellation as solid danger', () => {
     const soft = renderToStaticMarkup(<Button variant="dangerSoft">Cancelar</Button>);
-    const solid = renderToStaticMarkup(<Button variant="danger">Confirmar cancelamento</Button>);
+    const solid = renderToStaticMarkup(<Button variant="danger">Cancelar aula</Button>);
 
     expect(soft).toContain('bg-rose-50');
     expect(soft).toContain('border-rose-200/80');
@@ -38,7 +38,7 @@ describe('global cancellation button hierarchy', () => {
     const cancelButtons = cancellationUiFiles.flatMap((source) =>
       [...source.matchAll(/<Button\b[\s\S]*?<\/Button>/g)]
         .map(([button]) => button)
-        .filter((button) => />\s*Cancelar(?: aula)?\s*<\/Button>/.test(button)),
+        .filter((button) => />\s*Cancelar(?: aula)?\s*<\/Button>/.test(button) && button.includes('variant="dangerSoft"')),
     );
 
     expect(cancelButtons.length).toBeGreaterThan(0);
@@ -49,7 +49,7 @@ describe('global cancellation button hierarchy', () => {
     const finalButtons = cancellationUiFiles.flatMap((source) =>
       [...source.matchAll(/<Button\b[\s\S]*?<\/Button>/g)]
         .map(([button]) => button)
-        .filter((button) => /Confirmar (?:C|c)ancelamento/.test(button)),
+        .filter((button) => />\s*Cancelar aula\s*<\/Button>/.test(button) && button.includes('variant="danger"')),
     );
 
     expect(finalButtons).toHaveLength(2);

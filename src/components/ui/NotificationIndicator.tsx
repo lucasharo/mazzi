@@ -40,7 +40,7 @@ export const NotificationIndicator: React.FC<NotificationIndicatorProps> = ({ ch
       {unreadCount > 0 && (
         <span
           aria-label={`${unreadCount} notificações não lidas`}
-          className={`pointer-events-none absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--mazzi-yellow)] text-[9px] font-black leading-none text-[var(--mazzi-dark)] shadow-xs ${unreadCount > 9 ? 'px-1' : 'aspect-square px-0'}`}
+          className={`pointer-events-none absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--mazzi-yellow)] text-[9px] font-black leading-none text-[var(--mazzi-dark)] ${unreadCount > 9 ? 'px-1' : 'aspect-square px-0'}`}
         >
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>

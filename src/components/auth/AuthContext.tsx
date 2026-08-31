@@ -289,6 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: profile?.phone || user.user_metadata?.phone || '',
         cpf: profile?.cpf || user.user_metadata?.cpf,
         birthDate: profile?.birth_date || user.user_metadata?.birth_date,
+        studentSavedAddress: profile?.metadata?.student_saved_address || undefined,
         roles,
         status: (profile?.status || 'ACTIVE') as any,
         providerId,

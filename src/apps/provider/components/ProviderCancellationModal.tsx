@@ -47,11 +47,11 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
   const isSubmitDisabled = isProcessing || (isOther && !customReason.trim());
 
   const footer = (
-    <div className="flex w-full items-center gap-2.5">
+    <>
       <Button
         variant="outline"
         size="sm"
-        className="min-h-[48px] w-1/2 rounded-2xl border-slate-300 bg-white font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
+        className="min-w-0 flex-1 !whitespace-normal !px-2 text-center leading-tight min-h-[48px] rounded-2xl border-slate-300 bg-white font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
         onClick={onClose}
         disabled={isProcessing}
         leftIcon={<ArrowLeft className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />}
@@ -61,15 +61,15 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
       <Button
         variant="danger"
         size="sm"
-        className="min-h-[48px] w-1/2"
+        className="min-w-0 flex-1 !whitespace-normal !px-2 text-center leading-tight min-h-[48px]"
         onClick={onConfirmCancel}
         disabled={isSubmitDisabled}
         isLoading={isProcessing}
         leftIcon={<XCircle className="h-4 w-4 shrink-0 text-white" aria-hidden="true" />}
       >
-        Confirmar cancelamento
+        Cancelar aula
       </Button>
-    </div>
+    </>
   );
 
   return (

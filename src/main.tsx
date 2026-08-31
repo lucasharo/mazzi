@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { registerServiceWorker } from './registerServiceWorker.ts';
+import { dismissInitialSplash } from './lib/initial-splash';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -14,3 +15,4 @@ createRoot(document.getElementById('root')!).render(
 );
 
 registerServiceWorker();
+window.requestAnimationFrame(dismissInitialSplash);

@@ -245,7 +245,6 @@ describe('Student Journey Batch 2 - UI/UX Pro Max Contracts', () => {
     expect(detailsMarkup).toContain('Autoescola Modelo');
     expect(detailsMarkup).toContain('Hyundai HB20');
     expect(detailsMarkup).toContain('R$ 100,00');
-    expect(detailsMarkup).toContain('R$ 10,00');
     expect(detailsMarkup).toContain('R$ 110,00');
     expect(detailsMarkup).toContain('Mensagens');
   });

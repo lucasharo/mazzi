@@ -48,7 +48,7 @@ export function AppBottomNav<T extends string>({ ariaLabel, activeId, items, onC
                 aria-hidden="true"
                 className={hasBadgeValue
                   ? 'absolute -right-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--mazzi-yellow)] px-1 text-[10px] font-black leading-none text-[var(--mazzi-dark)] shadow-sm'
-                  : 'absolute right-[calc(50%_-_22px)] top-1.5 z-10 h-3 w-3 rounded-full bg-rose-500 shadow-[0_1px_4px_rgba(244,63,94,0.28)]'}
+                  : 'absolute right-[calc(50%_-_22px)] top-1.5 z-10 h-3 w-3 rounded-full bg-rose-500'}
               >
                 {hasBadgeValue ? (item.badge! > 99 ? '99+' : item.badge) : null}
               </span>

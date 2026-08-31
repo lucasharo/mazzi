@@ -65,7 +65,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
         {/* Header / Identity */}
         <section className="text-center" aria-label="Identificação do prestador">
           <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
-            <div className="mazzi-avatar h-full w-full text-xl sm:text-2xl font-bold shadow-sm ring-1 ring-black/5">
+            <div className="mazzi-avatar h-full w-full text-xl sm:text-2xl font-bold ring-1 ring-black/5">
               {result.avatarUrl ? (
                 <img
                   src={result.avatarUrl}
@@ -83,7 +83,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
             </div>
             {result.isVerified && (
               <span
-                className="absolute -bottom-1 -right-1 inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200/60 p-1 text-emerald-700 shadow-2xs"
+                className="absolute -bottom-1 -right-1 inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200/60 p-1 text-emerald-700"
                 title="Perfil verificado pela plataforma MAZZI"
                 aria-label="Prestador verificado"
               >

@@ -910,7 +910,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
         }
       >
         <div className="space-y-5">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)] shadow-xs">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)]">
             <Sparkles className="h-7 w-7 text-amber-600" aria-hidden="true" />
           </div>
           <div className="space-y-2 text-center">
@@ -961,7 +961,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
   if (screen === 'signup_otp') {
     return shell(
       <div className="space-y-6 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)] shadow-xs">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)]">
           <Mail className="h-7 w-7 text-amber-600" aria-hidden="true" />
         </div>
 
@@ -1052,7 +1052,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
   if (screen === 'recovery_otp') {
     return shell(
       <div className="space-y-6 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)] shadow-xs">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)]">
           <KeyRound className="h-7 w-7 text-amber-600" aria-hidden="true" />
         </div>
 
@@ -1132,7 +1132,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
     return shell(
       <div className="space-y-6">
         <div className="space-y-2 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)] shadow-xs mb-3">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)] mb-3">
             <KeyRound className="h-7 w-7 text-amber-600" aria-hidden="true" />
           </div>
           <p className="mazzi-eyebrow">{brandTag}</p>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, Car, Phone, ShieldCheck, Lock, Mail } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, Car, Phone, ShieldCheck, Lock, Mail, Camera } from 'lucide-react';
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
 import {
   Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, } from '../../types';
@@ -23,6 +23,7 @@ import { ProviderPublicProfileModal } from '../../components/search/ProviderPubl
 import { BookingDetailsModal } from './components/BookingDetailsModal';
 import { CheckoutModal } from './components/CheckoutModal';
 import { SlotSelectorModal } from './components/SlotSelectorModal';
+import { StripeCheckoutReturnScreen, StripeCheckoutReturnStatus } from './components/StripeCheckoutReturnScreen';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
 import { studentCheckInAndRehydrateBooking } from '../../lib/student-booking-actions';
@@ -34,12 +35,54 @@ import { formatDateBR, formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
+import { ProfileSectionHeader } from '../../components/profile/ProfileSectionHeader';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { maskCpf } from '../../utils/cpf';
 import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
 import { MaskedInput } from '../../components/ui/MaskedInput';
 import { useMobileAppRoute } from '../../lib/mobile-app-router';
 import { StudentProMigrationCard } from './components/StudentProMigrationCard';
+
+const STRIPE_RETURN_QUERY_PARAMS = ['stripe_checkout', 'payment_id', 'session_id'] as const;
+const STRIPE_CONFIRMATION_TIMEOUT_MS = 60_000;
+const STRIPE_OFFLINE_REDIRECT_DELAY_MS = 2_500;
+
+function isLikelyNetworkFailure(error: unknown): boolean {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return true;
+  if (error instanceof TypeError) return true;
+  const message = error instanceof Error ? error.message : String(error || '');
+  return /network|fetch|connection|offline|load failed/i.test(message);
+}
+
+function clearStripeCheckoutReturnParams(): void {
+  if (typeof window === 'undefined') return;
+
+  const nextUrl = new URL(window.location.href);
+  let changed = false;
+  for (const parameter of STRIPE_RETURN_QUERY_PARAMS) {
+    if (nextUrl.searchParams.has(parameter)) {
+      nextUrl.searchParams.delete(parameter);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    // Keep the current hash route while removing the Checkout return payload
+    // without creating another browser-history entry.
+    window.history.replaceState(window.history.state, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  }
+}
+
+function getInitialStripeCheckoutReturn(): { status: StripeCheckoutReturnStatus } | null {
+  if (typeof window === 'undefined') return null;
+
+  const params = new URLSearchParams(window.location.search);
+  const checkoutState = params.get('stripe_checkout');
+  if (!checkoutState || !params.get('payment_id')) return null;
+  if (checkoutState === 'cancelled') return { status: 'CANCELLED' };
+  if (checkoutState === 'success') return { status: 'CHECKOUT_SUCCESS' };
+  return { status: 'ERROR' };
+}
 
 export const MAX_MAP_RESULTS = 50;
 
@@ -183,6 +226,7 @@ export const StudentApp: React.FC = () => {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
+  const savedProfileAvatarRef = useRef<string | undefined>();
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
@@ -191,6 +235,7 @@ export const StudentApp: React.FC = () => {
   const searchRequestIdRef = useRef(0);
   const searchEndRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoSelectTodayRef = useRef(true);
+  const stripeCheckoutFlowActiveRef = useRef(false);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -270,13 +315,24 @@ export const StudentApp: React.FC = () => {
     setProfilePhone(formatPhone(user?.phone || ''));
     setProfileBirthDate(formatDateMask(user?.birthDate || ''));
     setProfileAvatar(user?.avatarUrl);
+    savedProfileAvatarRef.current = user?.avatarUrl;
     if (user?.id) {
-      void getMyProfileAvatar().then((avatarUrl) => setProfileAvatar(avatarUrl)).catch(() => undefined);
+      void getMyProfileAvatar()
+        .then((avatarUrl) => {
+          savedProfileAvatarRef.current = avatarUrl;
+          setProfileAvatar(avatarUrl);
+        })
+        .catch(() => undefined);
     }
   }, [user?.name, user?.phone, user?.avatarUrl, user?.birthDate]);
 
   // Bookings are an independent data boundary from the public search pipeline (fetched via dbService.getBookings with RLS).
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
+  const [stripeCheckoutReturn, setStripeCheckoutReturn] = useState<{
+    status: StripeCheckoutReturnStatus;
+    booking?: Booking | null;
+    message?: string;
+  } | null>(() => getInitialStripeCheckoutReturn());
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [reviewsEligibilityStatus, setReviewsEligibilityStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [searchLoading, setSearchLoading] = useState(isRealSupabase);
@@ -320,6 +376,160 @@ export const StudentApp: React.FC = () => {
     }
     void loadBookings();
   }, [user, bookingsRefreshKey]);
+
+  // Stripe returns to the app through success_url/cancel_url. The browser
+  // return is not authoritative: wait for the signed webhook to update the
+  // local payment and booking before showing the success state.
+  useEffect(() => {
+    if (!user?.id || !isRealSupabase || typeof window === 'undefined') return undefined;
+
+    const params = new URLSearchParams(window.location.search);
+    const checkoutState = params.get('stripe_checkout');
+    const paymentId = params.get('payment_id');
+    const sessionId = params.get('session_id');
+    if (!checkoutState || !paymentId) return undefined;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(paymentId);
+
+    if (checkoutState === 'cancelled') {
+      clearStripeCheckoutReturnParams();
+      setStripeCheckoutReturn({
+        status: 'CANCELLED',
+        message: 'Nenhuma cobrança foi confirmada. Você pode voltar e tentar outra forma de pagamento.',
+      });
+      return undefined;
+    }
+
+    if (checkoutState !== 'success' || !isUuid) {
+      clearStripeCheckoutReturnParams();
+      setStripeCheckoutReturn({ status: 'ERROR', message: 'O retorno do pagamento é inválido.' });
+      return undefined;
+    }
+
+    let active = true;
+    let offlineDetected = false;
+    let offlineRedirectTimer: number | undefined;
+
+    const redirectToBookingsAfterOffline = () => {
+      if (!active || !stripeCheckoutFlowActiveRef.current || offlineDetected) return;
+      offlineDetected = true;
+      setStripeCheckoutReturn({
+        status: 'OFFLINE',
+        message: 'A conexão caiu antes de confirmarmos o pagamento. Você será encaminhado para Minhas Aulas.',
+      });
+      offlineRedirectTimer = window.setTimeout(() => {
+        if (!active) return;
+        clearStripeCheckoutReturnParams();
+        setStripeCheckoutReturn(null);
+        setBookingsRefreshKey((value) => value + 1);
+        setActiveTab('bookings');
+      }, STRIPE_OFFLINE_REDIRECT_DELAY_MS);
+    };
+
+    const handleOffline = () => redirectToBookingsAfterOffline();
+    window.addEventListener('offline', handleOffline);
+    stripeCheckoutFlowActiveRef.current = true;
+
+    // Keep the return screen mounted from the first render. A completed
+    // Checkout should never briefly reveal the home screen while its status is
+    // being checked authoritatively by the backend.
+    setStripeCheckoutReturn({ status: 'CHECKOUT_SUCCESS' });
+
+    const wait = (milliseconds: number) => new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+    const requestUntilDeadline = async <T,>(operation: Promise<T>, deadline: number): Promise<T | undefined> => {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) return undefined;
+      return Promise.race([
+        operation,
+        new Promise<undefined>((resolve) => window.setTimeout(() => resolve(undefined), remaining)),
+      ]);
+    };
+
+    if (!navigator.onLine) handleOffline();
+
+    const resolveCheckoutReturn = async () => {
+      // Stripe can redirect before its webhook reaches Supabase. Keep the
+      // confirmation screen alive long enough for the signed event to be
+      // processed, but never treat the browser redirect as payment success.
+      const deadline = Date.now() + STRIPE_CONFIRMATION_TIMEOUT_MS;
+      for (let attempt = 0; attempt < 60 && active && stripeCheckoutFlowActiveRef.current && !offlineDetected && Date.now() < deadline; attempt += 1) {
+        try {
+          const paymentStatus = await requestUntilDeadline(dbService.getMyPaymentStatus(paymentId), deadline);
+          if (!active || !stripeCheckoutFlowActiveRef.current || offlineDetected) return;
+          if (paymentStatus === undefined) break;
+
+          const normalizedPaymentStatus = String(paymentStatus?.status || '').toUpperCase();
+          const normalizedBookingStatus = String(paymentStatus?.booking_status || '').toUpperCase();
+          if (normalizedPaymentStatus === 'PAID' && normalizedBookingStatus === 'CONFIRMED') {
+            const bookings = await dbService.getBookings();
+            if (!active) return;
+            setConfirmedBookings(bookings);
+            const confirmedBooking = bookings.find((booking) => booking.id === paymentStatus.booking_id);
+            clearStripeCheckoutReturnParams();
+            setStripeCheckoutReturn({
+              status: 'SUCCESS',
+              booking: confirmedBooking || null,
+            });
+            return;
+          }
+
+          if (normalizedPaymentStatus === 'FAILED' || normalizedBookingStatus === 'CANCELLED_BY_STUDENT') {
+            clearStripeCheckoutReturnParams();
+            setStripeCheckoutReturn({
+              status: 'ERROR',
+              message: 'O pagamento não foi confirmado. A reserva continua disponível para tentar novamente.',
+            });
+            return;
+          }
+
+          // The local status is authoritative, but the webhook can still be
+          // on its way. Ask Stripe once as a fast fallback instead of blocking
+          // the first status check behind a remote request.
+          if (sessionId && attempt === 0) {
+            const verifiedSession = await requestUntilDeadline(
+              dbService.verifyStripeCheckoutSession(paymentId, sessionId),
+              deadline,
+            );
+            if (!active || !stripeCheckoutFlowActiveRef.current || offlineDetected) return;
+            if (verifiedSession?.confirmed) {
+              const bookings = await dbService.getBookings();
+              if (!active) return;
+              setConfirmedBookings(bookings);
+              const confirmedBooking = bookings.find((booking) => booking.id === verifiedSession.bookingId);
+              clearStripeCheckoutReturnParams();
+              setStripeCheckoutReturn({ status: 'SUCCESS', booking: confirmedBooking || null });
+              return;
+            }
+          }
+        } catch (error) {
+          if (isLikelyNetworkFailure(error)) {
+            redirectToBookingsAfterOffline();
+            return;
+          }
+        }
+
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) break;
+        await wait(Math.min(1500, remaining));
+      }
+
+      if (active && stripeCheckoutFlowActiveRef.current && !offlineDetected) {
+        clearStripeCheckoutReturnParams();
+        setStripeCheckoutReturn({
+          status: 'ERROR',
+          message: 'Não foi possível confirmar o pagamento em até 1 minuto. Consulte Minhas Aulas antes de tentar novamente.',
+        });
+      }
+    };
+
+    void resolveCheckoutReturn();
+    return () => {
+      active = false;
+      stripeCheckoutFlowActiveRef.current = false;
+      window.removeEventListener('offline', handleOffline);
+      if (offlineRedirectTimer !== undefined) window.clearTimeout(offlineRedirectTimer);
+    };
+  }, [user?.id, isRealSupabase]);
 
   // Search Engine Pipeline Request State
   const [searchRequest, setSearchRequest] = useState<SearchRequest>({
@@ -747,9 +957,15 @@ function applyStrictProviderFilters(
     setProfileName(user?.name || '');
     setProfilePhone(formatPhone(user?.phone || ''));
     setProfileBirthDate(formatDateMask(user?.birthDate || ''));
-    setProfileAvatar(user?.avatarUrl);
+    setProfileAvatar(savedProfileAvatarRef.current);
     setProfileError(null);
     setIsEditingProfile(false);
+  };
+
+  const handleOpenStudentProfile = () => {
+    // Keep the last persisted avatar as the rollback point for this edit.
+    savedProfileAvatarRef.current = profileAvatar;
+    setIsEditingProfile(true);
   };
 
   const handleSaveStudentProfile = async () => {
@@ -762,6 +978,7 @@ function applyStrictProviderFilters(
       }
       const isoBirthDate = profileBirthDate ? toISODateString(profileBirthDate) : undefined;
       await dbService.updateMyProfile(profileName, profilePhone, profileAvatar, isoBirthDate);
+      savedProfileAvatarRef.current = profileAvatar;
       setIsEditingProfile(false);
     } catch (error: any) {
       if (process.env.NODE_ENV !== 'production') console.error('Failed to save student profile:', error);
@@ -825,7 +1042,7 @@ function applyStrictProviderFilters(
                   aria-label={`Próxima aula em ${formatDateBR(upcomingBookings[0].scheduledDate)} às ${upcomingBookings[0].startTime}. Toque para ver detalhes.`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-[0_8px_20px_rgba(246,201,69,0.38)]">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
                       <CalendarClock className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <div className="min-w-0">
@@ -1135,7 +1352,7 @@ function applyStrictProviderFilters(
                       type="button"
                       aria-label="Editar perfil"
                       title="Editar perfil"
-                      onClick={() => setIsEditingProfile(true)}
+                      onClick={handleOpenStudentProfile}
                       className="mazzi-icon-button shrink-0 cursor-pointer"
                     >
                       <Pencil className="h-5 w-5 text-slate-700" aria-hidden="true" />
@@ -1144,7 +1361,7 @@ function applyStrictProviderFilters(
               />
 
               <div className="text-center pt-2">
-                <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] bg-[var(--mazzi-yellow)] text-2xl font-bold shadow-[var(--mazzi-shadow)] border border-[var(--mazzi-border)]">
+                <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] bg-[var(--mazzi-yellow)] text-2xl font-bold border border-[var(--mazzi-border)]">
                   {profileAvatar ? (
                     <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" />
                   ) : user?.name ? (
@@ -1179,14 +1396,7 @@ function applyStrictProviderFilters(
                     <div className="space-y-4 text-left">
                       {/* 1. Card de Foto de Perfil */}
                       <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 space-y-2.5 shadow-2xs">
-                        <div className="flex items-center justify-between pb-2 border-b border-[var(--mazzi-border)]">
-                          <span className="mazzi-field-label">
-                            Foto de perfil
-                          </span>
-                          <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                            Identificação
-                          </span>
-                        </div>
+                        <ProfileSectionHeader title="Foto de perfil" icon={Camera} badge="Identificação" />
                         <div id="student-profile-photo">
                           <ProfilePhotoPicker
                             value={profileAvatar}
@@ -1202,12 +1412,7 @@ function applyStrictProviderFilters(
 
                       {/* 2. Card de Dados Pessoais (Editáveis) */}
                       <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 space-y-3.5 shadow-2xs">
-                        <div className="flex items-center gap-2 pb-2 border-b border-[var(--mazzi-border)] text-[var(--mazzi-dark)]">
-                          <UserRound className="h-4 w-4 text-current" aria-hidden="true" />
-                          <span className="text-xs font-black uppercase tracking-wider">
-                            Dados pessoais
-                          </span>
-                        </div>
+                        <ProfileSectionHeader title="Dados pessoais" icon={UserRound} />
 
                         <div>
                           <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-name">
@@ -1257,17 +1462,12 @@ function applyStrictProviderFilters(
 
                       {/* 3. Card de Segurança da Conta (Protegido) */}
                       <div className="rounded-2xl border border-[var(--mazzi-border)] bg-slate-50/70 p-4 space-y-3 shadow-2xs">
-                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
-                          <div className="flex items-center gap-2 text-slate-700">
-                            <ShieldCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-                              Segurança da conta
-                            </span>
-                          </div>
-                          <span className="rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                            Protegido
-                          </span>
-                        </div>
+                        <ProfileSectionHeader
+                          title="Segurança da conta"
+                          icon={ShieldCheck}
+                          badge="Protegido"
+                          badgeClassName="shrink-0 rounded-full border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700"
+                        />
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
@@ -1412,7 +1612,6 @@ function applyStrictProviderFilters(
         title="Chat da aula"
         size="lg"
         layer="nested"
-        useHistory={false}
       >
         {selectedBookingForChat && (
           <BookingChatPanel
@@ -1537,6 +1736,7 @@ function applyStrictProviderFilters(
       {((isCheckoutOpen && selectedSlot && checkoutProvider && checkoutVehicle && checkoutOffering) || !!resumeBooking) && (
         <CheckoutModal
           isOpen={isCheckoutOpen || !!resumeBooking}
+          presentation="page"
           onClose={() => {
             setIsCheckoutOpen(false);
             setResumeBooking(null);
@@ -1573,6 +1773,27 @@ function applyStrictProviderFilters(
           onGoToBookings={() => {
             setResumeBooking(null);
             setActiveTab('bookings');
+          }}
+        />
+      )}
+
+      {stripeCheckoutReturn && (
+        <StripeCheckoutReturnScreen
+          status={stripeCheckoutReturn.status}
+          booking={stripeCheckoutReturn.booking}
+          message={stripeCheckoutReturn.message}
+          onViewBookings={() => {
+            stripeCheckoutFlowActiveRef.current = false;
+            clearStripeCheckoutReturnParams();
+            setStripeCheckoutReturn(null);
+            setBookingsRefreshKey((value) => value + 1);
+            setActiveTab('bookings');
+          }}
+          onBackToSearch={() => {
+            stripeCheckoutFlowActiveRef.current = false;
+            clearStripeCheckoutReturnParams();
+            setStripeCheckoutReturn(null);
+            setActiveTab('search');
           }}
         />
       )}

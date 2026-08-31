@@ -14,6 +14,7 @@ import {
   ComplianceDocument,
   AuditLog,
   User,
+  StudentSavedAddress,
   UserRole,
   ProviderStatus,
   Quote,
@@ -32,7 +33,7 @@ import {
 } from '../types';
 import { normalizeComplianceStatus } from '../domain/compliance-status';
 import { formatDateBR, formatTimeBR } from './date-format';
-import { formatMeetingPoint } from './meeting-point';
+import { formatFullMeetingPoint, formatMeetingPoint } from './meeting-point';
 import { PAYMENT_HOLD_EXPIRATION_MINUTES } from '../domain/booking';
 
 // Cast supabase to any to safely query dynamic tables
@@ -45,6 +46,7 @@ export function isUuid(val?: string): boolean {
 // Helper to safely format snake_case from database to camelCase in typescript
 export function mapUserFromDb(row: any): User | null {
   if (!row) return null;
+  const savedAddress = row.metadata?.student_saved_address;
   return {
     id: row.id,
     name: row.name,
@@ -54,6 +56,9 @@ export function mapUserFromDb(row: any): User | null {
     birthDate: row.birth_date ? String(row.birth_date).slice(0, 10) : undefined,
     role: row.role as UserRole,
     avatarUrl: row.avatar_url || undefined,
+    studentSavedAddress: savedAddress && typeof savedAddress === 'object' && Number.isFinite(Number(savedAddress.latitude)) && Number.isFinite(Number(savedAddress.longitude))
+      ? savedAddress as StudentSavedAddress
+      : undefined,
     createdAt: row.created_at,
   };
 }
@@ -133,7 +138,9 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
   const vehicleName = snapshot.vehicleName || snapshot.vehicle_name || row.vehicle_name || '';
   const meetingPoint = formatMeetingPoint(row.meeting_point)
     || formatMeetingPoint(snapshot.meetingPoint || snapshot.meeting_point);
-  const normalizedSnapshot = { ...snapshot, instructorName, providerName, vehicleName, meetingPoint };
+  const fullMeetingPoint = formatFullMeetingPoint(row.meeting_point)
+    || formatFullMeetingPoint(snapshot.meetingPoint || snapshot.meeting_point);
+  const normalizedSnapshot = { ...snapshot, instructorName, providerName, vehicleName, meetingPoint, fullMeetingPoint };
   snapshot.vehicle_name = vehicleName;
 
   // Category resolution order: row.category -> snapshot.category -> offeringCategory
@@ -193,6 +200,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     totalInCents: row.total_in_cents,
     snapshot: normalizedSnapshot,
     meetingPoint,
+    fullMeetingPoint,
     createdAt: row.created_at,
   };
 }
@@ -1133,6 +1141,40 @@ export const dbService = {
     return data;
   },
 
+  async createStripeCheckoutSession(
+    paymentId: string,
+    method: 'PIX' | 'CREDIT_CARD',
+    payerEmail?: string,
+    returnOrigin?: string,
+  ): Promise<{ checkoutSessionId: string; checkoutUrl: string; status: string; amountInCents: number }> {
+    if (!isUuid(paymentId)) throw new Error('STRIPE_PAYMENT_INVALID_UUID');
+    const { data, error } = await sp.functions.invoke('create-stripe-checkout-session', {
+      body: {
+        paymentId,
+        method,
+        payerEmail: payerEmail?.trim() || undefined,
+        returnOrigin: returnOrigin?.trim() || undefined,
+      },
+    });
+    if (error) {
+      let gatewayData: Record<string, unknown> = {};
+      const response = (error as any)?.context;
+      if (response && typeof response.clone === 'function') {
+        const parsed = await response.clone().json().catch(() => ({}));
+        gatewayData = parsed && typeof parsed === 'object' ? parsed : {};
+      }
+      const checkoutError = new Error(
+        (gatewayData.message as string | undefined) || error.message || 'STRIPE_CHECKOUT_SESSION_FAILED',
+      ) as Error & Record<string, unknown>;
+      Object.assign(checkoutError, gatewayData, { cause: error });
+      throw checkoutError;
+    }
+    if (!data?.checkoutUrl || !data?.checkoutSessionId) {
+      throw new Error('STRIPE_CHECKOUT_SESSION_INCOMPLETE');
+    }
+    return data;
+  },
+
   async processStripeRefund(bookingId: string, reason?: string): Promise<any> {
     if (!isUuid(bookingId)) throw new Error('REFUND_INVALID_BOOKING_UUID');
     const { data, error } = await sp.functions.invoke('process-stripe-refund', {
@@ -1144,6 +1186,13 @@ export const dbService = {
 
   async getMyPaymentStatus(paymentId: string): Promise<any> {
     const { data, error } = await sp.rpc('get_my_payment_status', { p_payment_id: paymentId });
+    if (error) throw error;
+    return data;
+  },
+  async verifyStripeCheckoutSession(paymentId: string, sessionId: string): Promise<any> {
+    const { data, error } = await sp.functions.invoke('verify-stripe-checkout-session', {
+      body: { paymentId, sessionId },
+    });
     if (error) throw error;
     return data;
   },
@@ -1396,6 +1445,10 @@ export const dbService = {
       .from('notifications')
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('id', notificationId);
+    if (error) throw error;
+  },
+  async updateMyStudentAddress(address: StudentSavedAddress): Promise<void> {
+    const { error } = await sp.rpc('update_my_student_address', { p_address: address });
     if (error) throw error;
   },
 

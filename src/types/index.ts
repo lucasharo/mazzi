@@ -78,7 +78,22 @@ export interface User {
   birthDate?: string;
   role: UserRole;
   avatarUrl?: string;
+  studentSavedAddress?: StudentSavedAddress;
   createdAt: string;
+}
+
+export interface StudentSavedAddress {
+  formattedAddress: string;
+  latitude: number;
+  longitude: number;
+  postalCode?: string;
+  placeId?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  country?: string;
 }
 
 export interface Provider {
@@ -450,6 +465,7 @@ export interface BookingSnapshot {
   platformFeeInCents: number;
   totalInCents: number;
   meetingPoint: string;
+  fullMeetingPoint?: string;
 }
 
 export interface Booking {
@@ -476,6 +492,7 @@ export interface Booking {
   studentCheckedIn?: boolean;
   instructorCheckedIn?: boolean;
   meetingPoint: string;
+  fullMeetingPoint?: string;
   idempotencyKey?: string;
   priceInCents: number;
   platformFeeInCents: number;
