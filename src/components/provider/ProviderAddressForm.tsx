@@ -3,7 +3,7 @@ import { CheckCircle2, LoaderCircle, MapPin } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { ButtonBase } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { AddressAutocomplete } from '../search/AddressAutocomplete';
+import { ConfirmableAddressAutocomplete } from '../search/ConfirmableAddressAutocomplete';
 import { awesomeApiCepProvider, maskPostalCode, normalizePostalCode, BrazilianPostalAddress } from '../../domain/maps/awesomeapi-cep';
 import { activeGeocodingProvider, LocationSuggestion } from '../../domain/maps/geocoding-provider';
 import { isArtificialHouseNumber, ProviderAddressFormValue, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
@@ -131,6 +131,6 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       <p className="mb-4 text-xs leading-relaxed text-slate-600">Confira o ponto sugerido para o endereço informado e confirme a localização operacional.</p>
       <LocationPinPicker latitude={value.address?.latitude || value.approximateLatitude} longitude={value.address?.longitude || value.approximateLongitude} onConfirm={(lat, lng) => { void confirmPin(lat, lng); setIsMapModalOpen(false); }} />
     </Modal>
-    {manualSearch && <AddressAutocomplete value={value.addressLine1} ariaLabel="Buscar endereço manualmente" onChange={(addressLine1) => onChange({ ...value, addressLine1, address: undefined })} onSelect={selectManualAddress} inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm" />}
+    {manualSearch && <ConfirmableAddressAutocomplete id={`${idPrefix}-manual-address`} value={value.addressLine1} ariaLabel="Buscar endereço manualmente" onChange={(addressLine1) => onChange({ ...value, addressLine1, address: undefined })} onConfirm={(suggestion) => { if (suggestion) selectManualAddress(suggestion); }} inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm" />}
   </fieldset>;
 };

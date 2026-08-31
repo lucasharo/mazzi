@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Check, CheckCircle2, X } from 'lucide-react';
+import React, { useId, useState } from 'react';
+import { Check, CheckCircle2, Trash2, X } from 'lucide-react';
 import { LocationSuggestion } from '../../domain/maps/geocoding-provider';
-import { ButtonBase } from '../ui/Button';
+import { Button, ButtonBase } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 import { AddressAutocomplete } from './AddressAutocomplete';
 
 export interface ConfirmableAddressAutocompleteProps {
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   onConfirm: (suggestion: LocationSuggestion | null, value: string) => void;
@@ -15,13 +17,13 @@ export interface ConfirmableAddressAutocompleteProps {
   inputClassName?: string;
   proximity?: { longitude: number; latitude: number };
   dropdownAlignment?: 'input' | 'viewport';
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
-/**
- * Address field with an explicit confirmation state, similar to a navigation
- * app: choosing a suggestion fills the field, then the student confirms it.
- */
+/** Address field that opens its own confirmation dialog, similar to a map app. */
 export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocompleteProps> = ({
+  id,
   value,
   onChange,
   onConfirm,
@@ -32,83 +34,112 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
   inputClassName = '',
   proximity,
   dropdownAlignment = 'input',
+  onFocus,
+  onBlur,
 }) => {
+  const modalId = useId();
+  const [isOpen, setIsOpen] = useState(false);
+  const [draftValue, setDraftValue] = useState(value);
   const [pendingSuggestion, setPendingSuggestion] = useState<LocationSuggestion | null>(null);
-  const [isConfirmed, setIsConfirmed] = useState(false);
 
-  useEffect(() => {
-    if (!value.trim()) {
-      setPendingSuggestion(null);
-      setIsConfirmed(false);
-    }
-  }, [value]);
-
-  const handleChange = (nextValue: string) => {
+  const openModal = () => {
+    setDraftValue(value);
     setPendingSuggestion(null);
-    setIsConfirmed(false);
-    onChange(nextValue);
+    setIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setDraftValue(value);
+    setPendingSuggestion(null);
+    setIsOpen(false);
+  };
+
+  const handleDraftChange = (nextValue: string) => {
+    setDraftValue(nextValue);
+    setPendingSuggestion(null);
   };
 
   const handleSelect = (suggestion: LocationSuggestion) => {
+    setDraftValue(suggestion.formattedAddress);
     setPendingSuggestion(suggestion);
-    setIsConfirmed(false);
   };
 
   const handleConfirm = () => {
-    const nextValue = value.trim();
+    const nextValue = draftValue.trim();
     if (!nextValue) return;
-    setIsConfirmed(true);
+    onChange(nextValue);
     onConfirm(pendingSuggestion, nextValue);
+    setPendingSuggestion(null);
+    setIsOpen(false);
   };
 
   const handleClear = () => {
-    setPendingSuggestion(null);
-    setIsConfirmed(false);
     onChange('');
+    setPendingSuggestion(null);
     onClear?.();
   };
 
   return (
     <div className={`relative ${className}`}>
-      <AddressAutocomplete
-        value={value}
-        onChange={handleChange}
-        onSelect={handleSelect}
-        placeholder={placeholder}
-        ariaLabel={ariaLabel}
-        proximity={proximity}
-        dropdownAlignment={dropdownAlignment}
-        showClearButton={false}
-        inputClassName={`!pr-20 ${inputClassName}`}
-      />
-
-      {value.trim() && (
+      <div className="relative">
+        <input
+          id={id}
+          value={value}
+          readOnly
+          role="combobox"
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          aria-expanded={isOpen}
+          aria-controls={`confirmable-address-${modalId}`}
+          aria-haspopup="dialog"
+          aria-readonly="true"
+          onClick={openModal}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openModal();
+            }
+          }}
+          className={`w-full cursor-pointer ${inputClassName} !pr-20`}
+        />
         <div className="absolute right-1 top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5">
-          <ButtonBase
-            type="button"
-            onClick={handleConfirm}
-            disabled={isConfirmed}
-            aria-label={isConfirmed ? 'Endereço confirmado' : 'Confirmar endereço'}
-            title={isConfirmed ? 'Endereço confirmado' : 'Confirmar endereço'}
-            className={`grid h-8 w-8 place-items-center rounded-full transition ${
-              isConfirmed
-                ? 'bg-emerald-50 text-emerald-600'
-                : 'text-emerald-600 hover:bg-emerald-50'
-            }`}
-          >
-            {isConfirmed ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}
-          </ButtonBase>
-          <ButtonBase
-            type="button"
-            onClick={handleClear}
-            aria-label="Apagar endereço"
-            title="Apagar endereço"
-            className="grid h-8 w-8 place-items-center rounded-full text-[var(--mazzi-muted)] transition hover:bg-rose-50 hover:text-rose-600"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </ButtonBase>
+          {value.trim() && <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-label="Endereço confirmado" />}
+          {value.trim() && <ButtonBase type="button" onClick={(event) => { event.stopPropagation(); handleClear(); }} aria-label="Apagar endereço" title="Apagar endereço" className="grid h-8 w-8 place-items-center rounded-full text-[var(--mazzi-muted)] transition hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" aria-hidden="true" /></ButtonBase>}
         </div>
-      )}
+      </div>
+
+      <Modal
+        id={`confirmable-address-${modalId}`}
+        isOpen={isOpen}
+        onClose={closeModal}
+        title="Confirmar endereço"
+        size="md"
+        layer="nested"
+        footer={(
+          <>
+            <Button type="button" variant="ghost" size="sm" onClick={handleClear} disabled={!draftValue.trim()} leftIcon={<Trash2 className="h-4 w-4" aria-hidden="true" />}>Apagar</Button>
+            <Button type="button" variant="outline" size="sm" onClick={closeModal}>Cancelar</Button>
+            <Button type="button" variant="primary" size="sm" onClick={handleConfirm} disabled={!draftValue.trim()} leftIcon={<Check className="h-4 w-4" aria-hidden="true" />}>Confirmar endereço</Button>
+          </>
+        )}
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-relaxed text-[var(--mazzi-muted)]">Busque o ponto de encontro e confirme o endereço para continuar.</p>
+          <AddressAutocomplete
+            value={draftValue}
+            onChange={handleDraftChange}
+            onSelect={handleSelect}
+            placeholder={placeholder}
+            ariaLabel={ariaLabel}
+            proximity={proximity}
+            dropdownAlignment="input"
+            showClearButton={false}
+            inputClassName={`!pr-4 ${inputClassName}`}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

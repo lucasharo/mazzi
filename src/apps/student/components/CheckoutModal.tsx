@@ -1032,6 +1032,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     Endereço completo para o ponto de encontro
                   </label>
                   <ConfirmableAddressAutocomplete
+                    id="checkout-student-address"
                     value={studentAddress}
                     onChange={(value) => {
                       setStudentAddress(value);

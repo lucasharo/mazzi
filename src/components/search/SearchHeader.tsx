@@ -4,7 +4,7 @@ import { Navigation } from 'lucide-react';
 import { SearchRequest } from '../../types';
 import { activeGeocodingProvider } from '../../domain/maps/geocoding-provider';
 import { trackSearchAnalytics } from './SearchAnalytics';
-import { AddressAutocomplete } from './AddressAutocomplete';
+import { ConfirmableAddressAutocomplete } from './ConfirmableAddressAutocomplete';
 
 export interface SearchHeaderProps {
   searchRequest: SearchRequest;
@@ -112,7 +112,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
             <span className="block text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--mazzi-muted)]">
               Localização
             </span>
-            <AddressAutocomplete
+            <ConfirmableAddressAutocomplete
               value={addressInput}
               ariaLabel="Buscar endereço ou local"
               placeholder="Digite um endereço, bairro ou local"
@@ -141,7 +141,8 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
                 onUpdateSearch({ latitude: undefined, longitude: undefined, page: 1 });
                 onLocationCleared?.();
               }}
-              onSelect={(suggestion) => {
+              onConfirm={(suggestion) => {
+                if (!suggestion) return;
                 selectedAddressRef.current = true;
                 skipNextLocationNameSync.current = true;
                 onLocationResolved?.(suggestion.formattedAddress, suggestion.latitude, suggestion.longitude);

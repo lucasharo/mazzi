@@ -4,6 +4,7 @@ import { activeGeocodingProvider, LocationSuggestion } from '../../domain/maps/g
 import { ButtonBase } from '../ui/Button';
 
 interface AddressAutocompleteProps {
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   onSelect: (suggestion: LocationSuggestion) => void;
@@ -22,6 +23,7 @@ interface AddressAutocompleteProps {
 const cache = new Map<string, { expiresAt: number; results: LocationSuggestion[] }>();
 
 export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
+  id,
   value,
   onChange,
   onSelect,
@@ -161,6 +163,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     <div className={`relative ${className}`}>
       <div className="relative">
         <input
+          id={id}
           ref={inputRef}
           role="combobox"
           aria-label={ariaLabel}
