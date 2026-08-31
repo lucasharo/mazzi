@@ -1222,18 +1222,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <p className="text-sm font-extrabold text-[var(--mazzi-dark)]">{formatMeetingPoint(booking.meetingPoint) || 'Local do instrutor'}</p>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Price summary */}
-            <div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-3 text-slate-900">
-              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
-                <span>Aula prática</span>
-                <span className="font-semibold text-slate-800">{formatCentsToBRL(booking.snapshot?.priceInCents ?? booking.priceInCents)}</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between border-t border-amber-200/70 pt-2">
-                <span className="text-sm font-bold text-slate-800">Total a pagar</span>
-                <span className="text-xl font-extrabold text-slate-950">{formatCentsToBRL(payment?.amountInCents ?? booking.totalInCents)}</span>
+                <div className="col-span-2 flex items-center justify-between border-t border-amber-200/70 bg-amber-50/60 px-2 py-2.5">
+                  <span className="text-xs font-bold text-slate-800">Total a pagar</span>
+                  <span className="text-lg font-extrabold text-slate-950">{formatCentsToBRL(payment?.amountInCents ?? booking.totalInCents)}</span>
+                </div>
               </div>
             </div>
 
@@ -1275,15 +1268,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
               </ButtonBase>
             </div>}
-
-            {checkoutGatewayProvider === 'stripe' && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-center">
-                <p className="text-sm font-extrabold text-[var(--mazzi-dark)]">Pagamento seguro</p>
-                <p className="mt-1 text-xs leading-relaxed text-[var(--mazzi-muted)]">
-                  Na próxima tela, a Stripe exibirá as formas de pagamento disponíveis para você.
-                </p>
-              </div>
-            )}
 
             {checkoutGatewayProvider === 'fake' && !paymentMethod && (
               <p role="status" className="rounded-xl bg-slate-50 px-3 py-2 text-center text-xs font-semibold text-[var(--mazzi-muted)]">
