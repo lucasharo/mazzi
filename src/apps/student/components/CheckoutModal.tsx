@@ -514,6 +514,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         id: realBookingId,
         holdExpiresAt: dbHold?.hold_expires_at || holdResult.booking.holdExpiresAt,
       };
+
+      if (checkoutGatewayProvider === 'stripe') {
+        const nextPayment = await createPaymentAttempt('CREDIT_CARD', syncedBooking);
+        setBooking(syncedBooking);
+        setPayment(nextPayment);
+        setPaymentMethod('CREDIT_CARD');
+        await handleStripeHostedCheckout(nextPayment);
+        return;
+      }
+
       setBooking(syncedBooking);
       setPayment(null);
       setPaymentMethod(null);
@@ -636,8 +646,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
-  const createPaymentAttempt = async (nextMethod: PaymentMethodType): Promise<Payment> => {
-    if (!booking || !user || !provider) throw new Error('PAYMENT_CONTEXT_UNAVAILABLE');
+  const createPaymentAttempt = async (nextMethod: PaymentMethodType, bookingOverride?: Booking): Promise<Payment> => {
+    const activeBooking = bookingOverride || booking;
+    if (!activeBooking || !user || !provider) throw new Error('PAYMENT_CONTEXT_UNAVAILABLE');
 
     const isRealSupabase = Boolean(
       (import.meta as any).env?.VITE_SUPABASE_URL &&
@@ -646,12 +657,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     const attemptId = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const idempotencyKey = `idem_pay_${booking.id}_${nextMethod.toLowerCase()}_${attemptId}`;
-    const hasRealBookingId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(booking.id);
+    const idempotencyKey = `idem_pay_${activeBooking.id}_${nextMethod.toLowerCase()}_${attemptId}`;
+    const hasRealBookingId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeBooking.id);
 
     if (isRealSupabase && hasRealBookingId) {
       const payRes = await dbService.createBookingPayment(
-        booking.id,
+        activeBooking.id,
         nextMethod,
         idempotencyKey,
         checkoutGatewayProvider === 'stripe' ? 'stripe' : 'fake_payment_gateway',
@@ -661,21 +672,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         throw new Error('PAYMENT_UUID_GENERATION_FAILED');
       }
       const now = new Date().toISOString();
-      const amountInCents = booking.snapshot?.totalInCents || booking.totalInCents;
-      const platformFeeInCents = booking.snapshot?.platformFeeInCents || booking.platformFeeInCents;
+      const amountInCents = activeBooking.snapshot?.totalInCents || activeBooking.totalInCents;
+      const platformFeeInCents = activeBooking.snapshot?.platformFeeInCents || activeBooking.platformFeeInCents;
       if (checkoutGatewayProvider === 'stripe') {
         return {
           id: nextPaymentId,
-          bookingId: booking.id,
-          studentId: booking.studentId,
-          providerId: booking.providerId,
+          bookingId: activeBooking.id,
+          studentId: activeBooking.studentId,
+          providerId: activeBooking.providerId,
           gateway: 'STRIPE',
           idempotencyKey,
           method: nextMethod,
           status: 'PENDING',
           amountInCents,
           platformFeeInCents,
-          providerAmountInCents: booking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
+          providerAmountInCents: activeBooking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
           metadata: { stripeStatus: 'NOT_STARTED', stripe_payment_method: nextMethod },
           createdAt: now,
           updatedAt: now,
@@ -683,16 +694,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
       return {
         id: nextPaymentId,
-        bookingId: booking.id,
-        studentId: booking.studentId,
-        providerId: booking.providerId,
+        bookingId: activeBooking.id,
+        studentId: activeBooking.studentId,
+        providerId: activeBooking.providerId,
         gateway: 'DEVELOPMENT_MOCK',
         idempotencyKey,
         method: nextMethod,
         status: 'PENDING',
         amountInCents,
         platformFeeInCents,
-        providerAmountInCents: booking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
+        providerAmountInCents: activeBooking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
         createdAt: now,
         updatedAt: now,
       };
@@ -700,21 +711,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     if (!paymentService) throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION');
     const now = new Date().toISOString();
-    const amountInCents = booking.snapshot?.totalInCents || booking.totalInCents;
-    const platformFeeInCents = booking.snapshot?.platformFeeInCents || booking.platformFeeInCents;
+    const amountInCents = activeBooking.snapshot?.totalInCents || activeBooking.totalInCents;
+    const platformFeeInCents = activeBooking.snapshot?.platformFeeInCents || activeBooking.platformFeeInCents;
     return {
       id: `pay_fake_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      bookingId: booking.id,
-      studentId: booking.studentId,
-      providerId: booking.providerId,
+      bookingId: activeBooking.id,
+      studentId: activeBooking.studentId,
+      providerId: activeBooking.providerId,
       gateway: 'DEVELOPMENT_MOCK',
       idempotencyKey,
       method: nextMethod,
       status: 'PENDING',
       amountInCents,
       platformFeeInCents,
-      providerAmountInCents: booking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
-      pixQrCode: nextMethod === 'PIX' ? `FAKE_PIX_SIMULATED_PAYMENT_ENV_DEVELOPMENT_${booking.id}` : undefined,
+      providerAmountInCents: activeBooking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
+      pixQrCode: nextMethod === 'PIX' ? `FAKE_PIX_SIMULATED_PAYMENT_ENV_DEVELOPMENT_${activeBooking.id}` : undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -763,16 +774,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     };
   }, [checkoutGatewayProvider, step, booking?.id, user?.id, payment]);
 
-  const handleStripeHostedCheckout = async () => {
-    if (!payment || !paymentMethod || !user || isProcessing || stripePaymentPending) return;
+  const handleStripeHostedCheckout = async (paymentOverride?: Payment) => {
+    const activePayment = paymentOverride || payment;
+    const activePaymentMethod = paymentOverride?.method || paymentMethod;
+    if (!activePayment || !activePaymentMethod || !user || stripePaymentPending) return;
 
     setIsProcessing(true);
     setErrorMessage(null);
     let redirected = false;
     try {
       const session = await dbService.createStripeCheckoutSession(
-        payment.id,
-        paymentMethod,
+        activePayment.id,
+        activePaymentMethod,
         user.email,
         window.location.origin,
       );
