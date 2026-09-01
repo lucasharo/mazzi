@@ -84,6 +84,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const lessonPriceInCents = snapshot.priceInCents ?? booking.priceInCents ?? booking.totalInCents ?? 0;
   const platformFeeInCents = snapshot.platformFeeInCents ?? booking.platformFeeInCents ?? 0;
   const bookingTotalInCents = snapshot.totalInCents ?? booking.totalInCents ?? lessonPriceInCents;
+  const netAmountInCents = Math.max(0, bookingTotalInCents - platformFeeInCents);
   const canCancel = canCancelBooking
     ? canCancelBooking(booking)
     : isConfirmed && !booking.instructorCheckedIn;
@@ -280,8 +281,8 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             Resumo do Pagamento
           </h4>
           <div className="flex items-center justify-between text-xs text-slate-700">
-            <span>Valor da Aula Prática</span>
-            <span className="font-bold">{formatCentsToBRL(lessonPriceInCents)}</span>
+            <span>Valor líquido</span>
+            <span className="font-bold">{formatCentsToBRL(netAmountInCents)}</span>
           </div>
           <div className="flex items-center justify-between text-xs text-slate-700">
             <span>Taxa de Serviço MAZZI</span>
