@@ -1674,32 +1674,34 @@ function applyStrictProviderFilters(
           title="Escolha o instrutor"
           size="sm"
         >
-          <div className="space-y-3">
+          <div className="min-h-0 space-y-3">
             <p className="text-sm font-semibold text-slate-500">Escolha quem vai acompanhar sua aula na autoescola.</p>
-            {instructorChoices.map((ctx) => (
-              <ButtonBase
-                key={`${ctx.instructor_id}-${ctx.offering_id}`}
-                type="button"
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
-                onClick={() => {
-                  const instructorId = ctx.instructor_id || ctx.instructorId;
-                  const instructorContexts = filterBookingContextsByInstructor(bookingContextsForSelection, instructorId);
-                  const offerings = uniqueBookingOfferingContexts(instructorContexts);
-                  setInstructorPickerProvider(null);
-                  setInstructorChoices([]);
-                  if (offerings.length > 1) {
-                    setBookingContextChoices(offerings);
-                    setOfferingPickerProvider(instructorPickerProvider);
-                    setOfferingPickerSlot(null);
-                    return;
-                  }
-                  openCheckoutForContext(instructorPickerProvider, offerings[0] || instructorContexts[0] || ctx);
-                }}
-              >
-                <span className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-amber-400">{(ctx.instructor_name || ctx.instructorName || 'Instrutor disponível').split(/\s+/).map((part: string) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-black text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{ctx.vehicle_brand || 'Veículo'} {ctx.vehicle_model || ''} · {ctx.vehicle_transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. {ctx.category || ctx.offering_category || 'B'}</span><span className="mt-1 block text-xs font-bold text-slate-700">{ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}</span></span></span>
+            <div className="max-h-[min(52vh,28rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 pb-1">
+              {instructorChoices.map((ctx) => (
+                <ButtonBase
+                  key={`${ctx.instructor_id}-${ctx.offering_id}`}
+                  type="button"
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
+                  onClick={() => {
+                    const instructorId = ctx.instructor_id || ctx.instructorId;
+                    const instructorContexts = filterBookingContextsByInstructor(bookingContextsForSelection, instructorId);
+                    const offerings = uniqueBookingOfferingContexts(instructorContexts);
+                    setInstructorPickerProvider(null);
+                    setInstructorChoices([]);
+                    if (offerings.length > 1) {
+                      setBookingContextChoices(offerings);
+                      setOfferingPickerProvider(instructorPickerProvider);
+                      setOfferingPickerSlot(null);
+                      return;
+                    }
+                    openCheckoutForContext(instructorPickerProvider, offerings[0] || instructorContexts[0] || ctx);
+                  }}
+                >
+                <span className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"><UserRound className="h-5 w-5" aria-hidden="true" /></span><span className="min-w-0"><span className="block truncate text-sm font-black text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span><span className="mt-1 block text-xs font-bold text-slate-700">{ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}</span></span></span>
                 <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
-              </ButtonBase>
-            ))}
+                </ButtonBase>
+              ))}
+            </div>
           </div>
         </Modal>
       )}
@@ -1711,9 +1713,10 @@ function applyStrictProviderFilters(
           title="Escolha a oferta"
           size="sm"
         >
-          <div className="space-y-3">
+          <div className="min-h-0 space-y-3">
             <p className="text-sm font-semibold text-slate-500">Escolha o veículo e a duração da sua aula.</p>
-            {bookingContextChoices.map((ctx) => {
+            <div className="max-h-[min(52vh,28rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 pb-1">
+              {bookingContextChoices.map((ctx) => {
               const vehicleName = `${ctx.vehicle_brand || 'Veículo'} ${ctx.vehicle_model || ''}`.trim();
               const transmission = ctx.vehicle_transmission || ctx.transmission;
               return (
@@ -1741,8 +1744,9 @@ function applyStrictProviderFilters(
                   </span>
                   <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
                 </ButtonBase>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </Modal>
       )}
