@@ -105,15 +105,15 @@ export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
-  const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'earnings', 'management', 'profile']);
+  const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'bookings', 'earnings', 'management', 'profile']);
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
   const [bookingUpdatesCount, setBookingUpdatesCount] = useState(0);
   const shouldAutoSelectTodayRef = useRef(true);
   const bookingSnapshotRef = useRef<string | null>(null);
-  const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account'>('vehicles');
+  const [managementSubTab, setManagementSubTab] = useState<'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account'>('schedule_rules');
   const [bookingFilterTab, setBookingFilterTab] = useState<'upcoming' | 'today' | 'history'>('upcoming');
   const [bookingQuickFilter, setBookingQuickFilter] = useState<'all' | 'confirmed' | 'in_progress' | 'completed' | 'disputed' | 'cancelled'>('all');
-  const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions' | 'simulator'>('rules');
+  const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions'>('rules');
 
   const [providers, setProviders] = useState<Provider[]>([]);
   const [complianceDocs, setComplianceDocs] = useState<ComplianceDocument[]>([]);
@@ -1391,13 +1391,12 @@ status: 'IN_REVIEW',
           userName={user?.name}
           onOpenNotifications={() => setIsNotificationsOpen((prev) => !prev)}
           onRefreshWorkspace={() => void refreshCurrentTab()}
-          onOpenProfile={() => setActiveTab('profile')}
           isRefreshing={isRefreshingCurrentTab}
         />
       )}
 
       {/* Main Content Body */}
-      <main className="mazzi-mobile mazzi-provider-content flex-1 space-y-6 pb-28">
+      <main className="mazzi-mobile mazzi-provider-content flex flex-1 flex-col space-y-6 pb-28">
         {/* Workspace Error Banner */}
         {workspaceError && (
           <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800 flex items-center justify-between">
@@ -1442,10 +1441,13 @@ status: 'IN_REVIEW',
         )}
 
         {/* TAB 2: SCHEDULE */}
-        {activeTab === 'schedule' && (
+        {(activeTab === 'schedule' || (activeTab === 'management' && (managementSubTab === 'schedule_rules' || managementSubTab === 'schedule_blocks'))) && (
+          <div className="order-20">
           <ProviderScheduleTab
             scheduleSubTab={scheduleSubTab}
-            onSubTabChange={setScheduleSubTab}
+            hideSubTabs={activeTab === 'management'}
+            hideHeader={activeTab === 'management'}
+            onSubTabChange={(tab) => { setScheduleSubTab(tab); setManagementSubTab(tab === 'rules' ? 'schedule_rules' : 'schedule_blocks'); }}
             availabilityRules={availabilityRules}
             availabilityExceptions={availabilityExceptions}
             offerings={offerings}
@@ -1502,6 +1504,7 @@ status: 'IN_REVIEW',
             }}
             isInstructorUser={currentProvider?.type === 'INSTRUCTOR' && (user?.role === 'INSTRUCTOR' || Boolean(user?.roles?.includes('INSTRUCTOR')))}
           />
+          </div>
         )}
 
         {/* TAB 3: BOOKINGS */}
@@ -1533,11 +1536,16 @@ status: 'IN_REVIEW',
 
         {/* TAB 5: MANAGEMENT */}
         {activeTab === 'management' && (
+          <div className="order-10">
           <ProviderManagementTab
             onRefresh={() => void refreshCurrentTab()}
             isRefreshing={isRefreshingCurrentTab}
             managementSubTab={managementSubTab}
-            onSubTabChange={setManagementSubTab}
+            onSubTabChange={(tab) => {
+              if (tab === 'schedule_rules') setScheduleSubTab('rules');
+              if (tab === 'schedule_blocks') setScheduleSubTab('exceptions');
+              setManagementSubTab(tab);
+            }}
             vehicles={vehicles}
             offerings={offerings}
             complianceDocs={complianceDocs}
@@ -1572,6 +1580,7 @@ status: 'IN_REVIEW',
             isAcceptingComplianceTerms={isAcceptingComplianceTerms}
             complianceTermsError={complianceTermsError}
           />
+          </div>
         )}
 
         {/* TAB 5: PROFILE */}
@@ -1676,6 +1685,7 @@ status: 'IN_REVIEW',
           onClose={() => setSelectedBookingForChat(null)}
           title={`Chat com Aluno(a): ${selectedBookingForChat.studentName}`}
           size="lg"
+          fillContent
         >
           <BookingChatPanel booking={selectedBookingForChat} />
         </Modal>

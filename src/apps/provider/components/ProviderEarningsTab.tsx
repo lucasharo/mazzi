@@ -81,28 +81,59 @@ function MetricCard({ label, value, helper, icon, tone = 'light' }: { label: str
 
 function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
   const points = summary.series;
-  const max = Math.max(...points.map((point) => point.net_earned_cents), 1);
+  const max = Math.max(...points.map((point) => point.lessons_completed), 1);
+  const chartWidth = 320;
+  const chartHeight = 132;
+  const plotLeft = 10;
+  const plotRight = chartWidth - 10;
+  const plotTop = 10;
+  const plotBottom = 98;
+  const plotWidth = plotRight - plotLeft;
+  const plotHeight = plotBottom - plotTop;
+  const getX = (index: number) => points.length <= 1 ? chartWidth / 2 : plotLeft + (index / (points.length - 1)) * plotWidth;
+  const getY = (value: number) => plotBottom - (value / max) * plotHeight;
+  const linePoints = points.map((point, index) => `${getX(index)},${getY(point.lessons_completed)}`).join(' ');
+  const areaPoints = `${plotLeft},${plotBottom} ${linePoints} ${plotRight},${plotBottom}`;
+  const activePoints = points
+    .map((point, index) => ({ point, index }))
+    .filter(({ point }) => point.lessons_completed > 0);
+  const labelIndexes = points.length > 2 ? [0, Math.floor((points.length - 1) / 2), points.length - 1] : points.map((_, index) => index);
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-earnings-series-title">
+    <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-earnings-series-title">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="provider-earnings-series-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
             <TrendingUp className="h-4 w-4 text-amber-500" aria-hidden="true" /> Evolução dos ganhos
           </h2>
-          <p className="mt-1 text-xs font-medium text-slate-500">Ganhos líquidos por dia do período.</p>
+          <p className="mt-1 text-xs font-medium text-slate-500">Aulas concluídas por dia no período.</p>
         </div>
-        <Badge variant="default">{summary.current.lessons_completed} aulas</Badge>
+        <Badge variant="default">{summary.current.lessons_completed} aulas no período</Badge>
       </div>
-      <div className="mt-5 flex h-36 items-end gap-1.5 overflow-hidden" role="img" aria-label="Gráfico de barras dos ganhos líquidos por dia">
-        {points.map((point) => {
-          const height = point.net_earned_cents > 0 ? Math.max(8, Math.round((point.net_earned_cents * 100) / max)) : 3;
-          return (
-            <div key={point.date} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1" title={`${formatDateBR(point.date)}: ${formatCentsToBRL(point.net_earned_cents)}`}>
-              <div className={`w-full max-w-5 rounded-t-md ${point.net_earned_cents > 0 ? 'bg-[var(--mazzi-yellow)]' : 'bg-slate-100'}`} style={{ height: `${height}%` }} />
-              <span className="w-full truncate text-center text-[9px] font-semibold text-slate-400">{point.date.slice(8, 10)}/{point.date.slice(5, 7)}</span>
-            </div>
-          );
-        })}
+      <div className="mt-4 flex min-w-0 gap-2" role="img" aria-label="Gráfico de linha da quantidade de aulas concluídas por dia">
+        <div className="flex w-5 shrink-0 flex-col justify-between pb-7 pt-1 text-right text-[9px] font-semibold leading-none text-slate-400" aria-hidden="true">
+          {Array.from({ length: max + 1 }, (_, index) => max - index).map((value) => <span key={value}>{value}</span>)}
+        </div>
+        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-auto min-w-0 flex-1 overflow-visible" preserveAspectRatio="none">
+          <title>Quantidade de aulas concluídas por dia</title>
+          {[0, 0.5, 1].map((ratio) => {
+            const y = plotBottom - ratio * plotHeight;
+            return <line key={ratio} x1={plotLeft} x2={plotRight} y1={y} y2={y} stroke="currentColor" className="text-slate-100" strokeWidth="1" strokeDasharray="3 4" />;
+          })}
+          <polygon points={areaPoints} fill="currentColor" className="text-amber-50" />
+          <polyline points={linePoints} fill="none" stroke="currentColor" className="text-amber-500" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          {activePoints.map(({ point, index }) => (
+            <g key={point.date}>
+              <title>{`${formatDateBR(point.date)}: ${point.lessons_completed} ${point.lessons_completed === 1 ? 'aula' : 'aulas'}`}</title>
+              <circle cx={getX(index)} cy={getY(point.lessons_completed)} r="4" fill="white" stroke="currentColor" className="text-amber-500" strokeWidth="3" />
+            </g>
+          ))}
+          <line x1={plotLeft} x2={plotRight} y1={plotBottom} y2={plotBottom} stroke="currentColor" className="text-slate-200" strokeWidth="1" />
+          {labelIndexes.map((index) => (
+            <text key={points[index]?.date || index} x={getX(index)} y={120} textAnchor={index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle'} fill="currentColor" className="text-[9px] font-semibold text-slate-400">
+              {points[index]?.date ? `${points[index].date.slice(8, 10)}/${points[index].date.slice(5, 7)}` : ''}
+            </text>
+          ))}
+        </svg>
       </div>
     </section>
   );
@@ -110,7 +141,7 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
 
 function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-upcoming-payouts-title">
+    <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-upcoming-payouts-title">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="provider-upcoming-payouts-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
@@ -138,7 +169,7 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
           ))}
         </div>
       )}
-      <p className="mt-4 text-[11px] font-medium leading-relaxed text-slate-500">Repasses bloqueados não aparecem como previsão até a situação ser resolvida.</p>
+      <p className="mt-4 break-words text-[11px] font-medium leading-relaxed text-slate-500">Repasses bloqueados não aparecem como previsão até a situação ser resolvida.</p>
     </section>
   );
 }
@@ -231,7 +262,16 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number }> = ({ refresh
 
   return (
     <div className="space-y-5 text-left">
-      <AppPageHeader eyebrow="Financeiro do PRO" title="Ganhos" subtitle="Acompanhe seus ganhos e próximos repasses." />
+      <AppPageHeader
+        eyebrow="Financeiro do PRO"
+        title="Ganhos"
+        subtitle="Acompanhe seus ganhos e próximos repasses."
+        action={(
+          <ButtonBase type="button" className="mazzi-icon-button" onClick={() => void load()} disabled={isLoading} aria-label="Atualizar ganhos" title="Atualizar ganhos">
+            <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          </ButtonBase>
+        )}
+      />
       <PeriodSelector period={period} onChange={setPeriod} disabled={isLoading} />
 
       {isLoading && (

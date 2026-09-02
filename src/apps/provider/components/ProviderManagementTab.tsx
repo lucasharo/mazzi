@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, } from 'lucide-react';
+import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, CalendarDays, } from 'lucide-react';
 import {
   Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, BankAccount, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -28,8 +28,9 @@ import { ProviderAccountTab } from './ProviderAccountTab';
 interface ProviderManagementTabProps {
   onRefresh: () => void;
   isRefreshing?: boolean;
-  managementSubTab: 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account';
-  onSubTabChange: (tab: 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account') => void;
+  managementSubTab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account';
+  onSubTabChange: (tab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account') => void;
+  scheduleContent?: React.ReactNode;
   vehicles: Vehicle[];
   offerings: ServiceOffering[];
   complianceDocs: ComplianceDocument[];
@@ -119,6 +120,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   bankAccount,
   onSaveBankAccount,
   isSavingBankAccount = false,
+  scheduleContent,
 }) => {
   const [blockedVehicleId, setBlockedVehicleId] = useState<string | null>(null);
   const currentYear = new Date().getFullYear();
@@ -153,6 +155,8 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         activeTab={managementSubTab}
         onChange={(tab) => onSubTabChange(tab as ProviderManagementTabProps['managementSubTab'])}
         tabs={[
+          { id: 'schedule_rules', label: 'Horários', icon: <CalendarDays className="h-3.5 w-3.5" /> },
+          { id: 'schedule_blocks', label: 'Bloqueios', icon: <Ban className="h-3.5 w-3.5" /> },
           { id: 'vehicles', label: 'Veículos', icon: <Car className="h-3.5 w-3.5" /> },
           { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" /> },
           { id: 'compliance', label: 'Compliance', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
@@ -161,6 +165,8 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         ]}
         className="mazzi-segmented"
       />
+
+      {(managementSubTab === 'schedule_rules' || managementSubTab === 'schedule_blocks') && scheduleContent}
 
       {(managementSubTab === 'vehicles' || managementSubTab === 'offerings' || (managementSubTab === 'memberships' && currentProvider.type === 'DRIVING_SCHOOL')) && (
         <div className="flex flex-wrap justify-end gap-2">

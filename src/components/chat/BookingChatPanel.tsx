@@ -153,7 +153,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
   };
 
   return (
-    <div className="space-y-3 text-left">
+    <div className="flex h-full min-h-0 flex-col space-y-3 text-left">
       <div className="mazzi-card border border-[var(--mazzi-border)] p-3">
         {onBack && (
           <ButtonBase
@@ -223,7 +223,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
         </div>
       )}
 
-      <div ref={scrollContainerRef} aria-live="polite" aria-busy={loading} className="mazzi-card h-[min(38vh,20rem)] min-h-[14rem] space-y-2 overflow-y-auto border border-[var(--mazzi-border)] p-3">
+      <div ref={scrollContainerRef} aria-live="polite" aria-busy={loading} className="mazzi-card min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain border border-[var(--mazzi-border)] p-3">
         {loading ? (
           <div aria-hidden="true" className="space-y-3 p-2">
             {[1, 2, 3].map((item) => (
@@ -290,7 +290,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
       )}
 
       {/* Modern Integrated Composer */}
-      {!chatBlockedForSending && <div className="space-y-1.5">
+      {!chatBlockedForSending && <div className="shrink-0 space-y-1.5 pb-[env(safe-area-inset-bottom)]">
         <div className="relative flex min-h-14 items-center rounded-2xl bg-white border border-[var(--mazzi-border)] focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-[var(--mazzi-focus-glow)] transition-all shadow-xs">
           <Textarea
             aria-label="Mensagem"

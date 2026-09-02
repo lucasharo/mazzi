@@ -1724,6 +1724,7 @@ function applyStrictProviderFilters(
         title="Chat da aula"
         size="lg"
         layer="nested"
+        fillContent
       >
         {selectedBookingForChat && (
           <BookingChatPanel

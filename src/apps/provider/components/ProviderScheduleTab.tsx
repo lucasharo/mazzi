@@ -20,8 +20,10 @@ import { DateTimeSlotPicker } from '../../../components/schedule/DateTimeSlotPic
 import { generateEmergencyBlockableSlots, isEmergencyBlockDurationAvailable, isContiguousHourRange, normalizeContiguousHourRange, EmergencyBlockableSlot } from '../../../domain/emergency-block';
 
 interface ProviderScheduleTabProps {
-  scheduleSubTab: 'rules' | 'exceptions' | 'simulator';
-  onSubTabChange: (tab: 'rules' | 'exceptions' | 'simulator') => void;
+  scheduleSubTab: 'rules' | 'exceptions';
+  onSubTabChange: (tab: 'rules' | 'exceptions') => void;
+  hideSubTabs?: boolean;
+  hideHeader?: boolean;
   availabilityRules: AvailabilityRule[];
   availabilityExceptions: AvailabilityException[];
   offerings: ServiceOffering[];
@@ -155,6 +157,8 @@ const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt,
 export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   scheduleSubTab,
   onSubTabChange,
+  hideSubTabs = false,
+  hideHeader = false,
   availabilityRules,
   availabilityExceptions,
   offerings,
@@ -428,12 +432,12 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   );
 
   return (
-    <div className="space-y-6 text-left">
+    <div className={`space-y-6 text-left ${hideHeader ? 'pt-6' : ''}`}>
       {/* Header */}
-      <AppPageHeader eyebrow="Sua jornada" title="Agenda & Horários" subtitle="Organize seus horários e disponibilidade." />
+      {!hideHeader && <AppPageHeader eyebrow="Sua jornada" title="Agenda & Horários" subtitle="Organize seus horários e disponibilidade." />}
 
       {/* Subtabs Switcher */}
-      <div className="mazzi-segmented overflow-x-auto">
+      {!hideSubTabs && <div className="mazzi-segmented overflow-x-auto">
         <ButtonBase
           type="button"
           onClick={() => onSubTabChange('rules')}
@@ -454,17 +458,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
           <Ban className="w-3.5 h-3.5" />
           <span>Bloqueios</span>
         </ButtonBase>
-        <ButtonBase
-          type="button"
-          onClick={() => onSubTabChange('simulator')}
-          aria-selected={scheduleSubTab === 'simulator'}
-          className="flex items-center justify-center gap-1.5 whitespace-nowrap"
-          data-active={scheduleSubTab === 'simulator'}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Simulador</span>
-        </ButtonBase>
-      </div>
+      </div>}
       <div className="flex justify-end">
         {scheduleSubTab === 'rules' && (
           <div className="flex flex-nowrap justify-end gap-2 overflow-x-auto">
@@ -634,7 +628,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       )}
 
       {/* SIMULATOR SUBTAB */}
-      {scheduleSubTab === 'simulator' && (
+      {false && (
         <div className="p-5 rounded-3xl bg-white border border-[#e9e6de] shadow-xs space-y-4">
               <div className="flex items-center gap-2 text-sm font-bold text-[var(--mazzi-text)]">
             <Sparkles className="w-4 h-4 text-[#f6c945]" />

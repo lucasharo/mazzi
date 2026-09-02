@@ -24,6 +24,8 @@ export interface ModalProps {
   /** Render the dialog as an app screen instead of a centered overlay. */
   presentation?: 'modal' | 'page' | 'fullscreen';
   footerClassName?: string;
+  /** Allows a screen inside the modal to fill the available viewport height. */
+  fillContent?: boolean;
 }
 
 export function useDialogHistory({
@@ -101,6 +103,7 @@ export const Modal: React.FC<ModalProps> = ({
   // dialog remains available for exceptional cases via presentation="modal".
   presentation = 'page',
   footerClassName = '',
+  fillContent = false,
 }) => {
   const generatedId = useId();
   const titleId = `${id || generatedId}-title`;
@@ -159,8 +162,8 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
 
-        <div className={`mazzi-modal-content ${presentation === 'modal' ? 'p-6' : presentation === 'page' ? 'p-4 sm:p-6' : 'p-0'} overflow-y-auto flex-1 min-h-0`}>
-          {presentation === 'page' ? <div className="mx-auto w-full max-w-2xl">{children}</div> : children}
+        <div className={`mazzi-modal-content ${presentation === 'modal' ? 'p-6' : presentation === 'page' ? 'p-4 sm:p-6' : 'p-0'} ${fillContent ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'} flex-1 min-h-0`}>
+          {presentation === 'page' ? <div className={`mx-auto w-full max-w-2xl ${fillContent ? 'flex h-full min-h-0 flex-col' : ''}`}>{children}</div> : children}
         </div>
 
         {footer && <ModalActionFooter align="right" className={presentation === 'fullscreen' ? `!mx-0 ${footerClassName}` : footerClassName}>{footer}</ModalActionFooter>}

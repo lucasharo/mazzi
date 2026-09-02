@@ -12,7 +12,6 @@ interface ProviderHeaderProps {
   userName?: string;
   onOpenNotifications: () => void;
   onRefreshWorkspace: () => void;
-  onOpenProfile: () => void;
   isRefreshing?: boolean;
 }
 
@@ -22,7 +21,6 @@ export const ProviderHeader: React.FC<ProviderHeaderProps> = ({
   userName,
   onOpenNotifications,
   onRefreshWorkspace,
-  onOpenProfile,
   isRefreshing,
 }) => {
   const providerName = currentProvider?.name || userName || 'Instrutor';
@@ -38,7 +36,6 @@ export const ProviderHeader: React.FC<ProviderHeaderProps> = ({
           subtitle="Gerencie sua operação e acompanhe suas aulas."
           onOpenNotifications={onOpenNotifications}
           onRefresh={onRefreshWorkspace}
-          onOpenProfile={onOpenProfile}
           isRefreshing={isRefreshing}
           appContext="PRO"
         />
