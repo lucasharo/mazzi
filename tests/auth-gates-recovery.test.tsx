@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 
 const { auth } = vi.hoisted(() => ({
   auth: {
@@ -28,7 +28,7 @@ vi.mock('../src/components/auth/AccessDenied', () => ({
 }));
 
 vi.mock('../src/apps/student/StudentApp', () => ({
-  StudentApp: () => <div data-testid="student-app">student-app</div>,
+  StudentApp: () => <div data-testid="student-app" data-target={window.location.hash}>student-app</div>,
 }));
 
 vi.mock('../src/apps/provider/ProviderApp', () => ({
@@ -90,5 +90,23 @@ describe('TASK-064E — recovery isolation in all application gates', () => {
     render(<InstructorRoot />);
 
     expect(screen.queryByText('Como você quer atuar no MAZZI?')).toBeNull();
+  });
+
+  it('keeps a Student notification in Student after a multi-role login', async () => {
+    const bookingId = '6e4578ed-ef6d-40c6-bb5c-008cdc472b1d';
+    window.history.replaceState({}, '', `/#/student/bookings?v=1&c=STUDENT&e=booking&id=${bookingId}&a=details`);
+    auth.user = { roles: ['STUDENT', 'INSTRUCTOR'] };
+    auth.isAuthenticated = false;
+
+    const view = render(<StudentRoot />);
+    expect(screen.getByTestId('login-student')).not.toBeNull();
+
+    auth.isAuthenticated = true;
+    view.rerender(<StudentRoot />);
+
+    await waitFor(() => expect(screen.getByTestId('student-app')).not.toBeNull());
+    expect(screen.getByTestId('student-app').getAttribute('data-target')).toContain(`c=STUDENT`);
+    expect(screen.getByTestId('student-app').getAttribute('data-target')).toContain(`id=${bookingId}`);
+    expect(screen.queryByTestId('provider-app')).toBeNull();
   });
 });

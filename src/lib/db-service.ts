@@ -25,6 +25,7 @@ import {
   AdminAnalyticsSummary,
   ProviderAnalyticsSummary,
   ProviderEarningsSummary,
+  ProviderPayoutDetail,
   ProviderEarningsPeriodPreset,
   ProductAnalyticsEventName,
   AnalyticsPeriodPreset,
@@ -414,6 +415,7 @@ export function mapNotificationFromDb(row: any): Notification {
     createdAt: row.created_at,
     readAt: row.read_at || undefined,
     appContext: row.app_context || 'PRO',
+    navigationAction: row.navigation_action || undefined,
   };
 }
 
@@ -1508,6 +1510,35 @@ export const dbService = {
       .eq('id', notificationId);
     if (error) throw error;
   },
+  async registerMyPushDevice(params: { provider: 'WEB_PUSH' | 'FCM'; appContext: NonNullable<Notification['appContext']>; deviceFingerprint: string; endpoint: string; publicKey?: string; authKey?: string }): Promise<string> {
+    const { data, error } = await sp.rpc('register_my_push_device', {
+      p_provider: params.provider,
+      p_app_context: params.appContext,
+      p_device_fingerprint: params.deviceFingerprint,
+      p_endpoint: params.endpoint,
+      p_public_key: params.publicKey || null,
+      p_auth_key: params.authKey || null,
+    });
+    if (error) throw error;
+    return String(data);
+  },
+  async disableMyPushDevice(deviceId: string): Promise<void> {
+    const { error } = await sp.rpc('disable_my_push_device', { p_device_id: deviceId });
+    if (error) throw error;
+  },
+  async getMyProviderPayoutDetail(payoutId: string): Promise<ProviderPayoutDetail> {
+    const { data, error } = await sp.rpc('get_my_provider_payout_detail', { p_payout_id: payoutId });
+    if (error || !data) throw error || new Error('PAYOUT_UNAVAILABLE');
+    return {
+      id: String(data.id),
+      status: data.status,
+      amount_in_cents: Number(data.amount_in_cents),
+      scheduled_release_at: data.scheduled_release_at,
+      released_at: data.released_at || null,
+      processed_at: data.processed_at || null,
+      failure_reason: data.failure_reason || null,
+    };
+  },
   async updateMyStudentAddress(address: StudentSavedAddress): Promise<void> {
     const { error } = await sp.rpc('update_my_student_address', { p_address: address });
     if (error) throw error;
@@ -1684,6 +1715,13 @@ export const dbService = {
     });
     if (error) throw error;
     if (!data) throw new Error('EARNINGS_SUMMARY_UNAVAILABLE');
+    let upcomingDetails: any[] | null = null;
+    try {
+      const { data: detailData, error: detailError } = await sp.rpc('get_my_provider_upcoming_payouts');
+      if (!detailError && Array.isArray(detailData)) upcomingDetails = detailData;
+    } catch {
+      // Keep the summary usable until the additive local migration is applied.
+    }
     // The RPC owns the calculations. This mapper only normalizes JSON numeric
     // values for the typed UI and never recalculates financial amounts.
     const normalizeMetrics = (metrics: any) => ({
@@ -1716,12 +1754,16 @@ export const dbService = {
         net_earned_cents: Number(point.net_earned_cents || 0),
         lessons_completed: Number(point.lessons_completed || 0),
       })) : [],
-      upcoming_payouts: Array.isArray(data.upcoming_payouts) ? data.upcoming_payouts.map((item: any) => ({
+      upcoming_payouts: (upcomingDetails || (Array.isArray(data.upcoming_payouts) ? data.upcoming_payouts : [])).map((item: any) => ({
+        id: item.id || undefined,
         date: item.date,
         amount_in_cents: Number(item.amount_in_cents || 0),
-        payout_count: Number(item.payout_count || 0),
-      })) : [],
-      upcoming_total_cents: Number(data.upcoming_total_cents || 0),
+        payout_count: Number(item.payout_count || 1),
+        status: item.status || undefined,
+        payout_ids: Array.isArray(item.payout_ids) ? item.payout_ids.map(String) : undefined,
+        failure_reason: item.failure_reason || null,
+      })),
+      upcoming_total_cents: upcomingDetails ? upcomingDetails.filter((item: any) => ['PENDING', 'AVAILABLE', 'PROCESSING'].includes(item.status)).reduce((sum: number, item: any) => sum + Number(item.amount_in_cents || 0), 0) : Number(data.upcoming_total_cents || 0),
       reviews: normalizeReviews(data.reviews),
       generated_at: data.generated_at,
     };

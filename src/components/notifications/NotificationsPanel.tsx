@@ -6,8 +6,16 @@ import { Badge } from '../ui/Badge';
 import { dbService } from '../../lib/db-service';
 import { formatDateTimeBR } from '../../lib/date-format';
 import { NOTIFICATIONS_CHANGED } from '../ui/NotificationIndicator';
+import { targetFromNotification, type NotificationNavigationTarget } from '../../lib/notification-navigation';
+import { PushNotificationOptIn } from './PushNotificationOptIn';
 
-export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification['appContext']> }> = ({ appContext }) => {
+interface NotificationsPanelProps {
+  appContext: NonNullable<Notification['appContext']>;
+  userId?: string;
+  onNavigate?: (target: NotificationNavigationTarget) => void;
+}
+
+export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appContext, userId, onNavigate }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +47,7 @@ export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification
     void loadNotifications();
   }, [appContext]);
 
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = async (notificationId: string): Promise<boolean> => {
     setMarkingId(notificationId);
     setError(null);
     try {
@@ -52,9 +60,11 @@ export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification
         )
       );
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+      return true;
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') console.error('Failed to mark notification as read:', err);
       setError('Não foi possível marcar a notificação como lida.');
+      return false;
     } finally {
       setMarkingId(null);
     }
@@ -75,6 +85,13 @@ export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification
     } finally {
       setIsMarkingAll(false);
     }
+  };
+
+  const openNotification = async (notification: Notification) => {
+    const resolved = targetFromNotification(notification);
+    if (!resolved.ok || !onNavigate) return;
+    if (!notification.isRead && !(await markAsRead(notification.id))) return;
+    onNavigate(resolved.target);
   };
 
   return (
@@ -105,6 +122,12 @@ export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification
           </Button>
         </div>
       </div>
+
+      {appContext !== 'ADMIN' && (
+        <div className="border-b border-slate-100 p-4">
+          <PushNotificationOptIn appContext={appContext} userId={userId} onRegistered={() => void loadNotifications()} />
+        </div>
+      )}
 
       {error && (
         <div role="alert" className="m-4 flex gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
@@ -138,6 +161,17 @@ export const NotificationsPanel: React.FC<{ appContext: NonNullable<Notification
                 <p className="text-[10px] text-slate-400 mt-1">
                   {formatDateTimeBR(notification.createdAt)}
                 </p>
+                {onNavigate && targetFromNotification(notification).ok && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 px-0 text-xs font-black text-amber-700"
+                    onClick={() => void openNotification(notification)}
+                    disabled={markingId === notification.id}
+                  >
+                    Abrir conteúdo
+                  </Button>
+                )}
               </div>
 
               {!notification.isRead && (

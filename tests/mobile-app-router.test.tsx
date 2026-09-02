@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { useMobileAppRoute } from '../src/lib/mobile-app-router';
+import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget, useMobileAppRoute } from '../src/lib/mobile-app-router';
 
 afterEach(() => {
   cleanup();
@@ -29,5 +29,13 @@ describe('useMobileAppRoute', () => {
     const { result } = renderHook(() => useMobileAppRoute('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'management', 'profile'] as const));
 
     expect(result.current[0]).toBe('management');
+  });
+
+  it('preserves a validated second-level target in the hash', () => {
+    const target = { version: 1 as const, appContext: 'PRO' as const, entityType: 'booking' as const, entityId: '6e4578ed-ef6d-40c6-bb5c-008cdc472b1d', action: 'details' as const };
+    expect(navigateToNotificationTarget(target)).toBe(true);
+    expect(getNotificationNavigationTargetFromHash('provider')).toEqual(target);
+    const { result } = renderHook(() => useMobileAppRoute('provider', 'dashboard', ['dashboard', 'bookings', 'earnings', 'management'] as const));
+    expect(result.current[0]).toBe('bookings');
   });
 });

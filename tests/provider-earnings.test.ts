@@ -36,12 +36,13 @@ const earningsSummary = {
 };
 
 describe('PRO Ganhos — navigation and deterministic insights', () => {
-  it('shows Ganhos and Perfil in the main navigation', () => {
+  it('uses the canonical five-slot navigation and keeps Perfil outside the bottom bar', () => {
     const selected: string[] = [];
     render(React.createElement(ProviderBottomNav, { activeTab: 'dashboard', onTabChange: (tab) => selected.push(tab) }));
 
     expect(screen.getByRole('button', { name: 'Ganhos' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Perfil' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Agenda' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Perfil' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Ganhos' }));
     expect(selected).toEqual(['earnings']);
   });

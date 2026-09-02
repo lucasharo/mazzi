@@ -2,9 +2,9 @@ import React from 'react';
 import {
   LayoutDashboard,
   Clock,
+  CalendarDays,
   Wallet,
   SlidersHorizontal,
-  UserCircle,
 } from 'lucide-react';
 import { AppBottomNav, AppBottomNavItem } from '../../../components/ui/AppBottomNav';
 
@@ -30,6 +30,11 @@ export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
       icon: <LayoutDashboard className="w-5 h-5" />,
     },
     {
+      id: 'schedule',
+      label: 'Agenda',
+      icon: <CalendarDays className="w-5 h-5" />,
+    },
+    {
       id: 'bookings',
       label: 'Aulas',
       icon: <Clock className="w-5 h-5" />,
@@ -45,11 +50,6 @@ export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
       label: 'Gestão',
       icon: <SlidersHorizontal className="w-5 h-5" />,
       showBadge: showManagementAlert,
-    },
-    {
-      id: 'profile',
-      label: 'Perfil',
-      icon: <UserCircle className="w-5 h-5" />,
     },
   ];
 

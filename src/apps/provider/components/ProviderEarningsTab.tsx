@@ -81,7 +81,7 @@ function MetricCard({ label, value, helper, icon, tone = 'light' }: { label: str
 
 function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
   const points = summary.series;
-  const max = Math.max(...points.map((point) => point.lessons_completed), 1);
+  const max = Math.max(...points.map((point) => point.net_earned_cents), 1);
   const chartWidth = 320;
   const chartHeight = 132;
   const plotLeft = 10;
@@ -92,11 +92,11 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
   const plotHeight = plotBottom - plotTop;
   const getX = (index: number) => points.length <= 1 ? chartWidth / 2 : plotLeft + (index / (points.length - 1)) * plotWidth;
   const getY = (value: number) => plotBottom - (value / max) * plotHeight;
-  const linePoints = points.map((point, index) => `${getX(index)},${getY(point.lessons_completed)}`).join(' ');
+  const linePoints = points.map((point, index) => `${getX(index)},${getY(point.net_earned_cents)}`).join(' ');
   const areaPoints = `${plotLeft},${plotBottom} ${linePoints} ${plotRight},${plotBottom}`;
   const activePoints = points
     .map((point, index) => ({ point, index }))
-    .filter(({ point }) => point.lessons_completed > 0);
+    .filter(({ point }) => point.net_earned_cents > 0);
   const labelIndexes = points.length > 2 ? [0, Math.floor((points.length - 1) / 2), points.length - 1] : points.map((_, index) => index);
   return (
     <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-earnings-series-title">
@@ -105,13 +105,13 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
           <h2 id="provider-earnings-series-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
             <TrendingUp className="h-4 w-4 text-amber-500" aria-hidden="true" /> Evolução dos ganhos
           </h2>
-          <p className="mt-1 text-xs font-medium text-slate-500">Aulas concluídas por dia no período.</p>
+          <p className="mt-1 text-xs font-medium text-slate-500">Ganhos líquidos por dia no período.</p>
         </div>
         <Badge variant="default">{summary.current.lessons_completed} aulas no período</Badge>
       </div>
       <div className="mt-4 flex min-w-0 gap-2" role="img" aria-label="Gráfico de linha da quantidade de aulas concluídas por dia">
-        <div className="flex w-5 shrink-0 flex-col justify-between pb-7 pt-1 text-right text-[9px] font-semibold leading-none text-slate-400" aria-hidden="true">
-          {Array.from({ length: max + 1 }, (_, index) => max - index).map((value) => <span key={value}>{value}</span>)}
+        <div className="flex w-12 shrink-0 flex-col justify-between pb-7 pt-1 text-right text-[9px] font-semibold leading-none text-slate-400" aria-hidden="true">
+          {[max, Math.round(max / 2), 0].map((value) => <span key={value}>{formatCentsToBRL(value)}</span>)}
         </div>
         <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-auto min-w-0 flex-1 overflow-visible" preserveAspectRatio="none">
           <title>Quantidade de aulas concluídas por dia</title>
@@ -123,7 +123,7 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
           <polyline points={linePoints} fill="none" stroke="currentColor" className="text-amber-500" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
           {activePoints.map(({ point, index }) => (
             <g key={point.date}>
-              <title>{`${formatDateBR(point.date)}: ${point.lessons_completed} ${point.lessons_completed === 1 ? 'aula' : 'aulas'}`}</title>
+              <title>{`${formatDateBR(point.date)}: ${formatCentsToBRL(point.net_earned_cents)} em ganhos líquidos`}</title>
               <circle cx={getX(index)} cy={getY(point.lessons_completed)} r="4" fill="white" stroke="currentColor" className="text-amber-500" strokeWidth="3" />
             </g>
           ))}
@@ -140,6 +140,7 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
 }
 
 function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
+  const statusLabel = (status?: string) => status === 'AVAILABLE' ? 'Disponível' : status === 'PROCESSING' ? 'Em transferência' : status === 'BLOCKED' ? 'Bloqueado' : 'Agendado';
   return (
     <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-upcoming-payouts-title">
       <div className="flex items-start justify-between gap-3">
@@ -156,15 +157,15 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
       ) : (
         <div className="mt-4 divide-y divide-slate-100">
           {summary.upcoming_payouts.map((item) => (
-            <div key={item.date} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+            <div key={item.id || `${item.date}-${item.status || 'scheduled'}`} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
               <div className="flex items-center gap-2">
                 <Clock3 className="h-4 w-4 text-slate-400" aria-hidden="true" />
                 <div>
                   <p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p>
-                  <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'}</p>
+                  <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'} · {statusLabel(item.status)}</p>
                 </div>
               </div>
-              <span className="text-sm font-black text-emerald-700">{formatMoney(item.amount_in_cents)}</span>
+              <span className={`text-sm font-black ${item.status === 'BLOCKED' ? 'text-rose-700' : 'text-emerald-700'}`}>{formatMoney(item.amount_in_cents)}</span>
             </div>
           ))}
         </div>
@@ -237,7 +238,7 @@ function EmptyEarningsState() {
   );
 }
 
-export const ProviderEarningsTab: React.FC<{ refreshKey?: number }> = ({ refreshKey = 0 }) => {
+export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKey?: number }> = ({ refreshKey = 0, focusReviewsKey = 0 }) => {
   const [period, setPeriod] = useState<ProviderEarningsPeriodPreset>(30);
   const [summary, setSummary] = useState<ProviderEarningsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -257,6 +258,11 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number }> = ({ refresh
   }, [period]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
+
+  useEffect(() => {
+    if (!focusReviewsKey || isLoading) return;
+    document.getElementById('provider-earnings-reviews-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [focusReviewsKey, isLoading]);
 
   const comparison = useMemo(() => summary ? comparisonLabel(summary.current.net_earned_cents, summary.previous.net_earned_cents) : null, [summary]);
 

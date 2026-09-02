@@ -4,7 +4,10 @@ import { AppLogin } from '../../components/auth/AppLogin';
 import { AccessDenied } from '../../components/auth/AccessDenied';
 import { StudentApp } from '../../apps/student/StudentApp';
 import { Button } from '../../components/ui/Button';
-import { dismissInitialSplash } from '../../lib/initial-splash';
+import { dismissInitialSplash, INITIAL_NAVIGATION_READY_EVENT } from '../../lib/initial-splash';
+import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget } from '../../lib/mobile-app-router';
+import { clearPendingNotificationTarget, readPendingNotificationTarget, storePendingNotificationTarget } from '../../lib/pending-navigation';
+import { registerServiceWorker } from '../../registerServiceWorker';
 
 function isStripeCancellationReturn(): boolean {
   if (typeof window === 'undefined') return false;
@@ -31,12 +34,44 @@ const ProfessionalOnlyScreen: React.FC = () => {
 
 const StudentGate: React.FC = () => {
   const auth = useAuth();
+  const [startupNavigationPending, setStartupNavigationPending] = React.useState<boolean | null>(null);
+  React.useEffect(() => {
+    registerServiceWorker();
+  }, []);
   const isCheckoutCancellationReturn = isStripeCancellationReturn();
   React.useEffect(() => {
-    if (!auth.isLoading && !isCheckoutCancellationReturn) dismissInitialSplash();
-  }, [auth.isLoading, isCheckoutCancellationReturn]);
+    if (auth.isLoading) return;
+    const current = getNotificationNavigationTargetFromHash('student');
+    if (!auth.isAuthenticated) {
+      if (current?.appContext === 'STUDENT') storePendingNotificationTarget(current);
+      setStartupNavigationPending(false);
+      return;
+    }
+    if (current?.appContext === 'STUDENT') {
+      setStartupNavigationPending(true);
+      return;
+    }
+    const pending = readPendingNotificationTarget();
+    if (pending?.appContext === 'STUDENT') {
+      if (navigateToNotificationTarget(pending)) {
+        setStartupNavigationPending(true);
+        clearPendingNotificationTarget();
+        return;
+      }
+    }
+    setStartupNavigationPending(false);
+  }, [auth.isAuthenticated, auth.isLoading]);
 
-  if (auth.isLoading) return null;
+  React.useEffect(() => {
+    const handleInitialNavigationReady = () => setStartupNavigationPending(false);
+    window.addEventListener(INITIAL_NAVIGATION_READY_EVENT, handleInitialNavigationReady);
+    return () => window.removeEventListener(INITIAL_NAVIGATION_READY_EVENT, handleInitialNavigationReady);
+  }, []);
+  React.useEffect(() => {
+    if (!auth.isLoading && startupNavigationPending === false && !isCheckoutCancellationReturn) dismissInitialSplash();
+  }, [auth.isLoading, isCheckoutCancellationReturn, startupNavigationPending]);
+
+  if (auth.isLoading || startupNavigationPending === null) return null;
   if (auth.recoveryInProgress) return <AppLogin kind="student" />;
   if (!auth.isAuthenticated) return <AppLogin kind="student" />;
   if (auth.isInstructorOnboarding) return <AppLogin kind="instructor" />;

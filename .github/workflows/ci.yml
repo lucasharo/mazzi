@@ -55,6 +55,12 @@ jobs:
           # Do not inherit stale provider variables from the repository environment.
           VITE_PAYMENT_GATEWAY_PROVIDER: stripe
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY || secrets.STRIPE_PUBLISHABLE_KEY }}
+          VITE_FIREBASE_API_KEY: ${{ github.ref == 'refs/heads/feature/premium-ui-v2' && secrets.VITE_FIREBASE_API_KEY || '' }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ github.ref == 'refs/heads/feature/premium-ui-v2' && secrets.VITE_FIREBASE_AUTH_DOMAIN || '' }}
+          VITE_FIREBASE_PROJECT_ID: ${{ github.ref == 'refs/heads/feature/premium-ui-v2' && secrets.VITE_FIREBASE_PROJECT_ID || '' }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ github.ref == 'refs/heads/feature/premium-ui-v2' && secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || '' }}
+          VITE_FIREBASE_APP_ID: ${{ github.ref == 'refs/heads/feature/premium-ui-v2' && secrets.VITE_FIREBASE_APP_ID || '' }}
+          VITE_FCM_VAPID_KEY: ${{ github.ref == 'refs/heads/feature/premium-ui-v2' && secrets.VITE_FCM_VAPID_KEY || '' }}
           VITE_ENABLE_DEV_QUICK_LOGIN: 'false'
         run: npm run build:all
 

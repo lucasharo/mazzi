@@ -27,7 +27,7 @@ Não existe `provider_id` fornecido pelo frontend para ampliar escopo. A tabela 
 
 ## Navegação e perfil
 
-A bottom navigation do PRO é: `Início`, `Agenda`, `Aulas`, `Ganhos` e `Gestão`. `Perfil` continua disponível pelo ícone de conta do cabeçalho e mantém visualização, edição, foto, salvamento e saída.
+A bottom navigation do PRO é: `Início`, `Agenda`, `Aulas`, `Ganhos` e `Gestão`. `Perfil` continua disponível pelo ícone de conta do cabeçalho e mantém visualização, edição, foto, salvamento e saída. O contrato completo de destino das notificações está em [`docs/26-pro-earnings-notification-navigation.md`](26-pro-earnings-notification-navigation.md).
 
 ## Avaliações e insights
 

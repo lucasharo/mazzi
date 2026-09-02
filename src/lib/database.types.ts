@@ -220,6 +220,25 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['payouts']['Row'], 'created_at' | 'updated_at'>;
         Update: Partial<Database['public']['Tables']['payouts']['Insert']>;
       };
+      user_push_devices: {
+        Row: {
+          id: string;
+          user_id: string;
+          app_context: 'STUDENT' | 'PRO' | 'ADMIN';
+          provider: 'WEB_PUSH' | 'FCM';
+          device_fingerprint: string;
+          endpoint: string;
+          public_key: string | null;
+          auth_key: string | null;
+          last_seen_at: string;
+          disabled_at: string | null;
+          invalidated_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['user_push_devices']['Row'], 'id' | 'created_at' | 'updated_at' | 'last_seen_at' | 'disabled_at' | 'invalidated_at'>;
+        Update: Partial<Database['public']['Tables']['user_push_devices']['Insert']>;
+      };
       provider_pix_destinations: {
         Row: {
           id: string;

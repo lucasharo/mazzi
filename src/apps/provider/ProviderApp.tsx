@@ -20,6 +20,7 @@ import {
   ExceptionType,
   ExceptionReasonCategory,
   BankAccount,
+  ProviderPayoutDetail,
 } from '../../types';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
@@ -28,6 +29,7 @@ import { Select } from '../../components/ui/Select';
 import { Badge } from '../../components/ui/Badge';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
+import { NOTIFICATIONS_CHANGED } from '../../components/ui/NotificationIndicator';
 import { ProviderAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
 import {
   DEFAULT_COMPLIANCE_REQUIREMENTS,
@@ -57,8 +59,14 @@ import { getBookingStartTimestamp, getStudentBookingSection, sortBookingsForToda
 import { buildFullDayBlockRange, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
+import { formatCentsToBRL } from '../../domain/money';
 import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
-import { useMobileAppRoute } from '../../lib/mobile-app-router';
+import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTargetFromHash, useMobileAppRoute } from '../../lib/mobile-app-router';
+import type { NotificationNavigationTarget } from '../../lib/notification-navigation';
+import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
+import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
+import { disableStoredPushDevice } from '../../lib/push-device-registry';
+import { signalInitialNavigationReady } from '../../lib/initial-splash';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
 import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
 
@@ -105,7 +113,7 @@ export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
-  const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'bookings', 'earnings', 'management', 'profile']);
+  const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'earnings', 'management', 'profile']);
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
   const [bookingUpdatesCount, setBookingUpdatesCount] = useState(0);
   const shouldAutoSelectTodayRef = useRef(true);
@@ -147,6 +155,35 @@ export const ProviderApp: React.FC = () => {
   const [bookingActionSuccess, setBookingActionSuccess] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [selectedPayoutDetail, setSelectedPayoutDetail] = useState<ProviderPayoutDetail | null>(null);
+  const [earningsFocusKey, setEarningsFocusKey] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let disposed = false;
+    let unsubscribe = () => undefined;
+    void subscribeToFirebaseForegroundMessages((message) => {
+      if (!disposed && message.appContext === 'PRO') {
+        window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+      }
+    }).then((cleanup) => {
+      if (disposed) cleanup();
+      else unsubscribe = cleanup;
+    });
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
+  }, [user?.id]);
+
+  const handleLogout = async () => {
+    try {
+      await disableStoredPushDevice('PRO', user?.id);
+    } catch {
+      // Logout must remain available if device deactivation is temporarily offline.
+    }
+    await logout();
+  };
 
   // Modals for Availability Rules and Exceptions
   const [isAddRuleModalOpen, setIsAddRuleModalOpen] = useState<boolean>(false);
@@ -562,6 +599,58 @@ export const ProviderApp: React.FC = () => {
 
   const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
 
+  const handleNotificationTarget = (target: NotificationNavigationTarget) => {
+    setIsNotificationsOpen(false);
+    if (target.appContext !== 'PRO') return;
+    if (target.entityType === 'booking' && target.entityId) {
+      const booking = bookings.find((item) => item.id === target.entityId);
+      if (!booking) {
+        showProviderFeedback('warning', 'Conteúdo indisponível', 'Esta aula não está mais disponível.');
+        setActiveTab('bookings');
+        return;
+      }
+      setActiveTab('bookings');
+      if (target.action === 'chat') setSelectedBookingForChat(booking);
+      else setSelectedBooking(booking);
+      return;
+    }
+    if (target.entityType === 'compliance') {
+      setManagementSubTab('compliance');
+      setActiveTab('management');
+      return;
+    }
+    if (target.entityType === 'payout' && target.entityId) {
+      setActiveTab('earnings');
+      void dbService.getMyProviderPayoutDetail(target.entityId)
+        .then(setSelectedPayoutDetail)
+        .catch(() => showProviderFeedback('warning', 'Repasse indisponível', 'Este repasse não está mais disponível.'));
+      return;
+    }
+    if (target.entityType === 'earnings') {
+      setEarningsFocusKey((current) => current + 1);
+      setActiveTab('earnings');
+      return;
+    }
+    setActiveTab('earnings');
+  };
+
+  const openNotificationTarget = (target: NotificationNavigationTarget) => {
+    setIsNotificationsOpen(false);
+    if (target.appContext !== 'PRO') return;
+    handleNotificationTarget(target);
+    clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' ? 'management' : 'earnings');
+  };
+
+  useEffect(() => {
+    if (isAuthLoading || workspaceLoading || !user) return;
+    const target = getNotificationNavigationTargetFromHash('provider');
+    if (!target || target.appContext !== 'PRO') return;
+    handleNotificationTarget(target);
+    clearPendingNotificationTarget();
+    clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' ? 'management' : 'earnings');
+    signalInitialNavigationReady();
+  }, [bookings, isAuthLoading, user, workspaceLoading]);
+
   if (isAuthLoading || workspaceLoading) {
     return (
       <div className="min-h-dvh bg-[#f7f5ef] text-[#202126] font-sans">
@@ -608,7 +697,7 @@ export const ProviderApp: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={logout}
+              onClick={() => void handleLogout()}
               leftIcon={<LogOut className="w-4 h-4" />}
             >
               Sair da Conta
@@ -1390,6 +1479,7 @@ status: 'IN_REVIEW',
           currentRole={currentRole}
           userName={user?.name}
           onOpenNotifications={() => setIsNotificationsOpen((prev) => !prev)}
+          onOpenProfile={() => setActiveTab('profile')}
           onRefreshWorkspace={() => void refreshCurrentTab()}
           isRefreshing={isRefreshingCurrentTab}
         />
@@ -1532,7 +1622,7 @@ status: 'IN_REVIEW',
         )}
 
         {/* TAB 4: EARNINGS */}
-        {activeTab === 'earnings' && <ProviderEarningsTab refreshKey={isRefreshingCurrentTab ? 1 : 0} />}
+        {activeTab === 'earnings' && <ProviderEarningsTab refreshKey={isRefreshingCurrentTab ? 1 : 0} focusReviewsKey={earningsFocusKey} />}
 
         {/* TAB 5: MANAGEMENT */}
         {activeTab === 'management' && (
@@ -1628,7 +1718,7 @@ status: 'IN_REVIEW',
             onSaveProfile={handleSaveProfile}
             formError={profileFormError}
             isSavingProfile={isSavingProfile}
-            onLogout={logout}
+            onLogout={handleLogout}
           />
         )}
 
@@ -1699,7 +1789,22 @@ status: 'IN_REVIEW',
           title="Notificações MAZZI Pro"
         >
           <div className="max-h-[460px] overflow-y-auto">
-            <NotificationsPanel appContext="PRO" />
+            <NotificationsPanel appContext="PRO" userId={user?.id} onNavigate={openNotificationTarget} />
+          </div>
+        </Modal>
+      )}
+
+      {selectedPayoutDetail && (
+        <Modal isOpen={true} onClose={() => setSelectedPayoutDetail(null)} title="Detalhes do repasse" size="sm">
+          <div className="space-y-4 text-left">
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Valor do repasse</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">{formatCentsToBRL(selectedPayoutDetail.amount_in_cents)}</p>
+            </div>
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-slate-500">Status</dt><dd className="font-bold text-slate-900">{selectedPayoutDetail.status === 'BLOCKED' ? 'Bloqueado' : selectedPayoutDetail.status === 'FAILED' ? 'Falhou' : selectedPayoutDetail.status === 'PAID' ? 'Pago' : 'Em processamento'}</dd></div>
+              {selectedPayoutDetail.failure_reason && <div className="flex justify-between gap-3"><dt className="text-slate-500">Motivo</dt><dd className="text-right font-semibold text-slate-900">{selectedPayoutDetail.failure_reason}</dd></div>}
+            </dl>
           </div>
         </Modal>
       )}

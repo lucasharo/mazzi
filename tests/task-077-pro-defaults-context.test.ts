@@ -37,8 +37,8 @@ describe('TASK-077 PRO defaults and contextual notifications', () => {
     expect(migration).toContain('resolve_notification_app_context');
     expect(dbService).toContain(".eq('app_context', appContext)");
     expect(dbService).toContain('markAllNotificationsAsRead(appContext');
-    expect(studentApp).toContain('<NotificationsPanel appContext="STUDENT" />');
-    expect(providerApp).toContain('<NotificationsPanel appContext="PRO" />');
+    expect(studentApp).toContain('<NotificationsPanel appContext="STUDENT"');
+    expect(providerApp).toContain('<NotificationsPanel appContext="PRO"');
     expect(adminApp).not.toContain('<NotificationsPanel appContext="ADMIN" />');
   });
 

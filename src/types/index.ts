@@ -835,6 +835,11 @@ export type NotificationType =
   | 'PROVIDER_CHECKIN'
   | 'LESSON_STARTED'
   | 'LESSON_COMPLETED'
+  | 'CONTESTATION_UPDATED'
+  | 'COMPLIANCE_PENDING'
+  | 'PAYOUT_PAID'
+  | 'PAYOUT_BLOCKED'
+  | 'PAYOUT_FAILED'
   | 'REVIEW_AVAILABLE'
   | 'REVIEW_RECEIVED';
 
@@ -852,6 +857,7 @@ export interface Notification {
   createdAt: string;
   readAt?: string;
   appContext?: NotificationAppContext;
+  navigationAction?: 'details' | 'chat' | 'review' | 'reviews' | 'compliance';
 }
 
 // ==========================================
@@ -975,9 +981,23 @@ export interface ProviderEarningsSeriesPoint {
 }
 
 export interface ProviderUpcomingPayout {
+  id?: string;
   date: string;
   amount_in_cents: number;
   payout_count: number;
+  status?: PayoutStatus;
+  payout_ids?: string[];
+  failure_reason?: string | null;
+}
+
+export interface ProviderPayoutDetail {
+  id: string;
+  status: PayoutStatus;
+  amount_in_cents: number;
+  scheduled_release_at: string;
+  released_at?: string | null;
+  processed_at?: string | null;
+  failure_reason?: string | null;
 }
 
 export type ProviderReviewDimension = 'didactics' | 'punctuality' | 'safety' | 'vehicle' | 'cordiality';

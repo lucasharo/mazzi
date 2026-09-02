@@ -5,6 +5,8 @@
 
 ---
 
+> TASK-086 local: o contrato de ganhos, navegação profunda e service worker foi implementado localmente. O registry/push E2E permanece pendente da configuração aprovada de FCM/Web Push no DEV; nenhuma mutação remota foi feita.
+
 ## 1. Separação de Responsabilidades da Documentação
 
 Para evitar divergências entre planejamento, arquitetura e código funcional:
@@ -124,3 +126,4 @@ O histórico consolidado desta frente está em [`docs/24-chat-history-2026-09-01
 - analytics com atualização global, rótulos em português e checkouts cancelados;
 - calendário do Aluno conectado ao horizonte configurado no Admin, com fallback seguro e carregamento progressivo;
 - compactação visual do calendário, horários e resumo da seleção para reduzir o scroll em telas móveis.
+> TASK-086 local: o contrato de ganhos, navegação profunda e service worker foi implementado localmente. O registry/push E2E permanece pendente da configuração aprovada de FCM/Web Push no DEV; nenhuma mutação remota foi feita.

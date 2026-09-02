@@ -30,6 +30,7 @@ import { studentCheckInAndRehydrateBooking } from '../../lib/student-booking-act
 import { supabase } from '../../lib/supabase';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
+import { NOTIFICATIONS_CHANGED } from '../../components/ui/NotificationIndicator';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
 import { formatDateBR, formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -40,9 +41,14 @@ import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { maskCpf } from '../../utils/cpf';
 import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
 import { MaskedInput } from '../../components/ui/MaskedInput';
-import { useMobileAppRoute } from '../../lib/mobile-app-router';
+import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTargetFromHash, useMobileAppRoute } from '../../lib/mobile-app-router';
+import type { NotificationNavigationTarget } from '../../lib/notification-navigation';
+import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
+import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
+import { disableStoredPushDevice } from '../../lib/push-device-registry';
 import { StudentProMigrationCard } from './components/StudentProMigrationCard';
-import { dismissInitialSplash } from '../../lib/initial-splash';
+import { ToastContainer, type ToastMessage } from '../../components/ui/Toast';
+import { dismissInitialSplash, signalInitialNavigationReady } from '../../lib/initial-splash';
 
 const STRIPE_RETURN_QUERY_PARAMS = ['stripe_checkout', 'payment_id', 'session_id'] as const;
 const STRIPE_CONFIRMATION_TIMEOUT_MS = 60_000;
@@ -221,6 +227,7 @@ export const StudentApp: React.FC = () => {
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notificationToasts, setNotificationToasts] = useState<ToastMessage[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
   const [searchedLocation, setSearchedLocation] = useState<{ lat: number; lng: number; label?: string } | undefined>();
   const [locationStatus, setLocationStatus] = useState<'RESOLVING' | 'RESOLVED' | 'UNAVAILABLE'>('RESOLVING');
@@ -241,6 +248,33 @@ export const StudentApp: React.FC = () => {
   const searchEndRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoSelectTodayRef = useRef(true);
   const stripeCheckoutFlowActiveRef = useRef(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let disposed = false;
+    let unsubscribe = () => undefined;
+    void subscribeToFirebaseForegroundMessages((message) => {
+      if (!disposed && message.appContext === 'STUDENT') {
+        window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+      }
+    }).then((cleanup) => {
+      if (disposed) cleanup();
+      else unsubscribe = cleanup;
+    });
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
+  }, [user?.id]);
+
+  const handleLogout = async () => {
+    try {
+      await disableStoredPushDevice('STUDENT', user?.id);
+    } catch {
+      // Logout must remain available if device deactivation is temporarily offline.
+    }
+    await logout();
+  };
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -1054,6 +1088,44 @@ function applyStrictProviderFilters(
     setIsEditingProfile(true);
   };
 
+  const handleNotificationTarget = (target: NotificationNavigationTarget) => {
+    setIsNotificationsOpen(false);
+    if (target.appContext !== 'STUDENT') return;
+    if (target.entityType !== 'booking' || !target.entityId) return;
+    const booking = confirmedBookings.find((item) => item.id === target.entityId);
+    setActiveTab('bookings');
+    if (!booking) {
+      showNotificationFeedback('Esta aula não está mais disponível.');
+      return;
+    }
+    if (target.action === 'chat') setSelectedBookingForChat(booking);
+    else if (target.action === 'review') setSelectedBookingForReview(booking);
+    else setSelectedBookingForDetails(booking);
+  };
+
+  const openNotificationTarget = (target: NotificationNavigationTarget) => {
+    setIsNotificationsOpen(false);
+    if (target.appContext !== 'STUDENT') return;
+    handleNotificationTarget(target);
+    clearNotificationNavigationTargetFromHash('student', 'bookings');
+  };
+
+  const showNotificationFeedback = (description: string) => {
+    const id = `notification-${Date.now()}`;
+    setNotificationToasts((current) => [...current, { id, type: 'warning', title: 'Conteúdo indisponível', description }]);
+    window.setTimeout(() => setNotificationToasts((current) => current.filter((toast) => toast.id !== id)), 5000);
+  };
+
+  useEffect(() => {
+    if (!user || bookingsLoading) return;
+    const target = getNotificationNavigationTargetFromHash('student');
+    if (!target || target.appContext !== 'STUDENT') return;
+    handleNotificationTarget(target);
+    clearPendingNotificationTarget();
+    clearNotificationNavigationTargetFromHash('student', 'bookings');
+    signalInitialNavigationReady();
+  }, [bookingsLoading, confirmedBookings, user]);
+
   const handleSaveStudentProfile = async () => {
     setProfileSaving(true);
     setProfileError(null);
@@ -1081,6 +1153,7 @@ function applyStrictProviderFilters(
 
   return (
     <div className="mazzi-app text-[var(--mazzi-text)]">
+      <ToastContainer toasts={notificationToasts} onDismiss={(id) => setNotificationToasts((current) => current.filter((toast) => toast.id !== id))} />
         <main className="mazzi-mobile text-left">
           {/* SEARCH TAB */}
           {activeTab === 'search' && (
@@ -1662,7 +1735,7 @@ function applyStrictProviderFilters(
               <StudentProMigrationCard />
 
               <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4">
-                <Button variant="ghost" size="sm" className="text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void logout(); }}>
+                <Button variant="ghost" size="sm" className="text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void handleLogout(); }}>
                   Sair
                 </Button>
               </div>
@@ -1683,7 +1756,7 @@ function applyStrictProviderFilters(
         />
 
       <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações" size="md">
-        <NotificationsPanel appContext="STUDENT" />
+        <NotificationsPanel appContext="STUDENT" userId={user?.id} onNavigate={openNotificationTarget} />
       </Modal>
 
       {/* Booking Details Modal */}

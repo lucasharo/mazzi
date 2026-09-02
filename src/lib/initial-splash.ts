@@ -1,3 +1,10 @@
+export const INITIAL_NAVIGATION_READY_EVENT = 'mazzi:initial-navigation-ready';
+
+export function signalInitialNavigationReady(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(INITIAL_NAVIGATION_READY_EVENT));
+}
+
 export function dismissInitialSplash(): void {
   if (typeof document === 'undefined') return;
 
