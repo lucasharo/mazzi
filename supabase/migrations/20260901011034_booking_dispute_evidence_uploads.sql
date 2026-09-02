@@ -13,6 +13,49 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit = EXCLUDED.file_size_limit,
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
+-- This migration is ordered before the later payout/dispute consolidation
+-- migration. Keep the historical replay self-contained so its dependent
+-- index, policies and functions never reference tables that do not exist yet.
+-- The later migration uses IF NOT EXISTS and remains idempotent.
+CREATE TABLE IF NOT EXISTS public.booking_disputes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id UUID NOT NULL REFERENCES public.bookings(id) ON DELETE RESTRICT,
+  opened_by UUID NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
+  opened_by_role VARCHAR(20) NOT NULL CHECK (opened_by_role IN ('STUDENT', 'PROVIDER')),
+  reason_code VARCHAR(60) NOT NULL CHECK (reason_code IN (
+    'PROVIDER_NO_SHOW', 'STUDENT_NO_SHOW', 'LESSON_NOT_DELIVERED',
+    'TIME_MISMATCH', 'MEETING_POINT_MISMATCH', 'SERVICE_MISMATCH',
+    'SAFETY_CONCERN', 'OTHER'
+  )),
+  description TEXT NOT NULL CHECK (length(btrim(description)) BETWEEN 10 AND 4000),
+  status VARCHAR(30) NOT NULL DEFAULT 'OPEN' CHECK (status IN (
+    'OPEN', 'AWAITING_RESPONSE', 'UNDER_REVIEW', 'RESOLVED', 'CANCELLED'
+  )),
+  response_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  response_text TEXT CHECK (response_text IS NULL OR length(btrim(response_text)) BETWEEN 10 AND 4000),
+  responded_at TIMESTAMPTZ,
+  resolution_code VARCHAR(40) CHECK (resolution_code IS NULL OR resolution_code IN (
+    'NO_ACTION', 'FULL_REFUND', 'PARTIAL_REFUND', 'RELEASE_PAYOUT', 'RESCHEDULE'
+  )),
+  resolution_notes TEXT,
+  refund_amount_in_cents INTEGER CHECK (refund_amount_in_cents IS NULL OR refund_amount_in_cents >= 0),
+  resolved_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  resolved_at TIMESTAMPTZ,
+  response_due_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '48 hours'),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.booking_dispute_evidence (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  dispute_id UUID NOT NULL REFERENCES public.booking_disputes(id) ON DELETE CASCADE,
+  uploaded_by UUID NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
+  storage_path TEXT NOT NULL CHECK (length(btrim(storage_path)) > 0),
+  evidence_type VARCHAR(30) NOT NULL DEFAULT 'DOCUMENT' CHECK (evidence_type IN ('IMAGE', 'DOCUMENT', 'LOCATION', 'OTHER')),
+  metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS booking_dispute_evidence_storage_path_key
   ON public.booking_dispute_evidence (storage_path);
 
