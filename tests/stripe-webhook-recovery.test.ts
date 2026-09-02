@@ -25,4 +25,12 @@ describe('Stripe webhook confirmation recovery', () => {
     expect(webhook).toContain('eventError = null;');
     expect(webhook).toContain('status: "RECEIVED"');
   });
+
+  it('persists the real Stripe checkout fee from the balance transaction', () => {
+    expect(webhook).toContain('balance_transactions/${balanceTransactionId}');
+    expect(webhook).toContain('expand[]", "latest_charge.balance_transaction"');
+    expect(webhook).toContain('gateway_fee_in_cents = gatewayFeeInCents');
+    expect(webhook).toContain('eventType === "charge.succeeded"');
+    expect(webhook).toContain('if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500));');
+  });
 });

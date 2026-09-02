@@ -108,12 +108,15 @@ Deno.serve(async (request) => {
 
   const { data: booking, error: bookingError } = await service
     .from("bookings")
-    .select("id, student_id, status")
+    .select("id, student_id, status, hold_expires_at")
     .eq("id", payment.booking_id)
     .maybeSingle();
   if (bookingError) return reply(500, { message: "Não foi possível validar a reserva." });
   if (!booking || booking.student_id !== authData.user.id) return reply(403, { message: "Você não tem permissão para este pagamento." });
   if (booking.status !== "PENDING_PAYMENT") return reply(409, { message: "Esta reserva não está mais aguardando pagamento." });
+  if (booking.hold_expires_at && new Date(booking.hold_expires_at).getTime() <= Date.now()) {
+    return reply(409, { code: "BOOKING_HOLD_EXPIRED", message: "O prazo para concluir este pagamento terminou." });
+  }
   if (payment.status === "PAID") return reply(200, { alreadyPaid: true });
   if (!["PENDING", "AUTHORIZED"].includes(payment.status)) return reply(409, { message: "Este pagamento não pode ser processado agora." });
 
@@ -154,7 +157,10 @@ Deno.serve(async (request) => {
   // Let Stripe's Dashboard-driven dynamic payment methods render the choice
   // inside hosted Checkout. Pix appears automatically once the account is
   // enabled and eligible; card remains available in the meantime.
-  form.set("payment_method_options[pix][expires_after_seconds]", String(10 * 60));
+  const paymentWindowSeconds = booking.hold_expires_at
+    ? Math.max(60, Math.floor((new Date(booking.hold_expires_at).getTime() - Date.now()) / 1000))
+    : 10 * 60;
+  form.set("payment_method_options[pix][expires_after_seconds]", String(paymentWindowSeconds));
   form.set("line_items[0][price_data][currency]", "brl");
   form.set("line_items[0][price_data][product_data][name]", "Aula prática de direção MAZZI");
   form.set("line_items[0][price_data][product_data][description]", "Reserva de aula prática de direção");

@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { BarChart3, Calendar as CalendarRange, RefreshCw, TrendingUp, Users, Car, CalendarCheck, CreditCard, Star } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BarChart3, Calendar as CalendarRange, TrendingUp, Users, Car, CalendarCheck, CreditCard, Star } from 'lucide-react';
 import { dbService } from '../../lib/db-service';
 import {
   AdminAnalyticsSummary, AnalyticsPeriodPreset, ProviderAnalyticsSummary, } from '../../types';
-import { Button, ButtonBase } from '../ui/Button';
+import { ButtonBase } from '../ui/Button';
 import { formatCentsToBRL } from '../../domain/money';
 
 const PERIODS: AnalyticsPeriodPreset[] = [7, 30, 90];
@@ -71,28 +71,27 @@ function PeriodSelector({
   );
 }
 
-export const AdminAnalyticsPanel: React.FC = () => {
+export const AdminAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refreshKey = 0 }) => {
   const [period, setPeriod] = useState<AnalyticsPeriodPreset>(30);
   const [summary, setSummary] = useState<AdminAnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       setSummary(await dbService.getAdminAnalyticsSummary(period));
     } catch (err: any) {
-      setError(err?.message || 'Falha ao carregar analytics reais.');
+      setError(err?.message || 'Falha ao carregar dados analíticos reais.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [period]);
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period]);
+  }, [load, refreshKey]);
 
   return (
     <section className="space-y-5 text-left">
@@ -100,23 +99,20 @@ export const AdminAnalyticsPanel: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-amber-500" />
-            <h2 className="text-xl font-black text-slate-900">Analytics do Marketplace</h2>
+            <h2 className="text-xl font-black text-slate-900">Painel analítico do Marketplace</h2>
           </div>
           <p className="text-xs text-slate-500 font-semibold mt-1">
-            Métricas calculadas no Supabase a partir de reservas, pagamentos, prestadores e eventos de produto permitidos.
+            Métricas calculadas a partir de reservas, pagamentos, prestadores e eventos de produto permitidos.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <PeriodSelector period={period} onChange={setPeriod} isLoading={isLoading} />
-          <Button variant="outline" size="sm" onClick={load} disabled={isLoading} leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />}>
-            Atualizar
-          </Button>
         </div>
       </div>
 
       {isLoading && (
         <div className="p-5 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-600">
-          Carregando analytics reais...
+          Carregando dados analíticos reais...
         </div>
       )}
 
@@ -128,7 +124,7 @@ export const AdminAnalyticsPanel: React.FC = () => {
 
       {!isLoading && !error && !summary && (
         <div className="p-5 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-600">
-          Sem dados de analytics para o período.
+          Sem dados analíticos para o período.
         </div>
       )}
 
@@ -147,9 +143,9 @@ export const AdminAnalyticsPanel: React.FC = () => {
                 <TrendingUp className="w-4 h-4 text-amber-500" /> Funil
               </h3>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <MetricCard label="Quotes" value={summary.funnel.quotes_created} icon={<BarChart3 className="w-4 h-4" />} />
+                <MetricCard label="Cotações" value={summary.funnel.quotes_created} icon={<BarChart3 className="w-4 h-4" />} />
                 <MetricCard label="Pagos" value={summary.funnel.payments_paid} icon={<CreditCard className="w-4 h-4" />} />
-                <MetricCard label="Quote → reserva" value={formatRate(summary.funnel.quote_to_booking_rate)} icon={<TrendingUp className="w-4 h-4" />} />
+                <MetricCard label="Cotação → reserva" value={formatRate(summary.funnel.quote_to_booking_rate)} icon={<TrendingUp className="w-4 h-4" />} />
                 <MetricCard label="Reserva → pago" value={formatRate(summary.funnel.booking_to_paid_rate)} icon={<TrendingUp className="w-4 h-4" />} />
               </div>
             </div>
@@ -169,7 +165,8 @@ export const AdminAnalyticsPanel: React.FC = () => {
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <MetricCard label="Buscas" value={summary.engagement.provider_searches} icon={<BarChart3 className="w-4 h-4" />} />
                 <MetricCard label="Perfis vistos" value={summary.engagement.provider_profile_views} icon={<Users className="w-4 h-4" />} />
-                <MetricCard label="Checkouts" value={summary.engagement.checkout_started} icon={<CreditCard className="w-4 h-4" />} />
+                <MetricCard label="Checkouts iniciados" value={summary.engagement.checkout_started} icon={<CreditCard className="w-4 h-4" />} />
+                <MetricCard label="Checkouts cancelados" value={summary.engagement.checkout_cancelled} icon={<CreditCard className="w-4 h-4" />} />
                 <MetricCard label="Avaliação média" value={summary.quality.rating_average ?? '—'} helper={`${summary.quality.reviews_created} reviews`} icon={<Star className="w-4 h-4" />} />
               </div>
             </div>
@@ -180,13 +177,13 @@ export const AdminAnalyticsPanel: React.FC = () => {
   );
 };
 
-export const ProviderAnalyticsPanel: React.FC = () => {
+export const ProviderAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refreshKey = 0 }) => {
   const [period, setPeriod] = useState<AnalyticsPeriodPreset>(30);
   const [summary, setSummary] = useState<ProviderAnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -196,12 +193,11 @@ export const ProviderAnalyticsPanel: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [period]);
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period]);
+  }, [load, refreshKey]);
 
   return (
     <section className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">

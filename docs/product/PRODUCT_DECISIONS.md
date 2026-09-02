@@ -6,6 +6,24 @@
 
 ---
 
+## DEC-017: Fundo de Mediação e Reserva Prudencial para Contestações
+
+- **Data**: 2026-09-01
+- **Status**: `REQUIRES_REGULATORY_VALIDATION` / percentual não aprovado
+- **Tema**: Tesouraria, Disputas, Chargebacks e Retirada de Caixa
+- **Contexto**: Em determinadas contestações, aluno e prestador podem ter responsabilidade parcial e a MAZZI pode decidir ressarcir o aluno sem descontar integralmente o prestador, assumindo a perda econômica.
+- **Decisão documental**: Separar o fundo de mediação voluntária da reserva técnica de chargebacks/reembolsos. O primeiro é formado com receita própria da plataforma; o segundo cobre a exposição financeira relacionada ao GMV.
+- **Aporte de referência do fundo de mediação**: Faixa de 2% a 5% da receita líquida mensal da MAZZI. Para o início, fica registrado **5% como proposta prudencial**, ainda não autorizada para produção.
+- **Dimensionamento**: O percentual deve ser confrontado com uma incidência grave estimada de 1% a 3% das aulas, custo médio por acordo e pior caso aprovado. O fundo precisa respeitar o maior valor entre saldo mínimo de pior caso e perdas esperadas no horizonte de segurança.
+- **Teto por caso**: Configurável e sujeito a análise administrativa acima do limite. Aplica-se somente ao goodwill voluntário e nunca reduz direitos legais, contratuais ou obrigações do meio de pagamento (`LEGAL_OVERRIDE`).
+- **Regra para retirada**: Somente o caixa excedente ao fundo de mediação, à reserva de exposição, às obrigações tributárias, aos valores de terceiros, aos pagamentos pendentes e ao capital de giro mínimo pode ser considerado caixa livre.
+- **Reserva de exposição**: Mantém fórmula própria baseada em 100% da exposição conhecida mais buffer sobre GMV ainda sujeito a reembolso/contestação. O exemplo Stripe de 30% por 30 dias é ilustrativo, não uma decisão MAZZI.
+- **Percentual definitivo**: Depende de ticket médio, take rate, volume esperado, histórico de incidentes e validação financeira/jurídica.
+- **Implementação**: Nenhuma automação financeira deve usar percentual fixo até a aprovação. Quando aprovado, cálculo, configuração, auditoria e bloqueio de retirada devem residir no backend e usar centavos inteiros.
+- **Relacionado a**: [`09-payments.md`](../09-payments.md), `DEC-014`, política de disputas e configuração financeira do Admin.
+
+---
+
 ## DEC-001: Confirmação de Cadastro e Recuperação por OTP de 8 Dígitos
 - **Data**: 2026-08-17
 - **Status**: `APROVADA & IMPLEMENTADA`

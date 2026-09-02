@@ -80,12 +80,15 @@ Deno.serve(async (request) => {
 
   const { data: booking, error: bookingError } = await service
     .from("bookings")
-    .select("id, student_id, status")
+    .select("id, student_id, status, hold_expires_at")
     .eq("id", payment.booking_id)
     .maybeSingle();
   if (bookingError) return reply(500, { message: "Não foi possível validar a reserva." });
   if (!booking || booking.student_id !== authData.user.id) return reply(403, { message: "Você não tem permissão para este pagamento." });
   if (booking.status !== "PENDING_PAYMENT") return reply(409, { message: "Esta reserva não está mais aguardando pagamento." });
+  if (booking.hold_expires_at && new Date(booking.hold_expires_at).getTime() <= Date.now()) {
+    return reply(409, { code: "BOOKING_HOLD_EXPIRED", message: "O prazo para concluir este pagamento terminou." });
+  }
   if (payment.status === "PAID") return reply(200, { paymentIntentId: payment.external_transaction_id, status: "succeeded", alreadyPaid: true });
   if (!["PENDING", "AUTHORIZED"].includes(payment.status)) return reply(409, { message: "Este pagamento não pode ser processado agora." });
 

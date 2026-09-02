@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Clock, RefreshCw, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, RefreshCw, Check } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button, PrimaryButton, ButtonBase } from '../../../components/ui/Button';
 import { supabase } from '../../../lib/supabase';
@@ -13,8 +13,15 @@ import type { Booking } from '../../../types';
 export { STUDENT_BOOKING_HORIZON_DAYS };
 export const MAX_HORIZON_DAYS = STUDENT_BOOKING_HORIZON_DAYS;
 export const INITIAL_WINDOW_DAYS = 30; // Progressive initial window (batch 1)
-export const LOAD_MORE_DAYS = 30;      // Progressive load more batch (batch 2 to reach 60)
+export const LOAD_MORE_DAYS = 30;      // Progressive load more batch
 export const MAX_RPC_DATE_RANGE_DAYS = 31;
+
+function normalizeBookingHorizonDays(value: unknown): number {
+  if (value === null || value === undefined || value === '') return MAX_HORIZON_DAYS;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return MAX_HORIZON_DAYS;
+  return Math.min(365, Math.max(1, Math.floor(parsed)));
+}
 
 export type PublicSlot = {
   local_date: string;
@@ -137,6 +144,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<PublicSlot | null>(null);
   const [windowDays, setWindowDays] = useState(INITIAL_WINDOW_DAYS);
+  const [maxHorizonDays, setMaxHorizonDays] = useState(MAX_HORIZON_DAYS);
   const [visibleMonth, setVisibleMonth] = useState<string>('');
 
   const fromDate = useMemo(() => getTodayInSaoPaulo(), []);
@@ -186,6 +194,18 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
     }
   }, [durationMinutes, existingBookings, fromDate, offeringId]);
 
+  const fetchConfiguredHorizon = useCallback(async (): Promise<number> => {
+    const { data, error: rpcError } = await (supabase as any).rpc('get_public_booking_horizon_days');
+    if (rpcError) {
+      console.warn('[SlotSelectorModal] Could not load configured booking horizon:', rpcError);
+      setMaxHorizonDays(MAX_HORIZON_DAYS);
+      return MAX_HORIZON_DAYS;
+    }
+    const configuredHorizon = normalizeBookingHorizonDays(data);
+    setMaxHorizonDays(configuredHorizon);
+    return configuredHorizon;
+  }, []);
+
   useEffect(() => {
     if (isOpen && previewSlots) {
       const grouped = groupSlots(filterSlotsForExistingBookings(
@@ -195,6 +215,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
       ));
       const firstAvailable = Object.keys(grouped).sort()[0] || null;
       setWindowDays(INITIAL_WINDOW_DAYS);
+      setMaxHorizonDays(MAX_HORIZON_DAYS);
       setSlotsByDate(grouped);
       setSelectedDate(firstAvailable);
       setSelectedSlot(null);
@@ -204,11 +225,17 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
       return;
     }
     if (isOpen && offeringId) {
-      setWindowDays(INITIAL_WINDOW_DAYS);
+      setMaxHorizonDays(MAX_HORIZON_DAYS);
       setVisibleMonth(fromDate.slice(0, 7));
-      void fetchSlots(INITIAL_WINDOW_DAYS, true);
+      const loadConfiguredSlots = async () => {
+        const configuredHorizon = await fetchConfiguredHorizon();
+        const initialWindowDays = Math.min(INITIAL_WINDOW_DAYS, configuredHorizon);
+        setWindowDays(initialWindowDays);
+        await fetchSlots(initialWindowDays, true);
+      };
+      void loadConfiguredSlots();
     }
-  }, [isOpen, offeringId, fromDate, fetchSlots, previewSlots]);
+  }, [isOpen, offeringId, fromDate, fetchConfiguredHorizon, fetchSlots, previewSlots]);
 
   const dates = useMemo(() => Array.from({ length: windowDays }, (_, index) => addDays(fromDate, index)), [fromDate, windowDays]);
   const datesByMonth = useMemo(() => dates.reduce<Record<string, string[]>>((groups, date) => {
@@ -250,15 +277,11 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
       footer={footerContent}
     >
       <div
-        className="h-[min(68vh,38rem)] space-y-5 overflow-y-auto pr-1 text-left"
+        className="min-h-0 space-y-4 pr-1 text-left"
         aria-busy={isLoading}
       >
         {/* Scrollable Body Content */}
-        <div className="space-y-5">
-          <div>
-            <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--mazzi-dark)]">Escolha sua aula</h3>
-          </div>
-
+        <div className="space-y-4">
           {error && (
             <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-3">
               <span>{error}</span>
@@ -279,7 +302,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           <div>
             {(Object.entries(datesByMonth) as [string, string[]][]).filter(([month]) => month === visibleMonth).map(([month, monthDates]) => (
               <section key={month}>
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-2 flex items-center justify-between">
                   <ButtonBase
                     type="button"
                     aria-label="Mês anterior"
@@ -288,30 +311,40 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                       const months = Object.keys(datesByMonth);
                       setVisibleMonth(months[months.indexOf(month) - 1]);
                     }}
-                    className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
+                    className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </ButtonBase>
-                  <h4 className="text-sm font-bold capitalize text-[var(--mazzi-dark)]">
+                  <h4 className="text-[13px] font-bold capitalize text-[var(--mazzi-dark)]">
                     {formatDateOnly(`${month}-01`, { month: 'long', year: 'numeric' })}
                   </h4>
                   <ButtonBase
                     type="button"
                     aria-label="Mês seguinte"
-                    disabled={Object.keys(datesByMonth).indexOf(month) >= Object.keys(datesByMonth).length - 1}
+                    disabled={isLoading || (Object.keys(datesByMonth).indexOf(month) >= Object.keys(datesByMonth).length - 1 && windowDays >= maxHorizonDays)}
                     onClick={() => {
                       const months = Object.keys(datesByMonth);
-                      setVisibleMonth(months[months.indexOf(month) + 1]);
+                      const currentIndex = months.indexOf(month);
+                      if (currentIndex < months.length - 1) {
+                        setVisibleMonth(months[currentIndex + 1]);
+                        return;
+                      }
+                      const nextWindowDays = Math.min(maxHorizonDays, windowDays + LOAD_MORE_DAYS);
+                      const expandedMonths = Array.from({ length: nextWindowDays }, (_, index) => addDays(fromDate, index).slice(0, 7));
+                      const nextMonth = [...new Set(expandedMonths)].find((candidate) => candidate > month);
+                      if (nextMonth) setVisibleMonth(nextMonth);
+                      setWindowDays(nextWindowDays);
+                      void fetchSlots(nextWindowDays, false);
                     }}
-                    className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
+                    className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </ButtonBase>
                 </div>
 
-                <div className="grid grid-cols-7 gap-1 text-center">
+                <div className="grid grid-cols-7 gap-px text-center">
                   {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((weekday) => (
-                    <span key={`${month}-${weekday}`} className="text-[10px] font-bold uppercase text-slate-400 py-1">
+                    <span key={`${month}-${weekday}`} className="text-[9px] font-bold uppercase text-slate-400 py-0">
                       {weekday}
                     </span>
                   ))}
@@ -331,7 +364,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                           setSelectedSlot(null);
                         }}
                         aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? `, ${slotsByDate[date].length} horários disponíveis` : ', indisponível'}`}
-                        className={`h-10 min-h-0 min-h-[44px] rounded-xl p-1 text-center transition flex flex-col items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer ${
+                        className={`h-9 min-h-0 rounded-lg p-1 text-center transition flex flex-col items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer ${
                           isSelected
                             ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                             : available
@@ -339,7 +372,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                             : 'text-slate-300 cursor-not-allowed bg-slate-50/50'
                         }`}
                       >
-                        <span className="text-sm font-bold leading-none">{formatDateOnly(date, { day: '2-digit' })}</span>
+                        <span className="text-xs font-bold leading-none">{formatDateOnly(date, { day: '2-digit' })}</span>
                       </ButtonBase>
                     );
                   })}
@@ -348,38 +381,22 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
             ))}
           </div>
 
-          {windowDays < MAX_HORIZON_DAYS && (
-            <ButtonBase
-              type="button"
-              disabled={isLoading}
-              onClick={() => {
-                const next = Math.min(MAX_HORIZON_DAYS, windowDays + LOAD_MORE_DAYS);
-                setWindowDays(next);
-                void fetchSlots(next, !selectedDate);
-              }}
-              className="flex w-full cursor-pointer items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[var(--mazzi-muted)] transition hover:text-[var(--mazzi-dark)]"
-            >
-              <ChevronDown className="h-4 w-4" aria-hidden="true" />
-              Carregar meses seguintes
-            </ButtonBase>
-          )}
-
           {/* Time Slots Section */}
           {selectedDate && (
-            <div className="pt-2 border-t border-[var(--mazzi-border)]">
-              <h3 className="font-bold text-sm text-[var(--mazzi-dark)] mb-2.5">
+            <div className="pt-1.5 border-t border-[var(--mazzi-border)]">
+              <h3 className="font-bold text-[13px] text-[var(--mazzi-dark)] mb-2">
                 {formatDateOnly(selectedDate, { dateStyle: 'full' })}
               </h3>
               {selectedSlots.length === 0 ? (
                 <p className="text-xs text-slate-500 font-medium">Nenhum horário disponível neste dia.</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {(['Manhã', 'Tarde', 'Noite'] as const)
                     .filter((period) => groupedPeriods[period]?.length)
                     .map((period) => (
                       <div key={period}>
-                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1.5">{period}</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <p className="text-[9px] uppercase font-bold text-slate-400 mb-1">{period}</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                           {groupedPeriods[period].map((slot) => {
                             const isSelected = selectedSlot?.slot_start_at === slot.slot_start_at;
                             return (
@@ -389,16 +406,16 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                                 aria-pressed={isSelected}
                                 aria-label={`Selecionar aula das ${slot.local_start_time.substring(0, 5)} até ${slot.local_end_time.substring(0, 5)}`}
                                 onClick={() => setSelectedSlot(slot)}
-                                className={`min-h-11 rounded-xl border px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                                className={`min-h-11 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                                   isSelected
                                     ? 'border-amber-400/80 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                                     : 'border-[var(--mazzi-border)] bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
                                 }`}
                               >
-                                <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                <span className="flex flex-col items-start leading-tight">
+                                <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span className="flex flex-col items-start leading-[1.15]">
                                   <span className="font-bold">{slot.local_start_time.substring(0, 5)}</span>
-                                  <span className="text-[10px] font-medium opacity-70">até {slot.local_end_time.substring(0, 5)}</span>
+                                  <span className="text-[9px] font-medium opacity-70">até {slot.local_end_time.substring(0, 5)}</span>
                                 </span>
                               </ButtonBase>
                             );
@@ -412,43 +429,46 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           )}
 
           {/* Selection Summary (Clearly grounded within the content, never covered) */}
-          <div className="p-3.5 rounded-2xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] text-xs text-slate-700 space-y-1">
-            <p className="font-bold text-[var(--mazzi-dark)]">Resumo da seleção</p>
+          <div className="rounded-xl border border-amber-300 border-l-4 border-l-[var(--mazzi-yellow)] bg-amber-50/80 p-3 text-xs text-slate-700 shadow-sm">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             {instructorName && (
-              <p>
-                <span className="text-slate-500 font-medium">Instrutor:</span> <strong>{instructorName}</strong>
+              <p className="col-span-2 min-w-0 break-words">
+                <span className="font-medium text-slate-500">Instrutor:</span>{' '}
+                <strong className="text-[var(--mazzi-dark)]">{instructorName}</strong>
               </p>
             )}
             <p>
-              <span className="text-slate-500 font-medium">Data:</span>{' '}
-              <strong>{selectedDate ? formatDateOnly(selectedDate, { dateStyle: 'short' }) : '—'}</strong>
+              <span className="font-medium text-slate-500">Data:</span>{' '}
+              <strong className="text-[var(--mazzi-dark)]">{selectedDate ? formatDateOnly(selectedDate, { dateStyle: 'short' }) : '—'}</strong>
             </p>
             <p>
-              <span className="text-slate-500 font-medium">Horário:</span>{' '}
-              <strong>{selectedSlot?.local_start_time?.substring(0, 5) || '—'}</strong>
+              <span className="font-medium text-slate-500">Horário:</span>{' '}
+              <strong className="text-[var(--mazzi-dark)]">{selectedSlot?.local_start_time?.substring(0, 5) || '—'}</strong>
             </p>
             {vehicleLabel && (
-              <p>
-                <span className="text-slate-500 font-medium">Veículo:</span> {vehicleLabel}
+              <p className="min-w-0 break-words">
+                <span className="font-medium text-slate-500">Veículo:</span>{' '}
+                <strong className="text-[var(--mazzi-dark)]">{vehicleLabel}</strong>
               </p>
             )}
             {transmission && (
               <p>
-                <span className="text-slate-500 font-medium">Câmbio:</span>{' '}
+                <span className="font-medium text-slate-500">Câmbio:</span>{' '}
                 {transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'}
               </p>
             )}
             {durationMinutes && (
               <p>
-                <span className="text-slate-500 font-medium">Duração:</span> {durationMinutes} minutos
+                <span className="font-medium text-slate-500">Duração:</span> {durationMinutes} min
               </p>
             )}
             {typeof priceInCents === 'number' && (
-              <p>
-                <span className="text-slate-500 font-medium">Preço:</span>{' '}
-                <strong>{formatCentsToBRL(priceInCents)}</strong>
+              <p className="col-span-2 border-t border-amber-200/80 pt-1">
+                <span className="font-medium text-slate-500">Preço:</span>{' '}
+                <strong className="text-sm text-[var(--mazzi-dark)]">{formatCentsToBRL(priceInCents)}</strong>
               </p>
             )}
+            </div>
           </div>
         </div>
       </div>

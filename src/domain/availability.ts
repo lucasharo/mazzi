@@ -30,7 +30,7 @@ export class AvailabilityDomainError extends Error {
   }
 }
 
-/** Canonical Single Source of Truth for Student Booking Horizon (MVP: 60 moving days) */
+/** Safe fallback for the student booking horizon when the public configuration cannot be loaded. */
 export const STUDENT_BOOKING_HORIZON_DAYS = 60;
 export const AVAILABILITY_SEARCH_HORIZON_DAYS = STUDENT_BOOKING_HORIZON_DAYS;
 

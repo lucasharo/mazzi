@@ -1,6 +1,6 @@
 # MAZZI — Current Implementation Status
 
-**Última revisão**: 2026-08-28
+**Última revisão**: 2026-09-01
 *Nota: Este documento deve ser atualizado sempre que uma TASK alterar o estado de uma feature relevante.*
 
 ---
@@ -59,7 +59,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Filtros | Filtros de Categoria, Transmissão, Data e Horário | `IMPLEMENTADO` | [`src/components/search/FilterDrawer.tsx`](../src/components/search/FilterDrawer.tsx) | Matching estrito de prestadores que atendam 100% dos filtros |
 | Visualização | Lista e Mapa Interativo | `IMPLEMENTADO` | [`src/components/search/MapView.tsx`](../src/components/search/MapView.tsx) | Alternância fluida entre visualização em lista e mapa |
 | Prestador | Perfil Público do Prestador | `IMPLEMENTADO` | [`src/components/search/ProviderPublicProfileModal.tsx`](../src/components/search/ProviderPublicProfileModal.tsx) | Exibe detalhes, foto, avaliações e frota do profissional |
-| Agenda | Seleção de Horários (Horizonte 60 Dias) | `IMPLEMENTADO` | [`src/domain/availability.ts`](../src/domain/availability.ts), [`src/apps/student/components/SlotSelectorModal.tsx`](../src/apps/student/components/SlotSelectorModal.tsx) | `STUDENT_BOOKING_HORIZON_DAYS = 60` (carregamento progressivo 30+30 dias) |
+| Agenda | Seleção de Horários (Horizonte configurável) | `IMPLEMENTADO` | [`src/domain/availability.ts`](../src/domain/availability.ts), [`src/apps/student/components/SlotSelectorModal.tsx`](../src/apps/student/components/SlotSelectorModal.tsx), `supabase/migrations/20260902010000_public_booking_horizon.sql` | O Aluno consulta o horizonte público configurado no Admin e carrega progressivamente em lotes de até 30 dias; 60 dias permanece apenas como fallback seguro quando a configuração não pode ser carregada. |
 | Pagamentos | Gateway Fake | `PADRÃO/DEV` | [`src/domain/payments/fake-adapter.ts`](../src/domain/payments/fake-adapter.ts), [`src/apps/student/components/CheckoutModal.tsx`](../src/apps/student/components/CheckoutModal.tsx) | Simulação de PIX e Cartão, sem movimentação financeira (`DEC-010`) |
 | Pagamentos | Stripe | `IMPLEMENTADO / HOMOLOGAÇÃO` | [`src/apps/student/components/StripeHostedCheckout.tsx`](../src/apps/student/components/StripeHostedCheckout.tsx), Edge Functions `create-stripe-checkout-session`, `stripe-webhook` e `process-stripe-refund` | Cartão e Pix usam Checkout hospedado externo; valores vêm do banco, metadata vincula sessão/pagamento/reserva, o webhook assinado confirma a reserva e o Admin solicita estornos idempotentes. Connect/split e payout automático permanecem desabilitados. |
 | Minhas Aulas | Gestão de Aulas Agendadas e Histórico | `IMPLEMENTADO` | [`src/apps/student/components/BookingDetailsModal.tsx`](../src/apps/student/StudentApp.tsx) | Exibe aulas ativas, concluídas e detalhes da reserva |
@@ -112,3 +112,15 @@ O histórico detalhado das alterações realizadas nos dois últimos dias está 
 - autocomplete de endereço reutilizável, modal independente, localização atual, edição de rua/número e confirmação exclusivamente por seleção da lista;
 - padronização visual dos headers, labels, sombras, cores, telas de sucesso e estados de checkout;
 - atualização da suíte de segurança para validar a retomada de pagamento pela prévia compartilhada.
+
+## 6. Atualização de implementação — 2026-09-01
+
+O histórico consolidado desta frente está em [`docs/24-chat-history-2026-09-01.md`](./24-chat-history-2026-09-01.md). Foram concluídos:
+
+- preservação do histórico de mensagens da contestação, incluindo solicitações do Admin e autoria correta;
+- fluxo de evidências com armazenamento privado, leitura por URLs assinadas e restrição por participante;
+- prazo configurável de resposta da contestação e bloqueio de envio no chat regular durante a análise;
+- painel dedicado de contestação no Admin, separado do Financeiro, com dados amigáveis da reserva;
+- analytics com atualização global, rótulos em português e checkouts cancelados;
+- calendário do Aluno conectado ao horizonte configurado no Admin, com fallback seguro e carregamento progressivo;
+- compactação visual do calendário, horários e resumo da seleção para reduzir o scroll em telas móveis.

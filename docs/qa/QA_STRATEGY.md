@@ -40,7 +40,7 @@
 - [ ] Card de prestador exibe dados reais de avaliação, distância e preço inicial.
 
 ### 2.3. Agendamento & Calendário
-- [ ] Janela máxima de agendamento respeita estritamente o horizonte canônico de 60 dias;
+- [ ] Janela máxima de agendamento respeita estritamente o horizonte configurado no Admin, usando 60 dias apenas como fallback quando a configuração pública não estiver disponível;
 - [ ] Carregamento progressivo de 30 + 30 dias;
 - [ ] Bloqueio absoluto de sobreposição temporal (double-booking) para o mesmo instrutor ou veículo.
 

@@ -14,8 +14,10 @@ import {
 import { validateQuoteForBooking, QuoteDomainError } from './quote';
 
 export const DEFAULT_HOLD_EXPIRATION_MINUTES = 10;
-/** Mercado Pago requires Pix expiration to be at least 30 minutes. */
-export const PAYMENT_HOLD_EXPIRATION_MINUTES = 31;
+/** Payment holds use the same deadline as the configured quote. */
+export const PAYMENT_HOLD_EXPIRATION_MINUTES = DEFAULT_HOLD_EXPIRATION_MINUTES;
+/** Extra server-side time reserved for a gateway webhook after payment starts. */
+export const PAYMENT_PROCESSING_GRACE_MINUTES = 5;
 
 /**
  * Statuses that actively occupy resource schedules (Instructor or Vehicle)

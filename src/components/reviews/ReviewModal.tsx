@@ -90,7 +90,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         size="sm"
         onClick={handleSubmit}
         isLoading={submitting}
-        disabled={booking.status !== 'COMPLETED' || rating < 1 || rating > 5}
+        disabled={!['COMPLETED', 'DISPUTED'].includes(booking.status) || rating < 1 || rating > 5}
       >
         Enviar avaliação
       </Button>
@@ -108,7 +108,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             <p className="mt-2 text-xs font-semibold text-slate-500">{booking.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : formatDateBR(booking.scheduledDate)} · {booking.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : `${booking.startTime}–${booking.endTime}`}</p>
           </div>
 
-          {booking.status !== 'COMPLETED' && (
+          {!['COMPLETED', 'DISPUTED'].includes(booking.status) && (
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
               A avaliação só fica disponível depois que a aula estiver concluída.
             </div>

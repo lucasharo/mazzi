@@ -6,6 +6,12 @@ import { StudentApp } from '../../apps/student/StudentApp';
 import { Button } from '../../components/ui/Button';
 import { dismissInitialSplash } from '../../lib/initial-splash';
 
+function isStripeCancellationReturn(): boolean {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('stripe_checkout') === 'cancelled' && params.has('payment_id');
+}
+
 const ProfessionalOnlyScreen: React.FC = () => {
   const { logout } = useAuth();
   return (
@@ -25,9 +31,10 @@ const ProfessionalOnlyScreen: React.FC = () => {
 
 const StudentGate: React.FC = () => {
   const auth = useAuth();
+  const isCheckoutCancellationReturn = isStripeCancellationReturn();
   React.useEffect(() => {
-    if (!auth.isLoading) dismissInitialSplash();
-  }, [auth.isLoading]);
+    if (!auth.isLoading && !isCheckoutCancellationReturn) dismissInitialSplash();
+  }, [auth.isLoading, isCheckoutCancellationReturn]);
 
   if (auth.isLoading) return null;
   if (auth.recoveryInProgress) return <AppLogin kind="student" />;

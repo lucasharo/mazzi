@@ -34,6 +34,8 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
     || booking.status === 'PAYMENT_FAILED'
     || (booking.status === 'PENDING_PAYMENT' && Boolean(booking.holdExpiresAt && new Date(booking.holdExpiresAt).getTime() <= Date.now()));
   const chatBlockedForStudent = isStudent && isPaymentNotCompleted;
+  const chatBlockedForContestation = booking.status === 'DISPUTED';
+  const chatBlockedForSending = chatBlockedForStudent || chatBlockedForContestation;
 
   const title = useMemo(() => booking.instructorName || booking.providerName || 'Aula MAZZI', [booking.instructorName, booking.providerName]);
   const provider = booking.providerName && booking.providerName !== booking.instructorName ? booking.providerName : '';
@@ -134,7 +136,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
 
   const handleSend = async () => {
     const body = draft.trim();
-    if (chatBlockedForStudent || !conversation || !body || sending) return;
+    if (chatBlockedForSending || !conversation || !body || sending) return;
 
     setSending(true);
     setError(null);
@@ -280,8 +282,15 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
         </div>
       )}
 
+      {chatBlockedForContestation && (
+        <div role="status" className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+          <span>O chat está bloqueado enquanto a contestação estiver em análise. Use a tela da contestação para responder.</span>
+        </div>
+      )}
+
       {/* Modern Integrated Composer */}
-      {!chatBlockedForStudent && <div className="space-y-1.5">
+      {!chatBlockedForSending && <div className="space-y-1.5">
         <div className="relative flex min-h-14 items-center rounded-2xl bg-white border border-[var(--mazzi-border)] focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-[var(--mazzi-focus-glow)] transition-all shadow-xs">
           <Textarea
             aria-label="Mensagem"
@@ -291,7 +300,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             maxLength={2000}
             className="min-h-14 w-full resize-none !border-0 bg-transparent px-4 py-3.5 pr-16 text-xs leading-relaxed text-[var(--mazzi-text)] placeholder:text-slate-400 focus:!border-0 focus:outline-none focus:!ring-0 disabled:cursor-not-allowed disabled:bg-slate-50 sm:text-sm"
             placeholder={booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER' ? 'Chat encerrado por cancelamento da aula.' : 'Escreva uma mensagem sobre esta aula...'}
-            disabled={!conversation || loading || sending || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
+            disabled={!conversation || loading || sending || chatBlockedForSending || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
@@ -302,7 +311,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
           <ButtonBase
             type="button"
             onClick={handleSend}
-            disabled={!conversation || loading || sending || !draft.trim() || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
+            disabled={!conversation || loading || sending || chatBlockedForSending || !draft.trim() || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             aria-label="Enviar mensagem"
             title="Enviar mensagem"
             className="absolute right-2 bottom-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"

@@ -12,6 +12,7 @@ export interface ModalProps {
   title?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  headerAction?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   id?: string;
   ariaLabel?: string;
@@ -87,6 +88,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   footer,
+  headerAction,
   size = 'md',
   id,
   ariaLabel,
@@ -95,7 +97,9 @@ export const Modal: React.FC<ModalProps> = ({
   useHistory = true,
   portal = false,
   layer = 'base',
-  presentation = 'modal',
+  // Modals in the apps are full-screen app surfaces by default. A centered
+  // dialog remains available for exceptional cases via presentation="modal".
+  presentation = 'page',
   footerClassName = '',
 }) => {
   const generatedId = useId();
@@ -137,7 +141,10 @@ export const Modal: React.FC<ModalProps> = ({
       >
         {title && (
           <div className={`${presentation === 'modal' ? 'bg-white' : 'bg-[var(--mazzi-bg)]'} px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between`}>
-            <h3 id={titleId} className="font-extrabold text-[var(--mazzi-dark)] text-base">{title}</h3>
+            <div className="flex min-w-0 items-center gap-2">
+              {headerAction}
+              <h3 id={titleId} className="font-extrabold text-[var(--mazzi-dark)] text-base">{title}</h3>
+            </div>
             <div className="flex items-center gap-2">
               <EnvironmentBadge />
               <IconButton

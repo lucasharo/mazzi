@@ -14,6 +14,7 @@ import { dbService } from '../../../lib/db-service';
 import { calculateCancellationPolicy } from '../../../domain/cancellation';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
+import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
 
 export interface BookingDetailsModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export interface BookingDetailsModalProps {
   onBookingUpdated?: (updatedBooking: Booking) => void;
   onStudentCheckIn?: (bookingId: string) => Promise<Booking>;
   onReview?: (booking: Booking) => void;
+  currentUserId?: string;
 }
 
 const CANCEL_REASON_CHIPS = [
@@ -43,6 +45,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onBookingUpdated,
   onStudentCheckIn,
   onReview,
+  currentUserId,
 }) => {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [selectedReasonChip, setSelectedReasonChip] = useState<string>('');
@@ -102,6 +105,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const isUpcoming = (booking.status === 'CONFIRMED' || (isPendingPayment && isHoldValid)) && !isExpired && !isLessonEnded;
   const isCancelled = booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER';
   const isCompleted = booking.status === 'COMPLETED';
+  const isDisputed = booking.status === 'DISPUTED';
   const isPaymentNotCompleted = UNPAID_BOOKING_STATUSES.includes(booking.status);
   const canOpenChat = !isPaymentNotCompleted;
   const shouldShowFooter = !isPaymentNotCompleted || (isPendingPayment && isHoldValid);
@@ -232,7 +236,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             type="button"
             variant="outline"
             size="sm"
-            className={`${isUpcoming || (isCompleted && onReview) ? 'w-1/2' : 'w-full'} order-1 rounded-2xl border-slate-200 bg-white font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md`}
+            className={`${isUpcoming || (isCompleted && onReview) || isDisputed ? 'min-w-0 flex-1' : 'w-full'} order-1 rounded-2xl border-slate-200 bg-white font-bold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md`}
             onClick={() => onOpenChat(booking)}
             leftIcon={<MessageSquare className="h-4 w-4 text-slate-600" aria-hidden="true" />}
             aria-label="Abrir conversa no chat sobre esta reserva"
@@ -240,6 +244,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             Mensagens
           </Button>
         )}
+
+        {(isCompleted || isDisputed) && <BookingDisputePanel booking={booking} currentUserId={currentUserId} display="action" />}
 
         {isUpcoming && (
           <Button
@@ -369,6 +375,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
             <StatusBadge status={booking.status} audience="student" />
           </div>
+
+          <BookingDisputePanel booking={booking} currentUserId={currentUserId} />
 
           {/* Schedule & Meeting Point */}
           <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-2.5 shadow-xs">

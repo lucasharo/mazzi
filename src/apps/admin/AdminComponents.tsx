@@ -3,10 +3,10 @@
 // File: src/apps/admin/AdminComponents.tsx
 // ============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ShieldAlert, FileCheck2, CalendarCheck, TrendingUp, History, CheckCircle2, XCircle, Eye, EyeOff, Search, Filter, UserCheck, AlertTriangle, FileText, ShieldCheck, Ban, Settings, DollarSign, Users, Lock, ArrowRightLeft, Info, Calendar, Layers, MapPin, RefreshCw, Car, ArrowRight, } from 'lucide-react';
 import {
-  Provider, ComplianceDocument, Vehicle, Booking, AuditLog, User, UserRole, BookingStatus, Payout, } from '../../types';
+  Provider, ComplianceDocument, Vehicle, Booking, AuditLog, User, UserRole, BookingStatus, Payout, BookingDispute, BookingDisputeResolution, } from '../../types';
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Input } from '../../components/ui/Input';
@@ -24,6 +24,7 @@ import { isVehicleAwaitingAdminReview } from '../../domain/vehicles-offerings';
 import { getAuditActionLabel, getComplianceDocumentTypeLabel, getFriendlyAdminError, getStatusPresentation, getUserRoleLabel } from '../../domain/status-presentation';
 import { maskBrazilianPhone, maskCpf, maskCnpj, maskVehiclePlate } from '../../lib/input-masks';
 import { formatDateBR, formatTimeBR } from '../../lib/date-format';
+import { dbService } from '../../lib/db-service';
 
 // Utility for masking plates
 export function formatMaskedPlate(plate: string, isExpanded: boolean): string {
@@ -1270,8 +1271,8 @@ const [filterStatus, setFilterStatus] = useState<string>('AWAITING_REVIEW');
 export const BookingsTab: React.FC<{
   bookings: Booking[];
   auditLogs: AuditLog[];
-  platformFeePercentage: number;
-}> = ({ bookings, auditLogs, platformFeePercentage }) => {
+  maxTotalFeePercentage: number;
+}> = ({ bookings, auditLogs, maxTotalFeePercentage }) => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedBookId, setSelectedBookId] = useState<string>('');
@@ -1286,6 +1287,22 @@ export const BookingsTab: React.FC<{
 
   const selectedBook = bookings.find((b) => b.id === selectedBookId) || filteredBookings[0];
   const selectedBookLogs = selectedBook ? auditLogs.filter((log) => log.entityId === selectedBook.id) : [];
+  const hasActualCheckoutFee = selectedBook && typeof selectedBook.gatewayFeeInCents === 'number';
+  const paymentIsConfirmed = Boolean(selectedBook && (
+    ['PAID', 'PARTIALLY_REFUNDED', 'CHARGEBACK'].includes(selectedBook.paymentStatus || '')
+    || (!selectedBook.paymentStatus && !['PENDING_PAYMENT', 'PAYMENT_FAILED', 'EXPIRED'].includes(selectedBook.status))
+  ));
+  const feePendingLabel = paymentIsConfirmed ? 'Aguardando tarifa real' : 'Após pagamento';
+  const checkoutFeeInCents = hasActualCheckoutFee ? selectedBook.gatewayFeeInCents || 0 : 0;
+  const totalFeeLimitInCents = selectedBook
+    ? Math.round((selectedBook.totalInCents * maxTotalFeePercentage) / 100)
+    : 0;
+  const mazziFeeInCents = hasActualCheckoutFee && selectedBook
+    ? Math.max(0, Math.min(selectedBook.platformFeeInCents, totalFeeLimitInCents - checkoutFeeInCents))
+    : 0;
+  const providerNetInCents = hasActualCheckoutFee && selectedBook
+    ? Math.max(0, selectedBook.totalInCents - mazziFeeInCents - checkoutFeeInCents)
+    : 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
@@ -1389,11 +1406,15 @@ export const BookingsTab: React.FC<{
               <div className="text-xs space-y-1">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Valor Líquido do Prestador:</span>
-                  <span className="font-medium font-mono">{formatCentsToBRL(selectedBook.totalInCents - selectedBook.platformFeeInCents)}</span>
+                  <span className="font-medium font-mono">{hasActualCheckoutFee ? formatCentsToBRL(providerNetInCents) : feePendingLabel === 'Após pagamento' ? 'Aguardando pagamento' : feePendingLabel}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Taxa da Plataforma ({platformFeePercentage}%):</span>
-                  <span className="font-medium font-mono text-amber-700">+{formatCentsToBRL(selectedBook.platformFeeInCents)}</span>
+                  <span className="text-slate-500">Taxa MAZZI (limite total de {maxTotalFeePercentage}%):</span>
+                  <span className="font-medium font-mono text-amber-700">{hasActualCheckoutFee ? `+${formatCentsToBRL(mazziFeeInCents)}` : feePendingLabel}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Taxa da empresa de checkout (real):</span>
+                  <span className="font-medium font-mono text-amber-700">{hasActualCheckoutFee ? `+${formatCentsToBRL(checkoutFeeInCents)}` : feePendingLabel}</span>
                 </div>
                 <div className="flex justify-between border-t border-slate-200 pt-1.5 font-bold">
                   <span className="text-slate-900">Total Pago pelo Aluno:</span>
@@ -1479,6 +1500,82 @@ const normalizeFinancialFilterText = (value: string | null | undefined): string 
     .replace(/[^a-z0-9]/g, '')
 );
 
+const adminDisputeReasonLabels: Record<string, string> = {
+  PROVIDER_NO_SHOW: 'Instrutor não compareceu',
+  STUDENT_NO_SHOW: 'Aluno não compareceu',
+  LESSON_NOT_DELIVERED: 'A aula não aconteceu',
+  TIME_MISMATCH: 'Horário ou duração divergente',
+  MEETING_POINT_MISMATCH: 'Local de encontro divergente',
+  SERVICE_MISMATCH: 'Instrutor ou veículo diferente',
+  SAFETY_CONCERN: 'Problema de segurança',
+  OTHER: 'Outro motivo',
+};
+
+const adminDisputeStatusLabel = (dispute: BookingDispute) => {
+  if (dispute.status === 'AWAITING_PROVIDER_RESPONSE') return 'Aguardando resposta do PRO';
+  if (dispute.status === 'AWAITING_STUDENT_RESPONSE') return 'Aguardando resposta do aluno';
+  return 'Em análise';
+};
+
+export const AdminDisputesPanel: React.FC<{ bookings: Booking[]; refreshKey?: number }> = ({ bookings, refreshKey = 0 }) => {
+  const [items, setItems] = useState<BookingDispute[]>([]);
+  const [selected, setSelected] = useState<BookingDispute | null>(null);
+  const [resolution, setResolution] = useState<BookingDisputeResolution>('RELEASE_PAYOUT');
+  const [notes, setNotes] = useState('');
+  const [refundReais, setRefundReais] = useState('');
+  const [requestedFrom, setRequestedFrom] = useState<'STUDENT' | 'PROVIDER'>('STUDENT');
+  const [informationRequest, setInformationRequest] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const nextItems = await dbService.getAdminBookingDisputes();
+      setItems(nextItems);
+      setSelected((current) => current ? nextItems.find((item) => item.id === current.id) || null : current);
+    } catch (cause) {
+      setError(getFriendlyAdminError(cause, 'Não foi possível carregar as disputas.'));
+    }
+  }, []);
+  useEffect(() => { void load(); }, [load, refreshKey]);
+  const active = items.filter((item) => !['RESOLVED', 'CANCELLED'].includes(item.status));
+  const resolve = async () => {
+    if (!selected) return;
+    setIsSaving(true); setError(null);
+    try {
+      const amount = resolution === 'PARTIAL_REFUND' ? Math.round(Number(refundReais.replace(',', '.')) * 100) : undefined;
+      if (resolution === 'FULL_REFUND' || resolution === 'PARTIAL_REFUND') {
+        await dbService.processStripeRefund(selected.bookingId, `DISPUTE_${resolution}`, amount, selected.id);
+      }
+      const updated = await dbService.resolveBookingDispute({ disputeId: selected.id, resolutionCode: resolution, resolutionNotes: notes, refundAmountInCents: amount });
+      setItems((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setSelected(null); setNotes(''); setRefundReais('');
+    } catch (cause) { setError(getFriendlyAdminError(cause, 'Não foi possível resolver a disputa.')); }
+    finally { setIsSaving(false); }
+  };
+  const requestInformation = async () => {
+    if (!selected || informationRequest.trim().length < 5) return;
+    setIsSaving(true); setError(null);
+    try {
+      const updated = await dbService.requestBookingDisputeInformation(selected.id, requestedFrom, informationRequest);
+      setItems((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setSelected(updated); setInformationRequest('');
+    } catch (cause) { setError(getFriendlyAdminError(cause, 'Não foi possível solicitar mais informações.')); }
+    finally { setIsSaving(false); }
+  };
+  const selectedBooking = selected ? bookings.find((booking) => booking.id === selected.bookingId) : undefined;
+  return (
+    <section className="space-y-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+      <div className="flex items-center gap-3"><ShieldAlert className="h-6 w-6 text-amber-700" /><div><h3 className="text-lg font-black text-[var(--mazzi-dark)]">Contestações</h3><p className="text-xs text-slate-600">Acompanhe os relatos e ajude a encontrar uma solução justa para cada aula.</p></div></div>
+      {error && <p role="alert" className="text-xs font-bold text-rose-700">{error}</p>}
+      {active.length === 0 && !error ? <p className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-600">Nenhuma contestação aguardando análise.</p> : <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.9fr)]">
+        <div className="space-y-2">{active.map((item) => { const booking = bookings.find((candidate) => candidate.id === item.bookingId); return <ButtonBase key={item.id} type="button" onClick={() => setSelected(item)} className={`relative flex w-full items-start rounded-2xl border p-3 text-left ${selected?.id === item.id ? 'border-amber-400 bg-amber-50' : 'border-amber-100 bg-amber-50/40'}`}><span className="min-w-0 flex-1"><span className="flex items-start justify-between gap-2"><span className="text-xs font-black text-slate-900">{booking ? `${booking.scheduledDate} · ${booking.startTime}` : `Aula #${item.bookingId.slice(0, 8)}`}</span><Badge variant="warning" className="shrink-0">{adminDisputeStatusLabel(item)}</Badge></span><span className="block text-[11px] text-slate-600">{booking ? `${booking.studentName || 'Aluno não identificado'} · ${booking.instructorName || 'Instrutor não identificado'}` : 'Reserva não encontrada'}</span><span className="mt-1 block text-[11px] text-amber-800">{adminDisputeReasonLabels[item.reasonCode] || 'Motivo não informado'}</span></span></ButtonBase>; })}</div>
+        <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-4" aria-label="Detalhes da contestação">{selected ? <div className="space-y-3"><h4 className="text-sm font-black text-slate-900">Detalhes da contestação</h4>{selectedBooking && <div className="grid gap-2 rounded-2xl bg-white p-3 text-xs text-slate-700"><p><strong>Aluno:</strong> {selectedBooking.studentName || 'Não identificado'}</p><p><strong>Instrutor:</strong> {selectedBooking.instructorName || 'Não identificado'}</p><p><strong>Autoescola:</strong> {selectedBooking.providerName || 'Não identificada'}</p><p><strong>Data:</strong> {selectedBooking.scheduledDate}</p><p><strong>Horário:</strong> {selectedBooking.startTime} às {selectedBooking.endTime}</p><p><strong>Local:</strong> {selectedBooking.fullMeetingPoint || selectedBooking.meetingPoint || 'Não informado'}</p></div>}<div className="rounded-2xl bg-white p-3"><p className="text-xs font-black text-slate-900">Descrição</p><p className="mt-1 text-xs text-slate-700">{selected.description}</p>{selected.responseText && <><p className="mt-3 text-xs font-black text-slate-900">Resposta</p><p className="mt-1 text-xs text-slate-700">{selected.responseText}</p></>}</div><div className="rounded-2xl border border-blue-200 bg-blue-50 p-3"><p className="text-xs font-black text-blue-950">Pedir mais informações</p><p className="mt-1 text-[11px] text-blue-900">A contestação ficará aguardando a resposta da pessoa selecionada.</p><div className="mt-2 grid gap-2"><Select aria-label="Pedir informações para" value={requestedFrom} onChange={(event) => setRequestedFrom(event.target.value as 'STUDENT' | 'PROVIDER')} options={[{ value: 'STUDENT', label: 'Para o aluno' }, { value: 'PROVIDER', label: 'Para o PRO' }]} /><Input aria-label="Pedido de informação" value={informationRequest} onChange={(event) => setInformationRequest(event.target.value)} placeholder="Descreva o que precisa ser esclarecido" /><Button type="button" size="sm" className="w-full" isLoading={isSaving} disabled={informationRequest.trim().length < 5} onClick={() => void requestInformation()}>Pedir informações</Button></div></div><Select label="Decisão" value={resolution} onChange={(event) => setResolution(event.target.value as BookingDisputeResolution)} options={[{value:'RELEASE_PAYOUT',label:'Liberar repasse ao PRO'},{value:'FULL_REFUND',label:'Reembolso integral'},{value:'PARTIAL_REFUND',label:'Reembolso parcial'},{value:'RESCHEDULE',label:'Reagendar aula'},{value:'NO_ACTION',label:'Encerrar sem efeito financeiro'}]} />{resolution === 'PARTIAL_REFUND' && <Input label="Valor do reembolso (R$)" inputMode="decimal" value={refundReais} onChange={(event) => setRefundReais(event.target.value)} />}<Textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} placeholder="Justificativa obrigatória da decisão..." /><Button type="button" className="w-full" isLoading={isSaving} disabled={notes.trim().length < 5 || (resolution === 'PARTIAL_REFUND' && !(Number(refundReais.replace(',','.')) > 0))} onClick={resolve}>Confirmar decisão</Button></div> : <p className="py-8 text-center text-xs font-semibold text-slate-500">Selecione uma contestação para ver os detalhes.</p>}</aside>
+      </div>}
+    </section>
+  );
+};
+
 export const FinancialTab: React.FC<{
   bookings: Booking[];
   auditLogs: AuditLog[];
@@ -1486,10 +1583,10 @@ export const FinancialTab: React.FC<{
   onProcessRefund: (booking: Booking) => void;
   isStripeGateway: boolean;
   isProductionEnvironment?: boolean;
-  platformFeePercentage: number;
+  maxTotalFeePercentage: number;
   payouts: Payout[];
   onMarkManualPayout: (payout: Payout, transferReference: string) => void;
-}> = ({ bookings, auditLogs, actor, onProcessRefund, isStripeGateway, isProductionEnvironment = false, platformFeePercentage, payouts, onMarkManualPayout }) => {
+}> = ({ bookings, auditLogs, actor, onProcessRefund, isStripeGateway, isProductionEnvironment = false, maxTotalFeePercentage, payouts, onMarkManualPayout }) => {
   const [activeSubTab, setActiveSubTab] = useState<'payouts' | 'ledger'>('ledger');
   const [selectedBookingId, setSelectedBookingId] = useState<string>('');
   const [transferReferences, setTransferReferences] = useState<Record<string, string>>({});
@@ -1596,32 +1693,45 @@ export const FinancialTab: React.FC<{
                     <th className="p-3">Ref Aula</th>
                     <th className="p-3">Aluno</th>
                     <th className="p-3">Prestador</th>
-                    <th className="p-3">Valor Líquido</th>
-                    <th className="p-3">Taxa ({platformFeePercentage}%)</th>
-                    <th className="p-3">Total Transacionado</th>
+                    <th className="p-3">Valor Líquido do PRO</th>
+                    <th className="p-3">Taxa MAZZI (até {maxTotalFeePercentage}%)</th>
+                    <th className="p-3">Taxa checkout (real)</th>
+                    <th className="p-3">Total Pago pelo Aluno</th>
                     <th className="p-3">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredTransactions.map((t) => (
-                    <tr
-                      key={t.id}
-                      onClick={() => setSelectedBookingId(t.id)}
-                      className={`cursor-pointer transition hover:bg-slate-50/50 ${selectedBookingId === t.id ? 'bg-indigo-50/40 font-semibold' : ''}`}
-                    >
-                      <td className="p-3 font-medium text-slate-700">{t.id.slice(0, 8)}</td>
-                      <td className="p-3 font-semibold">{t.studentName || 'Aluno não identificado'}</td>
-                      <td className="p-3 font-medium">{t.providerName}</td>
-                      <td className="p-3 font-mono">{formatCentsToBRL(t.totalInCents - t.platformFeeInCents)}</td>
-                      <td className="p-3 font-mono text-slate-500">+{formatCentsToBRL(t.platformFeeInCents)}</td>
-                      <td className="p-3 font-mono font-bold">{formatCentsToBRL(t.totalInCents)}</td>
-                      <td className="p-3">
-                        <StatusBadge status={t.status} />
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredTransactions.map((t) => {
+                    const hasActualCheckoutFee = typeof t.gatewayFeeInCents === 'number';
+                    const checkoutFeeInCents = hasActualCheckoutFee ? t.gatewayFeeInCents || 0 : 0;
+                    const totalFeeLimitInCents = Math.round((t.totalInCents * maxTotalFeePercentage) / 100);
+                    const mazziFeeInCents = hasActualCheckoutFee
+                      ? Math.max(0, Math.min(t.platformFeeInCents, totalFeeLimitInCents - checkoutFeeInCents))
+                      : 0;
+                    const providerNetInCents = hasActualCheckoutFee
+                      ? Math.max(0, t.totalInCents - mazziFeeInCents - checkoutFeeInCents)
+                      : 0;
+                    return (
+                      <tr
+                        key={t.id}
+                        onClick={() => setSelectedBookingId(t.id)}
+                        className={`cursor-pointer transition hover:bg-slate-50/50 ${selectedBookingId === t.id ? 'bg-indigo-50/40 font-semibold' : ''}`}
+                      >
+                        <td className="p-3 font-medium text-slate-700">{t.id.slice(0, 8)}</td>
+                        <td className="p-3 font-semibold">{t.studentName || 'Aluno não identificado'}</td>
+                        <td className="p-3 font-medium">{t.providerName}</td>
+                        <td className="p-3 font-mono">{hasActualCheckoutFee ? formatCentsToBRL(providerNetInCents) : 'Aguardando tarifa real'}</td>
+                        <td className="p-3 font-mono text-slate-500">{hasActualCheckoutFee ? `+${formatCentsToBRL(mazziFeeInCents)}` : 'Aguardando tarifa real'}</td>
+                        <td className="p-3 font-mono text-slate-500">{hasActualCheckoutFee ? `+${formatCentsToBRL(checkoutFeeInCents)}` : 'Aguardando tarifa real'}</td>
+                        <td className="p-3 font-mono font-bold">{formatCentsToBRL(t.totalInCents)}</td>
+                        <td className="p-3">
+                          <StatusBadge status={t.status} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {filteredTransactions.length === 0 && (
-                    <tr><td colSpan={7} className="p-8 text-center text-slate-500">Nenhuma movimentação encontrada com esses filtros.</td></tr>
+                    <tr><td colSpan={8} className="p-8 text-center text-slate-500">Nenhuma movimentação encontrada com esses filtros.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1678,7 +1788,7 @@ export const FinancialTab: React.FC<{
             <div>
               <span className="font-bold">Política de Retenção de Repasse Seguro (Payout Safety Period)</span>
               <p className="mt-0.5 text-indigo-800">
-                O valor de uma aula concluída fica em segurança por 24 horas antes de ficar disponível para o prestador.
+                O valor de uma aula concluída fica retido pelo prazo configurado no Admin. Uma disputa aberta dentro desse período bloqueia o repasse; sem disputa, o Stripe processa automaticamente após o vencimento.
               </p>
             </div>
           </div>
@@ -2078,6 +2188,7 @@ export const SettingsTab: React.FC<{
   const [safetyPeriod, setSafetyPeriod] = useState<number | ''>(config.payoutSafetyPeriodHours);
   const [radius, setRadius] = useState<number | ''>(config.searchRadiusDefaultsKm);
   const [checkInWindowBefore, setCheckInWindowBefore] = useState<number | ''>(config.checkInWindowBeforeMinutes);
+  const [contestationResponseHours, setContestationResponseHours] = useState<number | ''>(config.contestationResponseHours);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -2090,11 +2201,12 @@ export const SettingsTab: React.FC<{
     setSafetyPeriod(config.payoutSafetyPeriodHours);
     setRadius(config.searchRadiusDefaultsKm);
     setCheckInWindowBefore(config.checkInWindowBeforeMinutes);
+    setContestationResponseHours(config.contestationResponseHours);
   }, [config]);
 
   const handleSave = async () => {
     if (!isAuthorized) return;
-    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius, checkInWindowBefore].some((value) => value === '')) return;
+    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius, checkInWindowBefore, contestationResponseHours].some((value) => value === '')) return;
     try {
       setIsSaving(true);
       await onUpdateConfig({
@@ -2107,6 +2219,7 @@ export const SettingsTab: React.FC<{
         payoutSafetyPeriodHours: safetyPeriod,
         searchRadiusDefaultsKm: radius,
         checkInWindowBeforeMinutes: checkInWindowBefore,
+        contestationResponseHours,
       });
     } finally {
       setIsSaving(false);
@@ -2206,11 +2319,11 @@ export const SettingsTab: React.FC<{
               disabled={!isAuthorized}
               className="text-xs"
             />
-            <span className="text-[10px] text-slate-400 block">Tempo necessário antes do início para permitir novos bookings.</span>
+            <span className="text-[10px] text-slate-400 block">Define com quantas horas de antecedência uma nova reserva pode ser feita.</span>
           </div>
 
           <div className="space-y-1">
-            <label className="mazzi-field-label block">Retenção de Payout Seguro (Horas)</label>
+            <label className="mazzi-field-label block">Prazo para repasse automático (horas)</label>
             <Input
               type="number"
               value={safetyPeriod}
@@ -2219,6 +2332,12 @@ export const SettingsTab: React.FC<{
               className="text-xs"
             />
             <span className="text-[10px] text-slate-400 block">Prazo de segurança contra estorno após a aula concluída.</span>
+          </div>
+
+          <div className="space-y-1">
+            <label className="mazzi-field-label block">Prazo para responder uma contestação (horas)</label>
+            <Input type="number" min={1} value={contestationResponseHours} onChange={(e) => setContestationResponseHours(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+            <span className="text-[10px] text-slate-400 block">Após esse prazo, a contestação poderá ser finalizada pela operação.</span>
           </div>
 
           <div className="space-y-1">

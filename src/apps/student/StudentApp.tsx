@@ -42,6 +42,7 @@ import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODate
 import { MaskedInput } from '../../components/ui/MaskedInput';
 import { useMobileAppRoute } from '../../lib/mobile-app-router';
 import { StudentProMigrationCard } from './components/StudentProMigrationCard';
+import { dismissInitialSplash } from '../../lib/initial-splash';
 
 const STRIPE_RETURN_QUERY_PARAMS = ['stripe_checkout', 'payment_id', 'session_id'] as const;
 const STRIPE_CONFIRMATION_TIMEOUT_MS = 60_000;
@@ -79,7 +80,10 @@ function getInitialStripeCheckoutReturn(): { status: StripeCheckoutReturnStatus 
   const params = new URLSearchParams(window.location.search);
   const checkoutState = params.get('stripe_checkout');
   if (!checkoutState || !params.get('payment_id')) return null;
-  if (checkoutState === 'cancelled') return { status: 'CANCELLED' };
+  // A cancelled Stripe Checkout is not a terminal app screen. The pending
+  // booking must be reopened in the summary so the student can retry within
+  // the original hold window or leave through the summary back action.
+  if (checkoutState === 'cancelled') return null;
   if (checkoutState === 'success') return { status: 'CHECKOUT_SUCCESS' };
   return { status: 'ERROR' };
 }
@@ -212,6 +216,7 @@ export const StudentApp: React.FC = () => {
 
   const [activeTab, setActiveTab] = useMobileAppRoute<'search' | 'bookings' | 'profile'>('student', 'search', ['search', 'bookings', 'profile']);
   const [bookingTab, setBookingTab] = useState<'confirmed' | 'today' | 'history'>('confirmed');
+  const [bookingQuickFilter, setBookingQuickFilter] = useState<'all' | 'confirmed' | 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'disputed'>('all');
   const [searchLocation, setSearchLocation] = useState('');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -394,24 +399,34 @@ export const StudentApp: React.FC = () => {
     if (checkoutState === 'cancelled') {
       let active = true;
       const reopenPreviousCheckout = async () => {
+        let latestBookings: Booking[] = [];
         try {
-          const [paymentStatus, bookings] = await Promise.all([
-            dbService.getMyPaymentStatus(paymentId),
-            dbService.getBookings(),
-          ]);
-          if (!active) return;
+          // Stripe can redirect before the local payment row is visible to
+          // the browser. Retry briefly while preserving the booking hold.
+          for (let attempt = 0; attempt < 3 && active; attempt += 1) {
+            const [paymentStatus, bookings] = await Promise.all([
+              dbService.getMyPaymentStatus(paymentId),
+              dbService.getBookings(),
+            ]);
+            latestBookings = bookings;
+            if (!active) return;
 
-          const bookingId = paymentStatus?.booking_id || paymentStatus?.bookingId;
-          const pendingBooking = bookings.find((booking) => (
-            booking.id === bookingId && booking.status === 'PENDING_PAYMENT'
-          ));
+            const bookingId = paymentStatus?.booking_id || paymentStatus?.bookingId;
+            const pendingBooking = bookings.find((booking) => (
+              booking.id === bookingId && booking.status === 'PENDING_PAYMENT'
+            ));
 
-          if (pendingBooking) {
-            setConfirmedBookings(bookings);
-            clearStripeCheckoutReturnParams();
-            setStripeCheckoutReturn(null);
-            setResumeBooking(pendingBooking);
-            return;
+            if (pendingBooking) {
+              setConfirmedBookings(bookings);
+              clearStripeCheckoutReturnParams();
+              setStripeCheckoutReturn(null);
+              setResumeBooking(pendingBooking);
+              return;
+            }
+
+            if (attempt < 2) {
+              await new Promise<void>((resolve) => window.setTimeout(resolve, 500));
+            }
           }
         } catch (error) {
           if (import.meta.env.DEV) console.warn('STRIPE_CANCEL_RETURN_REOPEN_FAILED', error);
@@ -419,10 +434,9 @@ export const StudentApp: React.FC = () => {
 
         if (active) {
           clearStripeCheckoutReturnParams();
-          setStripeCheckoutReturn({
-            status: 'CANCELLED',
-            message: 'Nenhuma cobrança foi confirmada. Você pode voltar e tentar outra forma de pagamento.',
-          });
+          if (latestBookings.length > 0) setConfirmedBookings(latestBookings);
+          setBookingsRefreshKey((value) => value + 1);
+          setActiveTab('bookings');
         }
       };
 
@@ -562,6 +576,13 @@ export const StudentApp: React.FC = () => {
       if (offlineRedirectTimer !== undefined) window.clearTimeout(offlineRedirectTimer);
     };
   }, [user?.id, isRealSupabase]);
+
+  // The Stripe cancellation return reopens the held booking in CheckoutModal.
+  // Release the document splash only after that summary has been committed,
+  // preventing the home screen from flashing between the redirect and modal.
+  useEffect(() => {
+    if (resumeBooking) dismissInitialSplash();
+  }, [resumeBooking]);
 
   // Search Engine Pipeline Request State
   const [searchRequest, setSearchRequest] = useState<SearchRequest>({
@@ -962,6 +983,39 @@ function applyStrictProviderFilters(
     [confirmedBookings, nowMs],
   );
 
+  const bookingQuickFilterOptions = useMemo(() => bookingTab === 'history'
+    ? [
+        { value: 'all' as const, label: 'Todas' },
+        { value: 'completed' as const, label: 'Concluídas' },
+        { value: 'disputed' as const, label: 'Em contestação' },
+        { value: 'cancelled' as const, label: 'Canceladas' },
+      ]
+    : [
+        { value: 'all' as const, label: 'Todas' },
+        { value: 'confirmed' as const, label: 'Confirmadas' },
+        { value: 'pending' as const, label: 'Pendentes' },
+        { value: 'in_progress' as const, label: 'Em andamento' },
+      ], [bookingTab]);
+
+  const filterBookingsByQuickFilter = (bookings: Booking[]) => bookings.filter((booking) => {
+    if (bookingQuickFilter === 'all') return true;
+    if (bookingQuickFilter === 'confirmed') return booking.status === 'CONFIRMED';
+    if (bookingQuickFilter === 'pending') return booking.status === 'PENDING_PAYMENT';
+    if (bookingQuickFilter === 'in_progress') return booking.status === 'IN_PROGRESS';
+    if (bookingQuickFilter === 'completed') return booking.status === 'COMPLETED';
+    if (bookingQuickFilter === 'disputed') return booking.status === 'DISPUTED';
+    return ['CANCELLED_BY_STUDENT', 'CANCELLED_BY_PROVIDER', 'NO_SHOW_STUDENT', 'NO_SHOW_PROVIDER', 'REFUNDED', 'PARTIALLY_REFUNDED', 'EXPIRED'].includes(booking.status);
+  });
+
+  const filteredUpcomingBookings = useMemo(() => filterBookingsByQuickFilter(upcomingBookings), [upcomingBookings, bookingQuickFilter]);
+  const filteredTodayBookings = useMemo(() => filterBookingsByQuickFilter(todayBookings), [todayBookings, bookingQuickFilter]);
+  const filteredHistoryBookings = useMemo(() => filterBookingsByQuickFilter(historyBookings), [historyBookings, bookingQuickFilter]);
+
+  const selectBookingTab = (tab: 'confirmed' | 'today' | 'history') => {
+    setBookingTab(tab);
+    setBookingQuickFilter('all');
+  };
+
   // Ao entrar em "Aulas", prioriza as aulas de hoje uma única vez.
   // A escolha manual do usuário permanece preservada até sair e entrar novamente.
   useEffect(() => {
@@ -1271,7 +1325,7 @@ function applyStrictProviderFilters(
                   role="tab"
                   aria-selected={bookingTab === 'confirmed'}
                   type="button"
-                  onClick={() => setBookingTab('confirmed')}
+                  onClick={() => selectBookingTab('confirmed')}
                   className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
                     bookingTab === 'confirmed'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
@@ -1285,7 +1339,7 @@ function applyStrictProviderFilters(
                   role="tab"
                   aria-selected={bookingTab === 'today'}
                   type="button"
-                  onClick={() => setBookingTab('today')}
+                  onClick={() => selectBookingTab('today')}
                   className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
                     bookingTab === 'today'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
@@ -1299,7 +1353,7 @@ function applyStrictProviderFilters(
                   role="tab"
                   aria-selected={bookingTab === 'history'}
                   type="button"
-                  onClick={() => setBookingTab('history')}
+                  onClick={() => selectBookingTab('history')}
                   className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
                     bookingTab === 'history'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
@@ -1311,21 +1365,43 @@ function applyStrictProviderFilters(
                 </ButtonBase>
               </div>
 
+              <div className="-mt-2 pb-1" aria-label="Filtros rápidos de aulas">
+                <div className="flex flex-nowrap justify-center gap-1.5" role="group">
+                  {bookingQuickFilterOptions.map((option) => {
+                    const selected = bookingQuickFilter === option.value;
+                    return (
+                      <ButtonBase
+                        key={option.value}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setBookingQuickFilter(option.value)}
+                        className={`min-h-0 whitespace-nowrap rounded-full border px-2 py-1.5 text-[10px] font-semibold leading-tight transition-colors focus-visible:outline-amber-400 ${selected
+                          ? 'border-[var(--mazzi-dark)] bg-[var(--mazzi-dark)] text-white shadow-xs'
+                          : 'border-transparent bg-slate-100 text-[var(--mazzi-text)] hover:border-[var(--mazzi-yellow)] hover:bg-[var(--mazzi-yellow-soft)]'
+                        }`}
+                      >
+                        {option.label}
+                      </ButtonBase>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Confirmed bookings */}
               {bookingsError && <ErrorState message="Não foi possível carregar suas aulas." onRetry={() => setBookingsRefreshKey((value) => value + 1)} />}
               {bookingsLoading && <ContentSkeleton count={3} label="Carregando suas aulas" />}
               {!bookingsError && !bookingsLoading && bookingTab === 'confirmed' && (
                 <div className="space-y-3">
-                  {upcomingBookings.length === 0 ? (
+                  {filteredUpcomingBookings.length === 0 ? (
                     <EmptyState
-                      title="Nenhuma aula confirmada"
-                      description="Você não possui aulas confirmadas no momento."
+                      title={bookingQuickFilter === 'all' ? 'Nenhuma aula confirmada' : 'Nenhuma aula neste filtro'}
+                      description={bookingQuickFilter === 'all' ? 'Você não possui aulas confirmadas no momento.' : 'Tente selecionar outro filtro rápido.'}
                       actionLabel="Buscar aulas"
                       actionIcon={<Search className="h-4 w-4" aria-hidden="true" />}
                       onAction={() => setActiveTab('search')}
                     />
                   ) : (
-                    upcomingBookings.map((b) => (
+                    filteredUpcomingBookings.map((b) => (
                       <BookingCard
                         key={b.id}
                         booking={b}
@@ -1340,10 +1416,10 @@ function applyStrictProviderFilters(
 
               {!bookingsError && !bookingsLoading && bookingTab === 'today' && (
                 <div className="space-y-3">
-                  {todayBookings.length === 0 ? (
-                    <EmptyState title="Nenhuma aula para hoje" description="Suas aulas de hoje aparecerão aqui." />
+                  {filteredTodayBookings.length === 0 ? (
+                    <EmptyState title={bookingQuickFilter === 'all' ? 'Nenhuma aula para hoje' : 'Nenhuma aula neste filtro'} description={bookingQuickFilter === 'all' ? 'Suas aulas de hoje aparecerão aqui.' : 'Tente selecionar outro filtro rápido.'} />
                   ) : (
-                    todayBookings.map((b) => (
+                    filteredTodayBookings.map((b) => (
                       <BookingCard
                         key={b.id}
                         booking={b}
@@ -1359,10 +1435,10 @@ function applyStrictProviderFilters(
               {/* History Bookings Section */}
               {!bookingsError && !bookingsLoading && bookingTab === 'history' && (
                 <div className="space-y-3">
-                  {historyBookings.length === 0 ? (
-                    <EmptyState title="Seu histórico está vazio" description="As aulas concluídas aparecerão aqui." />
+                  {filteredHistoryBookings.length === 0 ? (
+                    <EmptyState title={bookingQuickFilter === 'all' ? 'Seu histórico está vazio' : 'Nenhuma aula neste filtro'} description={bookingQuickFilter === 'all' ? 'As aulas concluídas aparecerão aqui.' : 'Tente selecionar outro filtro rápido.'} />
                   ) : (
-                    historyBookings.map((b) => (
+                    filteredHistoryBookings.map((b) => (
                       <BookingCard
                         key={b.id}
                         booking={b}
@@ -1615,12 +1691,13 @@ function applyStrictProviderFilters(
         isOpen={!!selectedBookingForDetails}
         onClose={() => setSelectedBookingForDetails(null)}
         booking={selectedBookingForDetails}
+        currentUserId={user?.id}
         onBookingUpdated={(updated) => {
           setConfirmedBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
           setBookingsRefreshKey((k) => k + 1);
           setSelectedBookingForDetails(updated);
         }}
-        onReview={reviewsEligibilityStatus === 'SUCCESS' && selectedBookingForDetails?.status === 'COMPLETED' && !reviewedBookingIds.has(selectedBookingForDetails.id)
+        onReview={reviewsEligibilityStatus === 'SUCCESS' && ['COMPLETED', 'DISPUTED'].includes(selectedBookingForDetails?.status || '') && !reviewedBookingIds.has(selectedBookingForDetails.id)
           ? (bookingToReview) => setSelectedBookingForReview(bookingToReview)
           : undefined}
         onContinuePayment={(bookingToResume) => {

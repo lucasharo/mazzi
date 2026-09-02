@@ -19,6 +19,7 @@ import {
   OAuthExchangeResult,
 } from './gateway-interface';
 import { PaymentGatewayType, Provider, MazziPaymentStatus, ProviderPaymentAccountStatus } from '../../types';
+import { DEFAULT_HOLD_EXPIRATION_MINUTES } from '../booking';
 
 export interface MercadoPagoConfig {
   accessToken?: string;
@@ -279,7 +280,7 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
         ? `00020126580014BR.GOV.BCB.PIX0136${mockId}520400005303986540${transactionAmount}5802BR5913MAZZI BRASIL6009SAO PAULO62070503***63041234`
         : undefined,
       pixQrCodeBase64: request.method === 'PIX' ? 'iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACt...' : undefined,
-      pixExpiresAt: request.expirationTimestampUtc || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      pixExpiresAt: request.expirationTimestampUtc || new Date(Date.now() + DEFAULT_HOLD_EXPIRATION_MINUTES * 60 * 1000).toISOString(),
       cardLast4: request.method === 'CREDIT_CARD' ? '4242' : undefined,
       cardBrand: request.method === 'CREDIT_CARD' ? 'master' : undefined,
       rawGatewayResponse: {

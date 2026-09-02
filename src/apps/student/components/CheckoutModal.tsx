@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, CreditCard, QrCode, Clock, AlertCircle, CheckCircle2, XCircle, Copy, Check, Building2, Car, UserCheck, Calendar, Lock, Sparkles, ArrowLeft, KeyRound, MapPin, AlertTriangle, } from 'lucide-react';
+import { ShieldCheck, CreditCard, QrCode, Clock, AlertCircle, CheckCircle2, XCircle, Copy, Check, Building2, Car, UserCheck, Calendar, Lock, Sparkles, ArrowLeft, KeyRound, MapPin, AlertTriangle, DollarSign, } from 'lucide-react';
 import {
   Provider, Vehicle, ServiceOffering, Quote, Booking, Payment, PaymentMethodType, StudentSavedAddress, } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { Button, ButtonBase } from '../../../components/ui/Button';
+import { IconButton } from '../../../components/ui/IconButton';
 import { Input } from '../../../components/ui/Input';
 import { Badge } from '../../../components/ui/Badge';
 import { formatCentsToBRL } from '../../../domain/money';
 import { isQuoteExpired, QuoteDomainError } from '../../../domain/quote';
-import { createBookingHold, BookingDomainError, PAYMENT_HOLD_EXPIRATION_MINUTES } from '../../../domain/booking';
+import {
+  createBookingHold,
+  BookingDomainError,
+  PAYMENT_HOLD_EXPIRATION_MINUTES,
+  PAYMENT_PROCESSING_GRACE_MINUTES,
+} from '../../../domain/booking';
 import { PaymentService } from '../../../domain/payments/payment-service';
 import { FakePaymentGateway } from '../../../domain/payments/fake-adapter';
 import { useAuth } from '../../../components/auth/AuthContext';
@@ -600,7 +606,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
       if (checkoutGatewayProvider === 'stripe') {
         const nextPayment = await createPaymentAttempt('CREDIT_CARD', syncedBooking);
-        setBooking(syncedBooking);
+        const processingUntil = nextPayment.paymentProcessingUntil;
+        setBooking(processingUntil ? { ...syncedBooking, holdExpiresAt: processingUntil } : syncedBooking);
         setPayment(nextPayment);
         setPaymentMethod('CREDIT_CARD');
         await handleStripeHostedCheckout(nextPayment);
@@ -755,6 +762,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         throw new Error('PAYMENT_UUID_GENERATION_FAILED');
       }
       const now = new Date().toISOString();
+      const paymentStartedAt = payRes?.payment_started_at || now;
+      const paymentProcessingUntil = payRes?.payment_processing_until || undefined;
       const amountInCents = activeBooking.snapshot?.totalInCents || activeBooking.totalInCents;
       const platformFeeInCents = activeBooking.snapshot?.platformFeeInCents || activeBooking.platformFeeInCents;
       if (checkoutGatewayProvider === 'stripe') {
@@ -770,7 +779,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           amountInCents,
           platformFeeInCents,
           providerAmountInCents: activeBooking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
-          metadata: { stripeStatus: 'NOT_STARTED', stripe_payment_method: nextMethod },
+          paymentStartedAt,
+          paymentProcessingUntil,
+          metadata: {
+            stripeStatus: 'NOT_STARTED',
+            stripe_payment_method: nextMethod,
+            paymentStartedAt,
+            paymentProcessingUntil,
+          },
           createdAt: now,
           updatedAt: now,
         };
@@ -787,6 +803,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         amountInCents,
         platformFeeInCents,
         providerAmountInCents: activeBooking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
+        paymentStartedAt,
+        paymentProcessingUntil,
         createdAt: now,
         updatedAt: now,
       };
@@ -794,6 +812,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     if (!paymentService) throw new Error('FAKE_GATEWAY_UNAVAILABLE_IN_PRODUCTION');
     const now = new Date().toISOString();
+    const paymentStartedAt = now;
+    const paymentProcessingUntil = activeBooking.holdExpiresAt
+      ? new Date(new Date(activeBooking.holdExpiresAt).getTime() + PAYMENT_PROCESSING_GRACE_MINUTES * 60_000).toISOString()
+      : undefined;
     const amountInCents = activeBooking.snapshot?.totalInCents || activeBooking.totalInCents;
     const platformFeeInCents = activeBooking.snapshot?.platformFeeInCents || activeBooking.platformFeeInCents;
     return {
@@ -809,6 +831,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       platformFeeInCents,
       providerAmountInCents: activeBooking.snapshot?.priceInCents || (amountInCents - platformFeeInCents),
       pixQrCode: nextMethod === 'PIX' ? `FAKE_PIX_SIMULATED_PAYMENT_ENV_DEVELOPMENT_${activeBooking.id}` : undefined,
+      paymentStartedAt,
+      paymentProcessingUntil,
+      metadata: { paymentStartedAt, paymentProcessingUntil },
       createdAt: now,
       updatedAt: now,
     };
@@ -822,6 +847,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setStripePaymentPending(false);
     try {
       const nextPayment = await createPaymentAttempt(nextMethod);
+      if (nextPayment.paymentProcessingUntil) {
+        setBooking((current) => current ? { ...current, holdExpiresAt: nextPayment.paymentProcessingUntil } : current);
+      }
       setPayment(nextPayment);
       setPaymentMethod(nextMethod);
     } catch (error) {
@@ -926,6 +954,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setErrorMessage(null);
     try {
       await dbService.cancelPendingBooking(booking.id);
+      void dbService.trackAnalyticsEvent('CHECKOUT_CANCELLED', {
+        cancellation_source: 'student_back_action',
+      }).catch((analyticsError) => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[MAZZI Analytics] CHECKOUT_CANCELLED failed:', analyticsError);
+        }
+      });
       onBookingCancelled?.();
       onClose();
       onChooseAnotherSlot?.();
@@ -959,6 +994,47 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     !isProcessing &&
     (meetingPointType === 'PROVIDER' || studentAddress.trim()),
   );
+  const quotePreviewFooter = step === 'QUOTE_PREVIEW' ? (
+    <div className="flex w-full flex-col gap-3">
+      <Button
+        type="button"
+        variant="primary"
+        size="sm"
+        className="w-full font-bold shadow-xs"
+        leftIcon={<DollarSign className="h-4 w-4 shrink-0" aria-hidden="true" />}
+        isLoading={isProcessing}
+        disabled={!checkoutFormValid}
+        onClick={handleProceedToBookingHold}
+        aria-label="Continuar para pagamento da aula"
+      >
+        Continuar para pagamento
+      </Button>
+
+    </div>
+  ) : undefined;
+  const quotePreviewBackAction = step === 'QUOTE_PREVIEW' ? (
+    <IconButton
+      label="Voltar e escolher outro horário"
+      className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:bg-slate-200/80 hover:text-[var(--mazzi-dark)]"
+      onClick={() => {
+        if (booking || resumeBooking) {
+          void handleCancelPendingBooking();
+          return;
+        }
+        void dbService.trackAnalyticsEvent('CHECKOUT_CANCELLED', {
+          cancellation_source: 'student_back_action',
+        }).catch((analyticsError) => {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[MAZZI Analytics] CHECKOUT_CANCELLED failed:', analyticsError);
+          }
+        });
+        onClose();
+        onChooseAnotherSlot?.();
+      }}
+    >
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+    </IconButton>
+  ) : undefined;
 
   return (
     <Modal
@@ -973,6 +1049,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
       size="md"
       presentation={presentation}
+      footer={quotePreviewFooter}
+      headerAction={quotePreviewBackAction}
     >
       <div className="space-y-4 text-left">
         {step === 'SUCCESS' && successAnimationPhase !== 'COMPLETE' && (
@@ -1148,32 +1226,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               )}
             </div>
 
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              className="w-full font-bold shadow-xs"
-              isLoading={isProcessing}
-              disabled={!checkoutFormValid}
-              onClick={handleProceedToBookingHold}
-              aria-label="Continuar para pagamento da aula"
-            >
-              Continuar para pagamento
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full min-h-11 font-extrabold text-[var(--mazzi-text)]"
-              onClick={() => {
-                onClose();
-                onChooseAnotherSlot?.();
-              }}
-              aria-label="Voltar e escolher outro horário"
-            >
-              Voltar e escolher outro horário
-            </Button>
           </div>
         )}
 
@@ -1503,7 +1555,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             <div className="space-y-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-extrabold text-emerald-700">
-                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                 Reserva confirmada
               </span>
               <h3 className="text-xl font-black tracking-tight text-[var(--mazzi-text)]">Aula Agendada com Sucesso!</h3>

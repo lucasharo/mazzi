@@ -40,6 +40,18 @@
   | No-Show do Aluno | — | 0% | Sem reembolso |
   | No-Show do Prestador | — | 100% | Reembolso integral ao aluno |
 
+## 6. Disputas e Repasse Automático (DEC-014)
+
+- O repasse ao prestador é agendado na conclusão da aula e executado automaticamente após o prazo configurado no Admin.
+- O padrão de produção é **72 horas** após a conclusão. Ambientes de teste podem usar **0 hora**.
+- Aluno ou prestador podem abrir uma disputa somente enquanto a janela de retenção estiver ativa.
+- Uma disputa ativa muda a reserva para `DISPUTED` e bloqueia atomicamente qualquer repasse ainda não pago.
+- Sem disputa ativa, o processador idempotente cria uma transferência Stripe Connect após o vencimento, sem ação do Admin.
+- A outra parte pode responder à disputa; o prazo operacional inicial de resposta é 48 horas.
+- Aluno e prestador podem anexar até 10 imagens ou PDFs de até 10 MB cada como evidência. Os arquivos ficam em storage privado e são acessados somente por URL assinada temporária pelos participantes e pelo Admin autorizado.
+- A decisão administrativa pode liberar o repasse, realizar reembolso integral/parcial, determinar reagendamento ou encerrar sem efeito financeiro.
+- Chargeback Stripe é uma contestação financeira externa e permanece separado da disputa operacional da aula.
+
 - *Nota Legal:* Direitos legais obrigatórios do consumidor aplicáveis (`LEGAL_OVERRIDE`) prevalecem sobre esta política comercial.
 
 

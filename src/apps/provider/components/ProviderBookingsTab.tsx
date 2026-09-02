@@ -11,6 +11,8 @@ import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 interface ProviderBookingsTabProps {
   bookingFilterTab: 'upcoming' | 'today' | 'history';
   onFilterTabChange: (tab: 'upcoming' | 'today' | 'history') => void;
+  bookingQuickFilter: 'all' | 'confirmed' | 'in_progress' | 'completed' | 'disputed' | 'cancelled';
+  onQuickFilterChange: (filter: ProviderBookingsTabProps['bookingQuickFilter']) => void;
   filteredBookings: Booking[];
   actionSuccessMessage: string | null;
   actionErrorMessage: string | null;
@@ -30,6 +32,8 @@ interface ProviderBookingsTabProps {
 export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
   bookingFilterTab,
   onFilterTabChange,
+  bookingQuickFilter,
+  onQuickFilterChange,
   filteredBookings,
   actionSuccessMessage,
   actionErrorMessage,
@@ -79,6 +83,17 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
         ]}
         className="mazzi-segmented"
       />
+
+      <div className="flex flex-wrap justify-center gap-2" aria-label="Filtros rápidos de aulas">
+        {(bookingFilterTab === 'history'
+          ? [{ value: 'all' as const, label: 'Todas' }, { value: 'completed' as const, label: 'Concluídas' }, { value: 'disputed' as const, label: 'Em contestação' }, { value: 'cancelled' as const, label: 'Canceladas' }]
+          : [{ value: 'all' as const, label: 'Todas' }, { value: 'confirmed' as const, label: 'Confirmadas' }, { value: 'in_progress' as const, label: 'Em andamento' }]
+        ).map((option) => (
+          <ButtonBase key={option.value} type="button" onClick={() => onQuickFilterChange(option.value)} aria-pressed={bookingQuickFilter === option.value} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${bookingQuickFilter === option.value ? 'bg-[var(--mazzi-dark)] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+            {option.label}
+          </ButtonBase>
+        ))}
+      </div>
 
       {/* Bookings List or States */}
       {isRefreshing ? (

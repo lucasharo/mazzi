@@ -141,7 +141,7 @@ Deno.serve(async (request) => {
   if (!Number.isSafeInteger(cents) || cents <= 0 || cents !== Number(booking.total_in_cents)) return reply(409, { message: "O valor deste pagamento é inválido." });
   if (booking.hold_expires_at && new Date(booking.hold_expires_at).getTime() <= Date.now()) return reply(409, { message: "O código Pix não pode mais ser criado porque o prazo da reserva terminou." });
 
-  const reservationExpiration = booking.hold_expires_at || new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  const reservationExpiration = booking.hold_expires_at || new Date(Date.now() + 10 * 60 * 1000).toISOString();
   const expirationDate = new Date(new Date(reservationExpiration).getTime() - 20 * 1000);
   if (expirationDate.getTime() <= Date.now()) return reply(409, { message: "O código Pix não pode mais ser criado porque o prazo da reserva terminou." });
   const expiration = expirationDate.toISOString();

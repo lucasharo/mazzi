@@ -496,6 +496,9 @@ export interface Booking {
   idempotencyKey?: string;
   priceInCents: number;
   platformFeeInCents: number;
+  gatewayFeeInCents?: number;
+  paymentStatus?: MazziPaymentStatus;
+  paymentPaidAt?: string;
   totalInCents: number;
   createdAt: string;
   updatedAt?: string;
@@ -570,6 +573,8 @@ export interface Payment {
   pixQrCode?: string; // PIX "Copia e Cola" string
   pixQrCodeBase64?: string; // QR code image representation
   pixExpiresAt?: string; // ISO 8601 UTC timestamp
+  paymentStartedAt?: string;
+  paymentProcessingUntil?: string;
   stripeClientSecret?: string; // Client secret scoped to the authenticated payer
   cardLast4?: string;
   cardBrand?: string;
@@ -603,7 +608,7 @@ export interface Payout {
   bookingId: string;
   amountInCents: number;
   status: PayoutStatus;
-  scheduledReleaseAt: string; // ISO 8601 UTC (completed_at + 24h safety period)
+  scheduledReleaseAt: string; // ISO 8601 UTC (completed_at + configured safety period; 72h by default)
   releasedAt?: string;
   externalPayoutId?: string;
   idempotencyKey: string;
@@ -611,8 +616,8 @@ export interface Payout {
   platformFeeInCents?: number;
   gatewayFeeInCents?: number;
   gatewayFeeSource?: 'GATEWAY_RESPONSE' | 'CONFIGURED_ESTIMATE';
-  transferMethod?: 'MANUAL_PIX';
-  destinationKeyType?: 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'RANDOM';
+  transferMethod?: 'MANUAL_PIX' | 'MANUAL_BANK_ACCOUNT' | 'STRIPE_CONNECT';
+  destinationKeyType?: 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'RANDOM' | 'BANK_ACCOUNT' | 'STRIPE_ACCOUNT';
   destinationKey?: string;
   destinationKeyMasked?: string;
   providerName?: string;
@@ -624,6 +629,55 @@ export interface Payout {
   failureReason?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type BookingDisputeStatus = 'OPEN' | 'AWAITING_STUDENT_RESPONSE' | 'AWAITING_PROVIDER_RESPONSE' | 'UNDER_REVIEW' | 'RESOLVED' | 'CANCELLED';
+export type BookingDisputeReason = 'PROVIDER_NO_SHOW' | 'STUDENT_NO_SHOW' | 'LESSON_NOT_DELIVERED' | 'TIME_MISMATCH' | 'MEETING_POINT_MISMATCH' | 'SERVICE_MISMATCH' | 'SAFETY_CONCERN' | 'OTHER';
+export type BookingDisputeResolution = 'NO_ACTION' | 'FULL_REFUND' | 'PARTIAL_REFUND' | 'RELEASE_PAYOUT' | 'RESCHEDULE';
+export type BookingDisputeMessageType = 'DESCRIPTION' | 'RESPONSE' | 'INFORMATION_REQUEST';
+
+export interface BookingDisputeMessage {
+  id: string;
+  disputeId: string;
+  authorId?: string;
+  authorRole: 'STUDENT' | 'PROVIDER' | 'ADMIN';
+  type: BookingDisputeMessageType;
+  content: string;
+  createdAt: string;
+}
+
+export interface BookingDispute {
+  id: string;
+  bookingId: string;
+  openedBy: string;
+  openedByRole: 'STUDENT' | 'PROVIDER';
+  reasonCode: BookingDisputeReason;
+  description: string;
+  status: BookingDisputeStatus;
+  responseBy?: string;
+  responseText?: string;
+  respondedAt?: string;
+  resolutionCode?: BookingDisputeResolution;
+  resolutionNotes?: string;
+  refundAmountInCents?: number;
+  responseDueAt: string;
+  informationRequest?: string;
+  messages?: BookingDisputeMessage[];
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookingDisputeEvidence {
+  id: string;
+  disputeId: string;
+  uploadedBy: string;
+  storagePath: string;
+  evidenceType: 'IMAGE' | 'DOCUMENT' | 'LOCATION' | 'OTHER';
+  originalName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
 }
 
 export type PixKeyType = 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'RANDOM';
@@ -810,7 +864,8 @@ export type ProductAnalyticsEventName =
   | 'PROVIDER_SEARCH'
   | 'PROVIDER_PROFILE_VIEW'
   | 'AVAILABLE_SLOTS_VIEW'
-  | 'CHECKOUT_STARTED';
+  | 'CHECKOUT_STARTED'
+  | 'CHECKOUT_CANCELLED';
 
 export interface AnalyticsPeriod {
   from: string;
@@ -866,6 +921,7 @@ export interface AdminAnalyticsSummary {
     provider_profile_views: number;
     available_slots_views: number;
     checkout_started: number;
+    checkout_cancelled: number;
   };
 }
 

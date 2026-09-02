@@ -29,7 +29,11 @@ O ambiente DEV pode executar chamadas com credenciais de teste. Não há autoriz
 
 - O gateway é selecionado por `VITE_PAYMENT_GATEWAY_PROVIDER=fake|stripe`; `fake` continua sendo o padrão seguro.
 - A criação do Pix é online, mas a confirmação é posterior: o aluno permanece em `Aguardando pagamento` até o webhook assinado ou a atualização manual consultar o status autoritativo.
+- A cotação continua encerrando novas tentativas no prazo configurado (10 minutos no DEV). Se o pagamento for iniciado antes desse limite, o backend estende atomicamente o bloqueio do horário por cinco minutos para absorver atraso do gateway; `payment_started_at` e `payment_processing_until` registram essa janela.
+- Se a confirmação chegar depois da janela de processamento, a reserva não é reativada. O webhook registra o pagamento tardio e solicita o reembolso integral com chave de idempotência; a transação local só é marcada como reembolsada depois da confirmação do gateway.
 - O webhook Stripe configurado para esta integração recebe eventos de `checkout.session.*`, `payment_intent.*`, reembolsos e disputas. A assinatura é validada antes de qualquer alteração local.
+- Repasses usam Stripe Connect com cobrança e transferência separadas. A transferência é criada somente após a aula concluída, vencimento da retenção configurável (72h por padrão) e ausência de disputa ativa.
+- O processador de repasses usa chave de idempotência por reserva e execução periódica via Supabase Cron + Edge Function. Uma disputa aberta dentro da retenção bloqueia o payout no mesmo fluxo transacional.
 - O backend valida valor em centavos, aluno/reserva, expiração, assinatura e idempotência antes de confirmar a reserva.
 - O PRO cadastra sua conta bancária no próprio app. O Admin vê repasses somente de reservas pagas e concluídas e registra o repasse manual com referência. Chaves Pix cadastradas antes desta mudança permanecem legíveis apenas como legado.
 - Split automático, OAuth e transferência Pix automática continuam fora desta entrega.
@@ -81,11 +85,88 @@ export interface PaymentGateway {
 - Total Pago pelo Aluno (`total_in_cents`): valor final congelado na cotação/reserva.
 - Repasse Líquido ao Fornecedor: total bruto menos taxa do Stripe e comissão MAZZI efetiva, com limite combinado configurável.
 
+### Taxa real do checkout e comissão efetiva da MAZZI
+
+- A taxa da empresa de checkout não é calculada pelo percentual estimado da configuração. Após a confirmação, o webhook do Stripe consulta a tarifa real da cobrança no `balance_transaction` e grava o valor em `payments.gateway_fee_in_cents`.
+- O teto combinado continua sendo o percentual configurado em `max_total_fee_percentage` (10% no padrão de desenvolvimento).
+- A comissão efetiva da MAZZI é calculada em centavos como `teto combinado - taxa real do checkout`, respeitando também a comissão congelada na reserva:
+
+```text
+taxa_mazzi_efetiva = min(
+  platform_fee_in_cents,
+  max(0, total_in_cents × max_total_fee_percentage / 100 - gateway_fee_in_cents)
+)
+líquido_prestador = total_in_cents - gateway_fee_in_cents - taxa_mazzi_efetiva
+```
+
+O frontend não exibe a taxa estimada como se fosse a taxa real. Enquanto o gateway ainda não retornar a tarifa, o detalhamento informa que o valor será definido após o pagamento.
+
 ## Ciclo de Vida do Repasse (Payout)
 1. `PENDING`: Criado quando a reserva é paga e ainda aguarda o período de segurança.
 2. `AVAILABLE`: Liberado automaticamente 24h após a aula ter status `COMPLETED`.
 3. `PAID`: Repasse manual confirmado pelo Admin com referência.
 4. `BLOCKED`: Destino Pix ausente ou bloqueio financeiro que exige tratamento do Admin.
+
+## Fundo de mediação e reserva prudencial para contestações
+
+> Status: `REQUIRES_REGULATORY_VALIDATION` — política financeira documentada, ainda não autorizada para produção.
+
+- Existem dois mecanismos financeiros distintos e eles não podem ser tratados como um único saldo:
+  1. **Fundo de mediação / goodwill:** dinheiro próprio da MAZZI destinado a acordos voluntários quando aluno e prestador têm responsabilidade parcial e a plataforma decide não prejudicar integralmente nenhum dos lados.
+  2. **Reserva de exposição financeira:** cobertura para reembolsos pendentes, chargebacks, tarifas, saldos negativos e demais obrigações vinculadas ao volume transacionado.
+
+### Regra percentual do fundo de mediação
+
+- O aporte mensal de referência deve ficar entre **2% e 5% da receita líquida da MAZZI** (`take rate`/comissão efetivamente reconhecida), e não entre 2% e 5% do GMV total.
+- Para a fase inicial, o parâmetro prudencial proposto é **5% da receita líquida mensal**, sujeito a aprovação financeira e jurídica. O percentual poderá ser reduzido somente depois de existir histórico estatisticamente útil.
+- Como o volume inicial pode ser baixo, o percentual isolado não é suficiente. Antes da operação real, a MAZZI deve constituir um saldo inicial capaz de cobrir pelo menos o pior caso de mediação previsto pela política comercial.
+- O dimensionamento deve considerar uma incidência grave estimada entre **1% e 3% das aulas**, multiplicada pelo custo médio que a MAZZI assume em cada acordo:
+
+```text
+aporte_mensal_goodwill = receita_líquida_mazzi × percentual_goodwill
+
+perda_esperada_mensal = quantidade_de_aulas
+                      × taxa_de_incidentes_graves
+                      × custo_médio_assumido_por_incidente
+
+meta_do_fundo = máximo(
+  saldo_mínimo_para_o_pior_caso_aprovado,
+  perdas_esperadas_do_horizonte_de_segurança
+)
+```
+
+- O Admin deve permitir configurar `percentual_goodwill`, saldo mínimo, teto operacional por caso e horizonte de segurança. Todas as grandezas monetárias permanecem em centavos inteiros.
+- Um teto por disputa pode limitar a **cortesia adicional** assumida pela MAZZI. Casos acima do teto exigem análise administrativa reforçada. Esse teto nunca restringe reembolso, garantia ou direito obrigatório previsto em lei, contrato ou regra do meio de pagamento (`LEGAL_OVERRIDE`).
+- Limites de frequência por usuário podem ser usados somente contra abuso do benefício voluntário. Eles não podem impedir reclamações, chargebacks legítimos ou direitos legais do consumidor.
+
+### Reserva de exposição financeira e chargebacks
+
+- A Stripe não estabelece percentual universal para chargebacks. Valor e prazo dependem da exposição, taxa histórica de reembolsos/contestações, ticket médio, prazo do serviço e tolerância a risco.
+- Esta reserva não pode ser calculada apenas sobre a comissão da MAZZI, pois uma contestação bancária pode alcançar o valor integral da transação, tarifas não recuperáveis e custos operacionais.
+- A reserva de exposição deve ser calculada em centavos inteiros pela fórmula:
+
+```text
+reserva_de_exposição = exposição_conhecida + buffer_de_risco
+
+exposição_conhecida = disputas_abertas
+                    + reembolsos_pendentes
+                    + chargebacks_não_recuperados
+                    + demais_saldos_negativos_de_responsabilidade_da_plataforma
+
+buffer_de_risco = percentual_de_reserva × GMV_ainda_exposto
+```
+
+- `GMV_ainda_exposto` representa pagamentos que ainda podem gerar reembolso ou contestação dentro da janela aplicável.
+- Saques, distribuição de lucros ou retirada de caixa só podem usar o **caixa livre**, definido como saldo disponível menos fundo de mediação, reserva de exposição, obrigações tributárias, valores de terceiros, pagamentos pendentes e capital de giro mínimo.
+- A documentação da Stripe apresenta **30% por 30 dias** somente como exemplo de uma conta com determinada tolerância a risco. Também apresenta alternativas como 20% por 45 dias ou 40% por 10 dias. Esses números são ilustrações de calibragem, não recomendação universal nem percentual aprovado para a MAZZI.
+- O percentual definitivo, saldo inicial e teto por mediação serão aprovados após simulação com ticket médio, comissão, volume mensal e taxa observada de incidentes. Até essa aprovação, o sistema não deve automatizar retirada de caixa nem concessão de goodwill.
+- A política deve constar nos Termos de Uso do PRO quando afetar valores, prazo de repasse ou retenções.
+
+Referências primárias:
+
+- [Stripe — reservas em contas conectadas](https://docs.stripe.com/connect/connected-account-reserves)
+- [Stripe — disputas em plataformas Connect](https://docs.stripe.com/connect/disputes)
+- [Stripe — gestão de risco e responsabilidade](https://docs.stripe.com/connect/risk-management)
 
 ## Critérios obrigatórios para ativação futura
 

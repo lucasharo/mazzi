@@ -25,10 +25,11 @@ export interface PlatformConfiguration {
   platformFeeDefaultPercentage: number; // Default: 1
   mercadoPagoFeePercentage: number; // Default: 5, used only by Admin payout calculations
   maxTotalFeePercentage: number; // Default: 10, MAZZI + gateway cap
-  payoutSafetyPeriodHours: number; // Default: 24
+  payoutSafetyPeriodHours: number; // Default: 72
   searchRadiusDefaultsKm: number; // Default: 15
   checkInWindowBeforeMinutes: number; // Default: 15
   checkInWindowAfterMinutes: number; // Default: 60
+  contestationResponseHours: number; // Default: 72
   updatedAt: string;
   updatedBy?: string;
 }
@@ -41,10 +42,11 @@ export const DEFAULT_PLATFORM_CONFIGURATION: PlatformConfiguration = {
   platformFeeDefaultPercentage: 1,
   mercadoPagoFeePercentage: 5,
   maxTotalFeePercentage: 10,
-  payoutSafetyPeriodHours: 24,
+  payoutSafetyPeriodHours: 72,
   searchRadiusDefaultsKm: 15,
   checkInWindowBeforeMinutes: 15,
   checkInWindowAfterMinutes: 60,
+  contestationResponseHours: 72,
   updatedAt: '2026-08-15T00:00:00.000Z',
   updatedBy: 'system_initializer',
 };

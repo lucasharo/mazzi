@@ -25,6 +25,7 @@ import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
 import { UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { formatTimeBR } from '../../../lib/date-format';
+import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
 
 interface ProviderBookingDetailsModalProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ interface ProviderBookingDetailsModalProps {
   onCancelBooking: (booking: Booking) => void;
   isCompleting: boolean;
   canCancelBooking?: (booking: Booking) => boolean;
+  currentUserId?: string;
 }
 
 export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalProps> = ({
@@ -50,6 +52,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   onCancelBooking,
   isCompleting,
   canCancelBooking,
+  currentUserId,
 }) => {
   const [isCheckingIn, setIsCheckingIn] = React.useState(false);
   const [checkInError, setCheckInError] = React.useState<string | null>(null);
@@ -141,13 +144,14 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         <SecondaryButton
           type="button"
           size="sm"
-          className={`${canCancel ? 'w-1/2' : 'w-full'} rounded-2xl border-slate-300 bg-white font-bold text-slate-700 shadow-sm transition-all hover:shadow-md`}
+          className={`${canCancel || booking.status === 'DISPUTED' ? 'min-w-0 flex-1' : 'w-full'} rounded-2xl border-slate-300 bg-white font-bold text-slate-700 shadow-sm transition-all hover:shadow-md`}
           onClick={() => onOpenChat(booking)}
           leftIcon={<MessageSquare className="h-4 w-4 text-slate-500" aria-hidden="true" />}
           aria-label="Abrir conversa no chat sobre esta reserva"
         >
           Mensagens
         </SecondaryButton>
+        {(booking.status === 'COMPLETED' || booking.status === 'DISPUTED') && <BookingDisputePanel booking={booking} currentUserId={currentUserId} display="action" />}
         {canCancel && (
           <Button
             type="button"
@@ -300,6 +304,8 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             <p className="pl-5 text-[11px] font-medium text-rose-700">{booking.cancellationReason}</p>
           </div>
         )}
+
+        <BookingDisputePanel booking={booking} currentUserId={currentUserId} />
 
       </div>
     </Modal>

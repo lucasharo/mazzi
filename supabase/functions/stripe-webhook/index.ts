@@ -81,6 +81,59 @@ function asCents(value: unknown) {
   return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
 }
 
+function asNonNegativeCents(value: unknown) {
+  const cents = Number(value);
+  return Number.isSafeInteger(cents) && cents >= 0 ? cents : null;
+}
+
+async function getStripeJson(stripeSecretKey: string, path: string, params?: URLSearchParams) {
+  const query = params?.toString();
+  try {
+    const response = await fetch(`https://api.stripe.com/v1/${path}${query ? `?${query}` : ""}`, {
+      headers: { Authorization: `Bearer ${stripeSecretKey}` },
+    });
+    const body = await response.json().catch(() => ({}));
+    return response.ok ? asObject(body) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getStripeGatewayFeeInCents(
+  stripeSecretKey: string,
+  eventObject: Record<string, any>,
+  paymentIntentId: string,
+) {
+  const expandedBalanceTransaction = asObject(asObject(eventObject.balance_transaction));
+  const expandedFee = asNonNegativeCents(expandedBalanceTransaction.fee);
+  if (expandedFee !== null) return expandedFee;
+
+  const balanceTransactionId = typeof eventObject.balance_transaction === "string"
+    ? eventObject.balance_transaction
+    : "";
+  if (/^txn_[A-Za-z0-9]+$/.test(balanceTransactionId)) {
+    const balanceTransaction = await getStripeJson(stripeSecretKey, `balance_transactions/${balanceTransactionId}`);
+    const fee = asNonNegativeCents(balanceTransaction?.fee);
+    if (fee !== null) return fee;
+  }
+
+  if (!/^pi_[A-Za-z0-9]+$/.test(paymentIntentId)) return null;
+  const params = new URLSearchParams();
+  params.append("expand[]", "latest_charge.balance_transaction");
+  // Stripe can expose the successful PaymentIntent before its balance
+  // transaction is available. Retry briefly so a successful payment does not
+  // become permanently stuck without the real checkout fee.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const paymentIntent = await getStripeJson(stripeSecretKey, `payment_intents/${paymentIntentId}`, params);
+    const latestCharge = asObject(paymentIntent?.latest_charge);
+    const balanceTransaction = asObject(latestCharge.balance_transaction);
+    const fee = asNonNegativeCents(balanceTransaction.fee);
+    if (fee !== null) return fee;
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return null;
+}
+
 function mergeMetadata(metadata: unknown, values: Record<string, unknown>) {
   return { ...asObject(metadata), ...values };
 }
@@ -109,6 +162,60 @@ function getRefundDetails(eventType: string, object: Record<string, any>) {
     id: String(object.id || ""),
     amount: asCents(object.amount),
   };
+}
+
+async function refundLatePayment(
+  service: any,
+  stripeSecretKey: string,
+  paymentId: string,
+  amountInCents: number,
+  paymentIntentId: string,
+) {
+  if (!/^pi_[A-Za-z0-9]+$/.test(paymentIntentId)) {
+    return "Pagamento tardio sem PaymentIntent válido para estorno.";
+  }
+
+  const idempotencyKey = `mazzi-late-payment-refund:${paymentId}`;
+  const form = new URLSearchParams();
+  form.set("payment_intent", paymentIntentId);
+  form.set("amount", String(amountInCents));
+
+  let response: Response;
+  let result: Record<string, any>;
+  try {
+    response = await fetch("https://api.stripe.com/v1/refunds", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${stripeSecretKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: form,
+    });
+    result = await response.json().catch(() => ({}));
+  } catch {
+    return "Não foi possível solicitar o estorno do pagamento tardio.";
+  }
+
+  if (!response.ok || !result.id) {
+    console.error("STRIPE_LATE_PAYMENT_REFUND_FAILED", {
+      status: response.status,
+      paymentId,
+      code: result?.error?.code || null,
+    });
+    return result?.error?.message || "O Stripe não autorizou o estorno do pagamento tardio.";
+  }
+  if (String(result.status || "").toLowerCase() !== "succeeded") {
+    return "O estorno do pagamento tardio ainda não foi concluído pelo Stripe.";
+  }
+
+  const { error } = await service.rpc("finalize_late_payment_refund", {
+    p_payment_id: paymentId,
+    p_amount_in_cents: amountInCents,
+    p_idempotency_key: idempotencyKey,
+    p_external_refund_id: String(result.id),
+  });
+  return error ? error.message : null;
 }
 
 Deno.serve(async (request) => {
@@ -212,13 +319,13 @@ Deno.serve(async (request) => {
   const paymentQuery = paymentIdFromMetadata
     ? service
         .from("payments")
-        .select("id, amount_in_cents, status, booking_id, gateway_provider, metadata")
+        .select("id, amount_in_cents, status, booking_id, gateway_provider, gateway_fee_in_cents, metadata")
         .eq("id", paymentIdFromMetadata)
         .maybeSingle()
     : externalPaymentId
       ? service
           .from("payments")
-          .select("id, amount_in_cents, status, booking_id, gateway_provider, metadata")
+          .select("id, amount_in_cents, status, booking_id, gateway_provider, gateway_fee_in_cents, metadata")
           .eq("external_transaction_id", externalPaymentId)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null });
@@ -277,8 +384,11 @@ Deno.serve(async (request) => {
   const checkoutSessionSucceeded =
     (eventType === "checkout.session.completed" || eventType === "checkout.session.async_payment_succeeded") &&
     (object.payment_status === "paid" || eventType === "checkout.session.async_payment_succeeded");
+  const paymentSucceededEvent = checkoutSessionSucceeded ||
+    eventType === "payment_intent.succeeded" ||
+    eventType === "charge.succeeded";
 
-  if (checkoutSessionSucceeded || eventType === "payment_intent.succeeded") {
+  if (paymentSucceededEvent) {
     const amount = asCents(
       eventType.startsWith("checkout.session.")
         ? object.amount_total
@@ -287,14 +397,67 @@ Deno.serve(async (request) => {
     if (amount !== localPayment.amount_in_cents) {
       processingError = "Valor do PaymentIntent divergente do pagamento local.";
     } else {
-      const { error } = await service.rpc("confirm_booking_payment", {
-        p_payment_id: localPayment.id,
-        p_external_payment_id: String(object.id || externalPaymentId || ""),
-        p_paid_at: object.created
-          ? new Date(Number(object.created) * 1000).toISOString()
-          : new Date().toISOString(),
+      const paymentIntentId = String(externalPaymentId || object.payment_intent || object.id || "");
+      const gatewayFeeInCents = await getStripeGatewayFeeInCents(stripeSecretKey, object, paymentIntentId);
+      const paymentMetadata = mergeMetadata(eventMetadata, {
+        stripe_gateway_fee_in_cents: gatewayFeeInCents,
       });
-      if (error) processingError = error.message;
+      const paymentUpdate: Record<string, unknown> = {
+        metadata: paymentMetadata,
+        updated_at: new Date().toISOString(),
+      };
+      if (gatewayFeeInCents !== null) paymentUpdate.gateway_fee_in_cents = gatewayFeeInCents;
+      const { error: feePersistenceError } = await service
+        .from("payments")
+        .update(paymentUpdate)
+        .eq("id", localPayment.id);
+      if (feePersistenceError) processingError = feePersistenceError.message;
+
+      const alreadyMarkedLate = Boolean(localPayment.metadata?.late_payment);
+      let latePayment = alreadyMarkedLate;
+
+      if (!processingError && !alreadyMarkedLate) {
+        const { data: confirmation, error } = await service.rpc("confirm_booking_payment", {
+          p_payment_id: localPayment.id,
+          p_external_payment_id: paymentIntentId,
+          p_paid_at: object.created
+            ? new Date(Number(object.created) * 1000).toISOString()
+            : new Date().toISOString(),
+        });
+        if (error) {
+          const lateError = [
+            "BOOKING_HOLD_EXPIRED",
+            "BOOKING_NOT_PENDING_PAYMENT",
+            "PAYMENT_PROCESSING_WINDOW_EXPIRED",
+          ].some((code) => error.message.includes(code));
+          if (!lateError) {
+            processingError = error.message;
+          } else {
+            const { data: lateRecord, error: lateRecordError } = await service.rpc("record_late_payment", {
+              p_payment_id: localPayment.id,
+              p_external_payment_id: paymentIntentId,
+              p_paid_at: object.created
+                ? new Date(Number(object.created) * 1000).toISOString()
+                : new Date().toISOString(),
+            });
+            if (lateRecordError) processingError = lateRecordError.message;
+            else latePayment = Boolean(lateRecord?.late_payment);
+          }
+        } else {
+          latePayment = Boolean(confirmation?.late_payment);
+        }
+      }
+
+      if (!processingError && latePayment) {
+        const refundError = await refundLatePayment(
+          service,
+          stripeSecretKey,
+          localPayment.id,
+          localPayment.amount_in_cents,
+          paymentIntentId,
+        );
+        if (refundError) processingError = refundError;
+      }
     }
   } else if (eventType === "checkout.session.async_payment_failed") {
     const { error } = await service

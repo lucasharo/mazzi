@@ -16,6 +16,7 @@ import {
   LinkAccountResult,
   SettlementStatusResult,
 } from './gateway-interface';
+import { DEFAULT_HOLD_EXPIRATION_MINUTES } from '../booking';
 import { PaymentGatewayType, Provider, MazziPaymentStatus } from '../../types';
 
 export class DevelopmentPaymentGateway implements PaymentGateway {
@@ -72,7 +73,7 @@ export class DevelopmentPaymentGateway implements PaymentGateway {
       method: request.method,
       pixQrCode,
       pixQrCodeBase64,
-      pixExpiresAt: request.expirationTimestampUtc || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      pixExpiresAt: request.expirationTimestampUtc || new Date(Date.now() + DEFAULT_HOLD_EXPIRATION_MINUTES * 60 * 1000).toISOString(),
       cardLast4,
       cardBrand,
     };

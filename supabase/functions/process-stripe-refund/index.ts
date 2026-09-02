@@ -40,7 +40,7 @@ Deno.serve(async (request) => {
     .from("payments")
     .select("id, booking_id, amount_in_cents, status, gateway_provider, external_transaction_id, metadata")
     .eq("booking_id", payload.bookingId)
-    .eq("gateway_provider", "stripe")
+    .ilike("gateway_provider", "stripe%")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -48,13 +48,18 @@ Deno.serve(async (request) => {
   if (!payment) return reply(404, { message: "Pagamento Stripe não encontrado." });
   if (!["PAID", "PARTIALLY_REFUNDED", "REFUNDED"].includes(payment.status)) return reply(409, { message: "Este pagamento não está disponível para estorno." });
 
-  const amountInCents = Number(payment.amount_in_cents);
+  const { data: previousRefunds, error: refundsError } = await service.from("refunds").select("amount_in_cents").eq("payment_id", payment.id).eq("status", "PROCESSED");
+  if (refundsError) return reply(500, { message: "Não foi possível calcular o saldo reembolsável." });
+  const alreadyRefunded = (previousRefunds || []).reduce((sum, row) => sum + Number(row.amount_in_cents || 0), 0);
+  const refundableBalance = Number(payment.amount_in_cents) - alreadyRefunded;
+  const amountInCents = payload.amountInCents == null ? refundableBalance : Number(payload.amountInCents);
   const paymentIntentId = String(payment.external_transaction_id || payment.metadata?.stripe_payment_intent_id || "");
-  if (!/^pi_[A-Za-z0-9]+$/.test(paymentIntentId) || !Number.isSafeInteger(amountInCents) || amountInCents <= 0) {
+  if (!/^pi_[A-Za-z0-9]+$/.test(paymentIntentId) || !Number.isSafeInteger(amountInCents) || amountInCents <= 0 || amountInCents > refundableBalance) {
     return reply(409, { message: "O pagamento ainda não possui dados válidos para estorno." });
   }
 
-  const idempotencyKey = `mazzi-stripe-refund:${payment.id}:${amountInCents}`;
+  const disputeId = typeof payload.disputeId === "string" ? payload.disputeId : "admin";
+  const idempotencyKey = `mazzi-stripe-refund:${payment.id}:${disputeId}:${amountInCents}`;
   const form = new URLSearchParams();
   form.set("payment_intent", paymentIntentId);
   form.set("amount", String(amountInCents));

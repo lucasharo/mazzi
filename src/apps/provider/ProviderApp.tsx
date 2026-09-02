@@ -111,6 +111,7 @@ export const ProviderApp: React.FC = () => {
   const bookingSnapshotRef = useRef<string | null>(null);
   const [managementSubTab, setManagementSubTab] = useState<'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account'>('vehicles');
   const [bookingFilterTab, setBookingFilterTab] = useState<'upcoming' | 'today' | 'history'>('upcoming');
+  const [bookingQuickFilter, setBookingQuickFilter] = useState<'all' | 'confirmed' | 'in_progress' | 'completed' | 'disputed' | 'cancelled'>('all');
   const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions' | 'simulator'>('rules');
 
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -636,15 +637,16 @@ export const ProviderApp: React.FC = () => {
     if (bookingFilterTab === 'today') {
       return (
         TODAY_BOOKING_STATUSES.includes(b.status) &&
-        isBookingTodayInSaoPaulo(b)
+        isBookingTodayInSaoPaulo(b) && (bookingQuickFilter === 'all' || (bookingQuickFilter === 'confirmed' && b.status === 'CONFIRMED') || (bookingQuickFilter === 'in_progress' && b.status === 'IN_PROGRESS'))
       );
     }
     if (bookingFilterTab === 'upcoming') {
       if (ended || b.status === 'EXPIRED') return false;
-      return b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS';
+      return (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') && (bookingQuickFilter === 'all' || (bookingQuickFilter === 'confirmed' && b.status === 'CONFIRMED') || (bookingQuickFilter === 'in_progress' && b.status === 'IN_PROGRESS'));
     }
     if (bookingFilterTab === 'history') {
-      return getStudentBookingSection(b.status, b) === 'HISTORY' || ended;
+      const matchesQuick = bookingQuickFilter === 'all' || (bookingQuickFilter === 'completed' && b.status === 'COMPLETED') || (bookingQuickFilter === 'disputed' && b.status === 'DISPUTED') || (bookingQuickFilter === 'cancelled' && ['CANCELLED_BY_STUDENT', 'CANCELLED_BY_PROVIDER', 'NO_SHOW_STUDENT', 'NO_SHOW_PROVIDER', 'REFUNDED', 'PARTIALLY_REFUNDED', 'EXPIRED'].includes(b.status));
+      return matchesQuick && (getStudentBookingSection(b.status, b) === 'HISTORY' || ended);
     }
     return false;
   });
@@ -1504,7 +1506,9 @@ status: 'IN_REVIEW',
         {activeTab === 'bookings' && (
           <ProviderBookingsTab
             bookingFilterTab={bookingFilterTab}
-            onFilterTabChange={setBookingFilterTab}
+            onFilterTabChange={(tab) => { setBookingFilterTab(tab); setBookingQuickFilter('all'); }}
+            bookingQuickFilter={bookingQuickFilter}
+            onQuickFilterChange={(filter) => setBookingQuickFilter(filter)}
             filteredBookings={orderedFilteredBookings}
             actionSuccessMessage={bookingActionSuccess}
             actionErrorMessage={bookingActionError}
@@ -1630,6 +1634,7 @@ status: 'IN_REVIEW',
         isOpen={!!selectedBooking}
         onClose={() => setSelectedBooking(null)}
         booking={selectedBooking}
+        currentUserId={user?.id}
         onOpenChat={(b) => {
           setSelectedBooking(null);
           setSelectedBookingForChat(b);

@@ -83,8 +83,10 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
             </div>
           ) : isSuccessPresentation ? (
             <>
-              <div className="flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-emerald-50 text-emerald-600">
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-emerald-50 text-emerald-600">
                 <CheckCircle2 className="h-10 w-10" strokeWidth={2.5} aria-hidden="true" />
+                <Sparkles className="absolute -right-2 -top-2 h-4 w-4 fill-emerald-300 text-emerald-50" aria-hidden="true" />
+                <Sparkles className="absolute -bottom-2 -left-2 h-3.5 w-3.5 fill-emerald-200 text-emerald-50" aria-hidden="true" />
               </div>
               <span className="mt-4 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-700">
                 <CheckCircle2 className="h-3 w-3" aria-hidden="true" />

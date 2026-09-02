@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import {
-  AlertTriangle, BarChart3, Calendar, Car, CreditCard, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
+  AlertTriangle, BarChart3, Calendar, Car, CreditCard, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, ShieldAlert, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { dbService } from '../../lib/db-service';
 import {
@@ -41,6 +41,7 @@ import {
   UsersTab,
   AuditTab,
   SettingsTab,
+  AdminDisputesPanel,
 } from './AdminComponents';
 import { AdminAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
@@ -106,7 +107,7 @@ export const AdminApp: React.FC = () => {
   };
 
   // Navigation State
-  const [activeTab, setActiveTab] = useMobileAppRoute('admin', 'dashboard', ['dashboard', 'providers', 'compliance', 'vehicles', 'bookings', 'financial', 'analytics', 'users', 'audit', 'settings', 'profile']);
+  const [activeTab, setActiveTab] = useMobileAppRoute('admin', 'dashboard', ['dashboard', 'providers', 'compliance', 'vehicles', 'bookings', 'financial', 'disputes', 'analytics', 'users', 'audit', 'settings', 'profile']);
   const activeSkeletonMode = getAdminSkeletonMode(activeTab);
 
   const navigateAdminTab = (tab: string) => {
@@ -126,6 +127,7 @@ export const AdminApp: React.FC = () => {
   const [isRefreshingRealData, setIsRefreshingRealData] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [contentRefreshKey, setContentRefreshKey] = useState(0);
   const refreshAdminDataRef = useRef<() => void>(() => undefined);
 
   // Load once per authenticated session. Subsequent reloads are intentionally
@@ -169,6 +171,7 @@ export const AdminApp: React.FC = () => {
               if (item.value?.payout_safety_period_hours !== null && item.value?.payout_safety_period_hours !== undefined) mappedConfig.payoutSafetyPeriodHours = Number(item.value.payout_safety_period_hours);
               if (item.value?.search_radius_km !== null && item.value?.search_radius_km !== undefined) mappedConfig.searchRadiusDefaultsKm = Number(item.value.search_radius_km);
               if (item.value?.checkin_window_before_minutes !== null && item.value?.checkin_window_before_minutes !== undefined) mappedConfig.checkInWindowBeforeMinutes = Number(item.value.checkin_window_before_minutes);
+              if (item.value?.contestation_response_hours !== null && item.value?.contestation_response_hours !== undefined) mappedConfig.contestationResponseHours = Number(item.value.contestation_response_hours);
             }
           }
           setPlatformConfig(mappedConfig);
@@ -183,7 +186,10 @@ export const AdminApp: React.FC = () => {
         else setIsLoadingRealData(false);
       }
     }
-    refreshAdminDataRef.current = () => { void loadRealData(true); };
+    refreshAdminDataRef.current = () => {
+      setContentRefreshKey((current) => current + 1);
+      void loadRealData(true);
+    };
     void loadRealData();
   }, [user?.id]);
 
@@ -384,7 +390,9 @@ export const AdminApp: React.FC = () => {
       const persistedUpdates = Object.fromEntries(
         Object.entries(updates).filter(([, value]) => typeof value === 'number'),
       ) as Record<string, number>;
-      await dbService.updatePlatformConfigs(persistedUpdates);
+      const { contestationResponseHours, ...standardUpdates } = persistedUpdates;
+      if (Object.keys(standardUpdates).length > 0) await dbService.updatePlatformConfigs(standardUpdates);
+      if (contestationResponseHours !== undefined) await dbService.updateContestationResponseHours(contestationResponseHours);
       setPlatformConfig((current) => ({
         ...current,
         ...updates,
@@ -412,7 +420,7 @@ export const AdminApp: React.FC = () => {
     vehicles: 'Veículos',
     bookings: 'Reservas',
     financial: 'Financeiro',
-    analytics: 'Analytics',
+    analytics: 'Analítico',
     users: 'Usuários & Papéis',
     audit: 'Auditoria',
     settings: 'Configurações',
@@ -452,7 +460,8 @@ export const AdminApp: React.FC = () => {
           { id: 'vehicles', label: 'Veículos', icon: Car, count: vehicles.filter((v) => isVehicleAwaitingAdminReview(v.status)).length },
           { id: 'bookings', label: 'Reservas', icon: Calendar },
           { id: 'financial', label: 'Financeiro', icon: WalletCards },
-          { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+          { id: 'disputes', label: 'Contestações', icon: ShieldAlert },
+          { id: 'analytics', label: 'Analítico', icon: BarChart3 },
           { id: 'users', label: 'Usuários & Papéis', icon: Users },
           { id: 'audit', label: 'Auditoria', icon: ScrollText },
           { id: 'settings', label: 'Configurações', icon: Settings },
@@ -563,7 +572,7 @@ export const AdminApp: React.FC = () => {
           <BookingsTab
             bookings={bookings}
             auditLogs={auditLogs}
-            platformFeePercentage={platformConfig.platformFeeDefaultPercentage}
+            maxTotalFeePercentage={platformConfig.maxTotalFeePercentage}
           />
         )}
 
@@ -575,14 +584,16 @@ export const AdminApp: React.FC = () => {
             onProcessRefund={withActionLoading(handleProcessRefund)}
             isStripeGateway={getCheckoutGatewayProvider() === 'stripe'}
             isProductionEnvironment={isProductionEnvironment}
-            platformFeePercentage={platformConfig.platformFeeDefaultPercentage}
+            maxTotalFeePercentage={platformConfig.maxTotalFeePercentage}
             payouts={payouts}
             onMarkManualPayout={withActionLoading(handleMarkManualPayout)}
           />
         )}
 
+        {activeTab === 'disputes' && <AdminDisputesPanel bookings={bookings} refreshKey={contentRefreshKey} />}
+
         {activeTab === 'analytics' && (
-          <AdminAnalyticsPanel />
+          <AdminAnalyticsPanel refreshKey={contentRefreshKey} />
         )}
 
         {activeTab === 'users' && (

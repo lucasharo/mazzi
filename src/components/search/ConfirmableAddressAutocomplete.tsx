@@ -182,7 +182,7 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
             <AddressAutocomplete
               id={modalInputId}
               className="contents"
-              inputWrapperClassName="min-h-[74px] rounded-[28px] border border-[var(--mazzi-border)] bg-white px-4 pb-3 pl-[4.5rem] pr-24 pt-8 shadow-[0_12px_32px_rgba(32,33,38,0.08)] sm:px-5 sm:pb-4 sm:pl-[4.75rem] sm:pt-9"
+              inputWrapperClassName="min-h-[74px] rounded-[28px] border border-[var(--mazzi-border)] bg-white px-4 pb-3 pl-[4.5rem] pr-12 pt-8 shadow-[0_12px_32px_rgba(32,33,38,0.08)] sm:px-5 sm:pb-4 sm:pl-[4.75rem] sm:pr-14 sm:pt-9"
               inputLabel={<span className="pointer-events-none absolute left-[4.5rem] top-3 z-10 mazzi-field-label sm:left-[4.75rem] sm:top-3.5">Localização</span>}
               inputLeading={(
                 <ButtonBase

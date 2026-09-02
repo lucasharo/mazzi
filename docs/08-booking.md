@@ -5,7 +5,7 @@
 A plataforma MAZZI separa rigidamente a fase de **Cotação Comercial (`Quote`)** da fase de **Reserva Transacional de Calendário (`Booking Hold`)**.
 
 - **`Quote` (Cotação Comercial)**: Concongela preços, taxas e dados operacionais de uma aula por 10 minutos. **NÃO reserva horário na agenda**.
-- **`Booking Hold` (Reserva Transacional)**: Valida a proposta, executa a limpeza de holds expirados e insere uma reserva temporária no status `PENDING_PAYMENT` com trava atômica `TSTZRANGE` e restrições de exclusão no PostgreSQL (`EXCLUDE USING gist`). A cotação expira em 10 minutos; após criada, a retenção do horário fica em 31 minutos para atender ao prazo mínimo de 30 minutos do Pix do Mercado Pago.
+- **`Booking Hold` (Reserva Transacional)**: Valida a proposta, executa a limpeza de holds expirados e insere uma reserva temporária no status `PENDING_PAYMENT` com trava atômica `TSTZRANGE` e restrições de exclusão no PostgreSQL (`EXCLUDE USING gist`). A cotação e a retenção inicial do horário usam o mesmo vencimento configurado no Admin (10 minutos por padrão), inclusive para Pix e cartão. Quando o pagamento é iniciado antes desse vencimento, o horário permanece protegido por uma janela técnica adicional de processamento.
 
 ---
 
@@ -26,7 +26,7 @@ A plataforma MAZZI separa rigidamente a fase de **Cotação Comercial (`Quote`)*
 
 ### Máquina de Estados do Booking (`booking_status`)
 ```
-[PENDING_PAYMENT] -------- (Passaram 31 min de Hold sem Pix/Cartão) -------> [EXPIRED]
+[PENDING_PAYMENT] -------- (Passou o prazo configurado sem Pix/Cartão) ----> [EXPIRED]
    |
    +---------------------- (Falha de Pagamento) --------------------------> [PAYMENT_FAILED]
    |
@@ -47,6 +47,12 @@ A plataforma MAZZI separa rigidamente a fase de **Cotação Comercial (`Quote`)*
    +---> [NO_SHOW_STUDENT] / [NO_SHOW_PROVIDER]
    +---> [DISPUTED] ---> [REFUNDED] / [PARTIALLY_REFUNDED]
 ```
+
+### Janela de processamento do pagamento
+
+O prazo da cotação fecha o início de novas tentativas, mas não cancela uma tentativa já iniciada. Ao criar o pagamento, o backend registra `payments.payment_started_at` e `payments.payment_processing_until`, estende atomicamente o hold do booking por cinco minutos e mantém o horário bloqueado. O webhook assinado pode confirmar o pagamento durante essa janela, mesmo que a cotação já tenha vencido. Depois dela, a reserva não é reativada: o pagamento é registrado como tardio e o webhook solicita um reembolso idempotente.
+
+O navegador não é a fonte de confirmação: o retorno do checkout é apenas informativo; a confirmação depende do webhook/reconciliação server-side e de chave de idempotência.
 
 Quando o prazo de pagamento termina sem confirmação, `EXPIRED` é o status interno usado para liberar o horário. Na interface, essa situação é apresentada como **Pagamento não realizado**.
 

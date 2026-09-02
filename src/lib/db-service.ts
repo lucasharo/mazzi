@@ -28,8 +28,14 @@ import {
   AnalyticsPeriodPreset,
   PublicSearchProviderResult,
   Payout,
+  BookingDisputeMessage,
   PixDestination,
   BankAccount,
+  BookingDispute,
+  BookingDisputeEvidence,
+  BookingDisputeReason,
+  BookingDisputeResolution,
+  MazziPaymentStatus,
 } from '../types';
 import { normalizeComplianceStatus } from '../domain/compliance-status';
 import { formatDateBR, formatTimeBR } from './date-format';
@@ -38,6 +44,56 @@ import { PAYMENT_HOLD_EXPIRATION_MINUTES } from '../domain/booking';
 
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
+
+function mapBookingDisputeMessage(row: any): BookingDisputeMessage {
+  return {
+    id: row.id,
+    disputeId: row.dispute_id,
+    authorId: row.author_id || undefined,
+    authorRole: row.author_role,
+    type: row.message_type,
+    content: row.content,
+    createdAt: row.created_at,
+  };
+}
+
+function mapBookingDispute(row: any): BookingDispute {
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    openedBy: row.opened_by,
+    openedByRole: row.opened_by_role,
+    reasonCode: row.reason_code,
+    description: row.description,
+    status: row.status,
+    responseBy: row.response_by || undefined,
+    responseText: row.response_text || undefined,
+    respondedAt: row.responded_at || undefined,
+    resolutionCode: row.resolution_code || undefined,
+    resolutionNotes: row.resolution_notes || undefined,
+    refundAmountInCents: row.refund_amount_in_cents ?? undefined,
+    responseDueAt: row.response_due_at,
+    informationRequest: row.information_request || undefined,
+    messages: Array.isArray(row.messages) ? row.messages.map(mapBookingDisputeMessage) : undefined,
+    resolvedAt: row.resolved_at || undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapBookingDisputeEvidence(row: any): BookingDisputeEvidence {
+  return {
+    id: row.id,
+    disputeId: row.dispute_id,
+    uploadedBy: row.uploaded_by,
+    storagePath: row.storage_path,
+    evidenceType: row.evidence_type,
+    originalName: row.metadata?.original_name || 'Arquivo',
+    mimeType: row.metadata?.mime_type || 'application/octet-stream',
+    size: Number(row.metadata?.size || 0),
+    createdAt: row.created_at,
+  };
+}
 
 export function isUuid(val?: string): boolean {
   return Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
@@ -197,6 +253,9 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     expiredAt: row.expired_at || undefined,
     priceInCents: row.price_in_cents,
     platformFeeInCents: row.platform_fee_in_cents,
+    gatewayFeeInCents: row.gateway_fee_in_cents == null ? undefined : Number(row.gateway_fee_in_cents),
+    paymentStatus: row.payment_status || undefined,
+    paymentPaidAt: row.payment_paid_at || undefined,
     totalInCents: row.total_in_cents,
     snapshot: normalizedSnapshot,
     meetingPoint,
@@ -1175,10 +1234,10 @@ export const dbService = {
     return data;
   },
 
-  async processStripeRefund(bookingId: string, reason?: string): Promise<any> {
+  async processStripeRefund(bookingId: string, reason?: string, amountInCents?: number, disputeId?: string): Promise<any> {
     if (!isUuid(bookingId)) throw new Error('REFUND_INVALID_BOOKING_UUID');
     const { data, error } = await sp.functions.invoke('process-stripe-refund', {
-      body: { bookingId, reason: reason || 'ADMIN_STRIPE_REFUND' },
+      body: { bookingId, reason: reason || 'ADMIN_STRIPE_REFUND', amountInCents, disputeId },
     });
     if (error) throw error;
     return data;
@@ -1458,15 +1517,36 @@ export const dbService = {
     const rows = data || [];
     if (rows.length === 0) return [];
     const bookingIds = rows.map((row: any) => row.id).filter(Boolean);
-    const [{ data: names, error: namesError }, { data: categoriesData }] = await Promise.all([
+    const [{ data: names, error: namesError }, { data: categoriesData }, { data: paymentRows, error: paymentsError }] = await Promise.all([
       sp.rpc('get_admin_booking_names', { p_booking_ids: bookingIds }),
       sp.rpc('get_my_booking_categories', { p_booking_ids: bookingIds }),
+      sp.from('payments').select('booking_id, status, gateway_fee_in_cents, paid_at, created_at').in('booking_id', bookingIds),
     ]);
     if (namesError) throw namesError;
+    if (paymentsError) throw paymentsError;
     const namesByBooking = new Map<string, any>((names || []).map((item: any) => [item.booking_id, item]));
     const categoriesByBooking = new Map<string, string>((categoriesData || []).map((item: any) => [item.booking_id, item.category]));
+    const paymentsByBooking = new Map<string, { fee?: number; status?: MazziPaymentStatus; paidAt?: string; timestamp: number }>();
+    for (const payment of paymentRows || []) {
+      const timestamp = new Date(payment.paid_at || payment.created_at || 0).getTime();
+      const current = paymentsByBooking.get(payment.booking_id);
+      if (current === undefined || timestamp >= current.timestamp) {
+        paymentsByBooking.set(payment.booking_id, {
+          fee: payment.gateway_fee_in_cents == null ? undefined : Number(payment.gateway_fee_in_cents),
+          status: payment.status || undefined,
+          paidAt: payment.paid_at || undefined,
+          timestamp,
+        });
+      }
+    }
     return rows
-      .map((row: any) => mapBookingFromDb({ ...row, ...(namesByBooking.get(row.id) || {}) }, categoriesByBooking.get(row.id)))
+      .map((row: any) => mapBookingFromDb({
+        ...row,
+        ...(namesByBooking.get(row.id) || {}),
+        payment_status: paymentsByBooking.get(row.id)?.status,
+        payment_paid_at: paymentsByBooking.get(row.id)?.paidAt,
+        gateway_fee_in_cents: paymentsByBooking.get(row.id)?.fee,
+      }, categoriesByBooking.get(row.id)))
       .sort((a: Booking, b: Booking) => new Date(a.scheduledStartAt || 0).getTime() - new Date(b.scheduledStartAt || 0).getTime());
   },
 
@@ -1562,12 +1642,24 @@ export const dbService = {
   async getAdminAnalyticsSummary(days: AnalyticsPeriodPreset = 30): Promise<AdminAnalyticsSummary> {
     const dateTo = new Date();
     const dateFrom = new Date(dateTo.getTime() - days * 24 * 60 * 60 * 1000);
-    const { data, error } = await sp.rpc('get_admin_analytics_summary', {
+    const period = {
       p_date_from: dateFrom.toISOString(),
       p_date_to: dateTo.toISOString(),
-    });
+    };
+    const [{ data, error }, { data: cancelledData, error: cancelledError }] = await Promise.all([
+      sp.rpc('get_admin_analytics_summary', period),
+      sp.rpc('get_admin_checkout_cancelled_count', period),
+    ]);
     if (error) throw error;
-    return data as AdminAnalyticsSummary;
+    if (cancelledError) throw cancelledError;
+    const summary = data as AdminAnalyticsSummary;
+    return {
+      ...summary,
+      engagement: {
+        ...summary.engagement,
+        checkout_cancelled: Number(cancelledData || 0),
+      },
+    };
   },
 
   async getProviderAnalyticsSummary(days: AnalyticsPeriodPreset = 30): Promise<ProviderAnalyticsSummary> {
@@ -1827,6 +1919,11 @@ export const dbService = {
     return data;
   },
 
+  async updateContestationResponseHours(hours: number): Promise<void> {
+    const { error } = await sp.rpc('update_contestation_response_hours', { p_hours: hours });
+    if (error) throw error;
+  },
+
   async cancelPendingBooking(bookingId: string): Promise<{
     success: boolean;
     booking_id: string;
@@ -1877,5 +1974,104 @@ export const dbService = {
     });
     if (error) throw error;
     return data;
+  },
+
+  async getMyBookingDisputes(): Promise<BookingDispute[]> {
+    const { data, error } = await sp.rpc('get_my_booking_disputes');
+    if (error) throw error;
+    const disputes = (data || []).map(mapBookingDispute);
+    return Promise.all(disputes.map(async (dispute) => ({ ...dispute, messages: await this.getBookingDisputeMessages(dispute.id) })));
+  },
+
+  async getAdminBookingDisputes(): Promise<BookingDispute[]> {
+    const { data, error } = await sp.from('booking_disputes').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    const disputes = (data || []).map(mapBookingDispute);
+    return Promise.all(disputes.map(async (dispute) => ({ ...dispute, messages: await this.getBookingDisputeMessages(dispute.id) })));
+  },
+
+  async openBookingDispute(params: { bookingId: string; reasonCode: BookingDisputeReason; description: string }): Promise<BookingDispute> {
+    const { data, error } = await sp.rpc('open_booking_dispute', {
+      p_booking_id: params.bookingId,
+      p_reason_code: params.reasonCode,
+      p_description: params.description,
+    });
+    if (error) throw error;
+    const dispute = mapBookingDispute(data);
+    return { ...dispute, messages: await this.getBookingDisputeMessages(dispute.id) };
+  },
+
+  async respondBookingDispute(disputeId: string, responseText: string): Promise<BookingDispute> {
+    const { data, error } = await sp.rpc('respond_booking_dispute', {
+      p_dispute_id: disputeId,
+      p_response_text: responseText,
+    });
+    if (error) throw error;
+    const dispute = mapBookingDispute(data);
+    return { ...dispute, messages: await this.getBookingDisputeMessages(dispute.id) };
+  },
+
+  async requestBookingDisputeInformation(disputeId: string, requestedFrom: 'STUDENT' | 'PROVIDER', request: string): Promise<BookingDispute> {
+    const { data, error } = await sp.rpc('request_booking_dispute_information', { p_dispute_id: disputeId, p_requested_from: requestedFrom, p_request: request });
+    if (error) throw error;
+    const dispute = mapBookingDispute(data);
+    return { ...dispute, messages: await this.getBookingDisputeMessages(dispute.id) };
+  },
+
+  async getBookingDisputeEvidence(disputeId: string): Promise<BookingDisputeEvidence[]> {
+    const { data, error } = await sp.rpc('get_booking_dispute_evidence', { p_dispute_id: disputeId });
+    if (error) throw error;
+    const rows = typeof data === 'string' ? JSON.parse(data) : data;
+    return (Array.isArray(rows) ? rows : []).map(mapBookingDisputeEvidence);
+  },
+
+  async getBookingDisputeMessages(disputeId: string): Promise<BookingDisputeMessage[]> {
+    const { data, error } = await sp.rpc('get_booking_dispute_messages', { p_dispute_id: disputeId });
+    if (error) throw error;
+    const rows = typeof data === 'string' ? JSON.parse(data) : data;
+    return (Array.isArray(rows) ? rows : []).map(mapBookingDisputeMessage);
+  },
+
+  async uploadBookingDisputeEvidence(disputeId: string, file: File): Promise<BookingDisputeEvidence> {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) throw new Error('EVIDENCE_FILE_TYPE_NOT_ALLOWED');
+    if (file.size > 10 * 1024 * 1024) throw new Error('EVIDENCE_FILE_TOO_LARGE');
+
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw authError || new Error('AUTH_REQUIRED');
+    const extension = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+    const objectName = `${crypto.randomUUID()}${extension ? `.${extension}` : ''}`;
+    const storagePath = `disputes/${disputeId}/${authData.user.id}/${objectName}`;
+    const bucket = supabase.storage.from('booking-dispute-evidence');
+    const { error: uploadError } = await bucket.upload(storagePath, file, { contentType: file.type, upsert: false });
+    if (uploadError) throw uploadError;
+
+    const { data, error } = await sp.rpc('register_booking_dispute_evidence', {
+      p_dispute_id: disputeId,
+      p_storage_path: storagePath,
+      p_original_name: file.name,
+    });
+    if (error) {
+      await bucket.remove([storagePath]).catch(() => undefined);
+      throw error;
+    }
+    return mapBookingDisputeEvidence(data);
+  },
+
+  async getBookingDisputeEvidenceUrl(storagePath: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('booking-dispute-evidence').createSignedUrl(storagePath, 900);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async resolveBookingDispute(params: { disputeId: string; resolutionCode: BookingDisputeResolution; resolutionNotes: string; refundAmountInCents?: number }): Promise<BookingDispute> {
+    const { data, error } = await sp.rpc('resolve_booking_dispute', {
+      p_dispute_id: params.disputeId,
+      p_resolution_code: params.resolutionCode,
+      p_resolution_notes: params.resolutionNotes,
+      p_refund_amount_in_cents: params.refundAmountInCents ?? null,
+    });
+    if (error) throw error;
+    return mapBookingDispute(data);
   }
 };

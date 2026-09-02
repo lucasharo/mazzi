@@ -25,4 +25,4 @@
 
 ## Seleção de dias e horários
 
-O `SlotSelectorModal` é a fonte de verdade visual e funcional para o calendário do Aluno. Ele oferece horizonte de 60 dias, carregamento progressivo, dias habilitados conforme disponibilidade e horários agrupados por período. O Design System executa o mesmo componente com dados demonstrativos isolados.
+O `SlotSelectorModal` é a fonte de verdade visual e funcional para o calendário do Aluno. Ele respeita o horizonte configurado no Admin, com carregamento progressivo em lotes de até 30 dias, dias habilitados conforme disponibilidade e horários agrupados por período. O Design System executa o mesmo componente com dados demonstrativos isolados.
