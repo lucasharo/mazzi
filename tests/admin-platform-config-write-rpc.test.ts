@@ -22,7 +22,8 @@ describe('Admin platform configuration write contract', () => {
   it('routes Admin writes through the RPC instead of direct table upsert', () => {
     expect(dbService).toContain("sp.rpc('update_admin_platform_configurations'");
     expect(dbService).not.toContain("from('platform_configurations')");
-    expect(adminApp).toContain('dbService.updatePlatformConfigs(persistedUpdates)');
+    expect(adminApp).toContain('dbService.updatePlatformConfigs(standardUpdates)');
+    expect(adminApp).toContain('dbService.updateContestationResponseHours(contestationResponseHours)');
     expect(adminApp).not.toContain("blockPendingAdminMutation('Alteração de configuração da plataforma')");
   });
 });

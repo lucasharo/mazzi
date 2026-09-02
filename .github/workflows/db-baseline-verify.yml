@@ -102,7 +102,12 @@ jobs:
         run: |
           set -o pipefail
           cd /tmp/mazzi-historical-replay
-          npx --yes supabase@${SUPABASE_CLI_VERSION} start 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/historical-replay.log"
+          # Baseline verification only needs the local Postgres container for
+          # migration replay, db dump and db query. Excluding the application
+          # services avoids unrelated image pulls and Docker registry limits.
+          npx --yes supabase@${SUPABASE_CLI_VERSION} start \
+            --exclude gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor \
+            2>&1 | tee "$GITHUB_WORKSPACE/artifacts/historical-replay.log"
           npx --yes supabase@${SUPABASE_CLI_VERSION} db reset 2>&1 | tee -a "$GITHUB_WORKSPACE/artifacts/historical-replay.log"
 
       - name: Capture original schema contract

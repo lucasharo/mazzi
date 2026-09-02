@@ -19,8 +19,20 @@ import {
   AvailabilityException,
   Booking,
 } from '../src/types';
+import { afterAll, beforeAll, vi } from 'vitest';
 
 describe('Domain: Availability & Scheduling Engine', () => {
+  // Keep date-sensitive domain tests deterministic as the calendar advances.
+  // Production code must continue to use the real clock.
+  beforeAll(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-15T10:00:00.000Z'));
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   const mockProvider: Provider = {
     id: 'prov_100',
     name: 'Carlos Silva Instrutor',

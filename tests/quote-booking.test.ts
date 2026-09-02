@@ -19,6 +19,7 @@ import {
   Quote,
   Booking,
 } from '../src/types';
+import { afterAll, beforeAll, vi } from 'vitest';
 
 // ==========================================
 // MOCK FIXTURES FOR SPRINT 08 TESTS
@@ -73,6 +74,17 @@ const MOCK_STUDENT_B_ID = 'user_student_B_456';
 
 const BASE_START_AT = '2026-09-01T10:00:00.000Z';
 const BASE_END_AT = '2026-09-01T10:50:00.000Z';
+
+beforeAll(() => {
+  // Keep the historical Sprint 08 fixtures in the future without weakening
+  // the production rule that a quote must target a future lesson.
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-08-15T10:00:00.000Z'));
+});
+
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 describe('Sprint 08 — Quote Creation & Lifecycle', () => {
   it('creates an active Quote with frozen pricing and default 10-min expiration', () => {

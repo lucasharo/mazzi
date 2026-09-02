@@ -49,7 +49,8 @@ describe('Student booking sections', () => {
 
   it('uses the Próximas title, includes future lessons from today, and preserves history filtering', () => {
     expect(studentApp).toContain('Próximas');
-    expect(studentApp).not.toContain('Todas');
+    expect(studentApp).toContain('Filtros rápidos de aulas');
+    expect(studentApp).toContain('Em contestação');
     expect(studentApp).toContain('isBookingEnded(b, nowMs)');
     expect(studentApp).toContain("getStudentBookingSection(b.status, b) === 'HISTORY'");
     expect(studentApp).toContain('Você não possui aulas confirmadas no momento.');

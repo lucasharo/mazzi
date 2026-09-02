@@ -31,7 +31,7 @@ describe('accessible UI primitives', () => {
     );
 
     expect(markup).toContain('overflow-clip');
-    expect(markup).toContain('mazzi-modal-content p-6 overflow-y-auto');
+    expect(markup).toContain('mazzi-modal-content p-4 sm:p-6 overflow-y-auto');
     expect(markup).not.toContain('overflow-hidden flex flex-col max-h-[90vh]');
   });
 
