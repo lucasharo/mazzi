@@ -27,8 +27,16 @@ export function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistratio
     const register = () => {
       const env = ((import.meta as unknown as { env?: ClientEnv }).env || {});
       const base = typeof env.BASE_URL === 'string' && env.BASE_URL ? env.BASE_URL : '/';
-        void navigator.serviceWorker.getRegistration(base)
-        .then((existing) => existing || navigator.serviceWorker.register(`${base}sw.js`, { scope: base }))
+      const workerUrl = new URL(`${base}sw.js`, window.location.href).href;
+      void navigator.serviceWorker.getRegistration(base)
+        .then(async (existing) => {
+          const activeScriptUrl = existing?.active?.scriptURL || existing?.waiting?.scriptURL || existing?.installing?.scriptURL;
+          if (existing && activeScriptUrl !== workerUrl) {
+            await existing.unregister();
+            return navigator.serviceWorker.register(`${base}sw.js`, { scope: base });
+          }
+          return existing || navigator.serviceWorker.register(`${base}sw.js`, { scope: base });
+        })
         .then(async (registration) => {
           if (registration) {
             try {
