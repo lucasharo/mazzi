@@ -953,6 +953,54 @@ export interface ProviderAnalyticsSummary {
 }
 
 // ==========================================
+// PRO EARNINGS & PERFORMANCE
+// ==========================================
+
+export type ProviderEarningsPeriodPreset = 7 | 14 | 30;
+
+export interface ProviderEarningsMetrics {
+  net_earned_cents: number;
+  received_cents: number;
+  to_receive_cents: number;
+  blocked_cents: number;
+  failed_cents: number;
+  lessons_completed: number;
+  average_ticket_cents?: number | null;
+}
+
+export interface ProviderEarningsSeriesPoint {
+  date: string;
+  net_earned_cents: number;
+  lessons_completed: number;
+}
+
+export interface ProviderUpcomingPayout {
+  date: string;
+  amount_in_cents: number;
+  payout_count: number;
+}
+
+export type ProviderReviewDimension = 'didactics' | 'punctuality' | 'safety' | 'vehicle' | 'cordiality';
+
+export interface ProviderEarningsReviews {
+  review_count: number;
+  distinct_students_count: number;
+  rating_overall: number | null;
+  dimensions: Record<ProviderReviewDimension, number | null>;
+}
+
+export interface ProviderEarningsSummary {
+  period: AnalyticsPeriod;
+  current: ProviderEarningsMetrics;
+  previous: ProviderEarningsMetrics;
+  series: ProviderEarningsSeriesPoint[];
+  upcoming_payouts: ProviderUpcomingPayout[];
+  upcoming_total_cents: number;
+  reviews: ProviderEarningsReviews;
+  generated_at: string;
+}
+
+// ==========================================
 // SEARCH & GEO DISCOVERY TYPES (SPRINT 07)
 // ==========================================
 

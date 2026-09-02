@@ -69,6 +69,7 @@ import { ProviderScheduleTab } from './components/ProviderScheduleTab';
 import { ProviderBookingsTab } from './components/ProviderBookingsTab';
 import { ProviderManagementTab } from './components/ProviderManagementTab';
 import { ProviderProfileTab } from './components/ProviderProfileTab';
+import { ProviderEarningsTab } from './components/ProviderEarningsTab';
 import { ProviderCancellationModal } from './components/ProviderCancellationModal';
 import { ProviderBookingDetailsModal } from './components/ProviderBookingDetailsModal';
 import { AlertCircle, Upload, ArrowRight, Info, RefreshCw, LogOut } from 'lucide-react';
@@ -104,7 +105,7 @@ export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
-  const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'management', 'profile']);
+  const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'earnings', 'management', 'profile']);
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
   const [bookingUpdatesCount, setBookingUpdatesCount] = useState(0);
   const shouldAutoSelectTodayRef = useRef(true);
@@ -1390,6 +1391,7 @@ status: 'IN_REVIEW',
           userName={user?.name}
           onOpenNotifications={() => setIsNotificationsOpen((prev) => !prev)}
           onRefreshWorkspace={() => void refreshCurrentTab()}
+          onOpenProfile={() => setActiveTab('profile')}
           isRefreshing={isRefreshingCurrentTab}
         />
       )}
@@ -1526,7 +1528,10 @@ status: 'IN_REVIEW',
           />
         )}
 
-        {/* TAB 4: MANAGEMENT */}
+        {/* TAB 4: EARNINGS */}
+        {activeTab === 'earnings' && <ProviderEarningsTab refreshKey={isRefreshingCurrentTab ? 1 : 0} />}
+
+        {/* TAB 5: MANAGEMENT */}
         {activeTab === 'management' && (
           <ProviderManagementTab
             onRefresh={() => void refreshCurrentTab()}

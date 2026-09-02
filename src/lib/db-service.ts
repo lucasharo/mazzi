@@ -24,6 +24,8 @@ import {
   Notification,
   AdminAnalyticsSummary,
   ProviderAnalyticsSummary,
+  ProviderEarningsSummary,
+  ProviderEarningsPeriodPreset,
   ProductAnalyticsEventName,
   AnalyticsPeriodPreset,
   PublicSearchProviderResult,
@@ -38,7 +40,7 @@ import {
   MazziPaymentStatus,
 } from '../types';
 import { normalizeComplianceStatus } from '../domain/compliance-status';
-import { formatDateBR, formatTimeBR } from './date-format';
+import { formatDateBR, formatTimeBR, getBusinessDateOnly } from './date-format';
 import { formatFullMeetingPoint, formatMeetingPoint } from './meeting-point';
 import { PAYMENT_HOLD_EXPIRATION_MINUTES } from '../domain/booking';
 
@@ -1671,6 +1673,58 @@ export const dbService = {
     });
     if (error) throw error;
     return data as ProviderAnalyticsSummary;
+  },
+
+  async getProviderEarningsSummary(days: ProviderEarningsPeriodPreset = 30, now = new Date()): Promise<ProviderEarningsSummary> {
+    const dateFromOnly = getBusinessDateOnly(-(days - 1), now);
+    const dateToOnly = getBusinessDateOnly(1, now);
+    const { data, error } = await sp.rpc('get_provider_earnings_summary', {
+      p_date_from: `${dateFromOnly}T00:00:00-03:00`,
+      p_date_to: `${dateToOnly}T00:00:00-03:00`,
+    });
+    if (error) throw error;
+    if (!data) throw new Error('EARNINGS_SUMMARY_UNAVAILABLE');
+    // The RPC owns the calculations. This mapper only normalizes JSON numeric
+    // values for the typed UI and never recalculates financial amounts.
+    const normalizeMetrics = (metrics: any) => ({
+      net_earned_cents: Number(metrics?.net_earned_cents || 0),
+      received_cents: Number(metrics?.received_cents || 0),
+      to_receive_cents: Number(metrics?.to_receive_cents || 0),
+      blocked_cents: Number(metrics?.blocked_cents || 0),
+      failed_cents: Number(metrics?.failed_cents || 0),
+      lessons_completed: Number(metrics?.lessons_completed || 0),
+      average_ticket_cents: metrics?.average_ticket_cents == null ? null : Number(metrics.average_ticket_cents),
+    });
+    const normalizeReviews = (reviews: any) => ({
+      review_count: Number(reviews?.review_count || 0),
+      distinct_students_count: Number(reviews?.distinct_students_count || 0),
+      rating_overall: reviews?.rating_overall == null ? null : Number(reviews.rating_overall),
+      dimensions: {
+        didactics: reviews?.dimensions?.didactics == null ? null : Number(reviews.dimensions.didactics),
+        punctuality: reviews?.dimensions?.punctuality == null ? null : Number(reviews.dimensions.punctuality),
+        safety: reviews?.dimensions?.safety == null ? null : Number(reviews.dimensions.safety),
+        vehicle: reviews?.dimensions?.vehicle == null ? null : Number(reviews.dimensions.vehicle),
+        cordiality: reviews?.dimensions?.cordiality == null ? null : Number(reviews.dimensions.cordiality),
+      },
+    });
+    return {
+      period: data.period,
+      current: normalizeMetrics(data.current),
+      previous: normalizeMetrics(data.previous),
+      series: Array.isArray(data.series) ? data.series.map((point: any) => ({
+        date: point.date,
+        net_earned_cents: Number(point.net_earned_cents || 0),
+        lessons_completed: Number(point.lessons_completed || 0),
+      })) : [],
+      upcoming_payouts: Array.isArray(data.upcoming_payouts) ? data.upcoming_payouts.map((item: any) => ({
+        date: item.date,
+        amount_in_cents: Number(item.amount_in_cents || 0),
+        payout_count: Number(item.payout_count || 0),
+      })) : [],
+      upcoming_total_cents: Number(data.upcoming_total_cents || 0),
+      reviews: normalizeReviews(data.reviews),
+      generated_at: data.generated_at,
+    };
   },
 
   // 5. COMPLIANCE

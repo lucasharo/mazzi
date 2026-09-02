@@ -1,6 +1,6 @@
 import { ButtonBase } from './Button';
 import React from 'react';
-import { Bell, RefreshCw } from 'lucide-react';
+import { Bell, RefreshCw, UserCircle } from 'lucide-react';
 import { NotificationIndicator } from './NotificationIndicator';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import type { Notification } from '../../types';
@@ -12,6 +12,7 @@ interface AppHomeHeaderProps {
   eyebrowIcon?: React.ReactNode;
   onOpenNotifications: () => void;
   onRefresh: () => void;
+  onOpenProfile?: () => void;
   isRefreshing?: boolean;
   appContext?: NonNullable<Notification['appContext']>;
 }
@@ -24,6 +25,7 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
   eyebrowIcon,
   onOpenNotifications,
   onRefresh,
+  onOpenProfile,
   isRefreshing = false,
   appContext = 'PRO',
 }) => {
@@ -53,6 +55,17 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
               <Bell className="h-5 w-5" aria-hidden="true" />
             </NotificationIndicator>
           </ButtonBase>
+          {onOpenProfile && (
+            <ButtonBase
+              type="button"
+              onClick={onOpenProfile}
+              className="mazzi-icon-button cursor-pointer"
+              title="Abrir perfil"
+              aria-label="Abrir perfil"
+            >
+              <UserCircle className="h-5 w-5" aria-hidden="true" />
+            </ButtonBase>
+          )}
           <ButtonBase
             type="button"
             onClick={onRefresh}

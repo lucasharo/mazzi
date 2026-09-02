@@ -11,6 +11,7 @@ import { evaluateProviderEligibility } from '../../../domain/compliance';
 import { resolveComplianceDocumentStatus } from '../../../domain/provider-compliance-presentation';
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 import { ComplianceStatusAlert } from '../../../components/ui/ComplianceStatusAlert';
+import { ProviderEarningsDashboardCard } from './ProviderEarningsTab';
 
 interface ProviderDashboardTabProps {
   currentProvider: Provider;
@@ -21,7 +22,7 @@ interface ProviderDashboardTabProps {
   providerDocs: ComplianceDocument[];
   providerVehicles: Vehicle[];
   onSelectBooking: (booking: Booking) => void;
-  onNavigateTab: (tabId: 'dashboard' | 'schedule' | 'bookings' | 'management' | 'profile') => void;
+  onNavigateTab: (tabId: 'dashboard' | 'schedule' | 'bookings' | 'earnings' | 'management' | 'profile') => void;
   onOpenAddVehicleModal: () => void;
   onOpenAddOfferingModal: () => void;
   calendarLoadError?: string | null;
@@ -171,6 +172,8 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
               />
             )}
           </div>
+
+          <ProviderEarningsDashboardCard onNavigate={() => onNavigateTab('earnings')} refreshKey={isRefreshing ? 1 : 0} />
         </>
       )}
 

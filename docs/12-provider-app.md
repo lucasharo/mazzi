@@ -5,7 +5,8 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 
 ## Padrão visual Premium UI V2
 
-- Navegação inferior global com **Início**, **Agenda**, **Aulas**, **Gestão** e **Perfil**.
+- Navegação inferior global com **Início**, **Agenda**, **Aulas**, **Ganhos** e **Gestão**.
+- **Perfil** permanece acessível pelo ícone de conta no cabeçalho e não é removido da aplicação.
 - `AppHomeHeader` apenas em Início; telas internas usam `AppPageHeader`.
 - Atualização no canto superior direito somente nas telas com recarga de dados; Perfil e Agenda não exibem esse controle.
 - Em “Minhas aulas”, as abas são **Todas**, **Hoje**, **Próximas** e **Histórico**, com ícones e rolagem horizontal segura no mobile.
@@ -23,6 +24,12 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 - Resumo de aulas do dia e da semana.
 - Ganhos acumulados e saldo disponível para repasse.
 - Alertas de documentos a vencer.
+
+### 1.1 Ganhos e desempenho
+- A área **Ganhos** usa a RPC financeira dedicada e a tabela canônica `payouts`.
+- Exibe ganhos líquidos, recebido, a receber, bloqueado, próximos repasses, evolução, aulas concluídas e ticket médio líquido.
+- Avaliações usam dados reais de `reviews`; insights detalhados só aparecem após 30 alunos distintos avaliados.
+- A autorização é derivada da sessão: instrutor próprio com `provider.finance.read_own` ou autoescola autorizada com `school.finance.read`.
 
 ### 2. Dashboard da Autoescola (CFC)
 - Resumo operacional da frota e equipe de instrutores.

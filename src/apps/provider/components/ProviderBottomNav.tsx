@@ -3,12 +3,12 @@ import {
   LayoutDashboard,
   Calendar,
   Clock,
+  Wallet,
   SlidersHorizontal,
-  User,
 } from 'lucide-react';
 import { AppBottomNav, AppBottomNavItem } from '../../../components/ui/AppBottomNav';
 
-export type ProviderTabId = 'dashboard' | 'schedule' | 'bookings' | 'management' | 'profile';
+export type ProviderTabId = 'dashboard' | 'schedule' | 'bookings' | 'earnings' | 'management' | 'profile';
 
 interface ProviderBottomNavProps {
   activeTab: string;
@@ -41,15 +41,15 @@ export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
       showBadge: bookingUpdatesCount > 0,
     },
     {
+      id: 'earnings',
+      label: 'Ganhos',
+      icon: <Wallet className="w-5 h-5" />,
+    },
+    {
       id: 'management',
       label: 'Gestão',
       icon: <SlidersHorizontal className="w-5 h-5" />,
       showBadge: showManagementAlert,
-    },
-    {
-      id: 'profile',
-      label: 'Perfil',
-      icon: <User className="w-5 h-5" />,
     },
   ];
 
