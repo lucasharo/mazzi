@@ -3,7 +3,7 @@
  */
 
 const basePath = self.location.pathname.substring(0, self.location.pathname.lastIndexOf('/') + 1);
-const CACHE_NAME = 'mazzi-public-assets-v4';
+const CACHE_NAME = 'mazzi-public-assets-v5';
 const APP_SHELL = [
   basePath,
   basePath + 'manifest.webmanifest',
@@ -23,6 +23,15 @@ function isPrivateOrDynamicRequest(request) {
 
   if (request.method !== 'GET') return true;
   if (url.origin !== self.location.origin) return true;
+
+  // Never cache Vite/HMR or source modules. A PWA worker controlling a DEV
+  // page must not serve an old React module after a local code change.
+  if (
+    url.pathname.startsWith('/@vite/') ||
+    url.pathname.startsWith('/@react-refresh') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/node_modules/')
+  ) return true;
 
   return (
     url.pathname.startsWith('/auth/') ||

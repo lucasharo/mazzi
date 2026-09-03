@@ -22,7 +22,7 @@ interface ProviderDashboardTabProps {
   providerDocs: ComplianceDocument[];
   providerVehicles: Vehicle[];
   onSelectBooking: (booking: Booking) => void;
-  onNavigateTab: (tabId: 'dashboard' | 'schedule' | 'bookings' | 'earnings' | 'management' | 'profile') => void;
+  onNavigateTab: (tabId: 'dashboard' | 'bookings' | 'earnings' | 'management' | 'profile') => void;
   onOpenAddVehicleModal: () => void;
   onOpenAddOfferingModal: () => void;
   calendarLoadError?: string | null;
@@ -193,7 +193,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
       {!isRefreshing && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <ButtonBase
           type="button"
-          onClick={() => onNavigateTab('schedule')}
+          onClick={() => onNavigateTab('management')}
           className="mazzi-card group flex min-h-20 cursor-pointer items-center justify-between p-4 text-left transition hover:border-slate-300"
         >
           <div className="flex items-center gap-3">

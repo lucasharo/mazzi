@@ -6,6 +6,7 @@ export interface TabItem {
   id: string;
   label: string;
   count?: number;
+  hasPending?: boolean;
   icon?: React.ReactNode;
   panelId?: string;
 }
@@ -98,7 +99,7 @@ export const Tabs: React.FC<TabsProps> = ({
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(tab.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={`flex min-h-11 items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-yellow)] ${
+            className={`relative flex min-h-11 items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-yellow)] ${
               variant === 'pills'
                 ? isActive
                   ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-extrabold shadow-xs'
@@ -122,6 +123,12 @@ export const Tabs: React.FC<TabsProps> = ({
               >
                 {tab.count}
               </span>
+            )}
+            {tab.hasPending && (
+              <>
+                <span className="absolute right-1.5 top-1.5 z-10 h-3 w-3 rounded-full bg-rose-500" aria-hidden="true" />
+                <span className="sr-only">Há pendência nesta seção</span>
+              </>
             )}
           </ButtonBase>
         );

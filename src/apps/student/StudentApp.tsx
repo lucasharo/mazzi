@@ -248,6 +248,7 @@ export const StudentApp: React.FC = () => {
   const searchEndRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoSelectTodayRef = useRef(true);
   const stripeCheckoutFlowActiveRef = useRef(false);
+  const pendingNotificationTargetRef = useRef<NotificationNavigationTarget | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1092,6 +1093,11 @@ function applyStrictProviderFilters(
     setIsNotificationsOpen(false);
     if (target.appContext !== 'STUDENT') return;
     if (target.entityType !== 'booking' || !target.entityId) return;
+    if (bookingsLoading) {
+      pendingNotificationTargetRef.current = target;
+      setActiveTab('bookings');
+      return;
+    }
     const booking = confirmedBookings.find((item) => item.id === target.entityId);
     setActiveTab('bookings');
     if (!booking) {
@@ -1102,6 +1108,13 @@ function applyStrictProviderFilters(
     else if (target.action === 'review') setSelectedBookingForReview(booking);
     else setSelectedBookingForDetails(booking);
   };
+
+  useEffect(() => {
+    if (bookingsLoading || !pendingNotificationTargetRef.current) return;
+    const target = pendingNotificationTargetRef.current;
+    pendingNotificationTargetRef.current = null;
+    handleNotificationTarget(target);
+  }, [bookingsLoading, confirmedBookings]);
 
   const openNotificationTarget = (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
@@ -1755,7 +1768,7 @@ function applyStrictProviderFilters(
           onChange={(tab) => setActiveTab(tab)}
         />
 
-      <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações" size="md">
+      <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações" size="md" useHistory={false}>
         <NotificationsPanel appContext="STUDENT" userId={user?.id} onNavigate={openNotificationTarget} />
       </Modal>
 

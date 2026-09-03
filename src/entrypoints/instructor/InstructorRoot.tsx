@@ -7,6 +7,11 @@ import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget }
 import { clearPendingNotificationTarget, readPendingNotificationTarget, storePendingNotificationTarget } from '../../lib/pending-navigation';
 import { registerServiceWorker } from '../../registerServiceWorker';
 
+function isStripeOnboardingReturn(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('stripe_onboarding') === 'return';
+}
+
 const InstructorGate: React.FC = () => {
   const auth = useAuth();
   const [startupNavigationPending, setStartupNavigationPending] = React.useState<boolean | null>(null);
@@ -19,6 +24,10 @@ const InstructorGate: React.FC = () => {
     if (!auth.isAuthenticated) {
       if (current?.appContext === 'PRO') storePendingNotificationTarget(current);
       setStartupNavigationPending(false);
+      return;
+    }
+    if (isStripeOnboardingReturn()) {
+      setStartupNavigationPending(true);
       return;
     }
     if (current?.appContext === 'PRO') {
@@ -41,7 +50,7 @@ const InstructorGate: React.FC = () => {
     return () => window.removeEventListener(INITIAL_NAVIGATION_READY_EVENT, handleInitialNavigationReady);
   }, []);
   React.useEffect(() => {
-    if (!auth.isLoading && startupNavigationPending === false) dismissInitialSplash();
+    if (!auth.isLoading && startupNavigationPending === false && !isStripeOnboardingReturn()) dismissInitialSplash();
   }, [auth.isLoading, startupNavigationPending]);
 
   if (auth.isLoading || startupNavigationPending === null) return null;

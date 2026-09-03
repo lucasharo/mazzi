@@ -94,9 +94,6 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
   const getY = (value: number) => plotBottom - (value / max) * plotHeight;
   const linePoints = points.map((point, index) => `${getX(index)},${getY(point.net_earned_cents)}`).join(' ');
   const areaPoints = `${plotLeft},${plotBottom} ${linePoints} ${plotRight},${plotBottom}`;
-  const activePoints = points
-    .map((point, index) => ({ point, index }))
-    .filter(({ point }) => point.net_earned_cents > 0);
   const labelIndexes = points.length > 2 ? [0, Math.floor((points.length - 1) / 2), points.length - 1] : points.map((_, index) => index);
   return (
     <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-earnings-series-title">
@@ -111,7 +108,11 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
       </div>
       <div className="mt-4 flex min-w-0 gap-2" role="img" aria-label="Gráfico de linha da quantidade de aulas concluídas por dia">
         <div className="flex w-12 shrink-0 flex-col justify-between pb-7 pt-1 text-right text-[9px] font-semibold leading-none text-slate-400" aria-hidden="true">
-          {[max, Math.round(max / 2), 0].map((value) => <span key={value}>{formatCentsToBRL(value)}</span>)}
+          {[
+            { id: 'top', value: max },
+            { id: 'middle', value: Math.round(max / 2) },
+            { id: 'bottom', value: 0 },
+          ].map(({ id, value }) => <span key={id}>{formatCentsToBRL(value)}</span>)}
         </div>
         <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-auto min-w-0 flex-1 overflow-visible" preserveAspectRatio="none">
           <title>Quantidade de aulas concluídas por dia</title>
@@ -121,12 +122,6 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
           })}
           <polygon points={areaPoints} fill="currentColor" className="text-amber-50" />
           <polyline points={linePoints} fill="none" stroke="currentColor" className="text-amber-500" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          {activePoints.map(({ point, index }) => (
-            <g key={point.date}>
-              <title>{`${formatDateBR(point.date)}: ${formatCentsToBRL(point.net_earned_cents)} em ganhos líquidos`}</title>
-              <circle cx={getX(index)} cy={getY(point.lessons_completed)} r="4" fill="white" stroke="currentColor" className="text-amber-500" strokeWidth="3" />
-            </g>
-          ))}
           <line x1={plotLeft} x2={plotRight} y1={plotBottom} y2={plotBottom} stroke="currentColor" className="text-slate-200" strokeWidth="1" />
           {labelIndexes.map((index) => (
             <text key={points[index]?.date || index} x={getX(index)} y={120} textAnchor={index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle'} fill="currentColor" className="text-[9px] font-semibold text-slate-400">

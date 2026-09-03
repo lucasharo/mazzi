@@ -204,3 +204,14 @@
 - **Motivo**: Substituir a integração de checkout Mercado Pago/Bricks por uma integração customizada única, com confirmação server-side e suporte aos dois meios de pagamento.
 - **Impacto**: `StripeHostedCheckout.tsx`, `create-stripe-checkout-session`, `stripe-webhook`, `process-stripe-refund`, migration `stripe_checkout_gateway` e variáveis `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET`. Mercado Pago não é mais selecionável no checkout novo.
 - **Relacionado a**: [`09-payments.md`](../09-payments.md), [`CURRENT_IMPLEMENTATION_STATUS.md`](../CURRENT_IMPLEMENTATION_STATUS.md).
+
+## DEC-017: Onboarding Connect hospedado iniciado pelo MAZZI
+- **Data**: 2026-09-02
+- **Status**: `APROVADA — IMPLEMENTAÇÃO OBRIGATÓRIA`
+- **Tema**: Recebimento do PRO, experiência do produto e Connect
+- **Decisão**: O MAZZI inicia o cadastro e abre um `Account Link` de uso único hospedado pela Stripe. O PRO não deverá criar uma conta Stripe por conta própria nem acessar o Dashboard Stripe para concluir o cadastro. Identidade, aceite contratual e dados bancários são coletados pela Stripe.
+- **Transparência**: “Stripe transparente” significa que a Stripe não será apresentada como um segundo produto para o PRO administrar. A página hospedada aparece somente durante o cadastro de recebimentos, com retorno automático ao MAZZI.
+- **Dados**: o MAZZI não coleta nem armazena agência, conta ou dados bancários completos. Pode guardar somente o ID Connect, estados de capacidade e o resumo mascarado que a Stripe devolver, como banco e últimos quatro dígitos.
+- **Retorno**: `return_url` sincroniza o status autoritativo e `refresh_url` gera um novo link quando o anterior expirar ou já tiver sido usado. O cadastro só libera repasses quando `payouts_enabled=true`.
+- **DEV**: a homologação usa sandbox e contas brasileiras de teste. Uma conta Connect americana exige uma plataforma Stripe separada registrada nos EUA; não será criada pela plataforma brasileira da MAZZI.
+- **Relacionado a**: [`09-payments.md`](../09-payments.md), [`CURRENT_IMPLEMENTATION_STATUS.md`](../CURRENT_IMPLEMENTATION_STATUS.md).

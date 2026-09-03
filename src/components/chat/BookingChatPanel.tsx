@@ -298,15 +298,9 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             onChange={(event) => setDraft(event.target.value)}
             rows={1}
             maxLength={2000}
-            className="min-h-14 w-full resize-none !border-0 bg-transparent px-4 py-3.5 pr-16 text-xs leading-relaxed text-[var(--mazzi-text)] placeholder:text-slate-400 focus:!border-0 focus:outline-none focus:!ring-0 disabled:cursor-not-allowed disabled:bg-slate-50 sm:text-sm"
+            className="!h-14 !min-h-14 w-full resize-none !border-0 bg-transparent px-4 py-3.5 pr-16 text-xs leading-relaxed text-[var(--mazzi-text)] placeholder:text-slate-400 focus:!border-0 focus:outline-none focus:!ring-0 disabled:cursor-not-allowed disabled:bg-slate-50 sm:text-sm"
             placeholder={booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER' ? 'Chat encerrado por cancelamento da aula.' : 'Escreva uma mensagem sobre esta aula...'}
             disabled={!conversation || loading || sending || chatBlockedForSending || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                void handleSend();
-              }
-            }}
           />
           <ButtonBase
             type="button"
@@ -314,7 +308,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             disabled={!conversation || loading || sending || chatBlockedForSending || !draft.trim() || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             aria-label="Enviar mensagem"
             title="Enviar mensagem"
-            className="absolute right-2 bottom-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
+            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
           >
             {sending ? (
               <RefreshCw className="h-4 w-4 animate-spin text-current" aria-hidden="true" />
@@ -323,7 +317,6 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             )}
           </ButtonBase>
         </div>
-        <p className="px-1 text-[10px] text-slate-400 font-medium">Pressione Enter para enviar, Shift+Enter para quebrar linha.</p>
       </div>}
     </div>
   );

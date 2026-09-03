@@ -531,7 +531,7 @@ export type MazziPaymentStatus =
   | 'PARTIALLY_REFUNDED'
   | 'CHARGEBACK';
 
-export type PaymentGatewayType = 'MERCADOPAGO' | 'STRIPE' | 'DEVELOPMENT_MOCK';
+export type PaymentGatewayType = 'MERCADOPAGO' | 'STRIPE' | 'STRIPE_US_TEST' | 'DEVELOPMENT_MOCK';
 
 export type ProviderPaymentAccountStatus =
   | 'NOT_STARTED'
@@ -540,6 +540,15 @@ export type ProviderPaymentAccountStatus =
   | 'ACTIVE'
   | 'RESTRICTED'
   | 'DISABLED';
+
+export interface ProviderMaskedPayoutAccount {
+  kind: 'bank_account' | 'card';
+  bankName?: string;
+  last4?: string;
+  country?: string;
+  currency?: string;
+  status?: string;
+}
 
 export interface ProviderPaymentAccount {
   id: string;
@@ -551,6 +560,7 @@ export interface ProviderPaymentAccount {
   payoutsEnabled: boolean;
   onboardingUrl?: string;
   metadata?: Record<string, any>;
+  maskedPayoutAccount?: ProviderMaskedPayoutAccount;
   createdAt: string;
   updatedAt: string;
 }

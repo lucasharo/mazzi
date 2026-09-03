@@ -20,7 +20,7 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+    <div className="fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 flex-col gap-2.5 pointer-events-none sm:left-auto sm:right-5 sm:w-full sm:translate-x-0">
       {toasts.map((toast) => {
         const config = {
           success: {

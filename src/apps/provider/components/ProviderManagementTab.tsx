@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, CalendarDays, } from 'lucide-react';
 import {
-  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, BankAccount, } from '../../../types';
+  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, ProviderPaymentAccount, AvailabilityRule, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
@@ -22,7 +22,6 @@ import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 import { VehicleCatalogPicker } from '../../../components/vehicles/VehicleCatalogPicker';
 import { getStatusPresentation } from '../../../domain/status-presentation';
-import { ProviderBankAccountModal } from './ProviderBankAccountModal';
 import { ProviderAccountTab } from './ProviderAccountTab';
 
 interface ProviderManagementTabProps {
@@ -31,6 +30,7 @@ interface ProviderManagementTabProps {
   managementSubTab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account';
   onSubTabChange: (tab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account') => void;
   scheduleContent?: React.ReactNode;
+  availabilityRules: AvailabilityRule[];
   vehicles: Vehicle[];
   offerings: ServiceOffering[];
   complianceDocs: ComplianceDocument[];
@@ -53,8 +53,9 @@ interface ProviderManagementTabProps {
     photoUrl: string;
   };
   onVehicleFormChange: (form: any) => void;
-  onSaveVehicle: () => void;
-  onToggleVehicleStatus: (vehicleId: string) => void;
+  onSaveVehicle: () => Promise<void>;
+  onToggleVehicleStatus: (vehicleId: string) => Promise<void>;
+  onSavingVehicle?: boolean;
   vehicleError: string | null;
   isAddOfferingModalOpen: boolean;
   onOpenAddOfferingModal: () => void;
@@ -67,8 +68,9 @@ interface ProviderManagementTabProps {
     priceInBrl: string;
   };
   onOfferingFormChange: (form: any) => void;
-  onSaveOffering: () => void;
-  onToggleOfferingStatus: (offeringId: string) => void;
+  onSaveOffering: () => Promise<void>;
+  onToggleOfferingStatus: (offeringId: string) => Promise<void>;
+  onSavingOffering?: boolean;
   onReplaceActiveOffering: (offeringId: string, previousOfferingId: string) => Promise<void>;
   offeringError: string | null;
   offeringNotice?: string | null;
@@ -77,9 +79,9 @@ interface ProviderManagementTabProps {
   onViewComplianceDocument: (document: ComplianceDocument) => void;
   isAcceptingComplianceTerms?: boolean;
   complianceTermsError?: string | null;
-  bankAccount?: BankAccount | null;
-  onSaveBankAccount?: (input: Omit<BankAccount, 'id' | 'providerId' | 'isActive' | 'updatedAt' | 'accountNumberMasked'>) => Promise<void>;
-  isSavingBankAccount?: boolean;
+  paymentAccount?: ProviderPaymentAccount | null;
+  onOpenPayoutOnboarding?: () => void;
+  isOpeningPayoutOnboarding?: boolean;
 }
 
 export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
@@ -87,6 +89,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   isRefreshing,
   managementSubTab,
   onSubTabChange,
+  availabilityRules,
   vehicles,
   offerings,
   complianceDocs,
@@ -101,6 +104,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   onVehicleFormChange,
   onSaveVehicle,
   onToggleVehicleStatus,
+  onSavingVehicle,
   vehicleError,
   isAddOfferingModalOpen,
   onOpenAddOfferingModal,
@@ -109,6 +113,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   onOfferingFormChange,
   onSaveOffering,
   onToggleOfferingStatus,
+  onSavingOffering,
   onReplaceActiveOffering,
   offeringError,
   offeringNotice,
@@ -117,9 +122,9 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   onViewComplianceDocument,
   isAcceptingComplianceTerms = false,
   complianceTermsError,
-  bankAccount,
-  onSaveBankAccount,
-  isSavingBankAccount = false,
+  paymentAccount,
+  onOpenPayoutOnboarding,
+  isOpeningPayoutOnboarding = false,
   scheduleContent,
 }) => {
   const [blockedVehicleId, setBlockedVehicleId] = useState<string | null>(null);
@@ -131,9 +136,22 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
     return (priority[a.status] ?? 3) - (priority[b.status] ?? 3);
   });
   const [isInviteInstructorModalOpen, setIsInviteInstructorModalOpen] = React.useState(false);
-  const [isBankAccountModalOpen, setIsBankAccountModalOpen] = useState(false);
   const [pendingOfferingSwap, setPendingOfferingSwap] = useState<{ target: ServiceOffering; current: ServiceOffering } | null>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const isSchool = currentProvider.type === 'DRIVING_SCHOOL';
+  const hasPendingSchedule = availabilityRules.length === 0;
+  const hasPendingVehicles = !vehicles.some((vehicle) => vehicle.status === 'ACTIVE');
+  const hasPendingOfferings = !offerings.some((offering) => offering.status === 'ACTIVE');
+  const hasPendingPayoutSetup = paymentAccount?.payoutsEnabled !== true;
+  const runAsyncAction = async (key: string, action: () => Promise<void>) => {
+    if (pendingAction) return;
+    setPendingAction(key);
+    try {
+      await action();
+    } finally {
+      setPendingAction(null);
+    }
+  };
   const eligibleSchoolInstructors = schoolInstructors.filter((instructor) => {
     const compliance = schoolInstructorSummary.find((entry) => entry.membershipId === instructor.id);
     return instructor.membershipStatus === 'ACTIVE' && instructor.isActive && compliance?.eligible === true;
@@ -155,13 +173,13 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         activeTab={managementSubTab}
         onChange={(tab) => onSubTabChange(tab as ProviderManagementTabProps['managementSubTab'])}
         tabs={[
-          { id: 'schedule_rules', label: 'Horários', icon: <CalendarDays className="h-3.5 w-3.5" /> },
+          { id: 'schedule_rules', label: 'Horários', icon: <CalendarDays className="h-3.5 w-3.5" />, hasPending: hasPendingSchedule },
           { id: 'schedule_blocks', label: 'Bloqueios', icon: <Ban className="h-3.5 w-3.5" /> },
-          { id: 'vehicles', label: 'Veículos', icon: <Car className="h-3.5 w-3.5" /> },
-          { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" /> },
+          { id: 'vehicles', label: 'Veículos', icon: <Car className="h-3.5 w-3.5" />, hasPending: hasPendingVehicles },
+          { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" />, hasPending: hasPendingOfferings },
           { id: 'compliance', label: 'Compliance', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
           ...(isSchool ? [{ id: 'memberships' as const, label: 'Instrutores', icon: <Users className="h-3.5 w-3.5" /> }] : []),
-          { id: 'account', label: 'Conta Pix', icon: <WalletCards className="h-3.5 w-3.5" /> },
+          { id: 'account', label: 'Conta bancária', icon: <WalletCards className="h-3.5 w-3.5" />, hasPending: hasPendingPayoutSetup },
         ]}
         className="mazzi-segmented"
       />
@@ -249,8 +267,9 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                           <Button
                             variant={vehicle.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
                             size="sm"
-                            disabled={vehicle.status === 'PENDING' || vehicle.status === 'IN_REVIEW'}
-                            onClick={() => onToggleVehicleStatus(vehicle.id)}
+                            onClick={() => void runAsyncAction(`vehicle-${vehicle.id}`, () => onToggleVehicleStatus(vehicle.id))}
+                            disabled={pendingAction !== null || vehicle.status === 'PENDING' || vehicle.status === 'IN_REVIEW'}
+                            isLoading={pendingAction === `vehicle-${vehicle.id}`}
                             leftIcon={vehicle.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                           >
                             {vehicle.status === 'ACTIVE' ? 'Desativar Veículo' : vehicle.status === 'IN_REVIEW' ? 'Em reanálise' : vehicle.status === 'PENDING' ? 'Aguardando aprovação' : 'Ativar Veículo'}
@@ -358,16 +377,18 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                       <Button
                         variant={o.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
                         size="sm"
-                        disabled={o.status !== 'ACTIVE' && !canActivateOffering}
                         title={o.status !== 'ACTIVE' && !canActivateOffering ? 'A oferta só pode ser ativada quando todos os requisitos forem atendidos.' : undefined}
-                        onClick={() => {
+                          onClick={() => {
+                          if (pendingAction) return;
                           if (activeEquivalent) {
                             setPendingOfferingSwap({ target: o, current: activeEquivalent });
                             return;
                           }
-                          onToggleOfferingStatus(o.id);
+                          void runAsyncAction(`offering-${o.id}`, () => onToggleOfferingStatus(o.id));
                         }}
                         leftIcon={o.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                        disabled={pendingAction !== null || (o.status !== 'ACTIVE' && !canActivateOffering)}
+                        isLoading={pendingAction === `offering-${o.id}`}
                       >
                         {o.status === 'ACTIVE' ? 'Desativar Oferta' : 'Ativar Oferta'}
                       </Button>
@@ -448,6 +469,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                           leftIcon={<Check className="w-3.5 h-3.5" />}
                           onClick={onAcceptComplianceTerms}
                           disabled={isAcceptingComplianceTerms}
+                          isLoading={isAcceptingComplianceTerms}
                         >
                           {isAcceptingComplianceTerms ? 'Registrando...' : 'Concordar e aceitar'}
                         </Button>
@@ -464,8 +486,9 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       {/* ACCOUNT SUBTAB */}
       {!isRefreshing && managementSubTab === 'account' && (
         <ProviderAccountTab
-          bankAccount={bankAccount}
-          onOpenBankAccountSettings={() => setIsBankAccountModalOpen(true)}
+          paymentAccount={paymentAccount}
+          onOpenPayoutOnboarding={onOpenPayoutOnboarding || (() => undefined)}
+          isOpeningPayoutOnboarding={isOpeningPayoutOnboarding}
           showHeader={false}
         />
       )}
@@ -544,7 +567,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddVehicleModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>
-            <Button variant="primary" size="sm" onClick={onSaveVehicle} disabled={!vehicleFormValid} leftIcon={<Save className="w-4 h-4" />}>
+            <Button variant="primary" size="sm" onClick={() => void runAsyncAction('save-vehicle', onSaveVehicle)} disabled={!vehicleFormValid || pendingAction !== null || onSavingVehicle} isLoading={pendingAction === 'save-vehicle' || onSavingVehicle} leftIcon={<Save className="w-4 h-4" />}>
               {vehicleForm.brand ? 'Enviar' : 'Salvar Veículo'}
             </Button>
           </div>
@@ -618,7 +641,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddOfferingModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>
-            <Button variant="primary" size="sm" onClick={onSaveOffering} disabled={!offeringFormValid} leftIcon={<Save className="w-4 h-4" />}>
+            <Button variant="primary" size="sm" onClick={() => void runAsyncAction('save-offering', onSaveOffering)} disabled={!offeringFormValid || pendingAction !== null || onSavingOffering} isLoading={pendingAction === 'save-offering' || onSavingOffering} leftIcon={<Save className="w-4 h-4" />}>
               Salvar Oferta
             </Button>
           </div>
@@ -651,9 +674,13 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
               onClick={() => {
                 if (!pendingOfferingSwap) return;
                 const { target, current } = pendingOfferingSwap;
-                setPendingOfferingSwap(null);
-                void onReplaceActiveOffering(target.id, current.id);
+                void runAsyncAction(`offering-swap-${target.id}`, async () => {
+                  await onReplaceActiveOffering(target.id, current.id);
+                  setPendingOfferingSwap(null);
+                });
               }}
+              disabled={pendingAction !== null}
+              isLoading={pendingAction === `offering-swap-${pendingOfferingSwap?.target.id}`}
               leftIcon={<Power className="h-4 w-4" />}
             >
               Trocar oferta
@@ -662,15 +689,6 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         </div>
       </Modal>
 
-      {onSaveBankAccount && (
-        <ProviderBankAccountModal
-          isOpen={isBankAccountModalOpen}
-          onClose={() => setIsBankAccountModalOpen(false)}
-          bankAccount={bankAccount}
-          onSave={onSaveBankAccount}
-          isSaving={isSavingBankAccount}
-        />
-      )}
     </div>
   );
 };

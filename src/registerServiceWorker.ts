@@ -14,9 +14,14 @@ function canRegisterServiceWorker(): boolean {
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1';
   const isProductionBuild = env.PROD === true;
-  const isLocalDevBuild = env.DEV === true && secureOrigin;
+  // Local Vite development must not register the PWA worker: it can cache
+  // source modules and leave React/ReactDOM out of sync after HMR/reloads.
+  // HTTPS DEV tunnels still register it so FCM can receive background pushes.
+  const isLocalDevOrigin = window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1';
+  const isRemoteDevBuild = env.DEV === true && secureOrigin && !isLocalDevOrigin;
 
-  return secureOrigin && (isProductionBuild || isLocalDevBuild);
+  return secureOrigin && (isProductionBuild || isRemoteDevBuild);
 }
 
 export function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {

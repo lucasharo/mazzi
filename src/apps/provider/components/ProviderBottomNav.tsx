@@ -2,13 +2,13 @@ import React from 'react';
 import {
   LayoutDashboard,
   Clock,
-  CalendarDays,
   Wallet,
   SlidersHorizontal,
+  UserRound,
 } from 'lucide-react';
 import { AppBottomNav, AppBottomNavItem } from '../../../components/ui/AppBottomNav';
 
-export type ProviderTabId = 'dashboard' | 'schedule' | 'bookings' | 'earnings' | 'management' | 'profile';
+export type ProviderTabId = 'dashboard' | 'bookings' | 'earnings' | 'management' | 'profile';
 
 interface ProviderBottomNavProps {
   activeTab: string;
@@ -30,11 +30,6 @@ export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
       icon: <LayoutDashboard className="w-5 h-5" />,
     },
     {
-      id: 'schedule',
-      label: 'Agenda',
-      icon: <CalendarDays className="w-5 h-5" />,
-    },
-    {
       id: 'bookings',
       label: 'Aulas',
       icon: <Clock className="w-5 h-5" />,
@@ -50,6 +45,11 @@ export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
       label: 'Gestão',
       icon: <SlidersHorizontal className="w-5 h-5" />,
       showBadge: showManagementAlert,
+    },
+    {
+      id: 'profile',
+      label: 'Perfil',
+      icon: <UserRound className="w-5 h-5" />,
     },
   ];
 

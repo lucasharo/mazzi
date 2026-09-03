@@ -46,9 +46,29 @@ O ambiente DEV pode executar chamadas com credenciais de teste. Não há autoriz
 - O lançamento contábil local usa `process_booking_refund` somente após confirmação do Stripe; respostas assíncronas permanecem pendentes e são reconciliadas pelo webhook.
 - A função e a migration precisam ser publicadas no projeto DEV antes de o botão operar contra o sandbox. Nenhuma credencial privada é enviada ao frontend.
 
-## Stripe Connect / Split (futuro)
+## Stripe Connect / Split
 
-Este cenário permanece apenas como referência para uma fase posterior. A implementação atual não usa Connect, split automático nem transferência bancária automática.
+O cadastro de recebimento do PRO é convertido em uma conta conectada da Stripe pelo backend. O MAZZI mantém somente o identificador da conta conectada, os estados de capacidade e, quando a Stripe devolver esses campos, um resumo bancário mascarado (nome do banco e últimos quatro dígitos). Agência, número completo, código de segurança e demais dados sensíveis não são coletados nem persistidos pelo MAZZI.
+
+O PRO inicia o cadastro em **Conta bancária** no MAZZI. O backend cria ou reutiliza a conta Connect e gera um `Account Link` de uso único; o navegador abre o onboarding hospedado pela Stripe para que a própria Stripe colete identidade, aceite contratual e dados bancários. O PRO não precisa criar uma conta nem administrar o Dashboard Stripe.
+
+Na criação da conta, o backend pré-preenche os dados confiáveis que já existem no cadastro: nome, e-mail, telefone, CPF, data de nascimento e endereço salvo do instrutor autônomo; ou razão social, CNPJ, telefone e endereço comercial da autoescola. Também envia a descrição padrão `Serviço de autoescola.`, o site público da landing DEV (`https://mazzi-landing-dev.pages.dev`) e o MCC `8299` (escolas e serviços educacionais, incluindo instrução para dirigir). A Stripe ainda pode revisar ou substituir o MCC durante a análise. O endereço só é enviado quando possui dados mínimos completos e sempre deve ser conferido pelo titular no onboarding.
+
+O link recebe `return_url` e `refresh_url`. Na primeira abertura, o MAZZI pré-preenche a conta antes de gerar o link; nas aberturas seguintes usa `account_update`, permitindo revisar o endereço e enviar comprovantes solicitados pela Stripe. No retorno, o MAZZI mantém o splash até sincronizar `charges_enabled`, `payouts_enabled`, requisitos e o resumo mascarado da conta, abrindo a aba **Conta bancária** já atualizada. Se o link expirar ou já tiver sido usado, a `refresh_url` gera um novo link automaticamente. O retorno ao MAZZI não é tratado como conclusão: repasses novos só ficam habilitados quando `payouts_enabled=true`.
+
+Os repasses novos usam `STRIPE_CONNECT` e contas sem onboarding concluído permanecem bloqueadas. Em produção, o mesmo fluxo hospedado deverá ser habilitado somente após homologação; Production permanece intocada.
+
+### Decisão de produto — onboarding Connect hospedado
+
+- **Status:** `APROVADA — IMPLEMENTAÇÃO OBRIGATÓRIA`
+- **Experiência:** o PRO começa pelo MAZZI e conclui o cadastro em uma página hospedada da Stripe, retornando automaticamente ao MAZZI.
+- **Responsabilidade técnica:** o backend cria a conta conectada, gera links de uso único, sincroniza capacidades e guarda somente o resumo bancário mascarado devolvido pela Stripe.
+- **Requisitos:** identidade, aceite contratual, dados bancários e qualquer verificação exigida pelo país/tipo de conta são coletados pela Stripe.
+- **Produção:** não pode depender de números de teste, conta americana de teste ou fluxo fake.
+- **DEV:** pode usar dados de sandbox para homologar estados de sucesso, pendência e falha, sempre isolados de Production.
+- **Conta americana de teste:** não disponível nesta plataforma. A conta Stripe da MAZZI está registrada no Brasil e a Stripe bloqueia a criação de contas Connect dos EUA por plataformas brasileiras. Para esse cenário seria necessária uma plataforma Stripe separada, registrada nos EUA e aprovada pela Stripe.
+
+O fluxo de teste está disponível somente no ambiente DEV. Production permanece intocada.
 
 Para uma futura fase de marketplace, o modelo poderá operar com contas conectadas Stripe:
 

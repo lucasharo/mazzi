@@ -33,7 +33,8 @@ import {
   Payout,
   BookingDisputeMessage,
   PixDestination,
-  BankAccount,
+  ProviderPaymentAccount,
+  ProviderMaskedPayoutAccount,
   BookingDispute,
   BookingDisputeEvidence,
   BookingDisputeReason,
@@ -47,6 +48,37 @@ import { PAYMENT_HOLD_EXPIRATION_MINUTES } from '../domain/booking';
 
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
+
+function mapMaskedPayoutAccount(metadata: Record<string, any> | null | undefined): ProviderMaskedPayoutAccount | undefined {
+  const summary = metadata?.masked_payout_account;
+  if (!summary || (summary.kind !== 'bank_account' && summary.kind !== 'card')) return undefined;
+  return {
+    kind: summary.kind,
+    bankName: typeof summary.bankName === 'string' ? summary.bankName : undefined,
+    last4: typeof summary.last4 === 'string' ? summary.last4 : undefined,
+    country: typeof summary.country === 'string' ? summary.country : undefined,
+    currency: typeof summary.currency === 'string' ? summary.currency : undefined,
+    status: typeof summary.status === 'string' ? summary.status : undefined,
+  };
+}
+
+function mapProviderPaymentAccount(data: any, gateway: ProviderPaymentAccount['gateway'] = 'STRIPE'): ProviderPaymentAccount {
+  const metadata = data.metadata || undefined;
+  return {
+    id: data.id,
+    providerId: data.provider_id,
+    gateway,
+    externalAccountId: data.external_account_id,
+    status: data.status,
+    chargesEnabled: data.charges_enabled === true,
+    payoutsEnabled: data.payouts_enabled === true,
+    onboardingUrl: data.onboarding_url || undefined,
+    metadata,
+    maskedPayoutAccount: mapMaskedPayoutAccount(metadata),
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
 
 function mapBookingDisputeMessage(row: any): BookingDisputeMessage {
   return {
@@ -1296,51 +1328,35 @@ export const dbService = {
     };
   },
 
-  async getMyBankAccount(): Promise<BankAccount | null> {
-    const { data, error } = await sp.rpc('get_my_bank_account');
+  async getMyProviderPaymentAccount(): Promise<ProviderPaymentAccount | null> {
+    const { data, error } = await sp.rpc('get_my_provider_payment_account');
     if (error) throw error;
     if (!data || !data.id) return null;
+    return mapProviderPaymentAccount(data);
+  },
+
+  async getMyUsTestProviderPaymentAccount(): Promise<ProviderPaymentAccount | null> {
+    const { data, error } = await sp.rpc('get_my_us_test_provider_payment_account');
+    if (error) throw error;
+    if (!data || !data.id) return null;
+    return mapProviderPaymentAccount(data, 'STRIPE_US_TEST');
+  },
+
+  async openProviderPayoutOnboarding(): Promise<{ account: ProviderPaymentAccount; onboardingUrl: string }> {
+    const { data, error } = await sp.functions.invoke('create-stripe-connect-account', { body: {} });
+    if (error) throw error;
+    if (!data?.account?.id || !data?.onboarding_url) throw new Error('STRIPE_CONNECT_ONBOARDING_UNAVAILABLE');
     return {
-      id: data.id,
-      providerId: data.provider_id,
-      bankCode: data.bank_code,
-      branchNumber: data.branch_number,
-      accountNumber: '',
-      accountDigit: '',
-      accountType: data.account_type,
-      holderName: data.holder_name,
-      holderDocument: data.holder_document || undefined,
-      accountNumberMasked: data.account_number_masked,
-      isActive: data.is_active !== false,
-      updatedAt: data.updated_at,
+      account: mapProviderPaymentAccount({ ...data.account, onboarding_url: data.onboarding_url }),
+      onboardingUrl: data.onboarding_url,
     };
   },
 
-  async saveMyBankAccount(input: Omit<BankAccount, 'id' | 'providerId' | 'isActive' | 'updatedAt' | 'accountNumberMasked'>): Promise<BankAccount> {
-    const { data, error } = await sp.rpc('save_my_bank_account', {
-      p_bank_code: input.bankCode,
-      p_branch_number: input.branchNumber,
-      p_account_number: input.accountNumber,
-      p_account_digit: input.accountDigit,
-      p_account_type: input.accountType,
-      p_holder_name: input.holderName,
-      p_holder_document: input.holderDocument || null,
-    });
+  async syncMyStripePaymentAccount(): Promise<ProviderPaymentAccount | null> {
+    const { data, error } = await sp.functions.invoke('create-stripe-connect-account', { body: { open_onboarding: false } });
     if (error) throw error;
-    return {
-      id: data.id,
-      providerId: data.provider_id,
-      bankCode: data.bank_code,
-      branchNumber: data.branch_number,
-      accountNumber: '',
-      accountDigit: '',
-      accountType: data.account_type,
-      holderName: data.holder_name,
-      holderDocument: data.holder_document || undefined,
-      accountNumberMasked: data.account_number_masked,
-      isActive: data.is_active !== false,
-      updatedAt: data.updated_at,
-    };
+    if (!data?.account?.id) return null;
+    return mapProviderPaymentAccount(data.account);
   },
 
   async updateBookingStatus(id: string, status: string, extra: Record<string, any> = {}): Promise<void> {

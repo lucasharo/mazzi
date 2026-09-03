@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const appTarget = mode === 'student' || mode === 'instructor' || mode === 'admin' || mode === 'landing' ? mode : '';
   const appEntrypoint = appTarget ? `/src/entrypoints/${appTarget}/main.tsx` : '/src/main.tsx';
@@ -40,7 +40,35 @@ export default defineConfig(({ mode }) => {
       transformIndexHtml: {
         order: 'pre',
         handler(html) {
-          const withEntrypoint = html.replace(/<script type="module" src="[^"]+"><\/script>/, `<script type="module" src="${appEntrypoint}"></script>`);
+          // In local DEV, an old PWA service worker can intercept the source
+          // modules before React starts. Clear that cache before importing the
+          // entrypoint so a stale React/ReactDOM pair cannot survive a reload.
+          const entrypointScript = command === 'serve'
+            ? `<script type="module">
+      (async () => {
+        const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        if (isLocalDev && 'serviceWorker' in navigator) {
+          try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map((registration) => registration.unregister()));
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.filter((name) => name.startsWith('mazzi-public-assets-')).map((name) => caches.delete(name)));
+          } catch {
+            // The app can still boot from the network if browser storage is unavailable.
+          }
+        }
+        await import(${JSON.stringify(appEntrypoint)});
+      })();
+    </script>`
+            : `<script type="module" src="${appEntrypoint}"></script>`;
+          // Replace only the application's source entrypoint. Vite injects its
+          // React Refresh and HMR scripts before this hook's output; matching
+          // the first module script would leave the original app script in
+          // place and the cleanup bootstrap would never run.
+          const withEntrypoint = html.replace(
+            /<script type="module" src="(?:\/src\/main\.tsx|\/index\.html\?html-proxy[^"]*)"><\/script>/,
+            entrypointScript,
+          );
           return finalManifest
             ? withEntrypoint.replace(/<link rel="manifest" href="[^"]+"\s*\/>/g, '').replace('</head>', `<link rel="manifest" href="${finalManifest}"/></head>`)
             : withEntrypoint.replace(/<link rel="manifest" href="[^"]+"\s*\/>/g, '');
@@ -51,6 +79,9 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+      // Keep React and its renderer on the exact same module instance during
+      // HMR and when multiple app entrypoints share this workspace.
+      dedupe: ['react', 'react-dom'],
     },
     define: {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),

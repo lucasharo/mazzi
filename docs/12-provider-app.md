@@ -5,8 +5,8 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 
 ## Padrão visual Premium UI V2
 
-- Navegação inferior global com **Início**, **Agenda**, **Aulas**, **Ganhos** e **Gestão**.
-- **Perfil** permanece acessível pelo ícone de conta no cabeçalho e não é removido da aplicação.
+- Navegação inferior global com **Início**, **Aulas**, **Ganhos**, **Gestão** e **Perfil**.
+- **Horários** e **Bloqueios** ficam dentro de **Gestão**; não há uma tela independente de Agenda no menu principal.
 - `AppHomeHeader` apenas em Início; telas internas usam `AppPageHeader`.
 - Atualização no canto superior direito somente nas telas com recarga de dados; Perfil e Agenda não exibem esse controle.
 - Em “Minhas aulas”, as abas são **Todas**, **Hoje**, **Próximas** e **Histórico**, com ícones e rolagem horizontal segura no mobile.

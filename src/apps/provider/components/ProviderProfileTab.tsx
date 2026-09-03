@@ -9,6 +9,7 @@ import { ComplianceStatusAlert } from '../../../components/ui/ComplianceStatusAl
 import { ProviderAddressForm, ProviderAddressFormValue } from '../../../components/provider/ProviderAddressForm';
 
 import { maskBrazilianPhone, maskCnpj } from '../../../lib/input-masks';
+import { formatDateMask } from '../../../utils/age';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { Modal } from '../../../components/ui/Modal';
 import { evaluateProviderEligibility } from '../../../domain/compliance';
@@ -21,12 +22,14 @@ interface ProviderProfileTabProps {
   userName?: string;
   userEmail?: string;
   userPhone?: string;
+  userBirthDate?: string;
   profileAvatar?: string;
   onAvatarChange?: (url: string) => void;
   isEditingProfile: boolean;
   onToggleEditProfile: () => void;
   profileForm: {
     displayName: string;
+    birthDate: string;
     legalName: string;
     publicContact: string;
     commercialEmail: string;
@@ -55,6 +58,7 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
   userName,
   userEmail,
   userPhone,
+  userBirthDate,
   profileAvatar,
   onAvatarChange,
   isEditingProfile,
@@ -115,6 +119,7 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
             <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">E-mail de contato</dt><dd className="max-w-[65%] truncate text-right font-semibold text-[var(--mazzi-text)]">{currentProvider.commercialEmail || userEmail || 'Não informado'}</dd></div>
             {!isSchool && <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">E-mail</dt><dd className="truncate font-semibold text-[var(--mazzi-text)]">{userEmail || 'Não informado'}</dd></div>}
             <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Perfil profissional</dt><dd className="text-right font-semibold text-[var(--mazzi-text)]">{isSchool ? 'Autoescola / CFC' : 'Instrutor autônomo'}</dd></div>
+            {!isSchool && <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Data de nascimento</dt><dd className="font-semibold text-[var(--mazzi-text)]">{profileForm.birthDate || userBirthDate || 'Não informada'}</dd></div>}
             <div className="flex items-start justify-between gap-3"><dt className="shrink-0 text-slate-500">Localização</dt><dd className="max-w-[68%] text-right font-semibold text-[var(--mazzi-text)]">{currentProvider.neighborhood || 'Não informado'}, {currentProvider.city || 'Não informado'} - {currentProvider.state || 'SP'}</dd></div>
             <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Raio público</dt><dd className="font-semibold text-[var(--mazzi-text)]">{currentProvider.serviceRadiusKm || 6} km</dd></div>
             <div className="border-t border-[var(--mazzi-border)] pt-3">
@@ -223,6 +228,20 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
                 placeholder="Descreva sua experiência, paciência com alunos iniciantes e diferenciais..."
               />
             </div>
+
+            {!isSchool && <div>
+              <label className="mazzi-field-label mb-1.5 block" htmlFor="provider-profile-birth-date">Data de nascimento *</label>
+              <Input
+                id="provider-profile-birth-date"
+                className="rounded-2xl"
+                inputMode="numeric"
+                maxLength={10}
+                value={profileForm.birthDate}
+                onChange={(e) => onProfileFormChange({ ...profileForm, birthDate: formatDateMask(e.target.value) })}
+                placeholder="DD/MM/AAAA"
+                helperText="Usada para validar o cadastro de recebimentos."
+              />
+            </div>}
 
           </form>
           </Modal>

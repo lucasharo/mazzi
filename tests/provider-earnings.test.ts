@@ -11,6 +11,8 @@ import { dbService } from '../src/lib/db-service';
 
 afterEach(cleanup);
 
+const root = process.cwd();
+
 const reviews = (students: number) => ({
   review_count: students,
   distinct_students_count: students,
@@ -36,13 +38,14 @@ const earningsSummary = {
 };
 
 describe('PRO Ganhos — navigation and deterministic insights', () => {
-  it('uses the canonical five-slot navigation and keeps Perfil outside the bottom bar', () => {
+  it('uses the canonical five-slot navigation with Perfil and Gestão, keeping Agenda inside Gestão', () => {
     const selected: string[] = [];
     render(React.createElement(ProviderBottomNav, { activeTab: 'dashboard', onTabChange: (tab) => selected.push(tab) }));
 
     expect(screen.getByRole('button', { name: 'Ganhos' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Agenda' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Perfil' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Gestão' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Perfil' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Agenda' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Ganhos' }));
     expect(selected).toEqual(['earnings']);
   });
@@ -77,6 +80,23 @@ describe('PRO Ganhos — navigation and deterministic insights', () => {
     expect(migration).not.toContain('payments.amount_in_cents');
   });
 
+  it('requires the original Stripe PaymentIntent as the source for Brazilian transfers', () => {
+    const migration = fs.readFileSync(
+      path.join(root, 'supabase/migrations/20260903024757_stripe_brazil_payout_source_transaction_cast.sql'),
+      'utf8',
+    );
+    const processor = fs.readFileSync(
+      path.join(root, 'supabase/functions/process-automatic-stripe-payouts/index.ts'),
+      'utf8',
+    );
+
+    expect(migration).toContain("payment.external_transaction_id ~ '^pi_[A-Za-z0-9]+$'");
+    expect(migration).toContain('stripe_payment_intent_id TEXT');
+    expect(processor).toContain('latest_charge');
+    expect(processor).toContain('source_transaction: sourceTransaction');
+    expect(processor).toContain('STRIPE_SOURCE_TRANSACTION_NOT_FOUND');
+  });
+
   it('uses 30 days by default, exposes the period controls and does not render zero while loading', async () => {
     const getSummary = vi.spyOn(dbService, 'getProviderEarningsSummary').mockResolvedValue(earningsSummary);
     render(React.createElement(ProviderEarningsTab));
@@ -90,5 +110,31 @@ describe('PRO Ganhos — navigation and deterministic insights', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '7 dias' }));
     await waitFor(() => expect(getSummary).toHaveBeenLastCalledWith(7));
+  });
+
+  it('renders the earnings line without point markers', () => {
+    const source = fs.readFileSync(path.join(root, 'src/apps/provider/components/ProviderEarningsTab.tsx'), 'utf8');
+    expect(source).not.toContain('<circle cx={getX');
+  });
+
+  it('uses unique semantic keys for the y-axis labels when max equals the midpoint', () => {
+    const source = fs.readFileSync(path.join(root, 'src/apps/provider/components/ProviderEarningsTab.tsx'), 'utf8');
+    expect(source).toContain("{ id: 'top', value: max }");
+    expect(source).toContain("{ id: 'middle', value: Math.round(max / 2) }");
+    expect(source).toContain("{ id: 'bottom', value: 0 }");
+    expect(source).not.toContain('[max, Math.round(max / 2), 0].map((value) => <span key={value}>');
+  });
+
+  it('marks the management tabs that require action with a pending indicator', () => {
+    const tabs = fs.readFileSync(path.join(root, 'src/components/ui/Tabs.tsx'), 'utf8');
+    const management = fs.readFileSync(path.join(root, 'src/apps/provider/components/ProviderManagementTab.tsx'), 'utf8');
+    expect(tabs).toContain('hasPending?: boolean;');
+    expect(tabs).toContain('tab.hasPending');
+    expect(tabs).toContain('h-3 w-3 rounded-full bg-rose-500');
+    expect(tabs).not.toContain('ring-2 ring-white');
+    expect(management).toContain("hasPending: hasPendingOfferings");
+    expect(management).toContain("hasPending: hasPendingPayoutSetup");
+    expect(management).toContain("hasPending: hasPendingSchedule");
+    expect(management).toContain("hasPending: hasPendingVehicles");
   });
 });

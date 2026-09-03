@@ -31,7 +31,10 @@ describe('notification navigation contract', () => {
   });
 
   it('maps only known business events and keeps history-only notifications non-actionable', () => {
-    expect(targetFromNotification({ type: 'BOOKING_CONFIRMED', appContext: 'STUDENT', entityType: 'booking', entityId: bookingId })).toMatchObject({ ok: true, target: { action: 'details' } });
+    expect(targetFromNotification({ type: 'BOOKING_CONFIRMED', appContext: 'STUDENT', entityType: 'booking', entityId: bookingId })).toEqual({
+      ok: true,
+      target: { version: 1, appContext: 'STUDENT', entityType: 'booking', entityId: bookingId, action: 'details' },
+    });
     expect(targetFromNotification({ type: 'NEW_MESSAGE', appContext: 'PRO', entityType: 'booking', entityId: bookingId })).toMatchObject({ ok: true, target: { action: 'chat' } });
     expect(targetFromNotification({ type: 'REVIEW_RECEIVED', appContext: 'PRO', entityType: 'review', entityId: bookingId })).toMatchObject({ ok: true, target: { entityType: 'earnings', entityId: null, action: 'reviews' } });
     expect(targetFromNotification({ type: 'REVIEW_AVAILABLE', appContext: 'STUDENT', entityType: 'review', entityId: bookingId })).toMatchObject({ ok: true, target: { action: 'review' } });

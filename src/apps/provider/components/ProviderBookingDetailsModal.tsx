@@ -33,8 +33,8 @@ interface ProviderBookingDetailsModalProps {
   booking: Booking | null;
   onOpenChat: (booking: Booking) => void;
   onCheckIn: (booking: Booking) => void | Promise<string | void>;
-  onStartLesson: (booking: Booking) => void;
-  onCompleteLesson: (booking: Booking) => void;
+  onStartLesson: (booking: Booking) => void | Promise<void>;
+  onCompleteLesson: (booking: Booking) => void | Promise<void>;
   onCancelBooking: (booking: Booking) => void;
   isCompleting: boolean;
   canCancelBooking?: (booking: Booking) => boolean;
@@ -55,6 +55,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   currentUserId,
 }) => {
   const [isCheckingIn, setIsCheckingIn] = React.useState(false);
+  const [isStarting, setIsStarting] = React.useState(false);
   const [checkInError, setCheckInError] = React.useState<string | null>(null);
   const [checkInNow, setCheckInNow] = React.useState(() => new Date());
 
@@ -113,6 +114,16 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     }
   };
 
+  const handleStartLesson = async () => {
+    if (isStarting) return;
+    setIsStarting(true);
+    try {
+      await onStartLesson(booking);
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   const footer = (
     <div className="flex w-full flex-col gap-2.5">
       {isConfirmed && booking.instructorCheckedIn && booking.studentCheckedIn && (
@@ -121,7 +132,9 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           variant="primary"
           size="sm"
           className="w-full rounded-2xl font-bold shadow-md transition-all hover:shadow-lg"
-          onClick={() => onStartLesson(booking)}
+          onClick={() => void handleStartLesson()}
+          disabled={isStarting}
+          isLoading={isStarting}
           leftIcon={<Play className="h-4 w-4 fill-current" aria-hidden="true" />}
         >
           Iniciar aula

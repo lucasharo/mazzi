@@ -37,7 +37,7 @@ interface ProviderScheduleTabProps {
   onSaveRule: () => void;
   editingRuleId: string | null;
   isSavingRule: boolean;
-  onDeleteRule: (id: string) => void;
+  onDeleteRule: (id: string) => Promise<void>;
   ruleError: string | null;
   isAddExceptionModalOpen: boolean;
   onOpenAddExceptionModal: () => void;
@@ -51,10 +51,10 @@ interface ProviderScheduleTabProps {
     vehicleId: string;
   };
   onExceptionFormChange: (form: any) => void;
-  onSaveException: () => void;
-  onDeleteException: (id: string) => void;
-  onDeactivateException?: (id: string) => void;
-  onActivateException?: (id: string) => void;
+  onSaveException: () => Promise<void>;
+  onDeleteException: (id: string) => Promise<void>;
+  onDeactivateException?: (id: string) => Promise<void>;
+  onActivateException?: (id: string) => Promise<void>;
   exceptionError: string | null;
   simOfferingId: string;
   onSimOfferingIdChange: (id: string) => void;
@@ -113,9 +113,10 @@ interface ScheduleBlockCardItem {
   onActivate?: () => void;
   active?: boolean;
   deleting?: boolean;
+  working?: boolean;
 }
 
-const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt, endAt, reason, editable, active = true, onEdit, onDelete, onDeactivate, onActivate, deleting }) => {
+const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt, endAt, reason, editable, active = true, onEdit, onDelete, onDeactivate, onActivate, deleting, working = false }) => {
   const dayRange = kind === 'days' ? getDayBlockDisplayRange(startAt, endAt) : null;
   return (
   <article id={`schedule-block-${id}`} className={`mazzi-card min-w-0 w-full overflow-hidden p-4 sm:p-5 text-left text-[var(--mazzi-text)] space-y-3.5 ${!active ? 'opacity-75' : ''}`}>
@@ -146,9 +147,9 @@ const ScheduleBlockCard: React.FC<ScheduleBlockCardItem> = ({ id, kind, startAt,
     </div>
     <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2">
       {editable && <Button variant="outline" size="sm" className="min-h-10 text-slate-600" onClick={onEdit} leftIcon={<Pencil className="w-3.5 h-3.5" />} aria-label="Editar bloqueio">Editar</Button>}
-      {kind === 'days' && active && <Button variant="dangerSoft" size="sm" className="min-h-10" onClick={onDeactivate} leftIcon={<PowerOff className="w-3.5 h-3.5" />} aria-label="Desativar bloqueio de dias">Desativar Bloqueio</Button>}
-      {kind === 'days' && !active && editable && <Button variant="outline" size="sm" className="min-h-10 text-emerald-700" onClick={onActivate} leftIcon={<Power className="w-3.5 h-3.5" />} aria-label="Ativar bloqueio de dias">Ativar bloqueio</Button>}
-      {kind === 'quick' && <Button variant="dangerSoft" size="sm" className="min-h-10 disabled:opacity-40" disabled={!editable || deleting} isLoading={deleting} onClick={onDelete} leftIcon={<Trash2 className="w-3.5 h-3.5" />} aria-label="Excluir bloqueio">Excluir</Button>}
+      {kind === 'days' && active && <Button variant="dangerSoft" size="sm" className="min-h-10" disabled={!editable || working} isLoading={working} onClick={onDeactivate} leftIcon={<PowerOff className="w-3.5 h-3.5" />} aria-label="Desativar bloqueio de dias">Desativar Bloqueio</Button>}
+      {kind === 'days' && !active && editable && <Button variant="outline" size="sm" className="min-h-10 text-emerald-700" disabled={working} isLoading={working} onClick={onActivate} leftIcon={<Power className="w-3.5 h-3.5" />} aria-label="Ativar bloqueio de dias">Ativar bloqueio</Button>}
+      {kind === 'quick' && <Button variant="dangerSoft" size="sm" className="min-h-10 disabled:opacity-40" disabled={!editable || deleting || working} isLoading={deleting || working} onClick={onDelete} leftIcon={<Trash2 className="w-3.5 h-3.5" />} aria-label="Excluir bloqueio">Excluir</Button>}
     </div>
   </article>
   );
@@ -210,6 +211,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const [globalBlockActionError, setGlobalBlockActionError] = React.useState<string | null>(null);
   const [isSavingGlobalBlock, setIsSavingGlobalBlock] = React.useState(false);
   const [deletingGlobalBlockId, setDeletingGlobalBlockId] = React.useState<string | null>(null);
+  const [pendingAction, setPendingAction] = React.useState<string | null>(null);
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = React.useState(false);
   const [isSavingEmergencyBlock, setIsSavingEmergencyBlock] = React.useState(false);
   const [emergencyBlockError, setEmergencyBlockError] = React.useState<string | null>(null);
@@ -221,6 +223,16 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const canChangeBlock = (startAt: string) => new Date(startAt).getTime() > Date.now();
   const sortedGlobalBlocks = React.useMemo(() => [...(instructorGlobalBlocks || [])].sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime()), [instructorGlobalBlocks]);
   const sortedExceptions = React.useMemo(() => [...availabilityExceptions].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [availabilityExceptions]);
+  const runAsyncAction = async (key: string, action: () => Promise<void>) => {
+    if (pendingAction) return;
+    setPendingAction(key);
+    try {
+      await action();
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
   const blockCardItems = React.useMemo<ScheduleBlockCardItem[]>(() => [
     ...(isInstructorUser ? sortedGlobalBlocks.map((block) => ({
       id: `global-${block.id}`, kind: 'quick' as const, startAt: block.start_at, endAt: block.end_at, reason: block.reason, editable: canChangeBlock(block.start_at), active: true,
@@ -228,9 +240,10 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     })) : []),
     ...sortedExceptions.map((exception) => ({
       id: exception.id, kind: 'days' as const, startAt: exception.startAt, endAt: exception.endAt, reason: exception.reason, active: exception.isActive !== false, editable: canChangeBlock(exception.startAt),
-      onEdit: () => handleEditException(exception), onDelete: () => void onDeleteException(exception.id), onDeactivate: () => onDeactivateException?.(exception.id), onActivate: () => onActivateException?.(exception.id),
+      onEdit: () => handleEditException(exception), onDelete: () => runAsyncAction(`exception-delete-${exception.id}`, () => onDeleteException(exception.id)), onDeactivate: () => onDeactivateException ? runAsyncAction(`exception-deactivate-${exception.id}`, () => onDeactivateException(exception.id)) : undefined, onActivate: () => onActivateException ? runAsyncAction(`exception-activate-${exception.id}`, () => onActivateException(exception.id)) : undefined,
+      working: pendingAction?.endsWith(`-${exception.id}`) === true,
     })),
-  ].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [isInstructorUser, sortedGlobalBlocks, sortedExceptions, deletingGlobalBlockId, onActivateException]);
+  ].sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()), [isInstructorUser, sortedGlobalBlocks, sortedExceptions, deletingGlobalBlockId, onActivateException, pendingAction]);
 
   const handleEditException = (exception: AvailabilityException) => {
     if (!canChangeBlock(exception.startAt)) return;
@@ -426,8 +439,8 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   );
   const exceptionFooter = (
     <>
-      <Button variant="dangerSoft" size="sm" onClick={onCloseAddExceptionModal}>Cancelar</Button>
-      <Button variant="primary" size="sm" onClick={onSaveException}>Salvar Bloqueio</Button>
+      <Button variant="dangerSoft" size="sm" onClick={onCloseAddExceptionModal} disabled={pendingAction !== null}>Cancelar</Button>
+      <Button variant="primary" size="sm" onClick={() => void runAsyncAction('exception-save', onSaveException)} disabled={pendingAction !== null} isLoading={pendingAction === 'exception-save'}>Salvar Bloqueio</Button>
     </>
   );
 
@@ -534,7 +547,9 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onDeleteRule(rule.id)}
+                      onClick={() => void runAsyncAction(`rule-delete-${rule.id}`, () => onDeleteRule(rule.id))}
+                      disabled={pendingAction !== null}
+                      isLoading={pendingAction === `rule-delete-${rule.id}`}
                       className="text-rose-600 hover:bg-rose-50"
                       aria-label={`Excluir horário de ${DAY_OF_WEEK_LABELS_PT[rule.dayOfWeek]}`}
                       title="Excluir horário"

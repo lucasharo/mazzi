@@ -19,7 +19,7 @@ import {
   DayOfWeek,
   ExceptionType,
   ExceptionReasonCategory,
-  BankAccount,
+  ProviderPaymentAccount,
   ProviderPayoutDetail,
 } from '../../types';
 import { Modal } from '../../components/ui/Modal';
@@ -56,11 +56,12 @@ import {
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
 import { getBookingStartTimestamp, getStudentBookingSection, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
-import { buildFullDayBlockRange, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
+import { buildFullDayBlockRange, formatDateBR, formatTimeBR, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
 import { formatCentsToBRL } from '../../domain/money';
 import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
+import { formatDateMask, toISODateString, validateBirthDate } from '../../utils/age';
 import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTargetFromHash, useMobileAppRoute } from '../../lib/mobile-app-router';
 import type { NotificationNavigationTarget } from '../../lib/notification-navigation';
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
@@ -80,7 +81,7 @@ import { ProviderProfileTab } from './components/ProviderProfileTab';
 import { ProviderEarningsTab } from './components/ProviderEarningsTab';
 import { ProviderCancellationModal } from './components/ProviderCancellationModal';
 import { ProviderBookingDetailsModal } from './components/ProviderBookingDetailsModal';
-import { AlertCircle, Upload, ArrowRight, Info, RefreshCw, LogOut } from 'lucide-react';
+import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Clock3, Info, LogOut, RefreshCw, Sparkles, Upload, WalletCards, XCircle } from 'lucide-react';
 import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
 
 export function canProviderCommerciallyCancelBooking(
@@ -113,7 +114,7 @@ export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
-  const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'schedule', 'bookings', 'earnings', 'management', 'profile']);
+  const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'bookings', 'earnings', 'management', 'profile']);
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
   const [bookingUpdatesCount, setBookingUpdatesCount] = useState(0);
   const shouldAutoSelectTodayRef = useRef(true);
@@ -225,6 +226,7 @@ export const ProviderApp: React.FC = () => {
   const [onboardingStep, setOnboardingStep] = useState<number>(1);
   const [onboardingForm, setOnboardingForm] = useState({
     displayName: '',
+    birthDate: '',
     legalName: '',
     documentNumber: '',
     phone: '',
@@ -287,8 +289,8 @@ export const ProviderApp: React.FC = () => {
   const [profileFormError, setProfileFormError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
-  const [bankAccount, setBankAccount] = useState<BankAccount | null>(null);
-  const [isSavingBankAccount, setIsSavingBankAccount] = useState(false);
+  const [paymentAccount, setPaymentAccount] = useState<ProviderPaymentAccount | null>(null);
+  const [isConnectingStripe, setIsConnectingStripe] = useState(false);
 
   // Vehicle Management Modal State
   const [isAddVehicleModalOpen, setIsAddVehicleModalOpen] = useState<boolean>(false);
@@ -462,9 +464,9 @@ export const ProviderApp: React.FC = () => {
           : await dbService.getBookings();
         setBookings(refreshedBookings || []);
       } else if (activeTab === 'profile') {
-        const [avatarUrl, destination] = await Promise.all([getMyProfileAvatar(), dbService.getMyBankAccount()]);
+        const [avatarUrl, stripeAccount] = await Promise.all([getMyProfileAvatar(), dbService.getMyProviderPaymentAccount()]);
         setProfileAvatar(avatarUrl);
-        setBankAccount(destination);
+        setPaymentAccount(stripeAccount);
       } else {
         // Schedule and Management share the provider workspace source; only the
         // visible tab consumes the refreshed state below.
@@ -504,23 +506,11 @@ export const ProviderApp: React.FC = () => {
     setProfileAvatar(user?.avatarUrl);
     if (user?.id) {
       void getMyProfileAvatar().then((avatarUrl) => setProfileAvatar(avatarUrl)).catch(() => undefined);
-      void dbService.getMyBankAccount().then((destination) => setBankAccount(destination)).catch(() => undefined);
+      void Promise.all([getMyProfileAvatar(), dbService.getMyProviderPaymentAccount()]).then(([, stripeAccount]) => {
+        setPaymentAccount(stripeAccount);
+      }).catch(() => undefined);
     }
   }, [user?.avatarUrl]);
-
-  const handleSaveBankAccount = async (input: Omit<BankAccount, 'id' | 'providerId' | 'isActive' | 'updatedAt' | 'accountNumberMasked'>) => {
-    if (isSavingBankAccount) return;
-    setIsSavingBankAccount(true);
-    try {
-      const saved = await dbService.saveMyBankAccount(input);
-      setBankAccount(saved);
-    } catch (error: any) {
-      setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível salvar a conta bancária.'));
-      throw error;
-    } finally {
-      setIsSavingBankAccount(false);
-    }
-  };
 
   // Qualquer alteração de reserva gera um aviso no botão Aulas enquanto ele
   // não estiver aberto. O Realtime cobre inserções, atualizações e exclusões.
@@ -633,6 +623,60 @@ export const ProviderApp: React.FC = () => {
     }
     setActiveTab('earnings');
   };
+
+  const handleConnectStripe = async () => {
+    if (isConnectingStripe) return;
+    setIsConnectingStripe(true);
+    try {
+      const result = await dbService.openProviderPayoutOnboarding();
+      setPaymentAccount(result.account);
+      // Keep the button loading while the browser leaves MAZZI and waits for
+      // the hosted Stripe page to become available. Reset only on failure.
+      window.location.assign(result.onboardingUrl);
+    } catch (error: any) {
+      setIsConnectingStripe(false);
+      setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível abrir o cadastro de recebimentos.'));
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.id || workspaceLoading) return;
+    const params = new URLSearchParams(window.location.search);
+    const onboardingState = params.get('stripe_onboarding');
+    if (onboardingState !== 'return' && onboardingState !== 'refresh') return;
+
+    params.delete('stripe_onboarding');
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.search = params.toString();
+    window.history.replaceState(window.history.state, '', cleanUrl.toString());
+
+    if (onboardingState === 'refresh') {
+      void handleConnectStripe();
+      return;
+    }
+
+    setActiveTab('management');
+    setManagementSubTab('account');
+    void dbService.syncMyStripePaymentAccount()
+      .then((account) => {
+        if (account) {
+          setPaymentAccount(account);
+          showProviderFeedback(
+            account.payoutsEnabled ? 'success' : 'warning',
+            account.payoutsEnabled ? 'Recebimentos habilitados' : 'Cadastro ainda pendente',
+            account.payoutsEnabled
+              ? 'Sua conta está pronta para receber repasses.'
+              : 'Ainda existem informações pendentes para liberar os repasses.',
+          );
+        }
+      })
+      .catch(() => {
+        showProviderFeedback('warning', 'Não foi possível atualizar o status', 'Tente novamente em alguns instantes.');
+      })
+      .finally(() => {
+        window.requestAnimationFrame(() => signalInitialNavigationReady());
+      });
+  }, [user?.id, workspaceLoading]);
 
   const openNotificationTarget = (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
@@ -1300,6 +1344,12 @@ export const ProviderApp: React.FC = () => {
     const cleanPhone = normalizePhone(profileForm.publicContact);
     const cleanState = maskStateUF(profileForm.state);
     const cleanName = profileForm.displayName.trim();
+    const cleanBirthDate = toISODateString(profileForm.birthDate);
+    if (currentProvider?.type === 'INSTRUCTOR' && (!cleanBirthDate || !validateBirthDate(profileForm.birthDate).valid)) {
+      setProfileFormError('Informe uma data de nascimento válida.');
+      setIsSavingProfile(false);
+      return;
+    }
     const cleanNeighborhood = profileForm.neighborhood.trim();
     const cleanCity = profileForm.city.trim() || profileForm.address?.city?.trim() || '';
     const addressState = profileForm.address?.stateCode || profileForm.address?.state || '';
@@ -1363,7 +1413,8 @@ export const ProviderApp: React.FC = () => {
       await dbService.updateMyProfile(
         cleanName || user?.name || '',
         cleanPhone || user?.phone || '',
-        profileAvatar
+        profileAvatar,
+        cleanBirthDate || undefined,
       );
       const addressPayload = buildProviderAddressPayload({
         addressLine1: profileFormForSave.addressLine1,
@@ -1470,6 +1521,26 @@ status: 'IN_REVIEW',
     }
   };
 
+  const payoutDetailPresentation = selectedPayoutDetail ? {
+    isPaid: selectedPayoutDetail.status === 'PAID',
+    isFailed: selectedPayoutDetail.status === 'FAILED',
+    isBlocked: selectedPayoutDetail.status === 'BLOCKED',
+    label: selectedPayoutDetail.status === 'PAID'
+      ? 'Repasse concluído'
+      : selectedPayoutDetail.status === 'FAILED'
+        ? 'Repasse não concluído'
+        : selectedPayoutDetail.status === 'BLOCKED'
+          ? 'Repasse bloqueado'
+          : 'Repasse em processamento',
+    description: selectedPayoutDetail.status === 'PAID'
+      ? 'O valor foi confirmado para o instrutor.'
+      : selectedPayoutDetail.status === 'FAILED'
+        ? 'Não foi possível concluir este repasse.'
+        : selectedPayoutDetail.status === 'BLOCKED'
+          ? 'Este repasse precisa ser regularizado antes do envio.'
+          : 'O repasse está sendo preparado para transferência.',
+  } : null;
+
   return (
     <div className="mazzi-app flex flex-col min-h-dvh bg-[#f7f5ef] text-[var(--mazzi-text)]">
       {/* Header */}
@@ -1479,7 +1550,6 @@ status: 'IN_REVIEW',
           currentRole={currentRole}
           userName={user?.name}
           onOpenNotifications={() => setIsNotificationsOpen((prev) => !prev)}
-          onOpenProfile={() => setActiveTab('profile')}
           onRefreshWorkspace={() => void refreshCurrentTab()}
           isRefreshing={isRefreshingCurrentTab}
         />
@@ -1531,7 +1601,7 @@ status: 'IN_REVIEW',
         )}
 
         {/* TAB 2: SCHEDULE */}
-        {(activeTab === 'schedule' || (activeTab === 'management' && (managementSubTab === 'schedule_rules' || managementSubTab === 'schedule_blocks'))) && (
+        {activeTab === 'management' && (managementSubTab === 'schedule_rules' || managementSubTab === 'schedule_blocks') && (
           <div className="order-20">
           <ProviderScheduleTab
             scheduleSubTab={scheduleSubTab}
@@ -1636,15 +1706,16 @@ status: 'IN_REVIEW',
               if (tab === 'schedule_blocks') setScheduleSubTab('exceptions');
               setManagementSubTab(tab);
             }}
+            availabilityRules={availabilityRules}
             vehicles={vehicles}
             offerings={offerings}
             complianceDocs={complianceDocs}
             currentProvider={currentProvider}
             schoolInstructors={schoolInstructors}
             schoolInstructorSummary={schoolInstructorSummary}
-            bankAccount={bankAccount}
-            onSaveBankAccount={handleSaveBankAccount}
-            isSavingBankAccount={isSavingBankAccount}
+            paymentAccount={paymentAccount}
+            onOpenPayoutOnboarding={() => { void handleConnectStripe(); }}
+            isOpeningPayoutOnboarding={isConnectingStripe}
             isAddVehicleModalOpen={isAddVehicleModalOpen}
             onOpenAddVehicleModal={handleOpenAddVehicle}
             onOpenEditVehicle={handleOpenEditVehicle}
@@ -1682,6 +1753,7 @@ status: 'IN_REVIEW',
             userName={user?.name}
             userEmail={user?.email}
             userPhone={user?.phone}
+            userBirthDate={user?.birthDate ? formatDateMask(user.birthDate) : undefined}
             profileAvatar={profileAvatar}
             onAvatarChange={(newUrl) => {
               setProfileAvatar(newUrl);
@@ -1693,6 +1765,7 @@ status: 'IN_REVIEW',
                 setProfileFormError(null);
                 setProfileForm({
                   displayName: currentProvider.name || '',
+                  birthDate: formatDateMask(user?.birthDate || ''),
                   legalName: currentProvider.legalName || '',
                   publicContact: currentProvider.publicContact || user?.phone || '',
                   commercialEmail: currentProvider.commercialEmail || '',
@@ -1729,7 +1802,7 @@ status: 'IN_REVIEW',
         activeTab={activeTab}
         onTabChange={setActiveTab}
         bookingUpdatesCount={bookingUpdatesCount}
-        showManagementAlert={!offerings.some((offering) => offering.status === 'ACTIVE') || !bankAccount}
+        showManagementAlert={availabilityRules.length === 0 || !vehicles.some((vehicle) => vehicle.status === 'ACTIVE') || !offerings.some((offering) => offering.status === 'ACTIVE') || !paymentAccount?.payoutsEnabled}
       />
 
       {/* MODALS */}
@@ -1796,15 +1869,36 @@ status: 'IN_REVIEW',
 
       {selectedPayoutDetail && (
         <Modal isOpen={true} onClose={() => setSelectedPayoutDetail(null)} title="Detalhes do repasse" size="sm">
-          <div className="space-y-4 text-left">
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">Valor do repasse</p>
-              <p className="mt-1 text-2xl font-black text-slate-950">{formatCentsToBRL(selectedPayoutDetail.amount_in_cents)}</p>
+          <div className="mx-auto w-full max-w-xl space-y-5 py-2 text-center sm:py-4">
+            <div className={`relative mx-auto flex h-20 w-20 items-center justify-center rounded-[1.5rem] border-2 ${payoutDetailPresentation?.isPaid ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : payoutDetailPresentation?.isFailed || payoutDetailPresentation?.isBlocked ? 'border-rose-100 bg-rose-50 text-rose-600' : 'border-amber-100 bg-amber-50 text-amber-600'}`}>
+              {payoutDetailPresentation?.isPaid ? <CheckCircle2 className="h-11 w-11" strokeWidth={2.5} aria-hidden="true" /> : payoutDetailPresentation?.isFailed || payoutDetailPresentation?.isBlocked ? <XCircle className="h-11 w-11" strokeWidth={2.25} aria-hidden="true" /> : <WalletCards className="h-10 w-10" strokeWidth={2.25} aria-hidden="true" />}
+              {payoutDetailPresentation?.isPaid && <Sparkles className="absolute -right-2 -top-2 h-4 w-4 fill-emerald-300 text-emerald-50" aria-hidden="true" />}
             </div>
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between gap-3"><dt className="text-slate-500">Status</dt><dd className="font-bold text-slate-900">{selectedPayoutDetail.status === 'BLOCKED' ? 'Bloqueado' : selectedPayoutDetail.status === 'FAILED' ? 'Falhou' : selectedPayoutDetail.status === 'PAID' ? 'Pago' : 'Em processamento'}</dd></div>
-              {selectedPayoutDetail.failure_reason && <div className="flex justify-between gap-3"><dt className="text-slate-500">Motivo</dt><dd className="text-right font-semibold text-slate-900">{selectedPayoutDetail.failure_reason}</dd></div>}
-            </dl>
+
+            <div className="space-y-2">
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold ${payoutDetailPresentation?.isPaid ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : payoutDetailPresentation?.isFailed || payoutDetailPresentation?.isBlocked ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+                {payoutDetailPresentation?.isPaid ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : payoutDetailPresentation?.isFailed || payoutDetailPresentation?.isBlocked ? <XCircle className="h-3.5 w-3.5" aria-hidden="true" /> : <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />}
+                {payoutDetailPresentation?.label}
+              </span>
+              <h2 className="text-xl font-black tracking-tight text-[var(--mazzi-dark)]">{payoutDetailPresentation?.isPaid ? 'Repasse realizado com sucesso!' : payoutDetailPresentation?.label}</h2>
+              <p className="mx-auto max-w-sm text-xs leading-relaxed text-[var(--mazzi-muted)]">{payoutDetailPresentation?.description}</p>
+            </div>
+
+            <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 text-left shadow-xs sm:p-5">
+              <p className="mazzi-field-label">VALOR DO REPASSE</p>
+              <p className="mt-1 text-3xl font-black tracking-tight text-[var(--mazzi-dark)]">{formatCentsToBRL(selectedPayoutDetail.amount_in_cents)}</p>
+              <div className="mt-4 space-y-3 border-t border-[var(--mazzi-border)] pt-4 text-sm">
+                <div className="flex items-start gap-3">
+                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-[#e9a918]" aria-hidden="true" />
+                  <div><p className="text-xs text-[var(--mazzi-muted)]">Previsão de repasse</p><p className="font-bold text-[var(--mazzi-text)]">{formatDateBR(selectedPayoutDetail.scheduled_release_at)} às {formatTimeBR(selectedPayoutDetail.scheduled_release_at)}</p></div>
+                </div>
+                {selectedPayoutDetail.processed_at && <div className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <div><p className="text-xs text-[var(--mazzi-muted)]">Processado em</p><p className="font-bold text-[var(--mazzi-text)]">{formatDateBR(selectedPayoutDetail.processed_at)} às {formatTimeBR(selectedPayoutDetail.processed_at)}</p></div>
+                </div>}
+                {selectedPayoutDetail.failure_reason && <div className="rounded-xl bg-rose-50 p-3 text-xs font-semibold text-rose-800"><p className="mb-1 text-[10px] font-black uppercase tracking-wide text-rose-600">Motivo</p>{selectedPayoutDetail.failure_reason}</div>}
+              </div>
+            </div>
           </div>
         </Modal>
       )}

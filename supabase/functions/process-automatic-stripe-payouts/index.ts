@@ -12,6 +12,28 @@ function encodeForm(values: Record<string, string | number>) {
   return body;
 }
 
+async function getSourceTransaction(stripeSecretKey: string, paymentIntentId: unknown) {
+  const id = typeof paymentIntentId === "string" ? paymentIntentId : "";
+  if (!/^pi_[A-Za-z0-9]+$/.test(id)) return null;
+
+  const params = new URLSearchParams();
+  params.set("expand[]", "latest_charge");
+  try {
+    const response = await fetch(
+      `https://api.stripe.com/v1/payment_intents/${encodeURIComponent(id)}?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${stripeSecretKey}` } },
+    );
+    if (!response.ok) return null;
+    const paymentIntent = await response.json().catch(() => ({}));
+    const charge = paymentIntent?.latest_charge;
+    return typeof charge?.id === "string" && /^ch_[A-Za-z0-9]+$/.test(charge.id)
+      ? charge.id
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "POST") return reply(405, { message: "Método não permitido." });
 
@@ -36,6 +58,22 @@ Deno.serve(async (request) => {
   const results: Array<Record<string, unknown>> = [];
   for (const payout of payouts || []) {
     try {
+      const sourceTransaction = await getSourceTransaction(
+        stripeSecretKey,
+        payout.stripe_payment_intent_id,
+      );
+      if (!sourceTransaction) {
+        const reason = "STRIPE_SOURCE_TRANSACTION_NOT_FOUND";
+        await service.rpc("finalize_stripe_payout", {
+          p_payout_id: payout.payout_id,
+          p_external_transfer_id: null,
+          p_success: false,
+          p_failure_reason: reason,
+        });
+        results.push({ payoutId: payout.payout_id, success: false, reason });
+        continue;
+      }
+
       const stripeResponse = await fetch("https://api.stripe.com/v1/transfers", {
         method: "POST",
         headers: {
@@ -47,6 +85,7 @@ Deno.serve(async (request) => {
           amount: payout.amount_in_cents,
           currency: "brl",
           destination: payout.stripe_account_id,
+          source_transaction: sourceTransaction,
           transfer_group: `mazzi_booking_${payout.booking_id}`,
           "metadata[mazzi_booking_id]": payout.booking_id,
           "metadata[mazzi_payout_id]": payout.payout_id,
