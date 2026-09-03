@@ -5,11 +5,9 @@
  */
 import React, { Suspense } from 'react';
 
-const componentName = 'DesignSystem' + 'Showcase';
-
 const Showcase = React.lazy(() =>
-  import(`./apps/design-system/${componentName}`).then((m) => ({
-    default: m[componentName] as React.ComponentType<any>
+  import('./apps/design-system/DesignSystemShowcase').then((m) => ({
+    default: m.DesignSystemShowcase as React.ComponentType<any>
   }))
 );
 
