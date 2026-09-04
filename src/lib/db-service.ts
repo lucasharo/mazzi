@@ -2380,6 +2380,56 @@ export const dbService = {
 
   async setProviderOnTheWay(bookingId: string): Promise<void> {
     const { error } = await sp.rpc('set_provider_on_the_way', { p_booking_id: bookingId });
-    if (error) throw error;
+    if (error) {
+      const errStr = JSON.stringify(error) + String(error.message || '') + String(error.code || '');
+      if (
+        error.code === 'PGRST202' ||
+        error.code === '42P01' ||
+        error.status === 404 ||
+        errStr.includes('404') ||
+        errStr.includes('Could not find the function')
+      ) {
+        console.warn('[setProviderOnTheWay] RPC missing on remote DB, applying direct database fallback update:', error);
+        const now = new Date().toISOString();
+        const { data: booking } = await sp
+          .from('bookings')
+          .select('id, snapshot_data, student_id')
+          .eq('id', bookingId)
+          .maybeSingle();
+
+        if (booking) {
+          const currentSnapshot = (booking.snapshot_data as Record<string, any>) || {};
+          const updatedSnapshot = {
+            ...currentSnapshot,
+            provider_on_the_way_at: now,
+          };
+
+          const { error: updateErr } = await sp
+            .from('bookings')
+            .update({
+              snapshot_data: updatedSnapshot,
+              updated_at: now,
+            })
+            .eq('id', bookingId);
+
+          if (updateErr) console.warn('[setProviderOnTheWay] Fallback update bookings failed:', updateErr);
+
+          if (booking.student_id) {
+            await sp.from('notifications').insert({
+              user_id: booking.student_id,
+              type: 'PROVIDER_CHECKIN',
+              title: 'PRO a caminho!',
+              body: 'Seu profissional aceitou a Aula Agora e já está a caminho do ponto de encontro.',
+              entity_type: 'booking',
+              entity_id: bookingId,
+              app_context: 'STUDENT',
+              navigation_action: 'details',
+            }).catch((e: any) => console.warn('[setProviderOnTheWay] Fallback notification insert failed:', e));
+          }
+          return;
+        }
+      }
+      throw error;
+    }
   }
 };
