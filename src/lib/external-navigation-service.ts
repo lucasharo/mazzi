@@ -53,7 +53,8 @@ export function getAvailableNavigationApps(): NavigationAppOption[] {
 export function buildNavigationUrl(target: ExternalNavigationTarget, app: NavigationApp): string {
   const { latitude, longitude, label } = target;
   const isDefaultCoords = (latitude === -23.5505 && longitude === -46.6333) || (latitude === 0 && longitude === 0);
-  const encodedLabel = encodeURIComponent(label?.trim() || 'Ponto de Encontro MAZZI');
+  const cleanLabel = label?.trim() || 'Ponto de Encontro MAZZI';
+  const encodedLabel = encodeURIComponent(cleanLabel);
 
   switch (app) {
     case 'google':
