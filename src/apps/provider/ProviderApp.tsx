@@ -193,14 +193,41 @@ export const ProviderApp: React.FC = () => {
 
   const navDestination = useMemo(() => {
     if (!activeInstantBooking) return null;
-    const mp = activeInstantBooking.meetingPoint || activeInstantBooking.snapshot?.meetingPoint;
-    const lat = typeof mp === 'object' && mp?.latitude ? mp.latitude : (activeInstantBooking.snapshot as any)?.meetingPoint?.latitude;
-    const lng = typeof mp === 'object' && mp?.longitude ? mp.longitude : (activeInstantBooking.snapshot as any)?.meetingPoint?.longitude;
-    const label = (typeof mp === 'object' && mp?.address) ? mp.address : (activeInstantBooking.fullMeetingPoint || (typeof activeInstantBooking.meetingPoint === 'string' ? activeInstantBooking.meetingPoint : 'Ponto de encontro'));
+
+    const mp = activeInstantBooking.meetingPoint || activeInstantBooking.snapshot?.meetingPoint || (activeInstantBooking.snapshot as any)?.meeting_point;
+
+    let lat: number | undefined = undefined;
+    let lng: number | undefined = undefined;
+    let label = activeInstantBooking.fullMeetingPoint || (typeof activeInstantBooking.meetingPoint === 'string' ? activeInstantBooking.meetingPoint : '');
+
+    if (typeof mp === 'object' && mp !== null) {
+      if (typeof mp.latitude === 'number' || typeof (mp as any).lat === 'number') {
+        lat = Number(mp.latitude ?? (mp as any).lat);
+      }
+      if (typeof mp.longitude === 'number' || typeof (mp as any).lng === 'number') {
+        lng = Number(mp.longitude ?? (mp as any).lng);
+      }
+      if (mp.address || mp.label || mp.name) {
+        label = String(mp.address || mp.label || mp.name);
+      }
+    } else if (typeof mp === 'string') {
+      label = mp;
+    }
+
+    if (lat === undefined && (activeInstantBooking.snapshot as any)?.latitude != null) {
+      lat = Number((activeInstantBooking.snapshot as any).latitude);
+    }
+    if (lng === undefined && (activeInstantBooking.snapshot as any)?.longitude != null) {
+      lng = Number((activeInstantBooking.snapshot as any).longitude);
+    }
+
+    if (!label) {
+      label = 'Ponto de encontro';
+    }
 
     return {
-      latitude: typeof lat === 'number' ? lat : -23.5505,
-      longitude: typeof lng === 'number' ? lng : -46.6333,
+      latitude: typeof lat === 'number' && Number.isFinite(lat) ? lat : -23.5505,
+      longitude: typeof lng === 'number' && Number.isFinite(lng) ? lng : -46.6333,
       label,
     };
   }, [activeInstantBooking]);
