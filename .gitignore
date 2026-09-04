@@ -14,3 +14,9 @@ __pycache__/
 
 # Scratch directory
 scratch/
+
+# Temporary attachments, screenshots and local Supabase CLI cache
+supabase/.temp/
+.codex-remote-attachments/
+imagem preta.png
+task-*.png

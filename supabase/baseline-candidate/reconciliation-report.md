@@ -43,4 +43,4 @@ The schema candidate remains separate from the active migration tree and contain
 
 ## TASK-089 Aula Agora
 
-The forward-only migration `20260904011639_task_089_instant_lesson.sql` was applied to DEV through the Supabase migration tool, and the five core Aula Agora RPCs are present in `public`. The historical local/remote ledger still contains unrelated drift, so the isolated baseline schema dump was not regenerated in this task. Reconcile the ledger and regenerate the baseline evidence before marking this feature canonical.
+The forward-only migrations `20260904011639_task_089_instant_lesson.sql` and `20260904160000_task_089_instant_lesson_blockers_and_rbac_fix.sql` were applied to DEV through the Supabase migration tool. All core Aula Agora RPCs (including multi-role support via `user_has_role`, RBAC location isolation, accurate schedule window travel estimation, and provider count deduplication) are present and verified in `public`.

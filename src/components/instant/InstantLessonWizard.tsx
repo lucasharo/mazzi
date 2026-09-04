@@ -13,6 +13,7 @@ import type { InstantLessonPriceOption, InstantLessonRequest, StudentSavedAddres
 
 type Transmission = TransmissionType | 'ALL';
 interface Props {
+  category?: VehicleCategory;
   location?: { lat: number; lng: number };
   locationLabel: string;
   currentUserId?: string;
@@ -41,7 +42,7 @@ function restore(key: string | undefined, fallback: Draft): Draft {
   return fallback;
 }
 
-export function InstantLessonWizard({ location, locationLabel, currentUserId, onClose, onRequestLocation, onLoadPriceOptions, onStart, isLoading }: Props) {
+export function InstantLessonWizard({ category = 'B', location, locationLabel, currentUserId, onClose, onRequestLocation, onLoadPriceOptions, onStart, isLoading }: Props) {
   const storageKey = currentUserId ? `mazzi:instant-wizard:${currentUserId}` : undefined;
   const [draft, setDraft] = useState<Draft>(() => restore(storageKey, { step: 0, address: locationLabel, location: validLocation(location) ? location : undefined, transmission: 'ALL', maxPrice: null, priceChosen: false }));
   const [options, setOptions] = useState<InstantLessonPriceOption[]>([]);
@@ -68,16 +69,16 @@ export function InstantLessonWizard({ location, locationLabel, currentUserId, on
     if (draft.step !== 2 || !validLocation(draft.location)) return;
     let cancelled = false;
     const { lat, lng } = draft.location!;
-    const key = `${lat}:${lng}:${draft.transmission}:${retry}`;
+    const key = `${lat}:${lng}:${category}:${draft.transmission}:${retry}`;
     setLoading(true); setError(null);
-    if (lookup.current?.key !== key) lookup.current = { key, promise: Promise.resolve().then(() => priceLoader.current({ latitude: lat, longitude: lng, category: 'B', transmission: draft.transmission })) };
+    if (lookup.current?.key !== key) lookup.current = { key, promise: Promise.resolve().then(() => priceLoader.current({ latitude: lat, longitude: lng, category, transmission: draft.transmission })) };
     void lookup.current.promise.then(data => {
       if (cancelled) return;
       setOptions(data.filter(o => Number.isInteger(o.eligibleProviderCount) && o.eligibleProviderCount >= 0 && (o.maxPriceInCents === null || (Number.isInteger(o.maxPriceInCents) && o.maxPriceInCents > 0))));
     }).catch(() => { if (!cancelled) { setOptions([]); setError('Não foi possível consultar os valores. Tente novamente.'); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [draft.step, draft.location?.lat, draft.location?.lng, draft.transmission, retry]);
+  }, [draft.step, draft.location?.lat, draft.location?.lng, category, draft.transmission, retry]);
 
   const busy = submitting || isLoading || locating;
   const addressValid = validLocation(draft.location) && Boolean(draft.address.trim());
@@ -105,7 +106,7 @@ export function InstantLessonWizard({ location, locationLabel, currentUserId, on
     if (!canStart || submitLock.current || !draft.location) return;
     submitLock.current = true; setSubmitting(true); setError(null);
     try {
-      const result = await onStart({ category: 'B', transmission: draft.transmission, maxPriceInCents: draft.maxPrice,
+      const result = await onStart({ category, transmission: draft.transmission, maxPriceInCents: draft.maxPrice,
         latitude: draft.location.lat, longitude: draft.location.lng,
         meetingPoint: { formattedAddress: draft.address.trim(), latitude: draft.location.lat, longitude: draft.location.lng } });
       if (result.status === 'FAILED' || result.status === 'EXPIRED') throw new Error('INSTANT_NO_PROFESSIONAL_AVAILABLE');

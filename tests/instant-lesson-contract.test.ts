@@ -12,6 +12,7 @@ const instantMatchSlotMigration = readFileSync('supabase/migrations/202609041328
 const instantRequestCleanupMigration = readFileSync('supabase/migrations/20260904140000_task_089_instant_request_cleanup_after_cancel.sql', 'utf8');
 const instantPaymentStatusMigration = readFileSync('supabase/migrations/20260904143000_task_089_instant_payment_status_notification.sql', 'utf8');
 const instantPaymentMapGateMigration = readFileSync('supabase/migrations/20260904150000_task_089_instant_payment_map_gate.sql', 'utf8');
+const instantBlockersFixMigration = readFileSync('supabase/migrations/20260904160000_task_089_instant_lesson_blockers_and_rbac_fix.sql', 'utf8');
 const dbService = readFileSync('src/lib/db-service.ts', 'utf8');
 const instantModal = readFileSync('src/apps/student/components/InstantLessonModal.tsx', 'utf8');
 const instantWizard = readFileSync('src/components/instant/InstantLessonWizard.tsx', 'utf8');
@@ -184,5 +185,12 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(instantMatchContextMigration).toContain('PRO is expected to accept an offer for its own offering');
     expect(instantMatchSlotMigration).toContain('INSTANT_BOOKING_HOLD_SLOT_CHECK_NOT_FOUND');
     expect(instantMatchSlotMigration).toContain('booking exclusion constraints');
+  });
+
+  it('enforces multi-role check, location RBAC, distinct count, and wave deduplication', () => {
+    expect(instantBlockersFixMigration).toContain('public.user_has_role');
+    expect(instantBlockersFixMigration).toContain('auth.uid() <> p_instructor_id');
+    expect(instantBlockersFixMigration).toContain('COUNT(DISTINCT c.instructor_id)');
+    expect(instantBlockersFixMigration).toContain('DISTINCT ON (o.instructor_id)');
   });
 });
