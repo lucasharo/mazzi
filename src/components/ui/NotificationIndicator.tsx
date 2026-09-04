@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { dbService } from '../../lib/db-service';
 import { Notification } from '../../types';
 
@@ -13,26 +13,44 @@ export interface NotificationIndicatorProps {
 /** Shared unread counter for notification buttons across the three PWAs. */
 export const NotificationIndicator: React.FC<NotificationIndicatorProps> = ({ children, className = '', appContext }) => {
   const [unreadCount, setUnreadCount] = useState(0);
+  const unreadLoadInFlightRef = useRef<Promise<void> | null>(null);
+  const hasLoadedRef = useRef(false);
+  const activeRef = useRef(true);
 
-  useEffect(() => {
-    let active = true;
-    const loadUnreadCount = async () => {
+  const loadUnreadCount = useCallback(async (force = false) => {
+    if (!force && hasLoadedRef.current) return;
+    if (unreadLoadInFlightRef.current) return unreadLoadInFlightRef.current;
+
+    const request = (async () => {
       try {
         const count = await dbService.getMyUnreadNotificationCount(appContext);
-        if (active) setUnreadCount(count);
+        if (activeRef.current) setUnreadCount(count);
+        hasLoadedRef.current = true;
       } catch {
-        if (active) setUnreadCount(0);
+        if (activeRef.current) setUnreadCount(0);
       }
-    };
+    })();
 
-    const handleNotificationsChanged = () => { void loadUnreadCount(); };
+    unreadLoadInFlightRef.current = request;
+    try {
+      await request;
+    } finally {
+      if (unreadLoadInFlightRef.current === request) unreadLoadInFlightRef.current = null;
+    }
+  }, [appContext]);
+
+  useEffect(() => {
+    activeRef.current = true;
+    hasLoadedRef.current = false;
+
+    const handleNotificationsChanged = () => { void loadUnreadCount(true); };
     void loadUnreadCount();
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, handleNotificationsChanged);
     return () => {
-      active = false;
+      activeRef.current = false;
       window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, handleNotificationsChanged);
     };
-  }, [appContext]);
+  }, [appContext, loadUnreadCount]);
 
   return (
     <span className={`relative inline-flex shrink-0 ${className}`}>

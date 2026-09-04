@@ -2,6 +2,12 @@
 
 ## 1. Visão Geral da Arquitetura de Reservas MAZZI
 
+Consequências por cancelamentos injustificados do instrutor na Aula Agora: [DEC-018 e política de disciplina](./product/INSTANT_CANCELLATION_CONDUCT.md). Não modificar aulas agendadas nem repasses por essa suspensão.
+
+Na Aula Agora, o ponto de encontro é a localização do aluno registrada na solicitação. A confirmação de pagamento exibe esse local somente para consulta, sem escolha entre endereço da autoescola e endereço do aluno. O checkout reutiliza a aula criada no aceite e preserva seu ponto de encontro.
+
+O fundo dos mapas usa temporariamente OpenStreetMap Standard com Leaflet, sem CARTO no fluxo ativo. Manter os créditos visíveis, respeitar o cache HTTP e não implementar download em massa ou offline. O servidor público do OSM não oferece SLA; revisar o provedor antes de ampliar o uso comercial. Política: https://operations.osmfoundation.org/policies/tiles/.
+
 A plataforma MAZZI separa rigidamente a fase de **Cotação Comercial (`Quote`)** da fase de **Reserva Transacional de Calendário (`Booking Hold`)**.
 
 - **`Quote` (Cotação Comercial)**: Concongela preços, taxas e dados operacionais de uma aula por 10 minutos. **NÃO reserva horário na agenda**.

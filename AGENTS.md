@@ -19,6 +19,7 @@
 11. **Autorização Real (RBAC & Multi-tenant)**: Verifique permissões no backend para cada endpoint e recurso. Aluno A não acessa reserva de Aluno B; Autoescola A não tem visibilidade sobre Autoescola B; Staff não executa ações de Admin.
 12. **Execução de Testes Obrigatória**: Antes de concluir qualquer sprint ou tarefa, execute a suíte de testes (`npm run test`) e garanta lint (`npm run lint`) e build (`npm run build`) 100% íntegros.
 13. **Deploy Somente Validado**: Nunca publique qualquer alteração em um ambiente sem validar integralmente os gates aplicáveis. Quando houver solicitação de deploy, execute e confirme testes, lint, build, CI, baseline do banco e disponibilidade do ambiente publicado; se qualquer etapa falhar, interrompa a publicação até corrigir e validar novamente. Production permanece intocada salvo autorização explícita.
+14. **Limpeza de Processos ao Finalizar**: Ao terminar a execução, identifique e encerre tarefas auxiliares e processos temporários que foram criados ou usados pela tarefa e que não estejam mais em uso, para evitar consumo desnecessário de memória. Preserve processos do sistema, processos do usuário, servidores DEV ainda necessários, túneis ativos e qualquer serviço cuja interrupção possa afetar o trabalho; valide os alvos antes de encerrá-los.
 
 ---
 

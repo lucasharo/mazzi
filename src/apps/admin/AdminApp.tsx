@@ -56,6 +56,7 @@ import { useMobileAppRoute } from '../../lib/mobile-app-router';
 import { getCheckoutGatewayProvider } from '../../lib/payment-gateway-config';
 import { formatCentsToBRL } from '../../domain/money';
 import { formatDateBR, formatTimeBR } from '../../lib/date-format';
+import { InstantConductPanel } from '../../components/instant/InstantConductPanel';
 
 const getAdminSkeletonMode = (tab: string): ContentSkeletonMode => {
   if (tab === 'dashboard') return 'dashboard';
@@ -590,7 +591,7 @@ export const AdminApp: React.FC = () => {
           />
         )}
 
-        {activeTab === 'disputes' && <AdminDisputesPanel bookings={bookings} refreshKey={contentRefreshKey} />}
+        {activeTab === 'disputes' && <div className="space-y-6"><InstantConductPanel admin /><AdminDisputesPanel bookings={bookings} refreshKey={contentRefreshKey} /></div>}
 
         {activeTab === 'analytics' && (
           <AdminAnalyticsPanel refreshKey={contentRefreshKey} />

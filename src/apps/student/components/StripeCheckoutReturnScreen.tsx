@@ -15,6 +15,7 @@ interface Props {
   message?: string;
   onViewBookings: () => void;
   onBackToSearch: () => void;
+  onSuccessComplete?: () => void;
 }
 
 export const StripeCheckoutReturnScreen: React.FC<Props> = ({
@@ -23,6 +24,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
   message,
   onViewBookings,
   onBackToSearch,
+  onSuccessComplete,
 }) => {
   // Payment confirmation is authoritative once the backend reports SUCCESS.
   // The checkout return is presented immediately, but it never changes the
@@ -40,10 +42,11 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
 
     const timer = window.setTimeout(() => {
       setSuccessTransitionComplete(true);
+      if (isSuccess) onSuccessComplete?.();
     }, SUCCESS_TRANSITION_DURATION_MS);
 
     return () => window.clearTimeout(timer);
-  }, [isSuccessPresentation, successTransitionComplete]);
+  }, [isSuccess, isSuccessPresentation, onSuccessComplete, successTransitionComplete]);
 
   const scheduleDate = booking?.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : booking ? formatDateBR(booking.scheduledDate) : '';
   const scheduleStart = booking?.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : booking?.startTime || '';

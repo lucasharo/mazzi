@@ -203,10 +203,17 @@ export function calculateLessonDurationMinutes(
     scheduledDate?: string | null;
     startTime?: string | null;
     endTime?: string | null;
+    lessonStartedAt?: string | null;
+    lessonFinishedAt?: string | null;
     durationMinutes?: number | null;
     snapshot?: { durationMinutes?: number | null } | null;
   }
 ): number | null {
+  const lessonStartMs = booking.lessonStartedAt ? new Date(booking.lessonStartedAt).getTime() : NaN;
+  const lessonEndMs = booking.lessonFinishedAt ? new Date(booking.lessonFinishedAt).getTime() : NaN;
+  if (Number.isFinite(lessonStartMs) && Number.isFinite(lessonEndMs) && lessonEndMs > lessonStartMs) {
+    return Math.round((lessonEndMs - lessonStartMs) / 60000);
+  }
   if (booking.durationMinutes && booking.durationMinutes > 0) {
     return booking.durationMinutes;
   }

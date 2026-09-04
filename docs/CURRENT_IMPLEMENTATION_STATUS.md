@@ -7,6 +7,20 @@
 
 > TASK-086 local: o contrato de ganhos, navegação profunda e service worker foi implementado localmente. O registry/push E2E permanece pendente da configuração aprovada de FCM/Web Push no DEV; nenhuma mutação remota foi feita.
 
+## 7. TASK-089 — Aula Agora — 2026-09-03
+
+Atualização local TASK-090 (2026-09-04): wizard implementado com três etapas
+(endereço, câmbio, valor), B automática, seleção explícita de teto, voltar com
+respostas preservadas ao voltar dentro do wizard. Cada reabertura reinicia o
+processo mantendo somente o último endereço confirmado por usuário. Fundo branco aprovado;
+progresso sem rótulos visíveis. Consulta de preços apenas na última etapa,
+proteção de duplo envio e recuperação de erro. Pagamento/tracking preservados.
+Validação anterior ao último ajuste cosmético: 888 testes, lint e quatro builds
+aprovados. Conferência real local de endereço e câmbio em 390px; homologação
+integral e publicação DEV ainda pendentes, sem alegação de READY_FOR_RELEASE.
+
+Foi implementada localmente a jornada de Aula Agora para Student e PRO: configuração por oferta, matching PostGIS em ondas, preço livre do PRO em centavos, aceite atômico no booking existente, notificações contextuais e tracking pós-match com o mapa Leaflet já utilizado pelo produto. Os gates locais passaram. A aplicação no Supabase DEV ainda está pendente porque o ledger remoto contém migrations ausentes no checkout local; Production permanece intocada.
+
 ## 1. Separação de Responsabilidades da Documentação
 
 Para evitar divergências entre planejamento, arquitetura e código funcional:

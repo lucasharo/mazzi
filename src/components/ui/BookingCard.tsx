@@ -1,6 +1,6 @@
 import React from 'react';
 import { Booking } from '../../types';
-import { formatDateBR, formatTimeRange } from '../../lib/date-format';
+import { calculateLessonDurationMinutes, formatDateBR, formatTimeBR, formatTimeRange } from '../../lib/date-format';
 import { formatMeetingPoint } from '../../lib/meeting-point';
 import { formatCentsToBRL } from '../../domain/money';
 import { PrimaryButton } from './Button';
@@ -76,12 +76,22 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   const point = formatMeetingPoint(booking.meetingPoint) || 'Ponto de encontro a combinar';
   const transLabel = booking.snapshot?.transmission === 'AUTOMATIC' ? 'Automático' : 'Manual';
   const category = booking.snapshot?.category || 'B';
-  const duration = booking.snapshot?.durationMinutes || 50;
+  const duration = calculateLessonDurationMinutes(booking) || 50;
+  const durationLabel = booking.status === 'COMPLETED' && booking.lessonStartedAt && booking.lessonFinishedAt
+    ? `${duration} min realizada`
+    : `${duration} min`;
   const totalInCents =
     booking.snapshot?.totalInCents || booking.totalInCents || booking.priceInCents || 0;
 
   // Single name display: show instructor name (or student name if in instructor perspective) exactly once
   const mainDisplayName = isInstructorPerspective ? student : instructor;
+  const scheduledStartTime = booking.startTime || (booking.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : '');
+  const scheduledEndTime = booking.endTime || (booking.scheduledEndAt ? formatTimeBR(booking.scheduledEndAt) : '');
+  const lessonStartTime = booking.lessonStartedAt ? formatTimeBR(booking.lessonStartedAt) : '';
+  const lessonEndTime = booking.lessonFinishedAt ? formatTimeBR(booking.lessonFinishedAt) : '';
+  const displayedTime = booking.status === 'COMPLETED' && lessonStartTime && lessonEndTime
+    ? `Início: ${lessonStartTime} · Fim: ${lessonEndTime}`
+    : formatTimeRange(scheduledStartTime, scheduledEndTime);
 
   return (
     <article
@@ -101,7 +111,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
             </p>
             <p className="text-xs font-bold text-amber-600 flex items-center gap-1 mt-0.5">
               <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span>{formatTimeRange(booking.startTime, booking.endTime)}</span>
+              <span>{displayedTime}</span>
             </p>
           </div>
         </div>
@@ -158,7 +168,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           <p className="mt-0.5 text-base sm:text-lg font-bold text-[var(--mazzi-text)]">
             {formatCentsToBRL(totalInCents)}
             {duration ? (
-              <span className="ml-1 text-xs font-normal text-slate-500">· {duration} min</span>
+              <span className="ml-1 text-xs font-normal text-slate-500">· {durationLabel}</span>
             ) : null}
           </p>
         </div>
@@ -183,7 +193,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
               className="min-h-11 px-4 text-xs font-bold shadow-xs"
               onClick={() => onViewDetails(booking)}
               leftIcon={<ClipboardList className="h-4 w-4 shrink-0" aria-hidden="true" />}
-              aria-label="Ver detalhes completos da reserva"
+              aria-label="Ver detalhes completos da aula"
             >
               Detalhes
             </PrimaryButton>

@@ -5,8 +5,10 @@ import { IconButton } from './IconButton';
 import { useAccessibleDialog } from './useAccessibleDialog';
 import { ModalActionFooter } from './ModalActionFooter';
 import { EnvironmentBadge } from './EnvironmentBadge';
+import { WizardActionFooter } from './WizardActionFooter';
 
 export interface ModalProps {
+  className?: string;
   isOpen: boolean;
   onClose: () => void;
   title?: string;
@@ -24,6 +26,7 @@ export interface ModalProps {
   /** Render the dialog as an app screen instead of a centered overlay. */
   presentation?: 'modal' | 'page' | 'fullscreen';
   footerClassName?: string;
+  footerVariant?: 'default' | 'wizard';
   /** Allows a screen inside the modal to fill the available viewport height. */
   fillContent?: boolean;
 }
@@ -85,6 +88,7 @@ export function useDialogHistory({
 }
 
 export const Modal: React.FC<ModalProps> = ({
+  className = '',
   isOpen,
   onClose,
   title,
@@ -103,6 +107,7 @@ export const Modal: React.FC<ModalProps> = ({
   // dialog remains available for exceptional cases via presentation="modal".
   presentation = 'page',
   footerClassName = '',
+  footerVariant = 'default',
   fillContent = false,
 }) => {
   const generatedId = useId();
@@ -125,7 +130,7 @@ export const Modal: React.FC<ModalProps> = ({
   const modalContent = (
     <div
       id={id || 'mazzi-modal'}
-      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'modal' ? 'items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs' : 'items-stretch justify-stretch bg-[var(--mazzi-bg)]'} animate-in fade-in duration-150`}
+      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'modal' ? 'items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs' : 'items-stretch justify-stretch bg-[var(--mazzi-bg)]'} animate-in fade-in duration-150 ${className}`}
       onClick={(e) => {
         if (presentation === 'modal' && closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
@@ -163,10 +168,12 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         <div className={`mazzi-modal-content ${presentation === 'modal' ? 'p-6' : presentation === 'page' ? 'p-4 sm:p-6' : 'p-0'} ${fillContent ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'} flex-1 min-h-0`}>
-          {presentation === 'page' ? <div className={`mx-auto w-full max-w-2xl ${fillContent ? 'flex h-full min-h-0 flex-col' : ''}`}>{children}</div> : children}
+          {presentation === 'page' ? <div className={`mx-auto w-full ${footerVariant === 'wizard' ? 'max-w-[480px]' : 'max-w-2xl'} ${fillContent ? 'flex h-full min-h-0 flex-col' : ''}`}>{children}</div> : children}
         </div>
 
-        {footer && <ModalActionFooter align="right" className={presentation === 'fullscreen' ? `!mx-0 ${footerClassName}` : footerClassName}>{footer}</ModalActionFooter>}
+        {footer && (footerVariant === 'wizard'
+          ? <div className="shrink-0 bg-white px-4 pb-4 sm:px-6 sm:pb-6"><div className="mx-auto w-full max-w-[480px]"><WizardActionFooter>{footer}</WizardActionFooter></div></div>
+          : <ModalActionFooter align="right" className={presentation === 'fullscreen' ? `!mx-0 ${footerClassName}` : footerClassName}>{footer}</ModalActionFooter>)}
       </div>
     </div>
   );

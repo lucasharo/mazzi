@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, CalendarDays, } from 'lucide-react';
+import { InstantConductPanel } from '../../../components/instant/InstantConductPanel';
+import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, CalendarDays, Clock3, } from 'lucide-react';
 import {
-  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, ProviderPaymentAccount, AvailabilityRule, } from '../../../types';
+  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, ProviderPaymentAccount, AvailabilityRule, InstantLessonSettings, InstantLessonOffer, Booking, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
@@ -23,12 +24,13 @@ import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 import { VehicleCatalogPicker } from '../../../components/vehicles/VehicleCatalogPicker';
 import { getStatusPresentation } from '../../../domain/status-presentation';
 import { ProviderAccountTab } from './ProviderAccountTab';
+import { ProviderInstantLessonPanel } from './ProviderInstantLessonPanel';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
   isRefreshing?: boolean;
-  managementSubTab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account';
-  onSubTabChange: (tab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account') => void;
+  managementSubTab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account' | 'instant';
+  onSubTabChange: (tab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account' | 'instant') => void;
   scheduleContent?: React.ReactNode;
   availabilityRules: AvailabilityRule[];
   vehicles: Vehicle[];
@@ -82,6 +84,16 @@ interface ProviderManagementTabProps {
   paymentAccount?: ProviderPaymentAccount | null;
   onOpenPayoutOnboarding?: () => void;
   isOpeningPayoutOnboarding?: boolean;
+  instantSettings: InstantLessonSettings[];
+  onSaveInstantSetting: (params: { offeringId: string; instantEnabled: boolean; instantPriceInCents: number; maxDistanceKm: number }) => Promise<void>;
+  onToggleInstantOnline: (setting: InstantLessonSettings, online: boolean) => Promise<void>;
+  onUpdateInstantLocation: () => Promise<void>;
+  instantLocationStatus?: 'IDLE' | 'UPDATING' | 'READY' | 'ERROR';
+  instantActionLoading?: boolean;
+  instantOffers: InstantLessonOffer[];
+  pendingPaymentInstantBookings: Booking[];
+  onRespondInstantOffer: (offerId: string, action: 'ACCEPT' | 'DECLINE') => Promise<void>;
+  instantOfferAction?: { offerId: string; action: 'ACCEPT' | 'DECLINE' } | null;
 }
 
 export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
@@ -125,6 +137,16 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   paymentAccount,
   onOpenPayoutOnboarding,
   isOpeningPayoutOnboarding = false,
+  instantSettings,
+  onSaveInstantSetting,
+  onToggleInstantOnline,
+  onUpdateInstantLocation,
+  instantLocationStatus,
+  instantActionLoading,
+  instantOffers,
+  pendingPaymentInstantBookings,
+  onRespondInstantOffer,
+  instantOfferAction,
   scheduleContent,
 }) => {
   const [blockedVehicleId, setBlockedVehicleId] = useState<string | null>(null);
@@ -176,13 +198,34 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           { id: 'schedule_rules', label: 'Horários', icon: <CalendarDays className="h-3.5 w-3.5" />, hasPending: hasPendingSchedule },
           { id: 'schedule_blocks', label: 'Bloqueios', icon: <Ban className="h-3.5 w-3.5" /> },
           { id: 'vehicles', label: 'Veículos', icon: <Car className="h-3.5 w-3.5" />, hasPending: hasPendingVehicles },
-          { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" />, hasPending: hasPendingOfferings },
+           { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" />, hasPending: hasPendingOfferings },
+           { id: 'instant', label: 'Aula Agora', icon: <Clock3 className="h-3.5 w-3.5" /> },
           { id: 'compliance', label: 'Compliance', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
           ...(isSchool ? [{ id: 'memberships' as const, label: 'Instrutores', icon: <Users className="h-3.5 w-3.5" /> }] : []),
           { id: 'account', label: 'Conta bancária', icon: <WalletCards className="h-3.5 w-3.5" />, hasPending: hasPendingPayoutSetup },
         ]}
         className="mazzi-segmented"
       />
+
+      {managementSubTab === 'instant' && (
+        <div className="space-y-4"><InstantConductPanel />
+        <ProviderInstantLessonPanel
+          provider={currentProvider}
+          offerings={offerings}
+          vehicles={vehicles}
+          settings={instantSettings}
+          onSave={onSaveInstantSetting}
+          onToggleOnline={onToggleInstantOnline}
+          onUpdateLocation={onUpdateInstantLocation}
+          isLoading={instantActionLoading}
+          locationStatus={instantLocationStatus}
+          offers={instantOffers}
+          pendingPaymentInstantBookings={pendingPaymentInstantBookings}
+          onRespondOffer={onRespondInstantOffer}
+          offerAction={instantOfferAction}
+        />
+        </div>
+      )}
 
       {(managementSubTab === 'schedule_rules' || managementSubTab === 'schedule_blocks') && scheduleContent}
 

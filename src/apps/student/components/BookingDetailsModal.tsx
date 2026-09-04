@@ -7,7 +7,7 @@ import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
 import { formatCentsToBRL } from '../../../domain/money';
-import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
+import { calculateLessonDurationMinutes, formatDateBR, formatTimeBR } from '../../../lib/date-format';
 import { UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { dbService } from '../../../lib/db-service';
@@ -27,6 +27,8 @@ export interface BookingDetailsModalProps {
   onStudentCheckIn?: (bookingId: string) => Promise<Booking>;
   onReview?: (booking: Booking) => void;
   currentUserId?: string;
+  trackingPreview?: React.ReactNode;
+  useHistory?: boolean;
 }
 
 const CANCEL_REASON_CHIPS = [
@@ -46,6 +48,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onStudentCheckIn,
   onReview,
   currentUserId,
+  trackingPreview,
+  useHistory = true,
 }) => {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [selectedReasonChip, setSelectedReasonChip] = useState<string>('');
@@ -117,16 +121,21 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   });
 
   const meetingPoint = formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint);
-  const start = booking.scheduledStartAt || (booking.scheduledDate && booking.startTime ? `${booking.scheduledDate}T${booking.startTime}:00` : '');
-  const end = booking.scheduledEndAt || (booking.scheduledDate && booking.endTime ? `${booking.scheduledDate}T${booking.endTime}:00` : '');
+  const scheduledStart = booking.scheduledStartAt || (booking.scheduledDate && booking.startTime ? `${booking.scheduledDate}T${booking.startTime}:00` : '');
+  const scheduledEnd = booking.scheduledEndAt || (booking.scheduledDate && booking.endTime ? `${booking.scheduledDate}T${booking.endTime}:00` : '');
+  const lessonStart = booking.lessonStartedAt || '';
+  const lessonEnd = booking.lessonFinishedAt || '';
   const transmission = snapshot.transmission === 'AUTOMATIC' ? 'Automático' : snapshot.transmission === 'MANUAL' ? 'Manual' : '';
-  const duration = typeof snapshot.durationMinutes === 'number' && snapshot.durationMinutes > 0 ? snapshot.durationMinutes : null;
+  const duration = calculateLessonDurationMinutes(booking);
+  const durationLabel = isCompleted && lessonStart && lessonEnd
+    ? `Duração realizada: ${duration} min`
+    : duration ? `${duration} min` : '';
   const provider = snapshot.providerName || booking.providerName;
   const instructor = snapshot.instructorName || booking.instructorName;
   const vehicle = snapshot.vehicleName || booking.vehicleName;
 
   // Compute cancellation policy numbers for preview
-  const lessonDate = start ? new Date(start) : new Date(booking.scheduledDate);
+  const lessonDate = scheduledStart ? new Date(scheduledStart) : new Date(booking.scheduledDate);
   const hoursUntilLesson = (lessonDate.getTime() - Date.now()) / (1000 * 60 * 60);
 
   const policyCalc = calculateCancellationPolicy({
@@ -266,13 +275,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   return (
     <Modal
+      useHistory={useHistory}
       isOpen={isOpen}
       onClose={() => {
         setIsConfirmingCancel(false);
         setCancelError(null);
         onClose();
       }}
-      title={isConfirmingCancel ? 'Cancelar Agendamento' : 'Detalhes da Reserva'}
+      title={isConfirmingCancel ? 'Cancelar aula' : 'Detalhes da aula'}
       size="md"
       footer={shouldShowFooter ? (isConfirmingCancel ? cancellationFooter : footerContent) : undefined}
     >
@@ -293,7 +303,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1.5 font-semibold text-slate-700">
             <div className="flex items-center justify-between">
               <span className="text-slate-500">Data e Horário:</span>
-              <span className="font-bold text-slate-900">{formatDateBR(start)} às {formatTimeBR(start)}</span>
+              <span className="font-bold text-slate-900">{formatDateBR(scheduledStart)} às {formatTimeBR(scheduledStart)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-500">Instrutor:</span>
@@ -367,11 +377,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       ) : (
         /* STANDARD DETAILS VIEW */
         <div className="space-y-4 text-left">
+          {trackingPreview}
           {/* Status Header */}
           <div className="flex items-center justify-between rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mazzi-muted)]">Detalhes da aula</p>
-              <p className="mt-0.5 text-sm font-extrabold text-[var(--mazzi-dark)]">Sua reserva MAZZI</p>
+              <p className="mt-0.5 text-sm font-extrabold text-[var(--mazzi-dark)]">Sua aula MAZZI</p>
             </div>
             <StatusBadge status={booking.status} audience="student" />
           </div>
@@ -382,14 +393,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-2.5 shadow-xs">
             <div className="flex items-center gap-2 text-[var(--mazzi-dark)] font-extrabold text-sm">
               <Calendar className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" />
-              <span>Data: {start ? formatDateBR(start) : formatDateBR(booking.scheduledDate)}</span>
+              <span>Data: {scheduledStart ? formatDateBR(scheduledStart) : formatDateBR(booking.scheduledDate)}</span>
             </div>
             <div className="flex items-center gap-2 text-slate-700 text-xs font-semibold">
               <Clock className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
               <span>
-                Horário: {start ? formatTimeBR(start) : booking.startTime}
-                {end ? ` às ${formatTimeBR(end)}` : ''}
-                {duration ? ` · ${duration} min` : ''}
+                {isCompleted && lessonStart && lessonEnd
+                  ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
+                  : `Horário: ${scheduledStart ? formatTimeBR(scheduledStart) : booking.startTime}${scheduledEnd ? ` às ${formatTimeBR(scheduledEnd)}` : ''}`}
+                {durationLabel ? ` · ${durationLabel}` : ''}
               </span>
             </div>
             {meetingPoint && (
@@ -519,7 +531,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
 
             <div className="pt-2 border-t border-[var(--mazzi-border)] flex items-center justify-between text-sm font-bold text-[var(--mazzi-dark)]">
-              <span>Total da Reserva</span>
+              <span>Total da aula</span>
               <span>{formatCentsToBRL(snapshot.totalInCents)}</span>
             </div>
           </div>

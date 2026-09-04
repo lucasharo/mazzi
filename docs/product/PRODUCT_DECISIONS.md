@@ -102,6 +102,7 @@
 ---
 
 ## DEC-008: Lançamento Público Inicial do App Aluno Restrito à Categoria B
+- **Complemento aprovado em 2026-09-04 (TASK-090)**: Aula Agora seleciona B automaticamente. A tela de categoria fica fora do fluxo por enquanto, sem contar no progresso; perguntas visíveis: endereço → câmbio → valor máximo. Categoria A continua fora da oferta pública.
 - **Data**: 2026-08-18
 - **Status**: `APROVADA & IMPLEMENTADA`
 - **Tema**: Escopo do Produto & Oferta Pública do App Aluno
@@ -155,6 +156,7 @@
 ---
 
 ## DEC-013: Política Comercial de Cancelamento do MVP
+- **Complemento**: a DEC-018 especifica consequências não financeiras por cancelamento injustificado na Aula Agora; não altera os percentuais de reembolso abaixo.
 - **Data**: 2026-08-18
 - **Status**: `APROVADA & IMPLEMENTADA`
 - **Tema**: Cancelamento de Aulas, Reembolsos, Repasses & Direitos do Consumidor
@@ -204,6 +206,15 @@
 - **Motivo**: Substituir a integração de checkout Mercado Pago/Bricks por uma integração customizada única, com confirmação server-side e suporte aos dois meios de pagamento.
 - **Impacto**: `StripeHostedCheckout.tsx`, `create-stripe-checkout-session`, `stripe-webhook`, `process-stripe-refund`, migration `stripe_checkout_gateway` e variáveis `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET`. Mercado Pago não é mais selecionável no checkout novo.
 - **Relacionado a**: [`09-payments.md`](../09-payments.md), [`CURRENT_IMPLEMENTATION_STATUS.md`](../CURRENT_IMPLEMENTATION_STATUS.md).
+
+## DEC-018: Disciplina por cancelamento injustificado na Aula Agora
+
+- **Data**: 2026-09-04.
+- **Status**: `IMPLEMENTADA — backend ativo em DEV; interfaces locais validadas; sem publicação de frontend`.
+- **Decisão**: advertência no primeiro cancelamento injustificado; ao atingir três em 30 dias, suspensão do Aula Agora por 24 horas. Preservar aulas agendadas e repasses; não aplicar multa automática.
+- **Revisão**: administrador classifica ocorrências com justificativa; profissional pode contestar. Isenções removem a ocorrência da contagem.
+- **Escopo e garantias**: [política detalhada](./INSTANT_CANCELLATION_CONDUCT.md).
+- **Production**: intocada; validação regulatória antes de ativação comercial.
 
 ## DEC-017: Onboarding Connect hospedado iniciado pelo MAZZI
 - **Data**: 2026-09-02

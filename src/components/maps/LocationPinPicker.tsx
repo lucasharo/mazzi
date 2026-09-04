@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { Button } from '../ui/Button';
 import { LocateFixed, MapPin } from 'lucide-react';
+import { getActiveMapTileProvider } from '../../domain/maps/map-tile-provider';
 
 interface LocationPinPickerProps {
   latitude?: number;
@@ -31,8 +32,9 @@ export const LocationPinPicker: React.FC<LocationPinPickerProps> = ({ latitude, 
     if (!elementRef.current) return;
     const initial: [number, number] = Number.isFinite(latitude) && Number.isFinite(longitude)
       ? [latitude as number, longitude as number] : FALLBACK as [number, number];
-    const map = L.map(elementRef.current, { center: initial, zoom: 15, attributionControl: false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    const map = L.map(elementRef.current, { center: initial, zoom: 15, attributionControl: true });
+    const tileProvider = getActiveMapTileProvider();
+    L.tileLayer(tileProvider.urlTemplate, { maxZoom: tileProvider.maxZoom, attribution: tileProvider.attribution }).addTo(map);
     const marker = L.marker(initial, { draggable: true }).addTo(map);
     marker.on('dragend', () => { const pos = marker.getLatLng(); setPin(pos.lat, pos.lng); });
     map.on('click', (event) => setPin(event.latlng.lat, event.latlng.lng));

@@ -8,6 +8,41 @@ import { Select } from '../ui/Select';
 import { Modal } from '../ui/Modal';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
 
+const DISPUTES_CACHE_TTL_MS = 2_000;
+type DisputesCacheEntry = {
+  promise?: Promise<BookingDispute[]>;
+  rows?: BookingDispute[];
+  loadedAt?: number;
+};
+const disputesCache = new Map<string, DisputesCacheEntry>();
+
+function getDisputesCacheKey(currentUserId?: string): string {
+  return currentUserId || 'current-session';
+}
+
+function clearDisputesCache(currentUserId?: string): void {
+  disputesCache.delete(getDisputesCacheKey(currentUserId));
+}
+
+function getCachedBookingDisputes(currentUserId?: string): Promise<BookingDispute[]> {
+  const key = getDisputesCacheKey(currentUserId);
+  const cached = disputesCache.get(key);
+  if (cached?.promise) return cached.promise;
+  if (cached?.rows && cached.loadedAt && Date.now() - cached.loadedAt < DISPUTES_CACHE_TTL_MS) {
+    return Promise.resolve(cached.rows);
+  }
+
+  const promise = dbService.getMyBookingDisputes().then((rows) => {
+    disputesCache.set(key, { rows, loadedAt: Date.now() });
+    return rows;
+  }).catch((error) => {
+    disputesCache.delete(key);
+    throw error;
+  });
+  disputesCache.set(key, { promise });
+  return promise;
+}
+
 const reasons: Array<{ value: BookingDisputeReason; label: string }> = [
   { value: 'PROVIDER_NO_SHOW', label: 'Instrutor não compareceu' },
   { value: 'STUDENT_NO_SHOW', label: 'Aluno não compareceu' },
@@ -21,7 +56,6 @@ const reasons: Array<{ value: BookingDisputeReason; label: string }> = [
 
 export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: string; display?: 'section' | 'action' }> = ({ booking, currentUserId, display = 'section' }) => {
   const [disputes, setDisputes] = useState<BookingDispute[]>([]);
-  const [isLoadingDisputes, setIsLoadingDisputes] = useState(true);
   const [isOpening, setIsOpening] = useState(false);
   const [isViewing, setIsViewing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -40,19 +74,21 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
   useEffect(() => {
     if ((import.meta as any).env?.MODE === 'test') return undefined;
     let active = true;
-    setIsLoadingDisputes(true);
-    void dbService.getMyBookingDisputes()
+    void getCachedBookingDisputes(currentUserId)
       .then((rows) => { if (active) setDisputes(rows); })
       .catch(() => undefined)
-      .finally(() => { if (active) setIsLoadingDisputes(false); });
+      .finally(() => undefined);
     return () => { active = false; };
-  }, [booking.id, reloadKey]);
+  }, [booking.id, currentUserId, reloadKey]);
 
   useEffect(() => {
-    const reload = () => setReloadKey((current) => current + 1);
+    const reload = () => {
+      clearDisputesCache(currentUserId);
+      setReloadKey((current) => current + 1);
+    };
     window.addEventListener('mazzi:dispute-updated', reload);
     return () => window.removeEventListener('mazzi:dispute-updated', reload);
-  }, []);
+  }, [currentUserId]);
 
   const notifyDisputeUpdated = () => window.dispatchEvent(new CustomEvent('mazzi:dispute-updated'));
 
@@ -188,9 +224,6 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
   }
 
   if (display === 'action') {
-    if (isLoadingDisputes && (booking.status === 'COMPLETED' || booking.status === 'DISPUTED')) {
-      return <Button type="button" variant="dangerSoft" size="sm" className="min-w-0 flex-1" disabled leftIcon={<MessageSquareWarning className="h-4 w-4" aria-hidden="true" />}>Ver contestação</Button>;
-    }
     return null;
   }
 

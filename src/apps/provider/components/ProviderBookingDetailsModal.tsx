@@ -85,6 +85,11 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const instructorName = snapshot.instructorName || booking.instructorName;
   const vehicleName = snapshot.vehicleName || booking.vehicleName || 'Veículo Cadastrado';
   const meetingPoint = formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint);
+  const lessonStart = booking.lessonStartedAt || '';
+  const lessonEnd = booking.lessonFinishedAt || '';
+  const durationLabel = booking.status === 'COMPLETED' && lessonStart && lessonEnd
+    ? `Duração realizada: ${duration} min`
+    : duration ? `${duration} min` : '';
   const lessonPriceInCents = snapshot.priceInCents ?? booking.priceInCents ?? booking.totalInCents ?? 0;
   const platformFeeInCents = snapshot.platformFeeInCents ?? booking.platformFeeInCents ?? 0;
   const bookingTotalInCents = snapshot.totalInCents ?? booking.totalInCents ?? lessonPriceInCents;
@@ -160,7 +165,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           className={`${canCancel || booking.status === 'DISPUTED' ? 'min-w-0 flex-1' : 'w-full'} rounded-2xl border-slate-300 bg-white font-bold text-slate-700 shadow-sm transition-all hover:shadow-md`}
           onClick={() => onOpenChat(booking)}
           leftIcon={<MessageSquare className="h-4 w-4 text-slate-500" aria-hidden="true" />}
-          aria-label="Abrir conversa no chat sobre esta reserva"
+          aria-label="Abrir conversa no chat sobre esta aula"
         >
           Mensagens
         </SecondaryButton>
@@ -183,14 +188,14 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Detalhes do Agendamento" size="md" footer={UNPAID_BOOKING_STATUSES.includes(booking.status) ? undefined : footer}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da aula" size="md" footer={UNPAID_BOOKING_STATUSES.includes(booking.status) ? undefined : footer}>
       <div className="space-y-4 text-left">
         {/* Same status hierarchy used by the Student reservation details. */}
         <div className="flex items-center justify-between rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
           <div className="min-w-0">
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mazzi-muted)]">Aluno</p>
             <p className="mt-0.5 truncate text-sm font-extrabold text-[var(--mazzi-dark)]">{studentName}</p>
-            <p className="mt-1 text-[11px] font-medium text-slate-500">Reserva #{booking.id.slice(0, 8)}</p>
+            <p className="mt-1 text-[11px] font-medium text-slate-500">Aula #{booking.id.slice(0, 8)}</p>
           </div>
           <StatusBadge status={booking.status} />
         </div>
@@ -203,7 +208,9 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
             <Clock className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-            <span>Horário: {booking.startTime} às {booking.endTime}{duration ? ` · ${duration} min` : ''}</span>
+            <span>{booking.status === 'COMPLETED' && lessonStart && lessonEnd
+              ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
+              : `Horário: ${booking.startTime} às ${booking.endTime}`}{durationLabel ? ` · ${durationLabel}` : ''}</span>
           </div>
           {meetingPoint && (
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
@@ -306,7 +313,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             <span className="font-bold">{formatCentsToBRL(platformFeeInCents)}</span>
           </div>
           <div className="flex items-center justify-between border-t border-[var(--mazzi-border)] pt-2 text-sm font-bold text-[var(--mazzi-dark)]">
-            <span>Total da Reserva</span>
+              <span>Total da aula</span>
             <span>{formatCentsToBRL(bookingTotalInCents)}</span>
           </div>
         </div>

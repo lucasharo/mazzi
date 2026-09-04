@@ -29,6 +29,7 @@ Os tokens e utilitários globais vivem em `src/index.css`. Cabeçalhos não deve
 - Fonte global única, herdada por todos os componentes e apps.
 - Títulos de página usam `AppPageHeader`; títulos da tela inicial usam `AppHomeHeader`.
 - Botões usam peso `font-bold`, tamanho visual pequeno por padrão e área interativa mínima de 44 px.
+- Grupos de botões de ação devem ficar alinhados à direita, inclusive quando quebram em mais de uma linha.
 - Textos auxiliares usam peso normal ou semibold conforme hierarquia, sem aumento global de peso por app.
 
 ## 3. Botões e ícones
@@ -45,6 +46,9 @@ O componente canônico é `src/components/ui/Button.tsx`:
 - Botões de cabeçalho exclusivamente icônicos usam `IconButton`/`mazzi-icon-button`, com 48 × 48 px.
 
 ## 4. Cabeçalhos e navegação
+
+- Reserva agendada: wizard branco com `LessonWizardHeader`, logo, ambiente, fechar e progresso contínuo. Etapas: instrutor e veículo quando houver alternativas, horário e confirmação. Voltar reutiliza os contextos já consultados; seleção e pagamento mantêm as validações existentes no backend. A retomada de pagamento pendente mantém seu fluxo próprio.
+- Rodapés dos wizards usam `WizardActionFooter`: branco, borda discreta, sem sombra, botões de no mínimo 48 px e proteção da área segura. No modal, usar `footerVariant="wizard"`; o rodapé é irmão da área rolável, nunca seu descendente. A Aula Agora reutiliza o mesmo componente na sua coluna de altura limitada.
 
 - `AppHomeHeader`: somente para a tela inicial, com eyebrow, título, subtítulo e ações contextuais.
 - `AppPageHeader`: telas internas; ação de atualizar ou editar posicionada no canto superior direito quando aplicável.

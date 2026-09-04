@@ -1,7 +1,7 @@
 import type { Notification, NotificationAppContext, NotificationType } from '../types';
 
-export type NotificationNavigationEntity = 'booking' | 'payout' | 'earnings' | 'compliance';
-export type NotificationNavigationAction = 'details' | 'chat' | 'review' | 'reviews' | 'compliance';
+export type NotificationNavigationEntity = 'booking' | 'payout' | 'earnings' | 'compliance' | 'instant_offer';
+export type NotificationNavigationAction = 'details' | 'chat' | 'review' | 'reviews' | 'compliance' | 'instant_offer';
 
 export interface NotificationNavigationTarget {
   version: 1;
@@ -17,8 +17,8 @@ export type NotificationNavigationResult =
 
 const UUID_V4_OR_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-(?:4[0-9a-f]{3}|7[0-9a-f]{3})-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ALLOWED_KEYS = new Set(['version', 'appContext', 'entityType', 'entityId', 'action']);
-const ALLOWED_TYPES = new Set<NotificationNavigationEntity>(['booking', 'payout', 'earnings', 'compliance']);
-const ALLOWED_ACTIONS = new Set<NotificationNavigationAction>(['details', 'chat', 'review', 'reviews', 'compliance']);
+const ALLOWED_TYPES = new Set<NotificationNavigationEntity>(['booking', 'payout', 'earnings', 'compliance', 'instant_offer']);
+const ALLOWED_ACTIONS = new Set<NotificationNavigationAction>(['details', 'chat', 'review', 'reviews', 'compliance', 'instant_offer']);
 const ALLOWED_CONTEXTS = new Set<NotificationAppContext>(['STUDENT', 'PRO', 'ADMIN']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -33,6 +33,7 @@ function isValidCombination(target: NotificationNavigationTarget): boolean {
   if (target.entityType === 'booking') return target.action === 'details' || target.action === 'chat' || target.action === 'review' ? Boolean(target.entityId) : false;
   if (target.entityType === 'payout') return target.appContext === 'PRO' && target.action === 'details' && Boolean(target.entityId);
   if (target.entityType === 'compliance') return target.appContext === 'PRO' && target.action === 'compliance' && Boolean(target.entityId);
+  if (target.entityType === 'instant_offer') return target.appContext === 'PRO' && target.action === 'instant_offer' && Boolean(target.entityId);
   return target.entityType === 'earnings' && target.appContext === 'PRO' && target.action === 'reviews' && target.entityId === null;
 }
 
@@ -65,6 +66,7 @@ export function targetFromNotification(notification: Pick<Notification, 'type' |
     case 'PAYOUT_PAID':
     case 'PAYOUT_BLOCKED':
     case 'PAYOUT_FAILED': entityType = 'payout'; action = 'details'; break;
+    case 'INSTANT_LESSON_OFFER': entityType = 'instant_offer'; action = 'instant_offer'; break;
     case 'COMPLIANCE_PENDING': entityType = 'compliance'; action = 'compliance'; break;
     case 'REVIEW_RECEIVED': entityType = 'earnings'; action = 'reviews'; entityId = null; break;
     default: return { ok: false, reason: 'UNSUPPORTED_DESTINATION' };
@@ -94,7 +96,7 @@ export function parseNotificationNavigationTarget(value: string | URLSearchParam
 
 export function appRouteForNotificationTarget(target: NotificationNavigationTarget): 'bookings' | 'earnings' | 'management' {
   if (target.entityType === 'booking') return 'bookings';
-  if (target.entityType === 'compliance') return 'management';
+  if (target.entityType === 'compliance' || target.entityType === 'instant_offer') return 'management';
   return 'earnings';
 }
 

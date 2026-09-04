@@ -15,6 +15,10 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
     meetingPoint,
     userLocation,
     searchedLocation,
+    zoom,
+    providerMarker,
+    followSelectedProvider,
+    interactive,
   } = props;
 
   const [showRadius, setShowRadius] = useState(showCoverageRadius);
@@ -59,6 +63,10 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
         meetingPoint={meetingPoint}
         userLocation={userLocation}
         searchedLocation={searchedLocation}
+        zoom={zoom}
+        providerMarker={providerMarker}
+        followSelectedProvider={followSelectedProvider}
+        interactive={interactive}
       />
     </div>
   );

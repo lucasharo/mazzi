@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BookingChatPanel } from '../src/components/chat/BookingChatPanel';
 import { Booking } from '../src/types';
 
@@ -11,10 +11,15 @@ vi.mock('../src/components/auth/AuthContext', () => ({
   }),
 }));
 
+const { getConversationForBooking, getMessagesForConversation } = vi.hoisted(() => ({
+  getConversationForBooking: vi.fn().mockResolvedValue({ id: 'convo-1', bookingId: 'booking-1' }),
+  getMessagesForConversation: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('../src/lib/db-service', () => ({
   dbService: {
-    getConversationForBooking: vi.fn().mockResolvedValue({ id: 'convo-1', bookingId: 'booking-1' }),
-    getMessagesForConversation: vi.fn().mockResolvedValue([]),
+    getConversationForBooking,
+    getMessagesForConversation,
     sendMessage: vi.fn(),
   },
   mapMessageFromDb: vi.fn(),
@@ -56,9 +61,14 @@ const mockBooking: Booking = {
 } as unknown as Booking;
 
 describe('BookingChatPanel Return Navigation & V3 Design', () => {
-  it('renders modern hero header and triggers onBack callback when clicked', () => {
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('renders modern hero header and triggers onBack callback when clicked', async () => {
     const handleBack = vi.fn();
-    render(<BookingChatPanel booking={mockBooking} onBack={handleBack} />);
+    render(<React.StrictMode><BookingChatPanel booking={mockBooking} onBack={handleBack} /></React.StrictMode>);
 
     expect(screen.getByText('Conversa da aula')).toBeTruthy();
     expect(screen.getByText('LUCAS SANTOS MIRANDA')).toBeTruthy();
@@ -68,5 +78,9 @@ describe('BookingChatPanel Return Navigation & V3 Design', () => {
     fireEvent.click(backButton);
 
     expect(handleBack).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(getConversationForBooking).toHaveBeenCalledTimes(1);
+      expect(getMessagesForConversation).toHaveBeenCalledTimes(1);
+    });
   });
 });

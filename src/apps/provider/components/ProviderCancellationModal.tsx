@@ -92,6 +92,7 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
         </div>
 
         {/* Booking Summary */}
+        {booking.snapshot?.source === 'AULA_AGORA' && <div role="note" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">O cancelamento será analisado.</p><p>Cancelamento injustificado gera advertência. Ao atingir 3 em 30 dias, você fica 24 horas sem receber novas solicitações de Aula Agora. Aulas agendadas e repasses não são afetados. Emergências e problemas de segurança podem ser isentos após análise; você pode apresentar justificativa em Gestão.</p></div>}
         <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-xs space-y-1">
           <p className="font-extrabold text-slate-900">{booking.studentName}</p>
           <p className="text-slate-600">

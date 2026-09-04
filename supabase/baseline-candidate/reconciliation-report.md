@@ -40,3 +40,7 @@ assigned to another instructor remain eligible for a Student who is only a schoo
 ## Validation status
 
 The schema candidate remains separate from the active migration tree and contains no operational user/provider/booking/payment data. The reference-data file contains only the non-PII canonical terms requirement. Fresh-database replay was not run because Docker is unavailable and is not a gate for this task.
+
+## TASK-089 Aula Agora
+
+The forward-only migration `20260904011639_task_089_instant_lesson.sql` was applied to DEV through the Supabase migration tool, and the five core Aula Agora RPCs are present in `public`. The historical local/remote ledger still contains unrelated drift, so the isolated baseline schema dump was not regenerated in this task. Reconcile the ledger and regenerate the baseline evidence before marking this feature canonical.

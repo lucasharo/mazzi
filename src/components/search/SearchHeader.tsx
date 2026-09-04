@@ -12,6 +12,7 @@ export interface SearchHeaderProps {
   onPerformSearch: () => void;
   currentLocationName?: string;
   currentLocation?: { lat: number; lng: number };
+  onRequestCurrentLocation?: () => Promise<{ lat: number; lng: number }>;
   onLocationResolved?: (addressName: string, lat: number, lng: number) => void;
   onLocationCleared?: () => void;
 }
@@ -22,6 +23,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
   onPerformSearch,
   currentLocationName = '',
   currentLocation,
+  onRequestCurrentLocation,
   onLocationResolved,
   onLocationCleared,
 }) => {
@@ -70,8 +72,9 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
     setAddressInput('');
     setIsLocating(true);
     try {
-      if (!currentLocation) throw new Error('CURRENT_LOCATION_UNAVAILABLE');
-      const { lat, lng } = currentLocation;
+      const location = currentLocation || await onRequestCurrentLocation?.();
+      if (!location) throw new Error('CURRENT_LOCATION_UNAVAILABLE');
+      const { lat, lng } = location;
       const geocoded = await activeGeocodingProvider.reverseGeocode(lat, lng);
       skipNextLocationNameSync.current = true;
       onLocationResolved?.(geocoded.formattedAddress, lat, lng);

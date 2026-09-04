@@ -23,6 +23,8 @@ export interface MapProviderProps {
   userLocation?: MapCoordinates;
   searchedLocation?: MapCoordinates & { label?: string };
   zoom?: number;
+  providerMarker?: 'initials' | 'vehicle';
+  followSelectedProvider?: boolean;
   interactive?: boolean;
 }
 

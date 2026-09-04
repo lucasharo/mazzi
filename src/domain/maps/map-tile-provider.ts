@@ -17,10 +17,9 @@ export interface MapTileProvider {
 export const OSM_MAP_TILE_PROVIDER: MapTileProvider = {
   id: 'openstreetmap',
   name: 'OpenStreetMap Standard',
-  urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   maxZoom: 19,
-  subdomains: ['a', 'b', 'c'],
   isDevelopmentFallback: true,
 };
 

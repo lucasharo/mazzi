@@ -29,6 +29,7 @@ import { ConfirmableAddressAutocomplete } from '../../../components/search/Confi
 import { LocationSuggestion } from '../../../domain/maps/geocoding-provider';
 
 export interface CheckoutModalProps {
+  wizardHeader?: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
   presentation?: 'modal' | 'page';
@@ -124,6 +125,7 @@ function formatCheckoutDate(value?: string | null): string {
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
+  wizardHeader,
   isOpen,
   onClose,
   presentation = 'modal',
@@ -200,6 +202,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   }, [offering?.durationMinutes, offering?.transmission, resumeBooking]);
 
   const displayQuote = quote || resumedQuote;
+  const isInstantLesson = resumeBooking?.snapshot?.source === 'AULA_AGORA';
+  const instantMeetingPoint = resumeBooking?.fullMeetingPoint || resumeBooking?.meetingPoint || '';
   const displayInstructorName = displayQuote?.instructorName || provider?.name || 'Instrutor';
   const displayProviderName = displayQuote?.providerName || provider?.name || 'Autoescola';
   const displayVehicleName = displayQuote?.vehicleName || (vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Veículo');
@@ -992,7 +996,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const checkoutFormValid = Boolean(
     displayQuote &&
     !isProcessing &&
-    (meetingPointType === 'PROVIDER' || studentAddress.trim()),
+    (isInstantLesson ? instantMeetingPoint.trim() : meetingPointType === 'PROVIDER' || studentAddress.trim()),
   );
   const quotePreviewFooter = step === 'QUOTE_PREVIEW' ? (
     <div className="flex w-full flex-col gap-3">
@@ -1000,23 +1004,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         type="button"
         variant="primary"
         size="sm"
-        className="w-full font-bold shadow-xs"
+        className={wizardHeader ? 'w-full font-bold' : 'w-full font-bold shadow-xs'}
         leftIcon={<DollarSign className="h-4 w-4 shrink-0" aria-hidden="true" />}
         isLoading={isProcessing}
         disabled={!checkoutFormValid}
         onClick={handleProceedToBookingHold}
-        aria-label="Continuar para pagamento da aula"
+        aria-label={resumeBooking?.snapshot?.source === 'AULA_AGORA' ? 'Confirmar pagamento da aula' : 'Continuar para pagamento da aula'}
       >
-        Continuar para pagamento
+        {resumeBooking?.snapshot?.source === 'AULA_AGORA' ? 'Confirmar pagamento' : 'Continuar para pagamento'}
       </Button>
 
     </div>
   ) : undefined;
-  const quotePreviewBackAction = step === 'QUOTE_PREVIEW' ? (
-    <IconButton
-      label="Voltar e escolher outro horário"
-      className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:bg-slate-200/80 hover:text-[var(--mazzi-dark)]"
-      onClick={() => {
+  const handlePreviewBack = () => {
         if (booking || resumeBooking) {
           void handleCancelPendingBooking();
           return;
@@ -1030,17 +1030,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         });
         onClose();
         onChooseAnotherSlot?.();
-      }}
+  };
+  const quotePreviewBackAction = step === 'QUOTE_PREVIEW' ? (wizardHeader ? (
+    <Button type="button" variant="outline" disabled={isProcessing} onClick={handlePreviewBack} leftIcon={<ArrowLeft className="h-4 w-4" aria-hidden="true" />}>Voltar</Button>
+  ) : (
+    <IconButton
+      label="Voltar e escolher outro horário"
+      className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:bg-slate-200/80 hover:text-[var(--mazzi-dark)]"
+      onClick={handlePreviewBack}
     >
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
     </IconButton>
-  ) : undefined;
+  )) : undefined;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={
+      className={wizardHeader ? 'instant-light' : ''}
+      ariaLabel="Confirmar sua aula"
+      footerVariant={wizardHeader ? 'wizard' : 'default'}
+      title={wizardHeader ? undefined :
         step === 'SUCCESS'
           ? 'Aula confirmada'
           : step === 'PAYMENT_SELECTION'
@@ -1049,9 +1059,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
       size="md"
       presentation={presentation}
-      footer={quotePreviewFooter}
-      headerAction={quotePreviewBackAction}
+      footer={wizardHeader && quotePreviewFooter ? <div className="flex w-full items-center justify-end gap-3"><div className="shrink-0">{quotePreviewBackAction}</div><div className="min-w-0 flex-1">{quotePreviewFooter}</div></div> : quotePreviewFooter}
+      headerAction={wizardHeader ? undefined : quotePreviewBackAction}
     >
+      {wizardHeader}
       <div className="space-y-4 text-left">
         {step === 'SUCCESS' && successAnimationPhase !== 'COMPLETE' && (
           <div
@@ -1159,6 +1170,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {/* Meeting Point Selection */}
             <div className="rounded-2xl border border-[#e9e6de] bg-white p-4 space-y-3">
               <p className="text-xs font-bold text-slate-900">Ponto de encontro</p>
+              {isInstantLesson ? (
+                <div className="flex items-start gap-2 text-sm text-slate-700">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                  <div>
+                    <p className="font-bold">Localização do aluno</p>
+                    <p className="mt-1">{instantMeetingPoint || 'Localização não disponível'}</p>
+                  </div>
+                </div>
+              ) : <>
               <div className="grid grid-cols-2 gap-2">
                 <ButtonBase
                   type="button"
@@ -1224,6 +1244,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   />
                 </div>
               )}
+              </>}
             </div>
 
           </div>

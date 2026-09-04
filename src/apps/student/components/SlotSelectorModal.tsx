@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, RefreshCw, Check } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Clock, RefreshCw, Check, X, ArrowLeft } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button, PrimaryButton, ButtonBase } from '../../../components/ui/Button';
 import { supabase } from '../../../lib/supabase';
@@ -30,6 +30,8 @@ export type PublicSlot = {
   slot_start_at: string;
   slot_end_at?: string;
 };
+
+const EMPTY_BOOKINGS: Booking[] = [];
 
 export function addDays(dateOnly: string, days: number): string {
   const [year, month, day] = dateOnly.split('-').map(Number);
@@ -110,6 +112,9 @@ export function filterSlotsForExistingBookings(
 }
 
 export interface SlotSelectorModalProps {
+  wizardHeader?: React.ReactNode;
+  onBack?: () => void;
+  backLabel?: 'Voltar' | 'Fechar';
   isOpen: boolean;
   onClose: () => void;
   offeringId: string;
@@ -126,6 +131,9 @@ export interface SlotSelectorModalProps {
 }
 
 export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
+  wizardHeader,
+  onBack,
+  backLabel = 'Voltar',
   isOpen,
   onClose,
   offeringId,
@@ -135,7 +143,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
   durationMinutes,
   priceInCents,
   transmission,
-  existingBookings = [],
+  existingBookings = EMPTY_BOOKINGS,
   previewSlots,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -146,67 +154,102 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
   const [windowDays, setWindowDays] = useState(INITIAL_WINDOW_DAYS);
   const [maxHorizonDays, setMaxHorizonDays] = useState(MAX_HORIZON_DAYS);
   const [visibleMonth, setVisibleMonth] = useState<string>('');
+  const slotsLoadInFlightRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
+  const horizonLoadInFlightRef = useRef<Promise<number> | null>(null);
+  const initialLoadKeyRef = useRef<string | null>(null);
 
   const fromDate = useMemo(() => getTodayInSaoPaulo(), []);
 
   const fetchSlots = useCallback(async (daysToFetch: number, resetSelection = false) => {
     if (!offeringId) return;
-    setIsLoading(true);
-    setError(null);
-    const ranges = splitDateRange(fromDate, daysToFetch);
+    const requestKey = `${offeringId}:${fromDate}:${daysToFetch}:${durationMinutes || 50}:${existingBookings.map((booking) => `${booking.id}:${booking.status}:${booking.scheduledStartAt}:${booking.scheduledEndAt}`).join(',')}`;
+    const existingRequest = slotsLoadInFlightRef.current;
+    if (existingRequest?.key === requestKey) {
+      await existingRequest.promise;
+      return;
+    }
 
-    try {
-      const batches = await Promise.all(ranges.map(async ({ from, to }) => {
-        const { data, error: rpcError } = await (supabase as any).rpc('get_available_slots_public', {
-          p_offering_id: offeringId,
-          p_date_from: from,
-          p_date_to: to,
-        });
-        if (rpcError) throw rpcError;
-        return (data as PublicSlot[]) || [];
-      }));
+    const request = (async () => {
+      setIsLoading(true);
+      setError(null);
+      const ranges = splitDateRange(fromDate, daysToFetch);
 
-      const grouped = groupSlots(filterSlotsForExistingBookings(
-        batches.flat(),
-        durationMinutes || 50,
-        existingBookings,
-      ));
-      setSlotsByDate(grouped);
+      try {
+        const batches = await Promise.all(ranges.map(async ({ from, to }) => {
+          const { data, error: rpcError } = await (supabase as any).rpc('get_available_slots_public', {
+            p_offering_id: offeringId,
+            p_date_from: from,
+            p_date_to: to,
+          });
+          if (rpcError) throw rpcError;
+          return (data as PublicSlot[]) || [];
+        }));
 
-      const firstAvailable = Object.keys(grouped).sort()[0] || null;
-      if (resetSelection) {
-        setSelectedDate(firstAvailable);
-        setSelectedSlot(null);
-      } else {
-        setSelectedDate((prev) => prev || firstAvailable);
+        const grouped = groupSlots(filterSlotsForExistingBookings(
+          batches.flat(),
+          durationMinutes || 50,
+          existingBookings,
+        ));
+        setSlotsByDate(grouped);
+
+        const firstAvailable = Object.keys(grouped).sort()[0] || null;
+        if (resetSelection) {
+          setSelectedDate(firstAvailable);
+          setSelectedSlot(null);
+        } else {
+          setSelectedDate((prev) => prev || firstAvailable);
+        }
+
+        const firstMonth = (firstAvailable || fromDate).slice(0, 7);
+        // When the first available slot is in a later month, keep the calendar
+        // aligned with the automatically selected date instead of leaving the
+        // user viewing the current month with its selection off-screen.
+        setVisibleMonth((prev) => resetSelection ? firstMonth : (prev || firstMonth));
+      } catch (err: any) {
+        console.warn('[SlotSelectorModal] RPC call failed:', err);
+        setError('Não foi possível carregar os horários. Tente novamente.');
+      } finally {
+        setIsLoading(false);
       }
+    })();
 
-      const firstMonth = (firstAvailable || fromDate).slice(0, 7);
-      // When the first available slot is in a later month, keep the calendar
-      // aligned with the automatically selected date instead of leaving the
-      // user viewing the current month with its selection off-screen.
-      setVisibleMonth((prev) => resetSelection ? firstMonth : (prev || firstMonth));
-    } catch (err: any) {
-      console.warn('[SlotSelectorModal] RPC call failed:', err);
-      setError('Não foi possível carregar os horários. Tente novamente.');
+    slotsLoadInFlightRef.current = { key: requestKey, promise: request };
+    try {
+      await request;
     } finally {
-      setIsLoading(false);
+      if (slotsLoadInFlightRef.current?.promise === request) slotsLoadInFlightRef.current = null;
     }
   }, [durationMinutes, existingBookings, fromDate, offeringId]);
 
   const fetchConfiguredHorizon = useCallback(async (): Promise<number> => {
-    const { data, error: rpcError } = await (supabase as any).rpc('get_public_booking_horizon_days');
-    if (rpcError) {
-      console.warn('[SlotSelectorModal] Could not load configured booking horizon:', rpcError);
-      setMaxHorizonDays(MAX_HORIZON_DAYS);
-      return MAX_HORIZON_DAYS;
+    if (horizonLoadInFlightRef.current) return horizonLoadInFlightRef.current;
+
+    const request = (async () => {
+      const { data, error: rpcError } = await (supabase as any).rpc('get_public_booking_horizon_days');
+      if (rpcError) {
+        console.warn('[SlotSelectorModal] Could not load configured booking horizon:', rpcError);
+        setMaxHorizonDays(MAX_HORIZON_DAYS);
+        return MAX_HORIZON_DAYS;
+      }
+      const configuredHorizon = normalizeBookingHorizonDays(data);
+      setMaxHorizonDays(configuredHorizon);
+      return configuredHorizon;
+    })();
+
+    horizonLoadInFlightRef.current = request;
+    try {
+      return await request;
+    } finally {
+      if (horizonLoadInFlightRef.current === request) horizonLoadInFlightRef.current = null;
     }
-    const configuredHorizon = normalizeBookingHorizonDays(data);
-    setMaxHorizonDays(configuredHorizon);
-    return configuredHorizon;
   }, []);
 
   useEffect(() => {
+    const bookingKey = existingBookings.map((booking) => `${booking.id}:${booking.status}:${booking.scheduledStartAt}:${booking.scheduledEndAt}`).join(',');
+    const initialLoadKey = `${isOpen}:${offeringId}:${fromDate}:${durationMinutes || 50}:${previewSlots ? 'preview' : 'remote'}:${bookingKey}`;
+    if (initialLoadKeyRef.current === initialLoadKey) return;
+    initialLoadKeyRef.current = initialLoadKey;
+
     if (isOpen && previewSlots) {
       const grouped = groupSlots(filterSlotsForExistingBookings(
         previewSlots,
@@ -254,7 +297,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
     <PrimaryButton
       size="sm"
       disabled={!selectedSlot || isLoading}
-      className="w-full font-bold shadow-md hover:shadow-lg transition-all rounded-2xl"
+      className={wizardHeader ? 'w-full font-bold' : 'w-full font-bold shadow-md hover:shadow-lg transition-all rounded-2xl'}
       leftIcon={<Check className="w-4 h-4 text-slate-950" aria-hidden="true" />}
       onClick={() => {
         if (selectedSlot) {
@@ -262,9 +305,9 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           onClose();
         }
       }}
-      aria-label="Confirmar horário selecionado"
+      aria-label={wizardHeader ? 'Confirmar aula' : 'Confirmar horário selecionado'}
     >
-      Confirmar Horário
+      {wizardHeader ? 'Confirmar aula' : 'Confirmar Horário'}
     </PrimaryButton>
   );
 
@@ -272,10 +315,14 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Escolha uma data e horário"
+      title={wizardHeader ? undefined : 'Escolha uma data e horário'}
+      ariaLabel="Escolha uma data e horário"
+      footerVariant={wizardHeader ? 'wizard' : 'default'}
+      className={wizardHeader ? 'instant-light' : ''}
       size="md"
-      footer={footerContent}
+      footer={<div className="flex w-full items-center justify-end gap-3">{onBack && <Button type="button" variant="outline" className="shrink-0" leftIcon={backLabel === 'Fechar' ? <X className="h-4 w-4" aria-hidden="true" /> : <ArrowLeft className="h-4 w-4" aria-hidden="true" />} onClick={onBack}>{backLabel}</Button>}<div className="min-w-0 flex-1">{footerContent}</div></div>}
     >
+      {wizardHeader}
       <div
         className="min-h-0 space-y-4 pr-1 text-left"
         aria-busy={isLoading}
@@ -368,7 +415,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                           isSelected
                             ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                             : available
-                            ? 'bg-white text-[var(--mazzi-dark)] font-bold hover:bg-slate-100 border border-[var(--mazzi-border)]'
+                            ? 'bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] font-bold hover:bg-slate-200 border border-[var(--mazzi-border)]'
                             : 'text-slate-300 cursor-not-allowed bg-slate-50/50'
                         }`}
                       >
@@ -409,7 +456,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                                 className={`min-h-11 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                                   isSelected
                                     ? 'border-amber-400/80 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
-                                    : 'border-[var(--mazzi-border)] bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                                    : 'border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] text-slate-700 hover:border-slate-400 hover:bg-slate-200'
                                 }`}
                               >
                                 <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />

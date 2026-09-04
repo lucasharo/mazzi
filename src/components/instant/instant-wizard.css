@@ -1,0 +1,15 @@
+/* Shared white surface for the scheduled and instant lesson wizards. */
+.instant-light {
+  --mazzi-bg: #fff;
+  --mazzi-surface-soft: #f1f5f9;
+  --mazzi-text: #161616;
+  --mazzi-muted: #64748b;
+  --mazzi-border: #e5e7eb;
+  background: #fff;
+  color: #161616;
+}
+.instant-light > [role="dialog"],
+.instant-light > [role="dialog"] > .mazzi-modal-content {
+  background-color: #fff;
+}
+.instant-light [data-component="instant-lesson-wizard"] { max-width: 480px; width: 100%; margin-inline: auto; }

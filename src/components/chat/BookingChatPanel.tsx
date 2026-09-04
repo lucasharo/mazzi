@@ -27,6 +27,9 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const initialPositionedRef = useRef(false);
+  const conversationLoadInFlightRef = useRef<Promise<void> | null>(null);
+  const messagesLoadInFlightRef = useRef<{ conversationId: string; promise: Promise<Message[]> } | null>(null);
+  const messagesCacheRef = useRef<{ conversationId: string; messages: Message[]; loadedAt: number } | null>(null);
 
   const currentUserId = user?.id;
   const isStudent = user?.role === 'STUDENT' || Boolean(user?.roles?.includes('STUDENT'));
@@ -43,7 +46,32 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
   const end = booking.scheduledEndAt || `${booking.scheduledDate}T${booking.endTime}:00`;
   const vehicle = booking.vehicleName || booking.snapshot?.vehicleName;
 
+  const loadMessages = useCallback(async (conversationId: string, force = false): Promise<Message[]> => {
+    const cached = messagesCacheRef.current;
+    if (!force && cached?.conversationId === conversationId && Date.now() - cached.loadedAt < 2_000) {
+      return cached.messages;
+    }
+    const inFlight = messagesLoadInFlightRef.current;
+    if (inFlight?.conversationId === conversationId) return inFlight.promise;
+
+    const request = dbService.getMessagesForConversation(conversationId);
+    messagesLoadInFlightRef.current = { conversationId, promise: request };
+    void request.then(
+      (rows) => {
+        messagesCacheRef.current = { conversationId, messages: rows, loadedAt: Date.now() };
+        if (messagesLoadInFlightRef.current?.promise === request) messagesLoadInFlightRef.current = null;
+      },
+      () => {
+        if (messagesLoadInFlightRef.current?.promise === request) messagesLoadInFlightRef.current = null;
+      },
+    );
+    return request;
+  }, []);
+
   const loadConversation = useCallback(async () => {
+    if (conversationLoadInFlightRef.current) return conversationLoadInFlightRef.current;
+
+    const request = (async () => {
     setLoading(true);
     setError(null);
     if (chatBlockedForStudent) {
@@ -54,7 +82,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
     }
     try {
       const convo = await dbService.getConversationForBooking(booking.id);
-      const convoMessages = await dbService.getMessagesForConversation(convo.id);
+      const convoMessages = await loadMessages(convo.id, true);
       setConversation(convo);
       setMessages(mergeMessagesById([], convoMessages));
     } catch (err: any) {
@@ -65,7 +93,15 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
     } finally {
       setLoading(false);
     }
-  }, [booking.id, chatBlockedForStudent]);
+    })();
+
+    conversationLoadInFlightRef.current = request;
+    try {
+      await request;
+    } finally {
+      if (conversationLoadInFlightRef.current === request) conversationLoadInFlightRef.current = null;
+    }
+  }, [booking.id, chatBlockedForStudent, loadMessages]);
 
   useEffect(() => {
     void loadConversation();
@@ -81,7 +117,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
     const mergeMessages = (incoming: Message[]) => setMessages((current) => mergeMessagesById(current, incoming));
     const poll = () => {
       if (disposed || lastRealtimeHealthy) return;
-      void dbService.getMessagesForConversation(conversation.id).then(mergeMessages).catch(() => undefined);
+      void loadMessages(conversation.id).then(mergeMessages).catch(() => undefined);
     };
 
     channel = supabase
@@ -93,7 +129,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
         const healthy = status === 'SUBSCRIBED';
         setRealtimeReady(healthy);
         if (healthy && !lastRealtimeHealthy) {
-          void dbService.getMessagesForConversation(conversation.id).then(mergeMessages).catch(() => undefined);
+          void loadMessages(conversation.id).then(mergeMessages).catch(() => undefined);
         }
         lastRealtimeHealthy = healthy;
         if (!healthy && pollingInterval === undefined) {
@@ -104,7 +140,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
       });
 
     const handleVisibility = () => {
-      if (!document.hidden) void dbService.getMessagesForConversation(conversation.id).then(mergeMessages).catch(() => undefined);
+      if (!document.hidden) void loadMessages(conversation.id, true).then(mergeMessages).catch(() => undefined);
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
@@ -115,7 +151,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
       void supabase.removeChannel(channel);
       setRealtimeReady(false);
     };
-  }, [conversation?.id]);
+  }, [conversation?.id, loadMessages]);
 
   useEffect(() => {
     initialPositionedRef.current = false;

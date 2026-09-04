@@ -448,6 +448,7 @@ export interface Quote {
 }
 
 export interface BookingSnapshot {
+  source?: string;
   providerId: string;
   providerName: string;
   providerType: ProviderType;
@@ -548,6 +549,78 @@ export interface ProviderMaskedPayoutAccount {
   country?: string;
   currency?: string;
   status?: string;
+}
+
+export type InstantLessonRequestStatus =
+  | 'SEARCHING'
+  | 'MATCHED'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'FAILED';
+
+export type InstantLessonOfferStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'DECLINED'
+  | 'EXPIRED'
+  | 'LOST_RACE';
+
+export interface InstantLessonSettings {
+  id?: string;
+  providerId: string;
+  offeringId: string;
+  instantEnabled: boolean;
+  instantOnline: boolean;
+  instantPriceInCents: number;
+  maxDistanceKm: number;
+  updatedAt?: string;
+}
+
+export interface InstantLessonPriceOption {
+  maxPriceInCents: number | null;
+  eligibleProviderCount: number;
+}
+
+export interface InstantLessonRequest {
+  id: string;
+  studentId: string;
+  meetingPoint: StudentSavedAddress;
+  category: VehicleCategory;
+  transmission: TransmissionType | 'ALL';
+  maxPriceInCents: number | null;
+  status: InstantLessonRequestStatus;
+  expiresAt: string;
+  matchedProviderId?: string;
+  matchedOfferingId?: string;
+  bookingId?: string;
+  createdAt: string;
+}
+
+export interface InstantLessonOffer {
+  id: string;
+  requestId: string;
+  providerId: string;
+  offeringId: string;
+  instructorId: string;
+  vehicleId: string;
+  providerName?: string;
+  category: VehicleCategory;
+  transmission: TransmissionType;
+  durationMinutes: number;
+  offeredPriceInCents: number;
+  distanceMeters: number;
+  etaMinutes: number;
+  status: InstantLessonOfferStatus;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface InstantLessonTracking {
+  bookingId: string;
+  latitude: number;
+  longitude: number;
+  recordedAt: string;
+  etaMinutes?: number;
 }
 
 export interface ProviderPaymentAccount {
@@ -850,6 +923,7 @@ export type NotificationType =
   | 'PAYOUT_PAID'
   | 'PAYOUT_BLOCKED'
   | 'PAYOUT_FAILED'
+  | 'INSTANT_LESSON_OFFER'
   | 'REVIEW_AVAILABLE'
   | 'REVIEW_RECEIVED';
 
@@ -867,7 +941,7 @@ export interface Notification {
   createdAt: string;
   readAt?: string;
   appContext?: NotificationAppContext;
-  navigationAction?: 'details' | 'chat' | 'review' | 'reviews' | 'compliance';
+  navigationAction?: 'details' | 'chat' | 'review' | 'reviews' | 'compliance' | 'instant_offer';
 }
 
 // ==========================================

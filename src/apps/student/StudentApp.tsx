@@ -1,8 +1,11 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, Car, Phone, ShieldCheck, Lock, Mail, Camera } from 'lucide-react';
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
+import { LessonWizardHeader } from '../../components/ui/LessonWizardHeader';
+import { Check, X, ArrowLeft } from 'lucide-react';
+import { instantOptionClassName } from '../../components/instant/instant-option-style';
 import {
-  Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, } from '../../types';
+  Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, StudentSavedAddress, InstantLessonPriceOption, InstantLessonRequest, InstantLessonOffer, InstantLessonTracking, TransmissionType, VehicleCategory, } from '../../types';
 import { BookingCard } from '../../components/ui/BookingCard';
 import { EmptyState, ErrorState } from '../../components/ui/EmptyState';
 import { AppPageHeader } from '../../components/ui/AppPageHeader';
@@ -47,12 +50,21 @@ import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
 import { disableStoredPushDevice } from '../../lib/push-device-registry';
 import { StudentProMigrationCard } from './components/StudentProMigrationCard';
+import { InstantLessonModal } from './components/InstantLessonModal';
 import { ToastContainer, type ToastMessage } from '../../components/ui/Toast';
 import { dismissInitialSplash, signalInitialNavigationReady } from '../../lib/initial-splash';
 
 const STRIPE_RETURN_QUERY_PARAMS = ['stripe_checkout', 'payment_id', 'session_id'] as const;
 const STRIPE_CONFIRMATION_TIMEOUT_MS = 60_000;
 const STRIPE_OFFLINE_REDIRECT_DELAY_MS = 2_500;
+const STUDENT_LOCATION_TIMEOUT_MS = 20_000;
+const INSTANT_PAYMENT_BOOKING_STORAGE_KEY = 'mazzi:instant-payment-booking-id';
+
+type StudentLocation = { lat: number; lng: number };
+
+function isValidStudentLocation(lat: number, lng: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
 
 function isLikelyNetworkFailure(error: unknown): boolean {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return true;
@@ -227,6 +239,16 @@ export const StudentApp: React.FC = () => {
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isInstantLessonOpen, setIsInstantLessonOpen] = useState(false);
+  const [activeInstantLesson, setActiveInstantLesson] = useState<{ request: InstantLessonRequest; offer?: InstantLessonOffer } | null>(null);
+  const [instantLessonTracking, setInstantLessonTracking] = useState<InstantLessonTracking | null>(null);
+  const [instantLessonLoading, setInstantLessonLoading] = useState(false);
+  const activeInstantRequestInFlightRef = useRef<Promise<void> | null>(null);
+  const instantRefreshInFlightRef = useRef<Promise<void> | null>(null);
+  const instantCheckoutOpeningRef = useRef<Promise<void> | null>(null);
+  const instantPaymentBookingIdRef = useRef<string | null>(null);
+  const instantReturnToMapBookingIdRef = useRef<string | null>(null);
+  const instantRequestIdempotencyRef = useRef<string | null>(null);
   const [notificationToasts, setNotificationToasts] = useState<ToastMessage[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
   const [searchedLocation, setSearchedLocation] = useState<{ lat: number; lng: number; label?: string } | undefined>();
@@ -249,6 +271,249 @@ export const StudentApp: React.FC = () => {
   const shouldAutoSelectTodayRef = useRef(true);
   const stripeCheckoutFlowActiveRef = useRef(false);
   const pendingNotificationTargetRef = useRef<NotificationNavigationTarget | null>(null);
+  const bookingsLoadInFlightRef = useRef<Promise<void> | null>(null);
+  const bookingsDataLoadInFlightRef = useRef<Promise<Booking[]> | null>(null);
+  const bookingsRefreshQueuedRef = useRef(false);
+  const locationRequestStartedRef = useRef(false);
+  const locationRequestInFlightRef = useRef<Promise<StudentLocation> | null>(null);
+  const checkoutContextRequestInFlightRef = useRef<string | null>(null);
+  const checkoutPaymentStatusInFlightRef = useRef<{ paymentId: string; promise: Promise<any> } | null>(null);
+  const checkoutVerificationInFlightRef = useRef<{ key: string; promise: Promise<any> } | null>(null);
+
+  const requestBookingsRefresh = useCallback((source: 'realtime' | 'manual' = 'manual') => {
+    if (bookingsLoadInFlightRef.current) {
+      if (source === 'realtime') bookingsRefreshQueuedRef.current = true;
+      return;
+    }
+    setBookingsRefreshKey((current) => current + 1);
+  }, []);
+
+  const loadBookingsData = useCallback((): Promise<Booking[]> => {
+    if (bookingsDataLoadInFlightRef.current) return bookingsDataLoadInFlightRef.current;
+
+    const request = dbService.getBookings();
+    bookingsDataLoadInFlightRef.current = request;
+    void request.then(
+      () => { if (bookingsDataLoadInFlightRef.current === request) bookingsDataLoadInFlightRef.current = null; },
+      () => { if (bookingsDataLoadInFlightRef.current === request) bookingsDataLoadInFlightRef.current = null; },
+    );
+    return request;
+  }, []);
+
+  const loadCheckoutPaymentStatus = useCallback((paymentId: string): Promise<any> => {
+    const current = checkoutPaymentStatusInFlightRef.current;
+    if (current?.paymentId === paymentId) return current.promise;
+
+    const request = dbService.getMyPaymentStatus(paymentId);
+    checkoutPaymentStatusInFlightRef.current = { paymentId, promise: request };
+    void request.then(
+      () => {
+        if (checkoutPaymentStatusInFlightRef.current?.promise === request) checkoutPaymentStatusInFlightRef.current = null;
+      },
+      () => {
+        if (checkoutPaymentStatusInFlightRef.current?.promise === request) checkoutPaymentStatusInFlightRef.current = null;
+      },
+    );
+    return request;
+  }, []);
+
+  const verifyCheckoutSession = useCallback((paymentId: string, sessionId: string): Promise<any> => {
+    const key = `${paymentId}:${sessionId}`;
+    const current = checkoutVerificationInFlightRef.current;
+    if (current?.key === key) return current.promise;
+
+    const request = dbService.verifyStripeCheckoutSession(paymentId, sessionId);
+    checkoutVerificationInFlightRef.current = { key, promise: request };
+    void request.then(
+      () => {
+        if (checkoutVerificationInFlightRef.current?.promise === request) checkoutVerificationInFlightRef.current = null;
+      },
+      () => {
+        if (checkoutVerificationInFlightRef.current?.promise === request) checkoutVerificationInFlightRef.current = null;
+      },
+    );
+    return request;
+  }, []);
+
+  const requestUserLocation = useCallback((): Promise<StudentLocation> => {
+    if (userLocation) return Promise.resolve(userLocation);
+    if (locationRequestInFlightRef.current) return locationRequestInFlightRef.current;
+    if (!navigator.geolocation) {
+      setLocationStatus('UNAVAILABLE');
+      return Promise.reject(new Error('GEOLOCATION_UNAVAILABLE'));
+    }
+
+    setLocationStatus('RESOLVING');
+    const request = new Promise<StudentLocation>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          const location = { lat: coords.latitude, lng: coords.longitude };
+          if (isValidStudentLocation(location.lat, location.lng)) resolve(location);
+          else reject(new Error('GEOLOCATION_INVALID'));
+        },
+        reject,
+        { enableHighAccuracy: false, timeout: STUDENT_LOCATION_TIMEOUT_MS, maximumAge: 300_000 },
+      );
+    }).then((location) => {
+      setUserLocation(location);
+      setLocationStatus('RESOLVED');
+      return location;
+    }).catch((error) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[MAZZI Search] Geolocation error or denied:', error);
+      }
+      setLocationStatus('UNAVAILABLE');
+      throw error;
+    });
+
+    locationRequestInFlightRef.current = request;
+    void request.then(
+      () => { if (locationRequestInFlightRef.current === request) locationRequestInFlightRef.current = null; },
+      () => { if (locationRequestInFlightRef.current === request) locationRequestInFlightRef.current = null; },
+    );
+    return request;
+  }, [userLocation]);
+
+  const openInstantBookingCheckout = useCallback((bookingId: string): Promise<void> => {
+    if (instantCheckoutOpeningRef.current) return instantCheckoutOpeningRef.current;
+
+    const request = loadBookingsData()
+      .then((bookings) => {
+        const booking = bookings.find((candidate) => candidate.id === bookingId);
+        if (!booking) return;
+
+        // Remember the matched booking even after payment. This prevents the
+        // Aula Agora polling loop from reopening the checkout when the map is
+        // already authorized for a confirmed lesson.
+        instantPaymentBookingIdRef.current = booking.id;
+        setConfirmedBookings(bookings);
+        if (booking.status !== 'PENDING_PAYMENT') return;
+
+        window.sessionStorage.setItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY, booking.id);
+        setIsInstantLessonOpen(false);
+        setResumeBooking(booking);
+      })
+      .finally(() => {
+        if (instantCheckoutOpeningRef.current === request) instantCheckoutOpeningRef.current = null;
+      });
+
+    instantCheckoutOpeningRef.current = request;
+    return request;
+  }, [loadBookingsData]);
+
+  const loadActiveInstantLesson = useCallback((): Promise<void> => {
+    if (activeInstantRequestInFlightRef.current) return activeInstantRequestInFlightRef.current;
+    const request = dbService.getMyActiveInstantRequest()
+      .then(async (active) => {
+        setActiveInstantLesson(active);
+        if (!active?.request.bookingId) {
+          // A terminal/expired request must not be reused by the next search.
+          // Keep the key only while the create/dispatch flow can still be
+          // retried for the same active request.
+          if (!active) instantRequestIdempotencyRef.current = null;
+          setInstantLessonTracking(null);
+          return;
+        }
+
+        if (active.request.status === 'MATCHED' && instantPaymentBookingIdRef.current !== active.request.bookingId) {
+          void openInstantBookingCheckout(active.request.bookingId);
+        }
+        try {
+          setInstantLessonTracking(await dbService.getInstantTracking(active.request.bookingId));
+        } catch {
+          setInstantLessonTracking(null);
+        }
+      })
+      .catch(() => { setActiveInstantLesson(null); setInstantLessonTracking(null); })
+      .finally(() => { activeInstantRequestInFlightRef.current = null; });
+    activeInstantRequestInFlightRef.current = request;
+    return request;
+  }, [openInstantBookingCheckout]);
+
+  const loadInstantPriceOptions = useCallback((params: { latitude: number; longitude: number; category: VehicleCategory; transmission: TransmissionType | 'ALL' }) => (
+    dbService.getInstantPriceOptions(params)
+  ), []);
+
+  const refreshActiveInstantLesson = useCallback((): Promise<void> => {
+    if (instantRefreshInFlightRef.current) return instantRefreshInFlightRef.current;
+    const request = (async () => {
+      const active = await dbService.getMyActiveInstantRequest().catch(() => null);
+      if (active?.request.status === 'SEARCHING') {
+        await dbService.dispatchInstantLessonRequest(active.request.id).catch(() => undefined);
+      }
+      await loadActiveInstantLesson();
+    })().finally(() => { instantRefreshInFlightRef.current = null; });
+    instantRefreshInFlightRef.current = request;
+    return request;
+  }, [loadActiveInstantLesson]);
+
+  const handleStartInstantLesson = useCallback(async (params: {
+    meetingPoint: StudentSavedAddress;
+    latitude: number;
+    longitude: number;
+    category: VehicleCategory;
+    transmission: TransmissionType | 'ALL';
+    maxPriceInCents: number | null;
+  }): Promise<InstantLessonRequest> => {
+    setInstantLessonLoading(true);
+    try {
+      // The price preview is time-sensitive because provider locations expire
+      // quickly and dispatch applies the live schedule-conflict guard.
+      const latestPriceOptions = await dbService.getInstantPriceOptions(params);
+      const hasEligibleProvider = params.maxPriceInCents == null
+        ? latestPriceOptions.some((option) => option.maxPriceInCents == null && option.eligibleProviderCount > 0)
+        : latestPriceOptions.some((option) => option.maxPriceInCents != null
+          && option.maxPriceInCents <= params.maxPriceInCents!
+          && option.eligibleProviderCount > 0);
+      if (!hasEligibleProvider) {
+        throw new Error('INSTANT_NO_PROFESSIONAL_AVAILABLE');
+      }
+
+      const idempotencyKey = instantRequestIdempotencyRef.current || crypto.randomUUID();
+      instantRequestIdempotencyRef.current = idempotencyKey;
+      const created = await dbService.createInstantLessonRequest({ ...params, idempotencyKey });
+      const dispatched = await dbService.dispatchInstantLessonRequest(created.requestId);
+      if (dispatched.status === 'FAILED' || dispatched.offersCreated < 1) {
+        instantRequestIdempotencyRef.current = null;
+        throw new Error('INSTANT_NO_PROFESSIONAL_AVAILABLE');
+      }
+      const nextRequest: InstantLessonRequest = {
+        id: created.requestId,
+        studentId: user?.id || '',
+        meetingPoint: params.meetingPoint,
+        category: params.category,
+        transmission: params.transmission,
+        maxPriceInCents: params.maxPriceInCents,
+        status: created.status as InstantLessonRequest['status'],
+        expiresAt: created.expiresAt,
+        createdAt: new Date().toISOString(),
+      };
+      await loadActiveInstantLesson();
+      return nextRequest;
+    } catch (error) {
+      throw error;
+    } finally {
+      setInstantLessonLoading(false);
+    }
+  }, [loadActiveInstantLesson, user?.id]);
+
+  const handleCancelInstantLesson = useCallback(async (requestId: string) => {
+    setInstantLessonLoading(true);
+    try {
+      await dbService.cancelInstantLessonRequest(requestId);
+      instantRequestIdempotencyRef.current = null;
+      setActiveInstantLesson(null);
+    } finally {
+      setInstantLessonLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isInstantLessonOpen) return undefined;
+    void refreshActiveInstantLesson();
+    const timer = window.setInterval(() => void refreshActiveInstantLesson(), 5000);
+    return () => window.clearInterval(timer);
+  }, [isInstantLessonOpen, refreshActiveInstantLesson]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -284,21 +549,6 @@ export const StudentApp: React.FC = () => {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   };
 
-  // Re-fetch bookings on window focus / visibilitychange
-  useEffect(() => {
-    const handleFocusOrVisible = () => {
-      if (document.visibilityState === 'visible') {
-        setBookingsRefreshKey((k) => k + 1);
-      }
-    };
-    window.addEventListener('focus', handleFocusOrVisible);
-    document.addEventListener('visibilitychange', handleFocusOrVisible);
-    return () => {
-      window.removeEventListener('focus', handleFocusOrVisible);
-      document.removeEventListener('visibilitychange', handleFocusOrVisible);
-    };
-  }, []);
-
   // Realtime subscription for current student's bookings
   useEffect(() => {
     if (!user?.id || !isRealSupabase) return;
@@ -314,7 +564,7 @@ export const StudentApp: React.FC = () => {
           filter: `student_id=eq.${user.id}`,
         },
         () => {
-          setBookingsRefreshKey((k) => k + 1);
+          requestBookingsRefresh('realtime');
         }
       )
       .subscribe();
@@ -325,30 +575,10 @@ export const StudentApp: React.FC = () => {
   }, [user?.id, isRealSupabase]);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationStatus('UNAVAILABLE');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          setUserLocation({ lat, lng });
-          setLocationStatus('RESOLVED');
-        } else {
-          setLocationStatus('UNAVAILABLE');
-        }
-      },
-      (error) => {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('[MAZZI Search] Geolocation error or denied:', error);
-        }
-        setLocationStatus('UNAVAILABLE');
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
-    );
-  }, []);
+    if (locationRequestStartedRef.current) return;
+    locationRequestStartedRef.current = true;
+    void requestUserLocation().catch(() => undefined);
+  }, [requestUserLocation]);
 
   useEffect(() => {
     setProfileName(user?.name || '');
@@ -367,6 +597,9 @@ export const StudentApp: React.FC = () => {
   }, [user?.name, user?.phone, user?.avatarUrl, user?.birthDate]);
 
   // Bookings are an independent data boundary from the public search pipeline (fetched via dbService.getBookings with RLS).
+  // Token refreshes can recreate the AuthContext user object when the browser
+  // resumes. The booking resource is scoped by user id, so only an explicit
+  // refresh request or a different authenticated user should reload it.
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
   const [stripeCheckoutReturn, setStripeCheckoutReturn] = useState<{
     status: StripeCheckoutReturnStatus;
@@ -380,42 +613,59 @@ export const StudentApp: React.FC = () => {
 
   useEffect(() => {
     async function loadBookings() {
-      setBookingsLoading(true);
-      setBookingsError(null);
-      try {
-        const bookings = await dbService.getBookings();
-        setConfirmedBookings(bookings);
-        setSelectedBookingForDetails((selectedBooking) => {
-          if (!selectedBooking) return selectedBooking;
-          return bookings.find((candidate) => candidate.id === selectedBooking.id) || selectedBooking;
-        });
+      if (bookingsLoadInFlightRef.current) return bookingsLoadInFlightRef.current;
 
-        // Batch load reviewed booking IDs to avoid N+1 queries (fail-closed handling)
-        const completedIds = bookings.filter((b) => b.status === 'COMPLETED').map((b) => b.id);
-        if (completedIds.length > 0) {
-          setReviewsEligibilityStatus('LOADING');
-          try {
-            const reviewedSet = await dbService.getReviewedBookingIds(completedIds);
-            setReviewedBookingIds(reviewedSet);
+      const request = (async () => {
+        setBookingsLoading(true);
+        setBookingsError(null);
+        try {
+          const bookings = await loadBookingsData();
+          setConfirmedBookings(bookings);
+          setSelectedBookingForDetails((selectedBooking) => {
+            if (!selectedBooking) return selectedBooking;
+            return bookings.find((candidate) => candidate.id === selectedBooking.id) || selectedBooking;
+          });
+
+          // Batch load reviewed booking IDs to avoid N+1 queries (fail-closed handling)
+          const completedIds = bookings.filter((b) => b.status === 'COMPLETED').map((b) => b.id);
+          if (completedIds.length > 0) {
+            setReviewsEligibilityStatus('LOADING');
+            try {
+              const reviewedSet = await dbService.getReviewedBookingIds(completedIds);
+              setReviewedBookingIds(reviewedSet);
+              setReviewsEligibilityStatus('SUCCESS');
+            } catch (reviewErr) {
+              console.warn('Failed to batch load reviewed booking IDs (fail-closed):', reviewErr);
+              setReviewsEligibilityStatus('ERROR');
+            }
+          } else {
+            setReviewedBookingIds(new Set());
             setReviewsEligibilityStatus('SUCCESS');
-          } catch (reviewErr) {
-            console.warn('Failed to batch load reviewed booking IDs (fail-closed):', reviewErr);
-            setReviewsEligibilityStatus('ERROR');
           }
-        } else {
-          setReviewedBookingIds(new Set());
-          setReviewsEligibilityStatus('SUCCESS');
+        } catch (err) {
+          console.error('Failed to load student bookings:', err);
+          setConfirmedBookings([]);
+          setBookingsError('Não foi possível carregar suas aulas.');
+        } finally {
+          setBookingsLoading(false);
         }
-      } catch (err) {
-        console.error('Failed to load student bookings:', err);
-        setConfirmedBookings([]);
-        setBookingsError('Não foi possível carregar suas aulas.');
+      })();
+
+      bookingsLoadInFlightRef.current = request;
+      try {
+        await request;
       } finally {
-        setBookingsLoading(false);
+        if (bookingsLoadInFlightRef.current === request) {
+          bookingsLoadInFlightRef.current = null;
+          if (bookingsRefreshQueuedRef.current) {
+            bookingsRefreshQueuedRef.current = false;
+            setBookingsRefreshKey((current) => current + 1);
+          }
+        }
       }
     }
     void loadBookings();
-  }, [user, bookingsRefreshKey]);
+  }, [user?.id, bookingsRefreshKey]);
 
   // Stripe returns to the app through success_url/cancel_url. The browser
   // return is not authoritative: wait for the signed webhook to update the
@@ -440,8 +690,8 @@ export const StudentApp: React.FC = () => {
           // the browser. Retry briefly while preserving the booking hold.
           for (let attempt = 0; attempt < 3 && active; attempt += 1) {
             const [paymentStatus, bookings] = await Promise.all([
-              dbService.getMyPaymentStatus(paymentId),
-              dbService.getBookings(),
+              loadCheckoutPaymentStatus(paymentId),
+              loadBookingsData(),
             ]);
             latestBookings = bookings;
             if (!active) return;
@@ -516,6 +766,38 @@ export const StudentApp: React.FC = () => {
     // being checked authoritatively by the backend.
     setStripeCheckoutReturn({ status: 'CHECKOUT_SUCCESS' });
 
+    const handleAuthoritativeCheckoutSuccess = async (bookings: Booking[], bookingId: string) => {
+      if (!active) return;
+      setConfirmedBookings(bookings);
+      const confirmedBooking = bookings.find((booking) => booking.id === bookingId);
+      let storedInstantBookingId: string | null = null;
+      try {
+        storedInstantBookingId = window.sessionStorage.getItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY);
+      } catch {
+        storedInstantBookingId = null;
+      }
+      const isInstantLesson = confirmedBooking?.snapshot?.source === 'AULA_AGORA'
+        || storedInstantBookingId === bookingId;
+
+      if (isInstantLesson) {
+        instantPaymentBookingIdRef.current = bookingId;
+        instantReturnToMapBookingIdRef.current = bookingId;
+        try { window.sessionStorage.removeItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY); } catch { /* storage unavailable */ }
+        clearStripeCheckoutReturnParams();
+        stripeCheckoutFlowActiveRef.current = false;
+        await loadActiveInstantLesson();
+        if (!active) return;
+        setStripeCheckoutReturn({ status: 'SUCCESS', booking: confirmedBooking || null });
+        return;
+      }
+
+      clearStripeCheckoutReturnParams();
+      setStripeCheckoutReturn({
+        status: 'SUCCESS',
+        booking: confirmedBooking || null,
+      });
+    };
+
     const wait = (milliseconds: number) => new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
     const requestUntilDeadline = async <T,>(operation: Promise<T>, deadline: number): Promise<T | undefined> => {
       const remaining = deadline - Date.now();
@@ -535,22 +817,15 @@ export const StudentApp: React.FC = () => {
       const deadline = Date.now() + STRIPE_CONFIRMATION_TIMEOUT_MS;
       for (let attempt = 0; attempt < 60 && active && stripeCheckoutFlowActiveRef.current && !offlineDetected && Date.now() < deadline; attempt += 1) {
         try {
-          const paymentStatus = await requestUntilDeadline(dbService.getMyPaymentStatus(paymentId), deadline);
+          const paymentStatus = await requestUntilDeadline<any>(loadCheckoutPaymentStatus(paymentId), deadline);
           if (!active || !stripeCheckoutFlowActiveRef.current || offlineDetected) return;
           if (paymentStatus === undefined) break;
 
           const normalizedPaymentStatus = String(paymentStatus?.status || '').toUpperCase();
           const normalizedBookingStatus = String(paymentStatus?.booking_status || '').toUpperCase();
           if (normalizedPaymentStatus === 'PAID' && normalizedBookingStatus === 'CONFIRMED') {
-            const bookings = await dbService.getBookings();
-            if (!active) return;
-            setConfirmedBookings(bookings);
-            const confirmedBooking = bookings.find((booking) => booking.id === paymentStatus.booking_id);
-            clearStripeCheckoutReturnParams();
-            setStripeCheckoutReturn({
-              status: 'SUCCESS',
-              booking: confirmedBooking || null,
-            });
+            const bookings = await loadBookingsData();
+            await handleAuthoritativeCheckoutSuccess(bookings, paymentStatus.booking_id);
             return;
           }
 
@@ -567,18 +842,14 @@ export const StudentApp: React.FC = () => {
           // on its way. Ask Stripe once as a fast fallback instead of blocking
           // the first status check behind a remote request.
           if (sessionId && attempt === 0) {
-            const verifiedSession = await requestUntilDeadline(
-              dbService.verifyStripeCheckoutSession(paymentId, sessionId),
+            const verifiedSession = await requestUntilDeadline<any>(
+              verifyCheckoutSession(paymentId, sessionId),
               deadline,
             );
             if (!active || !stripeCheckoutFlowActiveRef.current || offlineDetected) return;
             if (verifiedSession?.confirmed) {
-              const bookings = await dbService.getBookings();
-              if (!active) return;
-              setConfirmedBookings(bookings);
-              const confirmedBooking = bookings.find((booking) => booking.id === verifiedSession.bookingId);
-              clearStripeCheckoutReturnParams();
-              setStripeCheckoutReturn({ status: 'SUCCESS', booking: confirmedBooking || null });
+              const bookings = await loadBookingsData();
+              await handleAuthoritativeCheckoutSuccess(bookings, verifiedSession.bookingId);
               return;
             }
           }
@@ -610,11 +881,23 @@ export const StudentApp: React.FC = () => {
       window.removeEventListener('offline', handleOffline);
       if (offlineRedirectTimer !== undefined) window.clearTimeout(offlineRedirectTimer);
     };
-  }, [user?.id, isRealSupabase]);
+  }, [user?.id, isRealSupabase, loadActiveInstantLesson, loadBookingsData, loadCheckoutPaymentStatus, verifyCheckoutSession]);
 
   // The Stripe cancellation return reopens the held booking in CheckoutModal.
   // Release the document splash only after that summary has been committed,
   // preventing the home screen from flashing between the redirect and modal.
+  const handleInstantSuccessComplete = useCallback(() => {
+    const bookingId = instantReturnToMapBookingIdRef.current;
+    if (!bookingId) return;
+    instantReturnToMapBookingIdRef.current = null;
+    clearStripeCheckoutReturnParams();
+    void loadActiveInstantLesson().finally(() => {
+      setStripeCheckoutReturn(null);
+      setActiveTab('search');
+      setIsInstantLessonOpen(true);
+    });
+  }, [loadActiveInstantLesson]);
+
   useEffect(() => {
     if (resumeBooking) dismissInitialSplash();
   }, [resumeBooking]);
@@ -860,9 +1143,46 @@ function applyStrictProviderFilters(
   const [offeringPickerProvider, setOfferingPickerProvider] = useState<Provider | null>(null);
   const [offeringPickerSlot, setOfferingPickerSlot] = useState<any | null>(null);
   const [bookingContextsForSelection, setBookingContextsForSelection] = useState<any[]>([]);
+  const [pickedInstructorId, setPickedInstructorId] = useState<string | null>(null);
+  const [pickedOfferingId, setPickedOfferingId] = useState<string | null>(null);
+  const pickedInstructorContext = instructorChoices.find(ctx => (ctx.instructor_id || ctx.instructorId) === pickedInstructorId);
+  const pickedOfferingContext = bookingContextChoices.find(ctx => (ctx.offering_id || ctx.offeringId) === pickedOfferingId);
+  const bookingWizardSteps = [
+    ...(groupBookingContextsByInstructor(bookingContextsForSelection).length > 1 ? ['Instrutor'] : []),
+    ...(groupBookingContextsByInstructor(bookingContextsForSelection).some(ctx => uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, ctx.instructor_id || ctx.instructorId)).length > 1) ? ['Veículo'] : []),
+    'Horário', 'Confirmação',
+  ];
+  const closeBookingWizard = () => {
+    setInstructorPickerProvider(null);
+    setOfferingPickerProvider(null);
+    setIsSlotSelectorOpen(false);
+    setIsCheckoutOpen(false);
+  };
+  const backToBookingChoices = () => {
+    if (!checkoutProvider) return;
+    const contexts = filterBookingContextsByInstructor(bookingContextsForSelection, checkoutOffering?.instructorId);
+    const offerings = uniqueBookingOfferingContexts(contexts);
+    setIsSlotSelectorOpen(false);
+    if (offerings.length > 1) {
+      setBookingContextChoices(offerings);
+      setOfferingPickerProvider(checkoutProvider);
+      setOfferingPickerSlot(null);
+    } else if (groupBookingContextsByInstructor(bookingContextsForSelection).length > 1) {
+      setInstructorChoices(groupBookingContextsByInstructor(bookingContextsForSelection));
+      setInstructorPickerProvider(checkoutProvider);
+    }
+  };
 
   const handleOpenCheckoutByProviderId = async (providerId: string, _date?: string, slot?: any) => {
     const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
+    if (checkoutContextRequestInFlightRef.current) return;
+    const slotKey = slot?.slot_start_at || slot?.slotStartAt || `${slot?.local_date || ''}:${slot?.local_start_time || ''}`;
+    const requestKey = `${providerId}:${_date || ''}:${slotKey}`;
+    checkoutContextRequestInFlightRef.current = requestKey;
+    setPickedInstructorId(null);
+    setPickedOfferingId(null);
+
+    try {
     
     let rawProv: Provider | undefined;
     let matchingVehicle: Vehicle | undefined;
@@ -932,6 +1252,11 @@ function applyStrictProviderFilters(
       setIsCheckoutOpen(true);
     } else {
       setIsSlotSelectorOpen(true);
+    }
+    } finally {
+      if (checkoutContextRequestInFlightRef.current === requestKey) {
+        checkoutContextRequestInFlightRef.current = null;
+      }
     }
   };
 
@@ -1188,6 +1513,7 @@ function applyStrictProviderFilters(
                 onPerformSearch={() => setSearchRefreshKey((value) => value + 1)}
                 currentLocationName={searchLocation}
                 currentLocation={userLocation}
+                onRequestCurrentLocation={requestUserLocation}
                 onLocationResolved={(addr, lat, lng) => {
                   setSearchLocation(addr);
                   setSearchedLocation({ lat, lng, label: addr });
@@ -1197,6 +1523,18 @@ function applyStrictProviderFilters(
                   setSearchedLocation(undefined);
                 }}
               />
+
+              <section className="rounded-3xl border border-amber-200 bg-amber-50 p-4 shadow-sm" aria-labelledby="instant-lesson-cta-title">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p id="instant-lesson-cta-title" className="font-extrabold text-[var(--mazzi-dark)]">Precisa de uma aula agora?</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-600">Encontre um profissional disponível perto de você.</p>
+                  </div>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setIsInstantLessonOpen(true)} leftIcon={<Clock className="h-4 w-4" />}>
+                    Aula Agora
+                  </Button>
+                </div>
+              </section>
 
               {/* Widget de Próxima Aula Agendada (Acesso Rápido - Base Visual V3) */}
               {upcomingBookings.length > 0 && (
@@ -1772,6 +2110,33 @@ function applyStrictProviderFilters(
         <NotificationsPanel appContext="STUDENT" userId={user?.id} onNavigate={openNotificationTarget} />
       </Modal>
 
+      <InstantLessonModal
+        isOpen={isInstantLessonOpen}
+        onClose={() => setIsInstantLessonOpen(false)}
+        location={userLocation}
+        locationLabel={searchLocation || 'Minha localização atual'}
+        onRequestLocation={requestUserLocation}
+        onLoadPriceOptions={loadInstantPriceOptions}
+        onStart={handleStartInstantLesson}
+        activeRequest={activeInstantLesson}
+        bookingStatus={confirmedBookings.find((booking) => booking.id === activeInstantLesson?.request.bookingId)?.status}
+        booking={confirmedBookings.find((booking) => booking.id === activeInstantLesson?.request.bookingId)}
+        currentUserId={user?.id}
+        onOpenChat={(booking) => setSelectedBookingForChat(booking)}
+        onBookingUpdated={(updated) => {
+          setConfirmedBookings((previous) => previous.map((booking) => booking.id === updated.id ? updated : booking));
+          setBookingsRefreshKey((key) => key + 1);
+          if (updated.status === 'CANCELLED_BY_STUDENT' || updated.status === 'CANCELLED_BY_PROVIDER') {
+            setIsInstantLessonOpen(false);
+            void loadActiveInstantLesson();
+          }
+        }}
+        tracking={instantLessonTracking}
+        onPayBooking={(bookingId) => { void openInstantBookingCheckout(bookingId); }}
+        onCancelRequest={handleCancelInstantLesson}
+        isLoading={instantLessonLoading}
+      />
+
       {/* Booking Details Modal */}
       <BookingDetailsModal
         isOpen={!!selectedBookingForDetails}
@@ -1835,34 +2200,39 @@ function applyStrictProviderFilters(
         <Modal
           isOpen={true}
           onClose={() => { setInstructorPickerProvider(null); setInstructorChoices([]); }}
-          title="Escolha o instrutor"
+          ariaLabel="Escolha o instrutor"
+          footerVariant="wizard"
+          className="instant-light"
+          footer={<div className="flex w-full items-center gap-3"><Button type="button" variant="outline" className="shrink-0" leftIcon={<X className="h-4 w-4" aria-hidden="true" />} onClick={closeBookingWizard}>Fechar</Button><Button type="button" className="min-w-0 flex-1" leftIcon={pickedInstructorContext && uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 ? <CalendarIcon className="h-4 w-4" aria-hidden="true" /> : <Car className="h-4 w-4" aria-hidden="true" />} disabled={!pickedInstructorContext} onClick={() => {
+            if (!pickedInstructorContext) return;
+            const contexts = filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!);
+            const offerings = uniqueBookingOfferingContexts(contexts);
+            setInstructorPickerProvider(null);
+            setInstructorChoices([]);
+            if (offerings.length > 1) {
+              setBookingContextChoices(offerings);
+              setOfferingPickerProvider(instructorPickerProvider);
+              setOfferingPickerSlot(null);
+            } else {
+              openCheckoutForContext(instructorPickerProvider, offerings[0] || contexts[0]);
+            }
+          }}>{pickedInstructorContext && uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 ? 'Escolher horário' : 'Escolher veículo'}</Button></div>}
           size="sm"
         >
           <div className="min-h-0 space-y-3">
+            <LessonWizardHeader steps={bookingWizardSteps} current="Instrutor" title="Quem vai acompanhar sua aula?" onClose={closeBookingWizard} />
             <p className="text-sm font-semibold text-slate-500">Escolha quem vai acompanhar sua aula na autoescola.</p>
             <div className="max-h-[min(52vh,28rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 pb-1">
               {instructorChoices.map((ctx) => (
                 <ButtonBase
                   key={`${ctx.instructor_id}-${ctx.offering_id}`}
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
-                  onClick={() => {
-                    const instructorId = ctx.instructor_id || ctx.instructorId;
-                    const instructorContexts = filterBookingContextsByInstructor(bookingContextsForSelection, instructorId);
-                    const offerings = uniqueBookingOfferingContexts(instructorContexts);
-                    setInstructorPickerProvider(null);
-                    setInstructorChoices([]);
-                    if (offerings.length > 1) {
-                      setBookingContextChoices(offerings);
-                      setOfferingPickerProvider(instructorPickerProvider);
-                      setOfferingPickerSlot(null);
-                      return;
-                    }
-                    openCheckoutForContext(instructorPickerProvider, offerings[0] || instructorContexts[0] || ctx);
-                  }}
+                  aria-pressed={pickedInstructorId === (ctx.instructor_id || ctx.instructorId)}
+                  className={`${instantOptionClassName(pickedInstructorId === (ctx.instructor_id || ctx.instructorId))} w-full gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500`}
+                  onClick={() => { setPickedInstructorId(ctx.instructor_id || ctx.instructorId); setPickedOfferingId(null); }}
                 >
                 <span className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"><UserRound className="h-5 w-5" aria-hidden="true" /></span><span className="min-w-0"><span className="block truncate text-sm font-black text-slate-900">{ctx.instructor_name || ctx.instructorName || 'Instrutor disponível'}</span><span className="mt-1 block text-xs font-bold text-slate-700">{ctx.duration_minutes ? `${ctx.duration_minutes} min` : 'Duração a confirmar'} · {typeof ctx.price_in_cents === 'number' ? formatCentsToBRL(ctx.price_in_cents) : 'Preço a confirmar'}</span></span></span>
-                <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                {pickedInstructorId === (ctx.instructor_id || ctx.instructorId) && <Check className="h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />}
                 </ButtonBase>
               ))}
             </div>
@@ -1874,10 +2244,21 @@ function applyStrictProviderFilters(
         <Modal
           isOpen={true}
           onClose={() => { setOfferingPickerProvider(null); setBookingContextChoices([]); setOfferingPickerSlot(null); }}
-          title="Escolha a oferta"
+          ariaLabel="Escolha a oferta"
+          footerVariant="wizard"
+          className="instant-light"
+          footer={<div className="flex w-full items-center gap-3"><Button type="button" variant="outline" className="shrink-0" leftIcon={bookingWizardSteps.includes('Instrutor') ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <X className="h-4 w-4" aria-hidden="true" />} onClick={() => {
+            if (!bookingWizardSteps.includes('Instrutor')) { closeBookingWizard(); return; }
+            setInstructorChoices(groupBookingContextsByInstructor(bookingContextsForSelection));
+            setInstructorPickerProvider(offeringPickerProvider);
+            setOfferingPickerProvider(null);
+          }}>{bookingWizardSteps.includes('Instrutor') ? 'Voltar' : 'Fechar'}</Button><Button type="button" className="min-w-0 flex-1" disabled={!pickedOfferingContext} onClick={() => {
+            if (pickedOfferingContext) openCheckoutForContext(offeringPickerProvider, pickedOfferingContext, offeringPickerSlot);
+          }}>{pickedOfferingContext && isBookingSlotCompatibleWithOffering(offeringPickerSlot, pickedOfferingContext.offering_id || pickedOfferingContext.offeringId) ? 'Confirmar aula' : 'Escolher horário'}</Button></div>}
           size="sm"
         >
           <div className="min-h-0 space-y-3">
+            <LessonWizardHeader steps={bookingWizardSteps} current="Veículo" title="Qual carro você prefere?" onClose={closeBookingWizard} />
             <p className="text-sm font-semibold text-slate-500">Escolha o veículo e a duração da sua aula.</p>
             <div className="max-h-[min(52vh,28rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 pb-1">
               {bookingContextChoices.map((ctx) => {
@@ -1887,17 +2268,16 @@ function applyStrictProviderFilters(
                 <ButtonBase
                   key={ctx.offering_id || ctx.offeringId}
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500"
-                  onClick={() => {
-                    openCheckoutForContext(offeringPickerProvider, ctx, offeringPickerSlot);
-                  }}
+                  aria-pressed={pickedOfferingId === (ctx.offering_id || ctx.offeringId)}
+                  className={`${instantOptionClassName(pickedOfferingId === (ctx.offering_id || ctx.offeringId))} w-full gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500`}
+                  onClick={() => setPickedOfferingId(ctx.offering_id || ctx.offeringId)}
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
                       <Car className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-black text-[var(--mazzi-text)]">{vehicleName}</span>
+                      <span className="block truncate text-sm font-extrabold text-[var(--mazzi-text)]">{vehicleName}</span>
                       <span className="mt-1 block truncate text-xs font-semibold text-slate-500">
                         {transmission === 'AUTOMATIC' ? 'Automático' : 'Manual'} · Cat. {ctx.category || ctx.offering_category || 'B'}
                       </span>
@@ -1906,7 +2286,7 @@ function applyStrictProviderFilters(
                       </span>
                     </span>
                   </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                  {pickedOfferingId === (ctx.offering_id || ctx.offeringId) && <Check className="h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />}
                 </ButtonBase>
                 );
               })}
@@ -1918,6 +2298,9 @@ function applyStrictProviderFilters(
       {/* Slot Selector Modal */}
       {isSlotSelectorOpen && checkoutOffering && (
         <SlotSelectorModal
+          wizardHeader={<LessonWizardHeader steps={bookingWizardSteps} current="Horário" title="Quando será sua aula?" onClose={closeBookingWizard} />}
+          onBack={bookingWizardSteps.length > 2 ? backToBookingChoices : closeBookingWizard}
+          backLabel={bookingWizardSteps.indexOf('Horário') === 0 ? 'Fechar' : 'Voltar'}
           isOpen={isSlotSelectorOpen}
           onClose={() => setIsSlotSelectorOpen(false)}
           offeringId={checkoutOffering.id}
@@ -1938,6 +2321,7 @@ function applyStrictProviderFilters(
       {/* Complete Checkout Journey Modal */}
       {((isCheckoutOpen && selectedSlot && checkoutProvider && checkoutVehicle && checkoutOffering) || !!resumeBooking) && (
         <CheckoutModal
+          wizardHeader={!resumeBooking ? <LessonWizardHeader steps={bookingWizardSteps} current="Confirmação" title="Confira sua aula" onClose={closeBookingWizard} /> : undefined}
           isOpen={isCheckoutOpen || !!resumeBooking}
           presentation="page"
           onClose={() => {
@@ -1972,6 +2356,13 @@ function applyStrictProviderFilters(
             });
             setBookingsRefreshKey((k) => k + 1);
             setResumeBooking(null);
+            if (updatedBooking.snapshot?.source === 'AULA_AGORA') {
+              instantPaymentBookingIdRef.current = updatedBooking.id;
+              instantReturnToMapBookingIdRef.current = updatedBooking.id;
+              try { window.sessionStorage.removeItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY); } catch { /* storage unavailable */ }
+              void loadActiveInstantLesson();
+              setStripeCheckoutReturn({ status: 'SUCCESS', booking: updatedBooking });
+            }
           }}
           onGoToBookings={() => {
             setResumeBooking(null);
@@ -1985,6 +2376,7 @@ function applyStrictProviderFilters(
           status={stripeCheckoutReturn.status}
           booking={stripeCheckoutReturn.booking}
           message={stripeCheckoutReturn.message}
+          onSuccessComplete={handleInstantSuccessComplete}
           onViewBookings={() => {
             stripeCheckoutFlowActiveRef.current = false;
             clearStripeCheckoutReturnParams();

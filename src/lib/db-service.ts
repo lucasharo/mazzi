@@ -40,6 +40,11 @@ import {
   BookingDisputeReason,
   BookingDisputeResolution,
   MazziPaymentStatus,
+  InstantLessonSettings,
+  InstantLessonPriceOption,
+  InstantLessonRequest,
+  InstantLessonOffer,
+  InstantLessonTracking,
 } from '../types';
 import { normalizeComplianceStatus } from '../domain/compliance-status';
 import { formatDateBR, formatTimeBR, getBusinessDateOnly } from './date-format';
@@ -2034,6 +2039,192 @@ export const dbService = {
   async updateContestationResponseHours(hours: number): Promise<void> {
     const { error } = await sp.rpc('update_contestation_response_hours', { p_hours: hours });
     if (error) throw error;
+  },
+
+  async getMyInstantSettings(providerId: string): Promise<InstantLessonSettings[]> {
+    const { data, error } = await sp.rpc('get_my_instant_settings', { p_provider_id: providerId });
+    if (error) throw error;
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      providerId: row.provider_id,
+      offeringId: row.offering_id,
+      instantEnabled: row.instant_enabled === true,
+      instantOnline: row.instant_online === true,
+      instantPriceInCents: Number(row.instant_price_in_cents || 0),
+      maxDistanceKm: Number(row.max_distance_km || 5),
+      updatedAt: row.updated_at,
+    }));
+  },
+
+  async saveMyInstantSetting(params: {
+    providerId: string;
+    offeringId: string;
+    instantEnabled: boolean;
+    instantPriceInCents: number;
+    maxDistanceKm: number;
+  }): Promise<InstantLessonSettings> {
+    const { data, error } = await sp.rpc('save_my_instant_setting', {
+      p_provider_id: params.providerId,
+      p_offering_id: params.offeringId,
+      p_instant_enabled: params.instantEnabled,
+      p_instant_price_in_cents: params.instantPriceInCents,
+      p_max_distance_km: params.maxDistanceKm,
+    });
+    if (error) throw error;
+    return {
+      id: data.id,
+      providerId: data.provider_id,
+      offeringId: data.offering_id,
+      instantEnabled: data.instant_enabled === true,
+      instantOnline: data.instant_online === true,
+      instantPriceInCents: Number(data.instant_price_in_cents || 0),
+      maxDistanceKm: Number(data.max_distance_km || 5),
+    };
+  },
+
+  async setMyInstantOnline(providerId: string, offeringId: string, online: boolean): Promise<void> {
+    const { error } = await sp.rpc('set_my_instant_online', {
+      p_provider_id: providerId,
+      p_offering_id: offeringId,
+      p_online: online,
+    });
+    if (error) throw error;
+  },
+
+  async upsertMyInstantLocation(providerId: string, instructorId: string, latitude: number, longitude: number): Promise<void> {
+    const { error } = await sp.rpc('upsert_my_instant_location', {
+      p_provider_id: providerId,
+      p_instructor_id: instructorId,
+      p_latitude: latitude,
+      p_longitude: longitude,
+    });
+    if (error) throw error;
+  },
+
+  async getInstantPriceOptions(params: { latitude: number; longitude: number; category: string; transmission: string }): Promise<InstantLessonPriceOption[]> {
+    const { data, error } = await sp.rpc('get_instant_price_options', {
+      p_latitude: params.latitude,
+      p_longitude: params.longitude,
+      p_category: params.category,
+      p_transmission: params.transmission,
+    });
+    if (error) throw error;
+    return (data || []).map((row: any) => ({
+      maxPriceInCents: row.max_price_in_cents == null ? null : Number(row.max_price_in_cents),
+      eligibleProviderCount: Number(row.eligible_provider_count || 0),
+    }));
+  },
+
+  async createInstantLessonRequest(params: {
+    meetingPoint: StudentSavedAddress;
+    latitude: number;
+    longitude: number;
+    category: string;
+    transmission: string;
+    maxPriceInCents: number | null;
+    idempotencyKey: string;
+  }): Promise<{ requestId: string; status: string; expiresAt: string }> {
+    const { data, error } = await sp.rpc('create_instant_lesson_request', {
+      p_meeting_point: params.meetingPoint,
+      p_latitude: params.latitude,
+      p_longitude: params.longitude,
+      p_category: params.category,
+      p_transmission: params.transmission,
+      p_max_price_in_cents: params.maxPriceInCents,
+      p_idempotency_key: params.idempotencyKey,
+    });
+    if (error) throw error;
+    return { requestId: String(data.request_id), status: String(data.status), expiresAt: String(data.expires_at) };
+  },
+
+  async dispatchInstantLessonRequest(requestId: string): Promise<{ status: string; offersCreated: number }> {
+    const { data, error } = await sp.rpc('dispatch_instant_lesson_request', { p_request_id: requestId });
+    if (error) throw error;
+    return { status: String(data.status), offersCreated: Number(data.offers_created || 0) };
+  },
+
+  async getMyActiveInstantRequest(): Promise<{ request: InstantLessonRequest; offer?: InstantLessonOffer } | null> {
+    const { data, error } = await sp.rpc('get_my_active_instant_request');
+    if (error) throw error;
+    if (!data) return null;
+    const request: InstantLessonRequest = {
+      id: data.id,
+      studentId: data.student_id,
+      meetingPoint: data.meeting_point,
+      category: data.category,
+      transmission: data.transmission,
+      maxPriceInCents: data.max_price_in_cents == null ? null : Number(data.max_price_in_cents),
+      status: data.status,
+      expiresAt: data.expires_at,
+      matchedProviderId: data.matched_provider_id || undefined,
+      matchedOfferingId: data.matched_offering_id || undefined,
+      bookingId: data.booking_id || undefined,
+      createdAt: data.created_at,
+    };
+    const offer = data.offer ? {
+      id: data.offer.id,
+      requestId: data.offer.request_id,
+      providerId: data.offer.provider_id,
+      offeringId: data.offer.offering_id,
+      instructorId: data.offer.instructor_id,
+      vehicleId: data.offer.vehicle_id,
+      providerName: data.offer.provider_name || undefined,
+      category: data.offer.category,
+      transmission: data.offer.transmission,
+      durationMinutes: Number(data.offer.duration_minutes),
+      offeredPriceInCents: Number(data.offer.offered_price_in_cents),
+      distanceMeters: Number(data.offer.distance_meters),
+      etaMinutes: Number(data.offer.eta_minutes),
+      status: data.offer.status,
+      expiresAt: data.offer.expires_at,
+      createdAt: data.offer.created_at,
+    } satisfies InstantLessonOffer : undefined;
+    return { request, offer };
+  },
+
+  async cancelInstantLessonRequest(requestId: string): Promise<void> {
+    const { error } = await sp.rpc('cancel_instant_lesson_request', { p_request_id: requestId });
+    if (error) throw error;
+  },
+
+  async getMyInstantOffers(): Promise<{ offers: InstantLessonOffer[]; serverNow: string }> {
+    const { data, error } = await sp.rpc('get_my_instant_offers_snapshot');
+    if (error) throw error;
+    const offers = Array.isArray(data?.offers) ? data.offers : [];
+    return {
+      serverNow: data?.server_now || new Date().toISOString(),
+      offers: offers.map((row: any) => ({
+      id: row.id,
+      requestId: row.request_id,
+      providerId: row.provider_id,
+      offeringId: row.offering_id,
+      instructorId: row.instructor_id,
+      vehicleId: row.vehicle_id,
+      providerName: row.provider_name || undefined,
+      category: row.category,
+      transmission: row.transmission,
+      durationMinutes: Number(row.duration_minutes),
+      offeredPriceInCents: Number(row.offered_price_in_cents),
+      distanceMeters: Number(row.distance_meters),
+      etaMinutes: Number(row.eta_minutes),
+      status: row.status,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+      })),
+    };
+  },
+
+  async respondToInstantOffer(offerId: string, action: 'ACCEPT' | 'DECLINE'): Promise<{ bookingId?: string }> {
+    const { data, error } = await sp.rpc('respond_to_instant_offer', { p_offer_id: offerId, p_action: action });
+    if (error) throw error;
+    return { bookingId: data?.booking_id || undefined };
+  },
+
+  async getInstantTracking(bookingId: string): Promise<InstantLessonTracking | null> {
+    const { data, error } = await sp.rpc('get_instant_tracking', { p_booking_id: bookingId });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ? { bookingId: row.booking_id, latitude: Number(row.latitude), longitude: Number(row.longitude), recordedAt: row.recorded_at } : null;
   },
 
   async cancelPendingBooking(bookingId: string): Promise<{

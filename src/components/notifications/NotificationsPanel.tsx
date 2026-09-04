@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Bell, Check, RefreshCw } from 'lucide-react';
 import { Notification } from '../../types';
 import { Button } from '../ui/Button';
@@ -21,31 +21,45 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
   const [error, setError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const notificationsLoadInFlightRef = useRef<Promise<void> | null>(null);
+  const loadedAppContextRef = useRef<string | null>(null);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.isRead).length,
     [notifications]
   );
 
-  const loadNotifications = async () => {
-    setLoading(true);
-    setError(null);
+  const loadNotifications = useCallback(async ({ force = false }: { force?: boolean } = {}) => {
+    if (!force && loadedAppContextRef.current === appContext) return;
+    if (notificationsLoadInFlightRef.current) return notificationsLoadInFlightRef.current;
+
+    const request = (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const rows = await dbService.getMyNotifications(appContext);
+        setNotifications(rows);
+        loadedAppContextRef.current = appContext;
+      } catch (err: any) {
+        if (process.env.NODE_ENV !== 'production') console.error('Failed to load notifications:', err);
+        setError('Não foi possível carregar suas notificações.');
+        setNotifications([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    notificationsLoadInFlightRef.current = request;
     try {
-      const rows = await dbService.getMyNotifications(appContext);
-      setNotifications(rows);
-    } catch (err: any) {
-      if (process.env.NODE_ENV !== 'production') console.error('Failed to load notifications:', err);
-      setError('Não foi possível carregar suas notificações.');
-      setNotifications([]);
+      await request;
     } finally {
-      setLoading(false);
-      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+      if (notificationsLoadInFlightRef.current === request) notificationsLoadInFlightRef.current = null;
     }
-  };
+  }, [appContext]);
 
   useEffect(() => {
     void loadNotifications();
-  }, [appContext]);
+  }, [appContext, loadNotifications]);
 
   const markAsRead = async (notificationId: string): Promise<boolean> => {
     setMarkingId(notificationId);
@@ -117,7 +131,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
               Ler todas
             </Button>
           )}
-          <Button className="min-w-0 flex-1 sm:flex-none" variant="ghost" size="sm" onClick={loadNotifications} leftIcon={<RefreshCw className="w-3.5 h-3.5" />}>
+          <Button className="min-w-0 flex-1 sm:flex-none" variant="ghost" size="sm" onClick={() => void loadNotifications({ force: true })} leftIcon={<RefreshCw className="w-3.5 h-3.5" />}>
             Atualizar
           </Button>
         </div>
@@ -125,7 +139,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
 
       {appContext !== 'ADMIN' && (
         <div className="border-b border-slate-100 p-4">
-          <PushNotificationOptIn appContext={appContext} userId={userId} onRegistered={() => void loadNotifications()} />
+          <PushNotificationOptIn appContext={appContext} userId={userId} onRegistered={() => void loadNotifications({ force: true })} />
         </div>
       )}
 

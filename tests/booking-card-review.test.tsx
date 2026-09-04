@@ -43,6 +43,8 @@ const completedBooking: Booking = {
   platformFeeInCents: 950,
   totalInCents: 10450,
   createdAt: '2026-08-20T10:00:00Z',
+  lessonStartedAt: '2026-08-22T08:07:00-03:00',
+  lessonFinishedAt: '2026-08-22T08:56:00-03:00',
 };
 
 describe('BookingCard completed lesson review CTA', () => {
@@ -64,9 +66,17 @@ describe('BookingCard completed lesson review CTA', () => {
     expect(screen.queryByRole('button', { name: 'Avaliar instrutor' })).toBeNull();
   });
 
+  it('shows the actual lesson start and end instead of the scheduled time', () => {
+    render(<BookingCard booking={completedBooking} />);
+
+    expect(screen.getByText('Início: 08:07 · Fim: 08:56')).toBeTruthy();
+    expect(screen.getByText('· 49 min realizada')).toBeTruthy();
+    expect(screen.queryByText('08:00 – 08:50')).toBeNull();
+  });
+
   it('keeps the details action available alongside the review action', () => {
     render(<BookingCard booking={completedBooking} onReview={vi.fn()} onViewDetails={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Avaliar instrutor' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Ver detalhes completos da reserva' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Ver detalhes completos da aula' })).toBeTruthy();
   });
 });

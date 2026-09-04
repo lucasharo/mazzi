@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
 import { supabase } from '../../lib/supabase';
@@ -21,6 +21,8 @@ import {
   ExceptionReasonCategory,
   ProviderPaymentAccount,
   ProviderPayoutDetail,
+  InstantLessonSettings,
+  InstantLessonOffer,
 } from '../../types';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
@@ -56,6 +58,7 @@ import {
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
 import { getBookingStartTimestamp, getStudentBookingSection, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS } from '../../domain/instant-lesson';
 import { buildFullDayBlockRange, formatDateBR, formatTimeBR, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
@@ -79,6 +82,7 @@ import { ProviderBookingsTab } from './components/ProviderBookingsTab';
 import { ProviderManagementTab } from './components/ProviderManagementTab';
 import { ProviderProfileTab } from './components/ProviderProfileTab';
 import { ProviderEarningsTab } from './components/ProviderEarningsTab';
+import { ProviderInstantLessonPanel } from './components/ProviderInstantLessonPanel';
 import { ProviderCancellationModal } from './components/ProviderCancellationModal';
 import { ProviderBookingDetailsModal } from './components/ProviderBookingDetailsModal';
 import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Clock3, Info, LogOut, RefreshCw, Sparkles, Upload, WalletCards, XCircle } from 'lucide-react';
@@ -119,7 +123,7 @@ export const ProviderApp: React.FC = () => {
   const [bookingUpdatesCount, setBookingUpdatesCount] = useState(0);
   const shouldAutoSelectTodayRef = useRef(true);
   const bookingSnapshotRef = useRef<string | null>(null);
-  const [managementSubTab, setManagementSubTab] = useState<'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account'>('schedule_rules');
+  const [managementSubTab, setManagementSubTab] = useState<'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account' | 'instant'>('schedule_rules');
   const [bookingFilterTab, setBookingFilterTab] = useState<'upcoming' | 'today' | 'history'>('upcoming');
   const [bookingQuickFilter, setBookingQuickFilter] = useState<'all' | 'confirmed' | 'in_progress' | 'completed' | 'disputed' | 'cancelled'>('all');
   const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions'>('rules');
@@ -134,6 +138,15 @@ export const ProviderApp: React.FC = () => {
   const [schoolInstructorSummary, setSchoolInstructorSummary] = useState<SchoolInstructorComplianceSummary[]>([]);
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>([]);
   const [availabilityExceptions, setAvailabilityExceptions] = useState<AvailabilityException[]>([]);
+  const [instantSettings, setInstantSettings] = useState<InstantLessonSettings[]>([]);
+  const [instantOffers, setInstantOffers] = useState<InstantLessonOffer[]>([]);
+  const [instantOffersServerNow, setInstantOffersServerNow] = useState<string | null>(null);
+  const [instantLocationStatus, setInstantLocationStatus] = useState<'IDLE' | 'UPDATING' | 'READY' | 'ERROR'>('IDLE');
+  const [instantActionLoading, setInstantActionLoading] = useState(false);
+  const [instantOfferAction, setInstantOfferAction] = useState<{ offerId: string; action: 'ACCEPT' | 'DECLINE' } | null>(null);
+  const instantOffersInFlightRef = useRef<Promise<void> | null>(null);
+  const instantOfferRespondingRef = useRef(new Set<string>());
+  const instantLocationRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const [lessonSessions, setLessonSessions] = useState<Record<string, LessonSession>>({});
 
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
@@ -348,6 +361,12 @@ export const ProviderApp: React.FC = () => {
       setProviders([workspace.provider]);
       setVehicles(workspace.vehicles);
       setOfferings(workspace.offerings);
+      try {
+        setInstantSettings(await dbService.getMyInstantSettings(workspace.provider.id));
+      } catch (instantError) {
+        console.warn('Instant lesson settings load failed:', instantError);
+        setInstantSettings([]);
+      }
 
       if (workspace.provider.type === 'DRIVING_SCHOOL') {
         try {
@@ -447,6 +466,7 @@ export const ProviderApp: React.FC = () => {
       setComplianceDocs([]);
       setAvailabilityRules([]);
       setAvailabilityExceptions([]);
+      setInstantSettings([]);
       setWorkspaceError(err.message || 'Não foi possível carregar seus dados.');
     } finally {
       if (!isSilent) setWorkspaceLoading(false);
@@ -589,6 +609,151 @@ export const ProviderApp: React.FC = () => {
 
   const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
 
+  const refreshInstantProviderLocation = useCallback((): Promise<void> => {
+    if (!currentProvider?.id || !user?.id || !navigator.geolocation || !instantSettings.some((setting) => setting.instantEnabled && setting.instantOnline)) {
+      return Promise.resolve();
+    }
+    if (instantLocationRefreshInFlightRef.current) return instantLocationRefreshInFlightRef.current;
+
+    setInstantLocationStatus('UPDATING');
+    const onlineSettings = instantSettings.filter((setting) => setting.instantEnabled && setting.instantOnline);
+    const request = new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: false,
+        timeout: 12000,
+        maximumAge: 15000,
+      });
+    })
+      .then(async (position) => {
+        const results = await Promise.allSettled(onlineSettings.map((setting) => {
+          const offering = offerings.find((item) => item.id === setting.offeringId);
+          return dbService.upsertMyInstantLocation(
+            currentProvider.id,
+            offering?.instructorId || user.id,
+            position.coords.latitude,
+            position.coords.longitude,
+          );
+        }));
+        if (!results.some((result) => result.status === 'fulfilled')) throw new Error('INSTANT_LOCATION_UPDATE_FAILED');
+      })
+      .then(() => setInstantLocationStatus('READY'))
+      .catch(() => { setInstantLocationStatus('ERROR'); })
+      .finally(() => { instantLocationRefreshInFlightRef.current = null; });
+    instantLocationRefreshInFlightRef.current = request;
+    return request;
+  }, [currentProvider?.id, instantSettings, offerings, user?.id]);
+
+  useEffect(() => {
+    if (!isRealSupabase || !currentProvider?.id || !user?.id || !instantSettings.some((setting) => setting.instantEnabled && setting.instantOnline)) return undefined;
+    void refreshInstantProviderLocation();
+    // A PRO tab may stay in the background while the student searches in
+    // another tab. Keep attempting the heartbeat there; the database still
+    // rejects stale locations, and visibilitychange refreshes immediately
+    // when the tab becomes active again.
+    const refresh = () => void refreshInstantProviderLocation();
+    const timer = window.setInterval(refresh, INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS * 1000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [currentProvider?.id, instantSettings, isRealSupabase, refreshInstantProviderLocation, user?.id]);
+
+  const loadInstantOffers = useCallback((): Promise<void> => {
+    if (instantOffersInFlightRef.current) return instantOffersInFlightRef.current;
+    const request = dbService.getMyInstantOffers()
+      .then((snapshot) => {
+        setInstantOffers(snapshot.offers);
+        setInstantOffersServerNow(snapshot.serverNow);
+      })
+      .catch((error) => console.warn('Instant lesson offers load failed:', error))
+      .finally(() => { instantOffersInFlightRef.current = null; });
+    instantOffersInFlightRef.current = request;
+    return request;
+  }, []);
+
+  useEffect(() => {
+    if (!isRealSupabase || activeTab !== 'management' || !currentProvider?.id) return;
+    void loadInstantOffers();
+    const pollTimer = window.setInterval(() => void loadInstantOffers(), 5000);
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === 'visible') void loadInstantOffers();
+    };
+    document.addEventListener('visibilitychange', refreshOnVisibility);
+    const channel = supabase
+      .channel(`instant-offers-${user?.id || 'anonymous'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'instant_lesson_offers' }, () => { void loadInstantOffers(); })
+      .subscribe();
+    return () => {
+      window.clearInterval(pollTimer);
+      document.removeEventListener('visibilitychange', refreshOnVisibility);
+      void supabase.removeChannel(channel);
+    };
+  }, [activeTab, currentProvider?.id, isRealSupabase, loadInstantOffers, user?.id]);
+
+  const handleSaveInstantSetting = async (params: { offeringId: string; instantEnabled: boolean; instantPriceInCents: number; maxDistanceKm: number }) => {
+    if (!currentProvider) return;
+    const saved = await dbService.saveMyInstantSetting({ providerId: currentProvider.id, ...params });
+    setInstantSettings((current) => [...current.filter((item) => item.offeringId !== saved.offeringId), saved]);
+  };
+
+  const handleToggleInstantOnline = async (setting: InstantLessonSettings, online: boolean) => {
+    if (!currentProvider) return;
+    setInstantActionLoading(true);
+    try {
+      if (online && user?.id) {
+        setInstantLocationStatus('UPDATING');
+        await new Promise<void>((resolve, reject) => {
+          if (!navigator.geolocation) { reject(new Error('LOCATION_UNAVAILABLE')); return; }
+          navigator.geolocation.getCurrentPosition(
+            (position) => void dbService.upsertMyInstantLocation(currentProvider.id, user.id, position.coords.latitude, position.coords.longitude).then(resolve).catch(reject),
+            reject,
+            { enableHighAccuracy: false, timeout: 12000, maximumAge: 15000 },
+          );
+        });
+        setInstantLocationStatus('READY');
+      }
+      await dbService.setMyInstantOnline(currentProvider.id, setting.offeringId, online);
+      setInstantSettings((current) => current.map((item) => item.id === setting.id ? { ...item, instantOnline: online } : item));
+    } catch (error) {
+      setInstantLocationStatus('ERROR');
+      throw error;
+    } finally { setInstantActionLoading(false); }
+  };
+
+  const handleUpdateInstantLocation = async () => {
+    if (!currentProvider || !user?.id || !navigator.geolocation) { setInstantLocationStatus('ERROR'); return; }
+    setInstantLocationStatus('UPDATING');
+    try {
+      await new Promise<void>((resolve, reject) => navigator.geolocation.getCurrentPosition(
+        (position) => void dbService.upsertMyInstantLocation(currentProvider.id, user.id, position.coords.latitude, position.coords.longitude).then(resolve).catch(reject), reject,
+        { enableHighAccuracy: false, timeout: 12000, maximumAge: 15000 },
+      ));
+      setInstantLocationStatus('READY');
+    } catch { setInstantLocationStatus('ERROR'); }
+  };
+
+  const handleRespondInstantOffer = async (offerId: string, action: 'ACCEPT' | 'DECLINE') => {
+    if (instantOfferRespondingRef.current.has(offerId)) return;
+    instantOfferRespondingRef.current.add(offerId);
+    setInstantOfferAction({ offerId, action });
+    try {
+      const result = await dbService.respondToInstantOffer(offerId, action);
+      await loadInstantOffers();
+      if (action === 'ACCEPT' && result.bookingId) showProviderFeedback('success', 'Solicitação aceita', 'A nova aula foi adicionada à sua agenda.');
+      if (action === 'DECLINE') showProviderFeedback('info', 'Solicitação recusada', 'Você continuará disponível para novas solicitações.');
+      if (result.bookingId) await loadWorkspace(activeProviderId, { silent: true });
+    } catch (error) {
+      // A rejected accept can mean the card expired while it was visible.
+      // Refresh immediately so the stale card cannot be clicked again.
+      await loadInstantOffers();
+      showProviderFeedback('warning', 'Solicitação indisponível', 'Essa solicitação já expirou ou foi atendida por outro profissional.');
+    } finally {
+      instantOfferRespondingRef.current.delete(offerId);
+      setInstantOfferAction(null);
+    }
+  };
+
   const handleNotificationTarget = (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'PRO') return;
@@ -607,6 +772,12 @@ export const ProviderApp: React.FC = () => {
     if (target.entityType === 'compliance') {
       setManagementSubTab('compliance');
       setActiveTab('management');
+      return;
+    }
+    if (target.entityType === 'instant_offer') {
+      setManagementSubTab('instant');
+      setActiveTab('management');
+      void loadInstantOffers();
       return;
     }
     if (target.entityType === 'payout' && target.entityId) {
@@ -682,7 +853,7 @@ export const ProviderApp: React.FC = () => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'PRO') return;
     handleNotificationTarget(target);
-    clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' ? 'management' : 'earnings');
+    clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' || target.entityType === 'instant_offer' ? 'management' : 'earnings');
   };
 
   useEffect(() => {
@@ -758,6 +929,7 @@ export const ProviderApp: React.FC = () => {
   const todayBookings = sortBookingsForToday(bookings.filter((b) => TODAY_BOOKING_STATUSES.includes(b.status) && !UNPAID_BOOKING_STATUSES.includes(b.status) && isBookingTodayInSaoPaulo(b)), bookingClockMs);
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS');
   const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
+  const pendingPaymentInstantBookings = bookings.filter((b) => b.status === 'PENDING_PAYMENT' && b.snapshot?.source === 'AULA_AGORA');
 
   const nextBooking = bookings.find((b) => {
     if (b.status !== 'CONFIRMED' && b.status !== 'IN_PROGRESS') return false;
@@ -1738,9 +1910,20 @@ status: 'IN_REVIEW',
             onUploadDocClick={(type) => setUploadModalDocType(type)}
             onAcceptComplianceTerms={() => void handleAcceptComplianceTerms()}
             onViewComplianceDocument={(document) => { void handleViewComplianceDocument(document); }}
-            isAcceptingComplianceTerms={isAcceptingComplianceTerms}
-            complianceTermsError={complianceTermsError}
-          />
+             isAcceptingComplianceTerms={isAcceptingComplianceTerms}
+             complianceTermsError={complianceTermsError}
+             instantSettings={instantSettings}
+             onSaveInstantSetting={handleSaveInstantSetting}
+             onToggleInstantOnline={handleToggleInstantOnline}
+             onUpdateInstantLocation={handleUpdateInstantLocation}
+             instantLocationStatus={instantLocationStatus}
+             instantActionLoading={instantActionLoading}
+             instantOffers={instantOffers}
+             pendingPaymentInstantBookings={pendingPaymentInstantBookings}
+             instantOffersServerNow={instantOffersServerNow}
+             onRespondInstantOffer={handleRespondInstantOffer}
+             instantOfferAction={instantOfferAction}
+           />
           </div>
         )}
 
