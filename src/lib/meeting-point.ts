@@ -1,6 +1,6 @@
 export type MeetingPointValue =
   | string
-  | { name?: unknown; label?: unknown; address?: unknown; fullAddress?: unknown; full_address?: unknown }
+  | { name?: unknown; label?: unknown; address?: unknown; formattedAddress?: unknown; formatted_address?: unknown; fullAddress?: unknown; full_address?: unknown }
   | null
   | undefined;
 
@@ -9,8 +9,8 @@ export function formatMeetingPoint(value: MeetingPointValue): string {
   if (typeof value === 'string') return value.trim();
   if (!value || typeof value !== 'object') return '';
 
-  for (const key of ['label', 'address', 'name'] as const) {
-    const candidate = value[key];
+  for (const key of ['formattedAddress', 'formatted_address', 'full_address', 'fullAddress', 'address', 'label', 'name'] as const) {
+    const candidate = (value as any)[key];
     if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
   }
 
@@ -22,8 +22,8 @@ export function formatFullMeetingPoint(value: MeetingPointValue): string {
   if (typeof value === 'string') return value.trim();
   if (!value || typeof value !== 'object') return '';
 
-  for (const key of ['full_address', 'fullAddress', 'address', 'label', 'name'] as const) {
-    const candidate = value[key];
+  for (const key of ['formattedAddress', 'formatted_address', 'full_address', 'fullAddress', 'address', 'label', 'name'] as const) {
+    const candidate = (value as any)[key];
     if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
   }
 

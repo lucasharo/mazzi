@@ -194,7 +194,7 @@ export const ProviderApp: React.FC = () => {
   const navDestination = useMemo(() => {
     if (!activeInstantBooking) return null;
 
-    const mp = activeInstantBooking.meetingPoint || activeInstantBooking.snapshot?.meetingPoint || (activeInstantBooking.snapshot as any)?.meeting_point;
+    const mp = (activeInstantBooking as any).meeting_point || activeInstantBooking.meetingPoint || activeInstantBooking.snapshot?.meetingPoint || (activeInstantBooking.snapshot as any)?.meeting_point;
 
     let lat: number | undefined = undefined;
     let lng: number | undefined = undefined;
@@ -207,8 +207,9 @@ export const ProviderApp: React.FC = () => {
       if (typeof mp.longitude === 'number' || typeof (mp as any).lng === 'number') {
         lng = Number(mp.longitude ?? (mp as any).lng);
       }
-      if (mp.address || mp.label || mp.name) {
-        label = String(mp.address || mp.label || mp.name);
+      const addrCandidate = mp.formattedAddress || mp.formatted_address || mp.full_address || mp.fullAddress || mp.address || mp.label || mp.name;
+      if (addrCandidate) {
+        label = String(addrCandidate);
       }
     } else if (typeof mp === 'string') {
       label = mp;
