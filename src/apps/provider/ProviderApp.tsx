@@ -194,14 +194,15 @@ export const ProviderApp: React.FC = () => {
   const navDestination = useMemo(() => {
     if (!activeInstantBooking) return null;
     const mp = activeInstantBooking.meetingPoint || activeInstantBooking.snapshot?.meetingPoint;
-    if (mp && typeof mp.latitude === 'number' && typeof mp.longitude === 'number') {
-      return {
-        latitude: mp.latitude,
-        longitude: mp.longitude,
-        label: mp.address || activeInstantBooking.fullMeetingPoint || 'Ponto de encontro',
-      };
-    }
-    return null;
+    const lat = typeof mp === 'object' && mp?.latitude ? mp.latitude : (activeInstantBooking.snapshot as any)?.meetingPoint?.latitude;
+    const lng = typeof mp === 'object' && mp?.longitude ? mp.longitude : (activeInstantBooking.snapshot as any)?.meetingPoint?.longitude;
+    const label = (typeof mp === 'object' && mp?.address) ? mp.address : (activeInstantBooking.fullMeetingPoint || (typeof activeInstantBooking.meetingPoint === 'string' ? activeInstantBooking.meetingPoint : 'Ponto de encontro'));
+
+    return {
+      latitude: typeof lat === 'number' ? lat : -23.5505,
+      longitude: typeof lng === 'number' ? lng : -46.6333,
+      label,
+    };
   }, [activeInstantBooking]);
 
   const prevInstantBookingRef = useRef<{ id: string; status: string } | null>(null);
@@ -2259,14 +2260,18 @@ status: 'IN_REVIEW',
       )}
 
       {/* Operational Modal for Active Instant Lesson */}
-      <InstantLessonOperationalModal
-        isOpen={isInstantOperationalModalOpen}
-        booking={activeInstantBooking}
-        onClose={() => setIsInstantOperationalModalOpen(false)}
-        onOpenNavigation={() => setIsExternalNavModalOpen(true)}
-        onSetOnTheWay={handleSetOnTheWay}
-        isOnTheWayLoading={isOnTheWayLoading}
-      />
+      {activeInstantBooking && (
+        <InstantLessonOperationalModal
+          isOpen={isInstantOperationalModalOpen}
+          booking={activeInstantBooking}
+          isWaitingPayment={activeInstantBooking.status === 'PENDING_PAYMENT'}
+          isOnTheWay={activeInstantBooking.status === 'ON_THE_WAY'}
+          onClose={() => setIsInstantOperationalModalOpen(false)}
+          onOpenNavigation={() => setIsExternalNavModalOpen(true)}
+          onSetOnTheWay={handleSetOnTheWay}
+          isLoading={isOnTheWayLoading}
+        />
+      )}
 
       {/* External Navigation Selection Modal */}
       <ExternalNavigationModal

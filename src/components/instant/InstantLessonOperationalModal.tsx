@@ -17,6 +17,7 @@ interface InstantLessonOperationalModalProps {
   isOnTheWay?: boolean;
   distanceKm?: number | null;
   etaMinutes?: number | null;
+  onOpenNavigation?: () => void;
   onSetOnTheWay: (bookingId: string) => Promise<void>;
   isLoading?: boolean;
 }
@@ -29,6 +30,7 @@ export const InstantLessonOperationalModal: React.FC<InstantLessonOperationalMod
   isOnTheWay = false,
   distanceKm,
   etaMinutes,
+  onOpenNavigation,
   onSetOnTheWay,
   isLoading = false,
 }) => {
@@ -163,9 +165,12 @@ export const InstantLessonOperationalModal: React.FC<InstantLessonOperationalMod
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full font-bold"
-                  disabled={isLoading || submitting || latitude == null || longitude == null}
-                  onClick={() => setNavModalOpen(true)}
+                  className="w-full font-bold border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900"
+                  disabled={isLoading || submitting}
+                  onClick={() => {
+                    if (onOpenNavigation) onOpenNavigation();
+                    setNavModalOpen(true);
+                  }}
                   leftIcon={<Compass className="h-4 w-4 text-amber-600" aria-hidden="true" />}
                 >
                   Abrir navegação
@@ -186,7 +191,7 @@ export const InstantLessonOperationalModal: React.FC<InstantLessonOperationalMod
                   <Button
                     type="button"
                     variant="secondary"
-                    className="w-full font-extrabold cursor-default"
+                    className="w-full font-extrabold cursor-default opacity-90"
                     disabled
                     leftIcon={<CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" />}
                   >
