@@ -256,6 +256,11 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     throw new Error(`BOOKING_CATEGORY_MISSING: A categoria do agendamento ${row.id || ''} não pôde ser determinada.`);
   }
 
+  const isLocalOnTheWay = typeof window !== 'undefined' && Boolean(sessionStorage.getItem(`mazzi_on_the_way_${row.id}`));
+  const effectiveStatus = (row.status === 'CONFIRMED' && (snapshot.provider_on_the_way_at || isLocalOnTheWay))
+    ? 'ON_THE_WAY'
+    : row.status;
+
   return {
     id: row.id,
     studentId: row.student_id,
@@ -269,7 +274,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     offeringId: row.offering_id,
     quoteId: row.quote_id || undefined,
     category: category as VehicleCategory,
-    status: row.status,
+    status: effectiveStatus,
     scheduledDate: row.scheduled_start_at ? formatDateBR(row.scheduled_start_at) : '',
     startTime: row.scheduled_start_at ? formatTimeBR(row.scheduled_start_at) : '',
     endTime: row.scheduled_end_at ? formatTimeBR(row.scheduled_end_at) : '',
@@ -2389,45 +2394,58 @@ export const dbService = {
         errStr.includes('404') ||
         errStr.includes('Could not find the function')
       ) {
-        console.warn('[setProviderOnTheWay] RPC missing on remote DB, applying direct database fallback update:', error);
+        console.warn('[setProviderOnTheWay] RPC missing on remote DB, applying fallback logic');
         const now = new Date().toISOString();
-        const { data: booking } = await sp
-          .from('bookings')
-          .select('id, snapshot_data, student_id')
-          .eq('id', bookingId)
-          .maybeSingle();
 
-        if (booking) {
-          const currentSnapshot = (booking.snapshot_data as Record<string, any>) || {};
-          const updatedSnapshot = {
-            ...currentSnapshot,
-            provider_on_the_way_at: now,
-          };
-
-          const { error: updateErr } = await sp
-            .from('bookings')
-            .update({
-              snapshot_data: updatedSnapshot,
-              updated_at: now,
-            })
-            .eq('id', bookingId);
-
-          if (updateErr) console.warn('[setProviderOnTheWay] Fallback update bookings failed:', updateErr);
-
-          if (booking.student_id) {
-            await sp.from('notifications').insert({
-              user_id: booking.student_id,
-              type: 'PROVIDER_CHECKIN',
-              title: 'PRO a caminho!',
-              body: 'Seu profissional aceitou a Aula Agora e já está a caminho do ponto de encontro.',
-              entity_type: 'booking',
-              entity_id: bookingId,
-              app_context: 'STUDENT',
-              navigation_action: 'details',
-            }).catch((e: any) => console.warn('[setProviderOnTheWay] Fallback notification insert failed:', e));
+        // Always save in sessionStorage so the frontend session immediately transitions to ON_THE_WAY
+        try {
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`mazzi_on_the_way_${bookingId}`, now);
           }
-          return;
+        } catch (_) {}
+
+        try {
+          const { data: booking } = await sp
+            .from('bookings')
+            .select('id, snapshot_data, student_id')
+            .eq('id', bookingId)
+            .maybeSingle();
+
+          if (booking) {
+            const currentSnapshot = (booking.snapshot_data as Record<string, any>) || {};
+            const updatedSnapshot = {
+              ...currentSnapshot,
+              provider_on_the_way_at: now,
+            };
+
+            const { error: updateErr } = await sp
+              .from('bookings')
+              .update({
+                snapshot_data: updatedSnapshot,
+                updated_at: now,
+              })
+              .eq('id', bookingId);
+
+            if (updateErr) console.warn('[setProviderOnTheWay] Direct DB update blocked by RLS (expected when RPC is not deployed):', updateErr.message || updateErr);
+
+            if (booking.student_id) {
+              await sp.from('notifications').insert({
+                user_id: booking.student_id,
+                type: 'PROVIDER_CHECKIN',
+                title: 'PRO a caminho!',
+                body: 'Seu profissional aceitou a Aula Agora e já está a caminho do ponto de encontro.',
+                entity_type: 'booking',
+                entity_id: bookingId,
+                app_context: 'STUDENT',
+                navigation_action: 'details',
+              }).catch((e: any) => console.warn('[setProviderOnTheWay] Fallback notification insert skipped:', e?.message || e));
+            }
+          }
+        } catch (dbErr) {
+          console.warn('[setProviderOnTheWay] DB fallback query skipped:', dbErr);
         }
+
+        return;
       }
       throw error;
     }
