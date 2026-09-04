@@ -1,6 +1,6 @@
 import React from 'react';
 import { Compass, ExternalLink, MapPin, X } from 'lucide-react';
-import { Modal } from '../ui/Modal';
+import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
 import {
   ExternalNavigationTarget,
@@ -33,13 +33,11 @@ export const ExternalNavigationModal: React.FC<ExternalNavigationModalProps> = (
   };
 
   return (
-    <Modal
+    <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
       title="Abrir rota no mapa"
       ariaLabel="Opções de navegação externa"
-      size="sm"
-      useHistory={false}
     >
       <div className="space-y-4" data-component="external-navigation-modal">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
@@ -89,6 +87,6 @@ export const ExternalNavigationModal: React.FC<ExternalNavigationModalProps> = (
           </Button>
         </div>
       </div>
-    </Modal>
+    </BottomSheet>
   );
 };
