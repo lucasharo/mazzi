@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
 import { supabase } from '../../lib/supabase';
@@ -85,8 +85,11 @@ import { ProviderEarningsTab } from './components/ProviderEarningsTab';
 import { ProviderInstantLessonPanel } from './components/ProviderInstantLessonPanel';
 import { ProviderCancellationModal } from './components/ProviderCancellationModal';
 import { ProviderBookingDetailsModal } from './components/ProviderBookingDetailsModal';
-import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Clock3, Info, LogOut, RefreshCw, Sparkles, Upload, WalletCards, XCircle } from 'lucide-react';
+import { InstantLessonActiveBanner } from '../../components/instant/InstantLessonActiveBanner';
+import { InstantLessonOperationalModal } from '../../components/instant/InstantLessonOperationalModal';
+import { ExternalNavigationModal } from '../../components/instant/ExternalNavigationModal';
 import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
+import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Clock3, Info, LogOut, RefreshCw, Sparkles, Upload, WalletCards, XCircle } from 'lucide-react';
 
 export function canProviderCommerciallyCancelBooking(
   booking: { status: string; providerId: string },
@@ -171,6 +174,81 @@ export const ProviderApp: React.FC = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
   const [selectedPayoutDetail, setSelectedPayoutDetail] = useState<ProviderPayoutDetail | null>(null);
   const [earningsFocusKey, setEarningsFocusKey] = useState(0);
+
+  // Instant Lesson Active Journey & Modal States
+  const [isInstantOperationalModalOpen, setIsInstantOperationalModalOpen] = useState(false);
+  const [isExternalNavModalOpen, setIsExternalNavModalOpen] = useState(false);
+  const [isOnTheWayLoading, setIsOnTheWayLoading] = useState(false);
+
+  const activeInstantBooking = useMemo(() => {
+    return (
+      bookings.find(
+        (b) =>
+          b.providerId === activeProviderId &&
+          (b.snapshot?.source === 'AULA_AGORA' || (b as any).snapshot_data?.source === 'AULA_AGORA') &&
+          ['PENDING_PAYMENT', 'CONFIRMED', 'ON_THE_WAY'].includes(b.status)
+      ) || null
+    );
+  }, [bookings, activeProviderId]);
+
+  const navDestination = useMemo(() => {
+    if (!activeInstantBooking) return null;
+    const mp = activeInstantBooking.meetingPoint || activeInstantBooking.snapshot?.meetingPoint;
+    if (mp && typeof mp.latitude === 'number' && typeof mp.longitude === 'number') {
+      return {
+        latitude: mp.latitude,
+        longitude: mp.longitude,
+        label: mp.address || activeInstantBooking.fullMeetingPoint || 'Ponto de encontro',
+      };
+    }
+    return null;
+  }, [activeInstantBooking]);
+
+  const prevInstantBookingRef = useRef<{ id: string; status: string } | null>(null);
+
+  useEffect(() => {
+    if (!activeInstantBooking) {
+      if (prevInstantBookingRef.current) {
+        const prevId = prevInstantBookingRef.current.id;
+        const currentBookingInList = bookings.find((b) => b.id === prevId);
+
+        if (
+          currentBookingInList &&
+          ['CANCELLED', 'CANCELLED_BY_STUDENT', 'CANCELLED_BY_PROVIDER', 'PAYMENT_EXPIRED', 'PAYMENT_FAILED', 'EXPIRED'].includes(currentBookingInList.status)
+        ) {
+          setIsInstantOperationalModalOpen(false);
+          setIsExternalNavModalOpen(false);
+
+          if (['PAYMENT_EXPIRED', 'EXPIRED'].includes(currentBookingInList.status)) {
+            showProviderFeedback('warning', 'Tempo de pagamento esgotado', 'O aluno não concluiu o pagamento da Aula Agora no tempo limite. Você continua disponível para receber novas solicitações.');
+          } else if (['CANCELLED_BY_STUDENT', 'CANCELLED'].includes(currentBookingInList.status)) {
+            showProviderFeedback('info', 'Aula cancelada pelo aluno', 'A solicitação de Aula Agora foi cancelada pelo aluno.');
+          } else if (currentBookingInList.status === 'PAYMENT_FAILED') {
+            showProviderFeedback('warning', 'Pagamento não autorizado', 'O pagamento do aluno não foi concluído pelo gateway. A solicitação foi liberada.');
+          }
+        }
+        prevInstantBookingRef.current = null;
+      }
+    } else {
+      if (prevInstantBookingRef.current?.id === activeInstantBooking.id && prevInstantBookingRef.current.status === 'PENDING_PAYMENT' && activeInstantBooking.status === 'CONFIRMED') {
+        showProviderFeedback('success', 'Pagamento confirmado!', 'O aluno concluiu o pagamento. Abra a aula para visualizar os detalhes e iniciar a navegação.');
+      }
+      prevInstantBookingRef.current = { id: activeInstantBooking.id, status: activeInstantBooking.status };
+    }
+  }, [activeInstantBooking, bookings]);
+
+  const handleSetOnTheWay = async (bookingId: string) => {
+    setIsOnTheWayLoading(true);
+    try {
+      await dbService.setProviderOnTheWay(bookingId);
+      showProviderFeedback('success', 'Você está a caminho!', 'Notificamos o aluno que você já se deslocou para o ponto de encontro.');
+      await loadWorkspace(activeProviderId, { silent: true });
+    } catch (err) {
+      showProviderFeedback('error', 'Erro ao atualizar status', mapFriendlyErrorMessage(err, 'Não foi possível informar que você está a caminho. Tente novamente.'));
+    } finally {
+      setIsOnTheWayLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1749,6 +1827,21 @@ status: 'IN_REVIEW',
           </div>
         )}
 
+        {/* Global Active Instant Lesson Banner */}
+        {activeInstantBooking && (
+          <InstantLessonActiveBanner
+            booking={activeInstantBooking}
+            operationalState={
+              activeInstantBooking.status === 'PENDING_PAYMENT'
+                ? 'WAITING_PAYMENT'
+                : activeInstantBooking.status === 'ON_THE_WAY'
+                  ? 'ON_THE_WAY'
+                  : 'CONFIRMED'
+            }
+            onOpenDetails={() => setIsInstantOperationalModalOpen(true)}
+          />
+        )}
+
         {/* TAB 1: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <ProviderDashboardTab
@@ -2164,6 +2257,24 @@ status: 'IN_REVIEW',
           </div>
         </Modal>
       )}
+
+      {/* Operational Modal for Active Instant Lesson */}
+      <InstantLessonOperationalModal
+        isOpen={isInstantOperationalModalOpen}
+        booking={activeInstantBooking}
+        onClose={() => setIsInstantOperationalModalOpen(false)}
+        onOpenNavigation={() => setIsExternalNavModalOpen(true)}
+        onSetOnTheWay={handleSetOnTheWay}
+        isOnTheWayLoading={isOnTheWayLoading}
+      />
+
+      {/* External Navigation Selection Modal */}
+      <ExternalNavigationModal
+        isOpen={isExternalNavModalOpen}
+        target={navDestination}
+        onClose={() => setIsExternalNavModalOpen(false)}
+      />
+
       <ToastContainer toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))} />
     </div>
   );

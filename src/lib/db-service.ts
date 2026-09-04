@@ -2376,5 +2376,10 @@ export const dbService = {
     });
     if (error) throw error;
     return mapBookingDispute(data);
+  },
+
+  async setProviderOnTheWay(bookingId: string): Promise<void> {
+    const { error } = await sp.rpc('set_provider_on_the_way', { p_booking_id: bookingId });
+    if (error) throw error;
   }
 };

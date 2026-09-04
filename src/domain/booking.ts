@@ -396,7 +396,7 @@ export function createBookingHold(input: CreateBookingHoldInput): CreateBookingH
     snapshot,
     studentCheckedIn: false,
     instructorCheckedIn: false,
-    meetingPoint: snapshot.meetingPoint,
+    meetingPoint: typeof snapshot.meetingPoint === 'string' ? snapshot.meetingPoint : (snapshot.meetingPoint as any)?.address || 'Ponto de encontro',
     idempotencyKey,
     priceInCents: quote.priceInCents,
     platformFeeInCents: quote.platformFeeInCents,

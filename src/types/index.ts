@@ -41,6 +41,7 @@ export type BookingStatus =
   | 'PENDING_PAYMENT'
   | 'PAYMENT_FAILED'
   | 'CONFIRMED'
+  | 'ON_THE_WAY'
   | 'IN_PROGRESS'
   | 'COMPLETED'
   | 'CANCELLED_BY_STUDENT'
@@ -465,7 +466,7 @@ export interface BookingSnapshot {
   priceInCents: number;
   platformFeeInCents: number;
   totalInCents: number;
-  meetingPoint: string;
+  meetingPoint: string | { latitude?: number; longitude?: number; address?: string };
   fullMeetingPoint?: string;
 }
 
