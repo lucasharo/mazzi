@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatDateBR, formatDateTimeBR, formatTimeBR } from '../lib/date-format';
-import { formatMeetingPoint } from '../lib/meeting-point';
+import { formatMeetingPoint, formatPendingPaymentMeetingPoint } from '../lib/meeting-point';
 import { mapBookingFromDb } from '../lib/db-service';
 
 describe('Student Experience Phase 1 formatters', () => {
@@ -22,6 +22,19 @@ describe('Student Experience Phase 1 formatters', () => {
   ])('formats meeting point %o', (value, expected) => {
     expect(formatMeetingPoint(value as any)).toBe(expected);
     expect(formatMeetingPoint(value as any)).not.toContain('[object Object]');
+  });
+
+  it('masks street and house numbers when payment is pending', () => {
+    const fullAddress = 'Rua Ilha Bela 360, Pedreira, São Paulo - Sudeste, 04459-050, Brasil';
+    const masked = formatPendingPaymentMeetingPoint(fullAddress);
+    expect(masked).not.toContain('Rua Ilha Bela');
+    expect(masked).not.toContain('360');
+    expect(masked).not.toContain('04459-050');
+    expect(masked).toContain('Pedreira');
+    expect(masked).toContain('São Paulo');
+
+    const objAddress = { neighborhood: 'Pedreira', city: 'São Paulo' };
+    expect(formatPendingPaymentMeetingPoint(objAddress)).toBe('Pedreira, São Paulo');
   });
 
   it('maps camelCase booking snapshots and real names', () => {

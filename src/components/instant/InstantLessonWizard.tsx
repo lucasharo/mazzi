@@ -8,7 +8,7 @@ import { ConfirmableAddressAutocomplete } from '../search/ConfirmableAddressAuto
 import { UniversalMap } from '../maps/UniversalMap';
 import { InstantLessonPriceSelector } from './InstantLessonPriceSelector';
 import { instantOptionClassName } from './instant-option-style';
-import { resolveMeetingPointAddress } from '../../domain/maps/meeting-point-address';
+import { needsMeetingPointAddress, resolveMeetingPointAddress } from '../../domain/maps/meeting-point-address';
 import type { InstantLessonPriceOption, InstantLessonRequest, StudentSavedAddress, TransmissionType, VehicleCategory } from '../../types';
 
 type Transmission = TransmissionType | 'ALL';
@@ -65,6 +65,17 @@ export function InstantLessonWizard({ category = 'B', location, locationLabel, c
     if (!storageKey || !validLocation(draft.location) || !draft.address.trim()) return;
     try { sessionStorage.setItem(storageKey, JSON.stringify({ version: 2, address: draft.address, location: draft.location })); } catch { /* Keep working without storage. */ }
   }, [draft.address, draft.location, storageKey]);
+  useEffect(() => {
+    if (validLocation(draft.location) && needsMeetingPointAddress(draft.address)) {
+      void resolveMeetingPointAddress(draft.location.lat, draft.location.lng)
+        .then((realAddress) => {
+          if (mounted.current && realAddress && !needsMeetingPointAddress(realAddress)) {
+            setDraft((d) => ({ ...d, address: realAddress }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [draft.location?.lat, draft.location?.lng, draft.address]);
   useEffect(() => {
     if (draft.step !== 2 || !validLocation(draft.location)) return;
     let cancelled = false;

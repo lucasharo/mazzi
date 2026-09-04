@@ -28,5 +28,10 @@
 - **Linguagem**: TypeScript rigoroso (`strict: true`).
 - **Arquitetura Backend**: Monolito Modular bem delimitado por domínios.
 - **Banco de Dados**: PostgreSQL + PostGIS (com suporte a restrições de exclusão temporal e índices espaciais).
-- **Design System**: Componentes reutilizáveis em Tailwind CSS com acessibilidade e estados completos (`LOADING`, `EMPTY`, `ERROR`, `SUCCESS`, `DISABLED`).
+- **Design System & Reuso de Componentes Visuais**:
+  - **Obrigatório** reutilizar os componentes existentes em `src/components/ui/` (`Button`, `IconButton`, `BottomSheet`, `Modal`, `Badge`, `Card`, etc.) e os tokens/variáveis de cores oficiais (`var(--mazzi-*)`, `amber-*`, `emerald-*`, `slate-*`).
+  - **O App Aluno (`src/apps/student/`) é a referência de UI/UX (benchmark padrão)** para todas as interfaces da plataforma (PRO/Instrutor, Admin, etc.).
+  - Proibido criar tags HTML soltas (como `<button>` sem encapsulamento) — sempre utilize os componentes reutilizáveis do Design System.
+- **Skill UI/UX Pro Max**:
+  - Aplicar rigorosamente a skill **`ui-ux-pro-max`** em todas as alterações visuais: alvos de toque de no mínimo 44×44px, micro-interações fluidas (transições de 150ms a 300ms `ease-out`), suporte a gestos intuitivos (*swipe-down* para fechar drawers/bottom sheets), suporte a `prefers-reduced-motion` e ícones exclusivamente SVG (Lucide/Phosphor), sem o uso de emojis soltos.
 - **Logs e Auditoria**: Registro estruturado de eventos críticos (`AuditLog`) com `actorId`, `action`, `entityType`, `previousValue`, `newValue`, `timestamp`, `ip`.

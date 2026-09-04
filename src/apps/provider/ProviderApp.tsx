@@ -259,8 +259,13 @@ export const ProviderApp: React.FC = () => {
         prevInstantBookingRef.current = null;
       }
     } else {
-      if (prevInstantBookingRef.current?.id === activeInstantBooking.id && prevInstantBookingRef.current.status === 'PENDING_PAYMENT' && activeInstantBooking.status === 'CONFIRMED') {
-        showProviderFeedback('success', 'Pagamento confirmado!', 'O aluno concluiu o pagamento. Abra a aula para visualizar os detalhes e iniciar a navegação.');
+      if (
+        prevInstantBookingRef.current?.id === activeInstantBooking.id &&
+        prevInstantBookingRef.current.status === 'PENDING_PAYMENT' &&
+        ['CONFIRMED', 'ON_THE_WAY'].includes(activeInstantBooking.status)
+      ) {
+        showProviderFeedback('success', 'Pagamento confirmado!', 'O aluno concluiu o pagamento! Redirecionando para os detalhes da aula...');
+        setSelectedBooking(activeInstantBooking);
       }
       prevInstantBookingRef.current = { id: activeInstantBooking.id, status: activeInstantBooking.status };
     }
@@ -1867,7 +1872,7 @@ status: 'IN_REVIEW',
                   ? 'ON_THE_WAY'
                   : 'CONFIRMED'
             }
-            onOpenDetails={() => setIsInstantOperationalModalOpen(true)}
+            onOpenDetails={() => setSelectedBooking(activeInstantBooking)}
           />
         )}
 
@@ -2130,6 +2135,11 @@ status: 'IN_REVIEW',
         }}
         isCompleting={isCompleting}
         canCancelBooking={(b) => canProviderCommerciallyCancelBooking(b, user?.role || currentRole, currentProvider)}
+        onSetOnTheWay={handleSetOnTheWay}
+        onOpenNavigation={() => setIsExternalNavModalOpen(true)}
+        isLoading={isOnTheWayLoading}
+        distanceKm={navDestination?.distanceKm}
+        etaMinutes={navDestination?.etaMinutes}
       />
 
       {/* Provider Cancellation Modal (DEC-013) */}

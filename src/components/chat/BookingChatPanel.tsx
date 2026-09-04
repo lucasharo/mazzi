@@ -208,7 +208,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             <h4 className="mt-1 truncate text-base font-extrabold text-[var(--mazzi-dark)]">{title}</h4>
             {provider && <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">{provider}</p>}
           </div>
-          <StatusBadge status={booking.status} audience="student" />
+          <StatusBadge status={booking.status} audience="student" instructorCheckedIn={Boolean(booking.instructorCheckedIn)} />
         </div>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-xs font-semibold text-slate-600">
           <span className="inline-flex items-center gap-1.5">

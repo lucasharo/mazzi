@@ -148,7 +148,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
                   </div>
 
                   <div className="flex flex-col sm:items-end gap-2 shrink-0">
-                    <StatusBadge status={nextBooking.status} />
+                    <StatusBadge status={nextBooking.status} instructorCheckedIn={Boolean(nextBooking.instructorCheckedIn)} />
                     <Button
                       variant="primary"
                       size="sm"

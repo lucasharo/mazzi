@@ -47,6 +47,7 @@ const byDomain: Record<Exclude<StatusPresentationDomain, 'default'>, Record<stri
   booking: {
     DRAFT: { label: 'Rascunho', tone: 'neutral' },
     PENDING_PAYMENT: { label: 'Aguardando pagamento', tone: 'warning' },
+    ON_THE_WAY: { label: 'A caminho', tone: 'warning' },
     PAYMENT_FAILED: { label: 'Pagamento não aprovado', tone: 'danger' },
     CONFIRMED: { label: 'Confirmada', tone: 'success' },
     IN_PROGRESS: { label: 'Em andamento', tone: 'info', isPulsing: true },
@@ -83,8 +84,15 @@ const defaultStatusDomainOrder: Exclude<StatusPresentationDomain, 'default'>[] =
   'booking', 'provider', 'vehicle', 'compliance', 'payment', 'payout',
 ];
 
-export function getStatusPresentation(status: string | null | undefined, domain: StatusPresentationDomain = 'default'): StatusPresentation {
+export function getStatusPresentation(
+  status: string | null | undefined,
+  domain: StatusPresentationDomain = 'default',
+  context?: { instructorCheckedIn?: boolean; studentCheckedIn?: boolean }
+): StatusPresentation {
   if (!status) return neutral;
+  if (status === 'ON_THE_WAY' && context?.instructorCheckedIn) {
+    return { label: 'No local', tone: 'info' };
+  }
   if (domain !== 'default') return byDomain[domain][status] || neutral;
   for (const candidate of defaultStatusDomainOrder) {
     const presentation = byDomain[candidate][status];

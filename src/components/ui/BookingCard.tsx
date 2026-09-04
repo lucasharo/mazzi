@@ -118,7 +118,11 @@ export const BookingCard: React.FC<BookingCardProps> = ({
 
         {/* Status Badge */}
         <div className="shrink-0">
-          <StatusBadge status={booking.status} audience={isStudent ? 'student' : 'default'} />
+          <StatusBadge
+            status={booking.status}
+            audience={isStudent ? 'student' : 'default'}
+            instructorCheckedIn={Boolean(booking.instructorCheckedIn)}
+          />
         </div>
       </div>
 

@@ -25,6 +25,7 @@ export const PAYMENT_PROCESSING_GRACE_MINUTES = 5;
 export const BLOCKING_BOOKING_STATUSES: BookingStatus[] = [
   'PENDING_PAYMENT',
   'CONFIRMED',
+  'ON_THE_WAY',
   'IN_PROGRESS',
 ];
 
@@ -32,6 +33,7 @@ export const BLOCKING_BOOKING_STATUSES: BookingStatus[] = [
 export const TODAY_BOOKING_STATUSES: BookingStatus[] = [
   'PENDING_PAYMENT',
   'CONFIRMED',
+  'ON_THE_WAY',
   'IN_PROGRESS',
   'COMPLETED',
 ];

@@ -14,6 +14,7 @@ export interface BottomSheetProps {
   ariaLabel?: string;
   closeOnEscape?: boolean;
   closeOnBackdrop?: boolean;
+  useHistory?: boolean;
 }
 
 export const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -26,11 +27,12 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   ariaLabel,
   closeOnEscape = true,
   closeOnBackdrop = true,
+  useHistory = false,
 }) => {
   const generatedId = useId();
   const titleId = `${id || generatedId}-title`;
   const dialogRef = useAccessibleDialog<HTMLDivElement>({ isOpen, onClose, closeOnEscape });
-  useDialogHistory({ isOpen, onClose, modalKey: id || title || 'bottom-sheet' });
+  useDialogHistory({ isOpen: isOpen && useHistory, onClose, modalKey: id || title || 'bottom-sheet' });
 
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);

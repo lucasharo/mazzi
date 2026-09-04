@@ -15,6 +15,7 @@ import { calculateCancellationPolicy } from '../../../domain/cancellation';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
 import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
+import { UniversalMap } from '../../../components/maps/UniversalMap';
 
 export interface BookingDetailsModalProps {
   isOpen: boolean;
@@ -121,6 +122,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   });
 
   const meetingPoint = formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint);
+  const latitude = (booking.meetingPoint as any)?.latitude ?? (snapshot?.meetingPoint as any)?.latitude;
+  const longitude = (booking.meetingPoint as any)?.longitude ?? (snapshot?.meetingPoint as any)?.longitude;
+  const mapPoint = latitude != null && longitude != null
+    ? { lat: latitude, lng: longitude, title: meetingPoint || 'Ponto de encontro' }
+    : undefined;
   const scheduledStart = booking.scheduledStartAt || (booking.scheduledDate && booking.startTime ? `${booking.scheduledDate}T${booking.startTime}:00` : '');
   const scheduledEnd = booking.scheduledEndAt || (booking.scheduledDate && booking.endTime ? `${booking.scheduledDate}T${booking.endTime}:00` : '');
   const lessonStart = booking.lessonStartedAt || '';
@@ -384,7 +390,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mazzi-muted)]">Detalhes da aula</p>
               <p className="mt-0.5 text-sm font-extrabold text-[var(--mazzi-dark)]">Sua aula MAZZI</p>
             </div>
-            <StatusBadge status={booking.status} audience="student" />
+            <StatusBadge status={booking.status} audience="student" instructorCheckedIn={Boolean(booking.instructorCheckedIn)} />
           </div>
 
           <BookingDisputePanel booking={booking} currentUserId={currentUserId} />
@@ -412,8 +418,21 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             )}
           </div>
 
+          {/* UniversalMap Preview */}
+          {mapPoint && (
+            <div className="overflow-hidden rounded-2xl border border-[var(--mazzi-border)] shadow-xs">
+              <UniversalMap
+                providers={[]}
+                meetingPoint={mapPoint}
+                height="180px"
+                zoom={16}
+                interactive={false}
+              />
+            </div>
+          )}
+
           {/* Presence & Check-In Card */}
-          {(booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS') && (
+          {(booking.status === 'CONFIRMED' || booking.status === 'ON_THE_WAY' || booking.status === 'IN_PROGRESS') && (
             <div className="p-4 rounded-2xl bg-white border border-[var(--mazzi-border)] space-y-3 shadow-xs">
               <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
                 Status de Presença na Aula

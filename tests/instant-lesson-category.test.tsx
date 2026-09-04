@@ -3,7 +3,10 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 vi.mock('../src/components/maps/UniversalMap', () => ({ UniversalMap: () => <div data-testid="meeting-map" /> }));
-vi.mock('../src/domain/maps/meeting-point-address', () => ({ resolveMeetingPointAddress: async () => 'Rua GPS, 2' }));
+vi.mock('../src/domain/maps/meeting-point-address', () => ({
+  needsMeetingPointAddress: (address: string) => !address.trim() || /^(minha|sua) localização( atual)?$/i.test(address.trim()),
+  resolveMeetingPointAddress: async () => 'Rua GPS, 2',
+}));
 vi.mock('../src/components/search/ConfirmableAddressAutocomplete', () => ({
   ConfirmableAddressAutocomplete: ({ id, placeholder, value, onChange, onConfirm }: any) => <div><input id={id} placeholder={placeholder} aria-label="Endereço do encontro" value={value} onChange={e => onChange(e.target.value)} /><button onClick={() => onConfirm({ latitude: -23.69, longitude: -46.67 }, value)}>Confirmar endereço</button></div>,
 }));

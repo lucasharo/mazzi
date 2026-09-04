@@ -22,6 +22,7 @@ export interface StatusBadgeProps {
   id?: string;
   audience?: 'default' | 'student';
   domain?: StatusPresentationDomain;
+  instructorCheckedIn?: boolean;
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
@@ -29,9 +30,10 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   className = '',
   id,
   domain = 'default' as StatusPresentationDomain,
+  instructorCheckedIn,
 }) => {
   const getStatusConfig = (s: string): { label: string; bg: string; text: string; dot: string } => {
-    const presentation = getStatusPresentation(s, domain);
+    const presentation = getStatusPresentation(s, domain, { instructorCheckedIn });
     const tone = {
       success: { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' },
       info: { bg: 'bg-blue-50 border-blue-200', text: 'text-blue-800', dot: 'bg-blue-500' },

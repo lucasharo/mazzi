@@ -1,8 +1,11 @@
 import { ButtonBase } from '../ui/Button';
-import React, { useState } from 'react';
-import { LeafletMap } from './LeafletMap';
+import React, { useState, Suspense } from 'react';
 import { MapProviderComponent, MapProviderProps } from './MapProvider';
 import { Compass, Radio } from 'lucide-react';
+
+const LazyLeafletMap = typeof window !== 'undefined'
+  ? React.lazy(() => import('./LeafletMap').then(m => ({ default: m.LeafletMap })))
+  : null;
 
 export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
   const {
@@ -22,6 +25,19 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
   } = props;
 
   const [showRadius, setShowRadius] = useState(showCoverageRadius);
+
+  if (typeof window === 'undefined' || !LazyLeafletMap) {
+    return (
+      <div className={`space-y-2 ${className}`}>
+        <div
+          style={{ height }}
+          className="w-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-semibold rounded-xl"
+        >
+          Mapa de localização
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`space-y-2 ${className}`}>
@@ -54,20 +70,22 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
       </div>
 
       {/* Render map abstraction */}
-      <LeafletMap
-        providers={providers}
-        selectedProvider={selectedProvider}
-        onSelectProvider={onSelectProvider}
-        height={height}
-        showCoverageRadius={showRadius}
-        meetingPoint={meetingPoint}
-        userLocation={userLocation}
-        searchedLocation={searchedLocation}
-        zoom={zoom}
-        providerMarker={providerMarker}
-        followSelectedProvider={followSelectedProvider}
-        interactive={interactive}
-      />
+      <Suspense fallback={<div style={{ height }} className="w-full bg-slate-100 animate-pulse rounded-xl" />}>
+        <LazyLeafletMap
+          providers={providers}
+          selectedProvider={selectedProvider}
+          onSelectProvider={onSelectProvider}
+          height={height}
+          showCoverageRadius={showRadius}
+          meetingPoint={meetingPoint}
+          userLocation={userLocation}
+          searchedLocation={searchedLocation}
+          zoom={zoom}
+          providerMarker={providerMarker}
+          followSelectedProvider={followSelectedProvider}
+          interactive={interactive}
+        />
+      </Suspense>
     </div>
   );
 };
