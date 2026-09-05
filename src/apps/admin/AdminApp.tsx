@@ -630,7 +630,7 @@ export const AdminApp: React.FC = () => {
               {!isEditingProfile && <ButtonBase type="button" onClick={() => setIsEditingProfile(true)} aria-label="Editar perfil" title="Editar perfil" className="mazzi-icon-button"><Pencil className="h-5 w-5" aria-hidden="true" /></ButtonBase>}
             </header>
 
-            <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+            <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
               <div className="flex flex-col items-center gap-4 border-b border-[var(--mazzi-border)] pb-6 text-center">
                 {isEditingProfile ? <ProfilePhotoPicker value={profileAvatar} name={user?.name} onChange={setProfileAvatar} /> : <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold text-[var(--mazzi-dark)]">{profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (user?.name || 'Admin').split(/\s+/).map((n) => n[0]).slice(0, 2).join('').toUpperCase()}</div>}
                 <div className="space-y-1">

@@ -11,7 +11,7 @@ export const AccessDenied: React.FC = () => {
       <section
         role="alert"
         aria-labelledby="access-denied-title"
-        className="mazzi-card w-full max-w-md p-6 sm:p-8 rounded-3xl bg-white border border-[var(--mazzi-border)] shadow-sm text-center space-y-5"
+        className="mazzi-card w-full max-w-md p-6 sm:p-8 rounded-2xl bg-white border border-[var(--mazzi-border)] shadow-sm text-center space-y-5"
       >
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] border border-amber-200/60 text-[var(--mazzi-dark)]">
           <ShieldAlert className="h-7 w-7 text-amber-600" aria-hidden="true" />

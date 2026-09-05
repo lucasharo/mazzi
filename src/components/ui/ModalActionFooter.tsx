@@ -8,7 +8,7 @@ export interface ModalActionFooterProps {
 
 /**
  * MAZZI Official Modal Action Footer
- * Sticky white bottom footer bar with elevated floating action buttons and safe-area padding.
+ * Sticky modal footer using the same opaque surface as the lesson wizard.
  */
 export const ModalActionFooter: React.FC<ModalActionFooterProps> = ({
   children,
@@ -31,7 +31,7 @@ export const ModalActionFooter: React.FC<ModalActionFooterProps> = ({
 
   return (
     <div
-      className={`shrink-0 bg-white border-t border-[var(--mazzi-border)]/60 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] px-8 py-4 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] -mx-6 flex items-center ${alignStyles[align]} gap-3 sticky bottom-0 z-[60] transition-all ${className}`}
+      className={`shrink-0 bg-[var(--mazzi-modal-footer-bg)] border-t border-[var(--mazzi-border)]/60 px-8 py-4 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] -mx-6 flex items-center ${alignStyles[align]} gap-3 sticky bottom-0 z-[60] transition-all ${className}`}
     >
       {actionChildren.map((child, index) => {
         if (!React.isValidElement(child)) return child;

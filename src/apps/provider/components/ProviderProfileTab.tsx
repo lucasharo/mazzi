@@ -101,13 +101,13 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
       />
 
       {currentRole === 'SCHOOL_STAFF' && (
-        <div role="status" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-700">
+        <div role="status" className="mazzi-compact-card rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-700">
           Você possui acesso de equipe. Alterações no perfil da Autoescola são exclusivas para administradores da escola.
         </div>
       )}
 
       {/* Main Profile Card */}
-      <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+      <div className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
         <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Dados do perfil</h4>
 
         {/* Profile Content / Edit Form */}

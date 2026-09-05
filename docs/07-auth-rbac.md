@@ -45,6 +45,10 @@ $$;
 ```
 A política em `driving_school_staff` passa a consumir a função sem subqueries autorreferenciais recursivas.
 
+### Gestão da agenda pela autoescola
+
+O dono direto de um provider `DRIVING_SCHOOL` pode cadastrar, alterar e remover regras semanais quando possuir a permissão `school.schedule.manage`; ele não precisa possuir uma linha adicional em `driving_school_staff`. Instrutores vinculados continuam dependendo de vínculo ativo, provider da autoescola e das permissões de gestão de agenda correspondentes. Essa autorização é aplicada no backend pela função `can_manage_provider_schedule`.
+
 ---
 
 ## 3. Gestão Rigorosa de Contas Bloqueadas (`status = 'BLOCKED'`)

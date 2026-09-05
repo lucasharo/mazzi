@@ -31,7 +31,7 @@ export function InstantConductPanel({ admin = false }: { admin?: boolean }) {
     } catch { setError('Não foi possível salvar. Verifique sua permissão e a justificativa.'); }
     finally { setBusy(null); }
   };
-  return <section className="space-y-3 rounded-3xl border border-[var(--mazzi-border)] bg-white p-4" aria-label="Ocorrências da Aula Agora">
+  return <section className="mazzi-compact-card space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-4" aria-label="Ocorrências da Aula Agora">
     <div className="flex items-center justify-between gap-3"><h3 className="font-bold">Ocorrências da Aula Agora</h3><Button size="sm" variant="outline" onClick={() => void load()} isLoading={loading} disabled={busy !== null}>Atualizar</Button></div>
     <p className="text-sm text-slate-600">Cancelamento injustificado gera advertência. Ao atingir 3 em 30 dias, a Aula Agora fica suspensa por 24 horas. Aulas agendadas e repasses não são afetados.</p>
     {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}

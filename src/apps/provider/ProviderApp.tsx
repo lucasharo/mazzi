@@ -57,12 +57,13 @@ import {
   LessonSession,
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
-import { getBookingStartTimestamp, getStudentBookingSection, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { getBookingStartTimestamp, getStudentBookingSection, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
 import { INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS } from '../../domain/instant-lesson';
 import { buildFullDayBlockRange, formatDateBR, formatTimeBR, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
 import { formatCentsToBRL } from '../../domain/money';
+import { formatMeetingPoint } from '../../lib/meeting-point';
 import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
 import { formatDateMask, toISODateString, validateBirthDate } from '../../utils/age';
 import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTargetFromHash, useMobileAppRoute } from '../../lib/mobile-app-router';
@@ -73,6 +74,7 @@ import { disableStoredPushDevice } from '../../lib/push-device-registry';
 import { signalInitialNavigationReady } from '../../lib/initial-splash';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
 import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
+import { isProviderPaymentAccountReady } from '../../domain/payments/provider-payment-readiness';
 
 import { ProviderHeader } from './components/ProviderHeader';
 import { ProviderBottomNav, ProviderTabId } from './components/ProviderBottomNav';
@@ -83,10 +85,12 @@ import { ProviderManagementTab } from './components/ProviderManagementTab';
 import { ProviderProfileTab } from './components/ProviderProfileTab';
 import { ProviderEarningsTab } from './components/ProviderEarningsTab';
 import { ProviderInstantLessonPanel } from './components/ProviderInstantLessonPanel';
+import { InstantConductPanel } from '../../components/instant/InstantConductPanel';
 import { ProviderCancellationModal } from './components/ProviderCancellationModal';
 import { ProviderBookingDetailsModal } from './components/ProviderBookingDetailsModal';
-import { InstantLessonActiveBanner } from '../../components/instant/InstantLessonActiveBanner';
+import { UpcomingBookingCard } from '../../components/ui/UpcomingBookingCard';
 import { InstantLessonOperationalModal } from '../../components/instant/InstantLessonOperationalModal';
+import { InstantLessonOfferBottomSheet } from '../../components/instant/InstantLessonOfferBottomSheet';
 import { ExternalNavigationModal } from '../../components/instant/ExternalNavigationModal';
 import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
 import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Clock3, Info, LogOut, RefreshCw, Sparkles, Upload, WalletCards, XCircle } from 'lucide-react';
@@ -126,7 +130,7 @@ export const ProviderApp: React.FC = () => {
   const [bookingUpdatesCount, setBookingUpdatesCount] = useState(0);
   const shouldAutoSelectTodayRef = useRef(true);
   const bookingSnapshotRef = useRef<string | null>(null);
-  const [managementSubTab, setManagementSubTab] = useState<'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account' | 'instant'>('schedule_rules');
+  const [managementSubTab, setManagementSubTab] = useState<'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account'>('schedule_rules');
   const [bookingFilterTab, setBookingFilterTab] = useState<'upcoming' | 'today' | 'history'>('upcoming');
   const [bookingQuickFilter, setBookingQuickFilter] = useState<'all' | 'confirmed' | 'in_progress' | 'completed' | 'disputed' | 'cancelled'>('all');
   const [scheduleSubTab, setScheduleSubTab] = useState<'rules' | 'exceptions'>('rules');
@@ -135,20 +139,27 @@ export const ProviderApp: React.FC = () => {
   const [complianceDocs, setComplianceDocs] = useState<ComplianceDocument[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [bookingClockMs, setBookingClockMs] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setBookingClockMs(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [offerings, setOfferings] = useState<ServiceOffering[]>([]);
   const [schoolInstructors, setSchoolInstructors] = useState<SchoolMembership[]>([]);
   const [schoolInstructorSummary, setSchoolInstructorSummary] = useState<SchoolInstructorComplianceSummary[]>([]);
+  const [schoolInvitations, setSchoolInvitations] = useState<any[]>([]);
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>([]);
   const [availabilityExceptions, setAvailabilityExceptions] = useState<AvailabilityException[]>([]);
   const [instantSettings, setInstantSettings] = useState<InstantLessonSettings[]>([]);
   const [instantOffers, setInstantOffers] = useState<InstantLessonOffer[]>([]);
+  const [instantOfferSheetId, setInstantOfferSheetId] = useState<string | null>(null);
   const [instantOffersServerNow, setInstantOffersServerNow] = useState<string | null>(null);
   const [instantLocationStatus, setInstantLocationStatus] = useState<'IDLE' | 'UPDATING' | 'READY' | 'ERROR'>('IDLE');
   const [instantActionLoading, setInstantActionLoading] = useState(false);
   const [instantOfferAction, setInstantOfferAction] = useState<{ offerId: string; action: 'ACCEPT' | 'DECLINE' } | null>(null);
   const instantOffersInFlightRef = useRef<Promise<void> | null>(null);
   const instantOfferRespondingRef = useRef(new Set<string>());
+  const notifiedInstantOfferIdsRef = useRef(new Set<string>());
   const instantLocationRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const [lessonSessions, setLessonSessions] = useState<Record<string, LessonSession>>({});
 
@@ -177,6 +188,7 @@ export const ProviderApp: React.FC = () => {
 
   // Instant Lesson Active Journey & Modal States
   const [isInstantOperationalModalOpen, setIsInstantOperationalModalOpen] = useState(false);
+  const [isInstantSettingsOpen, setIsInstantSettingsOpen] = useState(false);
   const [isExternalNavModalOpen, setIsExternalNavModalOpen] = useState(false);
   const [isOnTheWayLoading, setIsOnTheWayLoading] = useState(false);
 
@@ -186,7 +198,7 @@ export const ProviderApp: React.FC = () => {
         (b) =>
           b.providerId === activeProviderId &&
           (b.snapshot?.source === 'AULA_AGORA' || (b as any).snapshot_data?.source === 'AULA_AGORA') &&
-          ['PENDING_PAYMENT', 'CONFIRMED', 'ON_THE_WAY'].includes(b.status)
+          ['PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS'].includes(b.status)
       ) || null
     );
   }, [bookings, activeProviderId]);
@@ -226,11 +238,11 @@ export const ProviderApp: React.FC = () => {
       label = 'Ponto de encontro';
     }
 
-    return {
-      latitude: typeof lat === 'number' && Number.isFinite(lat) ? lat : -23.5505,
-      longitude: typeof lng === 'number' && Number.isFinite(lng) ? lng : -46.6333,
-      label,
-    };
+    if (typeof lat !== 'number' || !Number.isFinite(lat) || typeof lng !== 'number' || !Number.isFinite(lng)) {
+      return null;
+    }
+
+    return { latitude: lat, longitude: lng, label };
   }, [activeInstantBooking]);
 
   const prevInstantBookingRef = useRef<{ id: string; status: string } | null>(null);
@@ -262,7 +274,7 @@ export const ProviderApp: React.FC = () => {
       if (
         prevInstantBookingRef.current?.id === activeInstantBooking.id &&
         prevInstantBookingRef.current.status === 'PENDING_PAYMENT' &&
-        ['CONFIRMED', 'ON_THE_WAY'].includes(activeInstantBooking.status)
+        activeInstantBooking.status === 'CONFIRMED'
       ) {
         showProviderFeedback('success', 'Pagamento confirmado!', 'O aluno concluiu o pagamento! Redirecionando para os detalhes da aula...');
         setSelectedBooking(activeInstantBooking);
@@ -416,6 +428,7 @@ export const ProviderApp: React.FC = () => {
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
   const [paymentAccount, setPaymentAccount] = useState<ProviderPaymentAccount | null>(null);
   const [isConnectingStripe, setIsConnectingStripe] = useState(false);
+  const [stripeOnboardingError, setStripeOnboardingError] = useState<string | null>(null);
 
   // Vehicle Management Modal State
   const [isAddVehicleModalOpen, setIsAddVehicleModalOpen] = useState<boolean>(false);
@@ -474,13 +487,14 @@ export const ProviderApp: React.FC = () => {
       setVehicles(workspace.vehicles);
       setOfferings(workspace.offerings);
       try {
-        setInstantSettings(await dbService.getMyInstantSettings(workspace.provider.id));
+        setInstantSettings(await dbService.getMyInstantSettings(workspace.provider.id, workspace.offerings));
       } catch (instantError) {
         console.warn('Instant lesson settings load failed:', instantError);
         setInstantSettings([]);
       }
 
       if (workspace.provider.type === 'DRIVING_SCHOOL') {
+        setSchoolInvitations([]);
         try {
           const [memberships, complianceSummary] = await Promise.all([
             dbService.listSchoolMemberships(workspace.provider.id),
@@ -496,6 +510,13 @@ export const ProviderApp: React.FC = () => {
       } else {
         setSchoolInstructors([]);
         setSchoolInstructorSummary([]);
+        try {
+          const invitations = await dbService.listMySchoolInvitationContexts();
+          setSchoolInvitations(invitations);
+        } catch (error) {
+          console.warn('School invitations load failed:', error);
+          setSchoolInvitations([]);
+        }
       }
 
       const isInstructorUser = user?.role === 'INSTRUCTOR' || (user?.roles && user.roles.includes('INSTRUCTOR'));
@@ -593,7 +614,7 @@ export const ProviderApp: React.FC = () => {
       if (activeTab === 'bookings') {
         const refreshedBookings = user?.role === 'INSTRUCTOR' || user?.roles?.includes('INSTRUCTOR')
           ? await dbService.getMyUnifiedInstructorBookings()
-          : await dbService.getBookings();
+          : await dbService.getMyProviderBookings(activeProviderId);
         setBookings(refreshedBookings || []);
       } else if (activeTab === 'profile') {
         const [avatarUrl, stripeAccount] = await Promise.all([getMyProfileAvatar(), dbService.getMyProviderPaymentAccount()]);
@@ -610,9 +631,12 @@ export const ProviderApp: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!user?.providerId) return;
+    if (!user?.providerId) {
+      signalInitialNavigationReady();
+      return;
+    }
     setActiveProviderId(user.providerId);
-    void loadWorkspace(user.providerId);
+    void loadWorkspace(user.providerId).finally(() => signalInitialNavigationReady());
   }, [user?.providerId]);
 
   useEffect(() => {
@@ -705,7 +729,7 @@ export const ProviderApp: React.FC = () => {
       try {
         const refreshedBookings = user.role === 'INSTRUCTOR' || user.roles?.includes('INSTRUCTOR')
           ? await dbService.getMyUnifiedInstructorBookings()
-          : await dbService.getBookings();
+          : await dbService.getMyProviderBookings(activeProviderId);
         setBookings(refreshedBookings || []);
       } catch {
         // O Realtime continua sendo a fonte principal; falha de polling não interrompe a tela.
@@ -719,7 +743,32 @@ export const ProviderApp: React.FC = () => {
     if (activeTab === 'bookings') setBookingUpdatesCount(0);
   }, [activeTab]);
 
+  // Keep the open details screen synchronized with the same realtime/polling
+  // booking collection without closing it or showing a loading replacement.
+  useEffect(() => {
+    if (!selectedBooking || selectedBooking.status === 'COMPLETED') return;
+    const refreshedBooking = bookings.find((booking) => booking.id === selectedBooking.id);
+    if (!refreshedBooking || refreshedBooking === selectedBooking) return;
+    setSelectedBooking((current) => current?.id === refreshedBooking.id ? refreshedBooking : current);
+  }, [bookings, selectedBooking?.id, selectedBooking?.status]);
+
   const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
+  const instantInstructorOptions = useMemo(() => {
+    if (!currentProvider) return [];
+    if (currentProvider.type === 'INSTRUCTOR') {
+      const instructorId = currentProvider.userId || user?.id;
+      return instructorId ? [{ id: instructorId, name: currentProvider.name }] : [];
+    }
+    return schoolInstructors
+      .filter((instructor) => instructor.userId !== currentProvider.userId)
+      .filter((instructor) => instructor.membershipStatus === 'ACTIVE' && instructor.isActive)
+      .filter((instructor) => schoolInstructorSummary.find((summary) => summary.membershipId === instructor.id)?.eligible === true)
+      .map((instructor) => ({ id: instructor.userId, name: instructor.name }));
+  }, [currentProvider, schoolInstructorSummary, schoolInstructors, user?.id]);
+  const cancellationUserRole = currentProvider?.type === 'INSTRUCTOR'
+    && currentProvider.userId === user?.id
+    ? 'INSTRUCTOR'
+    : user?.role || currentRole;
 
   const refreshInstantProviderLocation = useCallback((): Promise<void> => {
     if (!currentProvider?.id || !user?.id || !navigator.geolocation || !instantSettings.some((setting) => setting.instantEnabled && setting.instantOnline)) {
@@ -738,10 +787,9 @@ export const ProviderApp: React.FC = () => {
     })
       .then(async (position) => {
         const results = await Promise.allSettled(onlineSettings.map((setting) => {
-          const offering = offerings.find((item) => item.id === setting.offeringId);
           return dbService.upsertMyInstantLocation(
             currentProvider.id,
-            offering?.instructorId || user.id,
+            setting.instructorId || user.id,
             position.coords.latitude,
             position.coords.longitude,
           );
@@ -785,7 +833,7 @@ export const ProviderApp: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isRealSupabase || activeTab !== 'management' || !currentProvider?.id) return;
+    if (!isRealSupabase || !currentProvider?.id) return;
     void loadInstantOffers();
     const pollTimer = window.setInterval(() => void loadInstantOffers(), 5000);
     const refreshOnVisibility = () => {
@@ -801,18 +849,42 @@ export const ProviderApp: React.FC = () => {
       document.removeEventListener('visibilitychange', refreshOnVisibility);
       void supabase.removeChannel(channel);
     };
-  }, [activeTab, currentProvider?.id, isRealSupabase, loadInstantOffers, user?.id]);
+  }, [currentProvider?.id, isRealSupabase, loadInstantOffers, user?.id]);
 
-  const handleSaveInstantSetting = async (params: { offeringId: string; instantEnabled: boolean; instantPriceInCents: number; maxDistanceKm: number }) => {
+  useEffect(() => {
+    const pendingOffers = instantOffers.filter((offer) => offer.status === 'PENDING');
+    const currentOffer = instantOfferSheetId ? pendingOffers.find((offer) => offer.id === instantOfferSheetId) : null;
+
+    if (instantOfferSheetId && !currentOffer) {
+      setInstantOfferSheetId(null);
+    }
+
+    const freshOffer = pendingOffers.find((offer) => !notifiedInstantOfferIdsRef.current.has(offer.id));
+    if (freshOffer) {
+      notifiedInstantOfferIdsRef.current.add(freshOffer.id);
+      setInstantOfferSheetId(freshOffer.id);
+    }
+  }, [instantOffers, instantOfferSheetId]);
+
+  const handleSaveInstantSetting = async (params: { instructorId: string; vehicleId: string; instantEnabled: boolean; instantPriceInCents: number; maxDistanceKm: number }) => {
     if (!currentProvider) return;
-    const saved = await dbService.saveMyInstantSetting({ providerId: currentProvider.id, ...params });
-    setInstantSettings((current) => [...current.filter((item) => item.offeringId !== saved.offeringId), saved]);
+    const instructorWasOnline = instantSettings.some((item) => item.instantEnabled && item.instantOnline);
+    const existingSetting = instantSettings.find((item) => item.instructorId === params.instructorId && item.vehicleId === params.vehicleId);
+    const offeringId = existingSetting?.offeringId || offerings.find((item) => item.status === 'ACTIVE' && item.instructorId === params.instructorId && item.vehicleId === params.vehicleId)?.id;
+    let saved = await dbService.saveMyInstantSetting({ providerId: currentProvider.id, offeringId, ...params });
+    if (params.instantEnabled && instructorWasOnline && saved.offeringId && !saved.instantOnline) {
+      await dbService.setMyInstantOnline(currentProvider.id, saved.offeringId, true);
+      saved = { ...saved, instantOnline: true };
+    }
+    setInstantSettings((current) => [...current.filter((item) => !(item.instructorId === saved.instructorId && item.vehicleId === saved.vehicleId)), saved]);
   };
 
-  const handleToggleInstantOnline = async (setting: InstantLessonSettings, online: boolean) => {
+  const handleToggleInstantOnline = async (online: boolean) => {
     if (!currentProvider) return;
     setInstantActionLoading(true);
     try {
+      const targetSettings = instantSettings.filter((setting) => setting.offeringId && (online ? setting.instantEnabled : setting.instantOnline));
+      if (online && targetSettings.length === 0) throw new Error('INSTANT_VEHICLE_NOT_ENABLED');
       if (online && user?.id) {
         setInstantLocationStatus('UPDATING');
         await new Promise<void>((resolve, reject) => {
@@ -825,24 +897,12 @@ export const ProviderApp: React.FC = () => {
         });
         setInstantLocationStatus('READY');
       }
-      await dbService.setMyInstantOnline(currentProvider.id, setting.offeringId, online);
-      setInstantSettings((current) => current.map((item) => item.id === setting.id ? { ...item, instantOnline: online } : item));
+      await Promise.all(targetSettings.map((setting) => dbService.setMyInstantOnline(currentProvider.id, setting.offeringId as string, online)));
+      setInstantSettings((current) => current.map((item) => ({ ...item, instantOnline: item.instantEnabled ? online : false })));
     } catch (error) {
       setInstantLocationStatus('ERROR');
       throw error;
     } finally { setInstantActionLoading(false); }
-  };
-
-  const handleUpdateInstantLocation = async () => {
-    if (!currentProvider || !user?.id || !navigator.geolocation) { setInstantLocationStatus('ERROR'); return; }
-    setInstantLocationStatus('UPDATING');
-    try {
-      await new Promise<void>((resolve, reject) => navigator.geolocation.getCurrentPosition(
-        (position) => void dbService.upsertMyInstantLocation(currentProvider.id, user.id, position.coords.latitude, position.coords.longitude).then(resolve).catch(reject), reject,
-        { enableHighAccuracy: false, timeout: 12000, maximumAge: 15000 },
-      ));
-      setInstantLocationStatus('READY');
-    } catch { setInstantLocationStatus('ERROR'); }
   };
 
   const handleRespondInstantOffer = async (offerId: string, action: 'ACCEPT' | 'DECLINE') => {
@@ -887,8 +947,8 @@ export const ProviderApp: React.FC = () => {
       return;
     }
     if (target.entityType === 'instant_offer') {
-      setManagementSubTab('instant');
-      setActiveTab('management');
+      setActiveTab('dashboard');
+      setIsInstantSettingsOpen(true);
       void loadInstantOffers();
       return;
     }
@@ -910,6 +970,7 @@ export const ProviderApp: React.FC = () => {
   const handleConnectStripe = async () => {
     if (isConnectingStripe) return;
     setIsConnectingStripe(true);
+    setStripeOnboardingError(null);
     try {
       const result = await dbService.openProviderPayoutOnboarding();
       setPaymentAccount(result.account);
@@ -918,7 +979,18 @@ export const ProviderApp: React.FC = () => {
       window.location.assign(result.onboardingUrl);
     } catch (error: any) {
       setIsConnectingStripe(false);
-      setWorkspaceError(mapFriendlyErrorMessage(error, 'Não foi possível abrir o cadastro de recebimentos.'));
+      let stripeDetail = '';
+      try {
+        const response = error?.context;
+        if (response && typeof response.clone === 'function') {
+          const payload = await response.clone().json();
+          stripeDetail = typeof payload?.detail === 'string' ? payload.detail : '';
+        }
+      } catch {
+        // The Functions client can expose a consumed or unavailable response.
+      }
+      const friendlyMessage = mapFriendlyErrorMessage(error, 'Não foi possível abrir o cadastro de recebimentos.');
+      setStripeOnboardingError(stripeDetail ? `${friendlyMessage} Detalhe: ${stripeDetail}` : friendlyMessage);
     }
   };
 
@@ -965,7 +1037,7 @@ export const ProviderApp: React.FC = () => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'PRO') return;
     handleNotificationTarget(target);
-    clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' || target.entityType === 'instant_offer' ? 'management' : 'earnings');
+    clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' ? 'management' : target.entityType === 'instant_offer' ? 'dashboard' : 'earnings');
   };
 
   useEffect(() => {
@@ -974,7 +1046,7 @@ export const ProviderApp: React.FC = () => {
     if (!target || target.appContext !== 'PRO') return;
     handleNotificationTarget(target);
     clearPendingNotificationTarget();
-    clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' ? 'management' : 'earnings');
+    clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' ? 'management' : target.entityType === 'instant_offer' ? 'dashboard' : 'earnings');
     signalInitialNavigationReady();
   }, [bookings, isAuthLoading, user, workspaceLoading]);
 
@@ -992,7 +1064,7 @@ export const ProviderApp: React.FC = () => {
           </div>
           <div className="space-y-3">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="h-32 animate-pulse rounded-3xl border border-slate-200 bg-white" />
+              <div key={item} className="h-32 animate-pulse rounded-2xl border border-slate-200 bg-white" />
             ))}
           </div>
         </div>
@@ -1004,7 +1076,7 @@ export const ProviderApp: React.FC = () => {
   if (workspaceError || !currentProvider) {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center bg-[#f7f5ef] text-[#202126] p-6 font-sans text-center">
-        <div className="max-w-md w-full p-6 rounded-3xl bg-white border border-[#e9e6de] shadow-lg space-y-4">
+        <div className="mazzi-compact-card max-w-md w-full p-6 rounded-2xl bg-white border border-[#e9e6de] shadow-lg space-y-4">
           <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 mx-auto flex items-center justify-center">
             <AlertCircle className="w-6 h-6" />
           </div>
@@ -1043,10 +1115,10 @@ export const ProviderApp: React.FC = () => {
   const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
   const pendingPaymentInstantBookings = bookings.filter((b) => b.status === 'PENDING_PAYMENT' && b.snapshot?.source === 'AULA_AGORA');
 
-  const nextBooking = bookings.find((b) => {
+  const nextBooking = sortBookingsForNext(bookings.filter((b) => {
     if (b.status !== 'CONFIRMED' && b.status !== 'IN_PROGRESS') return false;
-    return !isLessonEnded(b, new Date(bookingClockMs));
-  }) || null;
+    return b.status === 'IN_PROGRESS' || !isLessonEnded(b, new Date(bookingClockMs));
+  }), bookingClockMs)[0] || null;
 
   const filteredBookings = bookings.filter((b) => {
     if (UNPAID_BOOKING_STATUSES.includes(b.status)) return false;
@@ -1083,7 +1155,7 @@ export const ProviderApp: React.FC = () => {
       instructorId: b.instructorId,
       studentId: b.studentId,
       state: b.status === 'COMPLETED' ? 'COMPLETED' : b.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : b.instructorCheckedIn ? 'CHECKED_IN' : 'NOT_STARTED',
-      meetingPoint: b.meetingPoint,
+      meetingPoint: b.meetingPointLabel || formatMeetingPoint(b.meetingPoint),
       createdAt: b.createdAt,
       updatedAt: b.updatedAt || b.createdAt,
     };
@@ -1825,6 +1897,11 @@ status: 'IN_REVIEW',
           : 'O repasse está sendo preparado para transferência.',
   } : null;
 
+  const instantOfferSheetOffer = instantOffers.find((offer) => offer.id === instantOfferSheetId) || null;
+  const instantOfferSheetSecondsLeft = instantOfferSheetOffer
+    ? Math.max(0, Math.ceil((new Date(instantOfferSheetOffer.expiresAt).getTime() - Date.now()) / 1000))
+    : undefined;
+
   return (
     <div className="mazzi-app flex flex-col min-h-dvh bg-[#f7f5ef] text-[var(--mazzi-text)]">
       {/* Header */}
@@ -1840,10 +1917,10 @@ status: 'IN_REVIEW',
       )}
 
       {/* Main Content Body */}
-      <main className="mazzi-mobile mazzi-provider-content flex flex-1 flex-col space-y-6 pb-28">
+      <main className="mazzi-mobile mazzi-provider-content flex flex-1 flex-col space-y-[10px] pb-28">
         {/* Workspace Error Banner */}
         {workspaceError && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800 flex items-center justify-between">
+          <div className="mazzi-compact-card p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800 flex items-center justify-between">
             <span>{workspaceError}</span>
             <Button variant="ghost" size="sm" onClick={() => void loadWorkspace(activeProviderId)}>
               Tentar Novamente
@@ -1853,7 +1930,7 @@ status: 'IN_REVIEW',
 
         {/* Unified Calendar Error Banner */}
         {unifiedCalendarError && (
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-extrabold text-amber-900 flex items-center justify-between">
+          <div className="mazzi-compact-card p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-extrabold text-amber-900 flex items-center justify-between">
             <span>{unifiedCalendarError}</span>
             <Button variant="ghost" size="sm" onClick={() => void loadWorkspace(activeProviderId)}>
               Tentar Novamente
@@ -1861,18 +1938,12 @@ status: 'IN_REVIEW',
           </div>
         )}
 
-        {/* Global Active Instant Lesson Banner */}
-        {activeInstantBooking && (
-          <InstantLessonActiveBanner
+        {/* Global Active Lesson Card: keep the same visual language as the dashboard. */}
+        {activeInstantBooking && activeTab !== 'dashboard' && (
+          <UpcomingBookingCard
             booking={activeInstantBooking}
-            operationalState={
-              activeInstantBooking.status === 'PENDING_PAYMENT'
-                ? 'WAITING_PAYMENT'
-                : activeInstantBooking.status === 'ON_THE_WAY'
-                  ? 'ON_THE_WAY'
-                  : 'CONFIRMED'
-            }
-            onOpenDetails={() => setSelectedBooking(activeInstantBooking)}
+            perspective="provider"
+            onSelect={setSelectedBooking}
           />
         )}
 
@@ -1884,10 +1955,18 @@ status: 'IN_REVIEW',
             confirmedBookings={confirmedBookings}
             completedBookings={completedBookings}
             nextBooking={nextBooking}
+            activeInstantBooking={activeInstantBooking}
+            bookings={bookings}
+            nowMs={bookingClockMs}
             providerDocs={complianceDocs}
             providerVehicles={vehicles}
             onSelectBooking={setSelectedBooking}
             onNavigateTab={setActiveTab}
+            instantSettings={instantSettings}
+            onOpenInstantSettings={() => {
+              setIsInstantSettingsOpen(true);
+              void loadInstantOffers();
+            }}
             onOpenAddVehicleModal={() => {
               setManagementSubTab('vehicles');
               setActiveTab('management');
@@ -1896,6 +1975,17 @@ status: 'IN_REVIEW',
             onOpenAddOfferingModal={() => setIsAddOfferingModalOpen(true)}
             calendarLoadError={unifiedCalendarError}
             isRefreshing={isRefreshingCurrentTab}
+            schoolInvitations={schoolInvitations}
+            onAcceptSchoolInvitation={async (invitationId) => {
+              await dbService.acceptSchoolInstructorInvitation(invitationId);
+              setSchoolInvitations((current) => current.filter((invitation) => invitation.id !== invitationId));
+              showProviderFeedback('success', 'Convite aceito', 'O vínculo ficará disponível após a validação do compliance.');
+            }}
+            onDeclineSchoolInvitation={async (invitationId) => {
+              await dbService.declineSchoolInstructorInvitation(invitationId);
+              setSchoolInvitations((current) => current.filter((invitation) => invitation.id !== invitationId));
+              showProviderFeedback('success', 'Convite recusado');
+            }}
           />
         )}
 
@@ -1983,7 +2073,7 @@ status: 'IN_REVIEW',
             onCompleteLesson={handleCompleteLesson}
             onCancelBooking={(b) => setSelectedBookingForCancel(b)}
             isCompleting={isCompleting}
-            canCancelBooking={(b) => canProviderCommerciallyCancelBooking(b, user?.role || currentRole, currentProvider)}
+            canCancelBooking={(b) => canProviderCommerciallyCancelBooking(b, cancellationUserRole, currentProvider)}
             calendarLoadError={unifiedCalendarError}
             isRefreshing={isRefreshingCurrentTab}
             onRetryCalendarLoad={() => void refreshCurrentTab()}
@@ -2015,6 +2105,7 @@ status: 'IN_REVIEW',
             paymentAccount={paymentAccount}
             onOpenPayoutOnboarding={() => { void handleConnectStripe(); }}
             isOpeningPayoutOnboarding={isConnectingStripe}
+            onboardingError={stripeOnboardingError}
             isAddVehicleModalOpen={isAddVehicleModalOpen}
             onOpenAddVehicleModal={handleOpenAddVehicle}
             onOpenEditVehicle={handleOpenEditVehicle}
@@ -2039,17 +2130,7 @@ status: 'IN_REVIEW',
             onViewComplianceDocument={(document) => { void handleViewComplianceDocument(document); }}
              isAcceptingComplianceTerms={isAcceptingComplianceTerms}
              complianceTermsError={complianceTermsError}
-             instantSettings={instantSettings}
-             onSaveInstantSetting={handleSaveInstantSetting}
-             onToggleInstantOnline={handleToggleInstantOnline}
-             onUpdateInstantLocation={handleUpdateInstantLocation}
-             instantLocationStatus={instantLocationStatus}
-             instantActionLoading={instantActionLoading}
-             instantOffers={instantOffers}
-             pendingPaymentInstantBookings={pendingPaymentInstantBookings}
-             instantOffersServerNow={instantOffersServerNow}
-             onRespondInstantOffer={handleRespondInstantOffer}
-             instantOfferAction={instantOfferAction}
+             onShowFeedback={showProviderFeedback}
            />
           </div>
         )}
@@ -2112,7 +2193,7 @@ status: 'IN_REVIEW',
         activeTab={activeTab}
         onTabChange={setActiveTab}
         bookingUpdatesCount={bookingUpdatesCount}
-        showManagementAlert={availabilityRules.length === 0 || !vehicles.some((vehicle) => vehicle.status === 'ACTIVE') || !offerings.some((offering) => offering.status === 'ACTIVE') || !paymentAccount?.payoutsEnabled}
+        showManagementAlert={availabilityRules.length === 0 || !vehicles.some((vehicle) => vehicle.status === 'ACTIVE') || !offerings.some((offering) => offering.status === 'ACTIVE') || !isProviderPaymentAccountReady(paymentAccount)}
       />
 
       {/* MODALS */}
@@ -2134,7 +2215,7 @@ status: 'IN_REVIEW',
           setSelectedBookingForCancel(b);
         }}
         isCompleting={isCompleting}
-        canCancelBooking={(b) => canProviderCommerciallyCancelBooking(b, user?.role || currentRole, currentProvider)}
+        canCancelBooking={(b) => canProviderCommerciallyCancelBooking(b, cancellationUserRole, currentProvider)}
         onSetOnTheWay={handleSetOnTheWay}
         onOpenNavigation={() => setIsExternalNavModalOpen(true)}
         isLoading={isOnTheWayLoading}
@@ -2199,7 +2280,7 @@ status: 'IN_REVIEW',
               <p className="mx-auto max-w-sm text-xs leading-relaxed text-[var(--mazzi-muted)]">{payoutDetailPresentation?.description}</p>
             </div>
 
-            <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 text-left shadow-xs sm:p-5">
+            <div className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 text-left shadow-xs sm:p-5">
               <p className="mazzi-field-label">VALOR DO REPASSE</p>
               <p className="mt-1 text-3xl font-black tracking-tight text-[var(--mazzi-dark)]">{formatCentsToBRL(selectedPayoutDetail.amount_in_cents)}</p>
               <div className="mt-4 space-y-3 border-t border-[var(--mazzi-border)] pt-4 text-sm">
@@ -2238,7 +2319,7 @@ status: 'IN_REVIEW',
                 <span>{complianceUploadError}</span>
               </div>
             )}
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+            <div className="mazzi-compact-card p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
               <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
               <p>
                 Os documentos anexados são criptografados e armazenados em <strong>Storage Privado Seguro</strong>. Apenas a equipe de compliance da MAZZI terá acesso.
@@ -2297,13 +2378,57 @@ status: 'IN_REVIEW',
         </Modal>
       )}
 
+      <Modal
+        isOpen={isInstantSettingsOpen}
+        onClose={() => setIsInstantSettingsOpen(false)}
+        title="Configurar Aula Agora"
+        size="lg"
+        presentation="fullscreen"
+        portal
+        className="instant-light"
+      >
+        <div className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:p-6">
+          <InstantConductPanel />
+          <ProviderInstantLessonPanel
+            provider={currentProvider}
+            offerings={offerings}
+            vehicles={vehicles}
+            instructorOptions={instantInstructorOptions}
+            settings={instantSettings}
+            onSave={handleSaveInstantSetting}
+            onToggleOnline={handleToggleInstantOnline}
+            isLoading={instantActionLoading}
+            offers={instantOffers}
+            pendingPaymentInstantBookings={pendingPaymentInstantBookings}
+            onRespondOffer={handleRespondInstantOffer}
+            offerAction={instantOfferAction}
+          />
+        </div>
+      </Modal>
+
+      <InstantLessonOfferBottomSheet
+        isOpen={Boolean(instantOfferSheetOffer)}
+        offer={instantOfferSheetOffer}
+        secondsLeft={instantOfferSheetSecondsLeft}
+        onClose={() => setInstantOfferSheetId(null)}
+        onAccept={() => {
+          if (instantOfferSheetOffer) void handleRespondInstantOffer(instantOfferSheetOffer.id, 'ACCEPT');
+        }}
+        onDecline={() => {
+          if (instantOfferSheetOffer) void handleRespondInstantOffer(instantOfferSheetOffer.id, 'DECLINE');
+        }}
+        isLoading={instantOfferSheetOffer && instantOfferAction?.offerId === instantOfferSheetOffer.id
+          ? instantOfferAction.action.toLowerCase() as 'accept' | 'decline'
+          : null}
+      />
+
       {/* Operational Modal for Active Instant Lesson */}
       {activeInstantBooking && (
         <InstantLessonOperationalModal
           isOpen={isInstantOperationalModalOpen}
           booking={activeInstantBooking}
           isWaitingPayment={activeInstantBooking.status === 'PENDING_PAYMENT'}
-          isOnTheWay={activeInstantBooking.status === 'ON_THE_WAY'}
+          isOnTheWay={Boolean(activeInstantBooking.providerOnTheWayAt)}
           onClose={() => setIsInstantOperationalModalOpen(false)}
           onOpenNavigation={() => setIsExternalNavModalOpen(true)}
           onSetOnTheWay={handleSetOnTheWay}

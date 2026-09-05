@@ -136,5 +136,10 @@ describe('PRO Ganhos — navigation and deterministic insights', () => {
     expect(management).toContain("hasPending: hasPendingPayoutSetup");
     expect(management).toContain("hasPending: hasPendingSchedule");
     expect(management).toContain("hasPending: hasPendingVehicles");
+    expect(management).toContain("hasPending: hasPendingCompliance");
+    expect(management).toContain('const visibleSchoolInstructors = schoolInstructors.filter((instructor) => instructor.userId !== currentProvider.userId);');
+    expect(management).toContain('hasPending: hasPendingInstructors');
+    expect(management).toContain('const complianceEligibility = evaluateProviderEligibility(currentProvider, complianceDocs);');
+    expect(management).toContain('const hasPendingCompliance = !complianceEligibility.isEligible;');
   });
 });

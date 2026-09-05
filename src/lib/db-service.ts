@@ -54,6 +54,30 @@ import { PAYMENT_HOLD_EXPIRATION_MINUTES } from '../domain/booking';
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
 
+function isMissingRpc(error: any, functionName: string): boolean {
+  return error?.code === 'PGRST202'
+    && typeof error?.message === 'string'
+    && error.message.includes(`public.${functionName}`);
+}
+
+function mapInstantSettingRow(row: any, fallback?: { instructorId?: string; vehicleId?: string }): InstantLessonSettings {
+  return {
+    id: row.id,
+    providerId: row.provider_id,
+    instructorId: row.instructor_id || fallback?.instructorId,
+    vehicleId: row.vehicle_id || fallback?.vehicleId,
+    offeringId: row.offering_id,
+    category: row.category,
+    transmission: row.transmission,
+    durationMinutes: Number(row.duration_minutes || 50),
+    instantEnabled: row.instant_enabled === true,
+    instantOnline: row.instant_online === true,
+    instantPriceInCents: Number(row.instant_price_in_cents || 0),
+    maxDistanceKm: Number(row.max_distance_km || 5),
+    updatedAt: row.updated_at,
+  };
+}
+
 function mapMaskedPayoutAccount(metadata: Record<string, any> | null | undefined): ProviderMaskedPayoutAccount | undefined {
   const summary = metadata?.masked_payout_account;
   if (!summary || (summary.kind !== 'bank_account' && summary.kind !== 'card')) return undefined;
@@ -220,6 +244,7 @@ export function mapOfferingFromDb(row: any): ServiceOffering {
     durationMinutes: row.duration_minutes,
     priceInCents: row.price_in_cents,
     status: row.status || (row.is_active ? 'ACTIVE' : 'INACTIVE'),
+    source: row.source === 'AULA_AGORA' ? 'AULA_AGORA' : 'AGENDA',
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString(),
   } as any;
@@ -232,12 +257,18 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
   const instructorName = snapshot.instructorName || snapshot.instructor_name || row.instructor_name || '';
   const providerName = snapshot.providerName || snapshot.provider_name || row.provider_name || '';
   const vehicleName = snapshot.vehicleName || snapshot.vehicle_name || row.vehicle_name || '';
-  const meetingPoint = formatMeetingPoint(row.meeting_point)
-    || formatMeetingPoint(snapshot.meetingPoint || snapshot.meeting_point);
-  const fullMeetingPoint = formatFullMeetingPoint(row.meeting_point)
-    || formatFullMeetingPoint(snapshot.meetingPoint || snapshot.meeting_point);
-  const normalizedSnapshot = { ...snapshot, instructorName, providerName, vehicleName, meetingPoint, fullMeetingPoint };
-  snapshot.vehicle_name = vehicleName;
+  const structuredMeetingPoint = row.meeting_point ?? snapshot.meetingPoint ?? snapshot.meeting_point ?? '';
+  const meetingPointLabel = formatMeetingPoint(structuredMeetingPoint);
+  const fullMeetingPoint = formatFullMeetingPoint(structuredMeetingPoint);
+  const normalizedSnapshot = {
+    ...snapshot,
+    instructorName,
+    providerName,
+    vehicleName,
+    meetingPoint: structuredMeetingPoint,
+    meetingPointLabel,
+    fullMeetingPoint,
+  };
 
   // Category resolution order: row.category -> snapshot.category -> offeringCategory
   const rawCategory = row.category || snapshot.category || offeringCategory;
@@ -256,11 +287,6 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     throw new Error(`BOOKING_CATEGORY_MISSING: A categoria do agendamento ${row.id || ''} não pôde ser determinada.`);
   }
 
-  const isLocalOnTheWay = typeof window !== 'undefined' && Boolean(sessionStorage.getItem(`mazzi_on_the_way_${row.id}`));
-  const effectiveStatus = (row.status === 'CONFIRMED' && (snapshot.provider_on_the_way_at || isLocalOnTheWay))
-    ? 'ON_THE_WAY'
-    : row.status;
-
   return {
     id: row.id,
     studentId: row.student_id,
@@ -274,7 +300,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     offeringId: row.offering_id,
     quoteId: row.quote_id || undefined,
     category: category as VehicleCategory,
-    status: effectiveStatus,
+    status: row.status as Booking['status'],
     scheduledDate: row.scheduled_start_at ? formatDateBR(row.scheduled_start_at) : '',
     startTime: row.scheduled_start_at ? formatTimeBR(row.scheduled_start_at) : '',
     endTime: row.scheduled_end_at ? formatTimeBR(row.scheduled_end_at) : '',
@@ -303,7 +329,9 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     paymentPaidAt: row.payment_paid_at || undefined,
     totalInCents: row.total_in_cents,
     snapshot: normalizedSnapshot,
-    meetingPoint,
+    meetingPoint: meetingPointLabel,
+    meetingPointLabel,
+    providerOnTheWayAt: snapshot.provider_on_the_way_at || undefined,
     fullMeetingPoint,
     createdAt: row.created_at,
   };
@@ -461,6 +489,35 @@ export function mapNotificationFromDb(row: any): Notification {
   };
 }
 
+async function fetchMyProviderBookings(providerId: string): Promise<Booking[]> {
+  const { data, error } = await sp.rpc('get_my_provider_bookings', { p_provider_id: providerId });
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  if (rows.length === 0) return [];
+
+  const bookingIds = rows.map((row: any) => row.id).filter(Boolean);
+  const [{ data: names, error: namesError }, { data: categoriesData }] = await Promise.all([
+    sp.rpc('get_my_booking_names', { p_booking_ids: bookingIds }),
+    sp.rpc('get_my_booking_categories', { p_booking_ids: bookingIds }),
+  ]);
+  if (namesError) throw namesError;
+  const namesByBooking = new Map<string, any>((names || []).map((item: any) => [item.booking_id, item]));
+  const categoryByBooking = new Map<string, string>((categoriesData || []).map((item: any) => [item.booking_id, item.category]));
+
+  return rows
+    .map((row: any) => mapBookingFromDb({ ...row, ...(namesByBooking.get(row.id) || {}) }, categoryByBooking.get(row.id)))
+    .sort((a, b) => new Date(a.scheduledStartAt || 0).getTime() - new Date(b.scheduledStartAt || 0).getTime());
+}
+
+export interface SchoolInvitationContext {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  schoolAvatarUrl?: string;
+  status: string;
+  expiresAt?: string;
+}
+
 // DATABASE SERVICE OPERATIONS
 export const dbService = {
   async updateMyProfile(name: string, phone: string, avatarUrl?: string, birthDate?: string): Promise<void> {
@@ -483,6 +540,8 @@ export const dbService = {
   },
 
   // 1. PROVIDERS
+  getMyProviderBookings: fetchMyProviderBookings,
+
   /**
    * Loads a provider workspace using the current browser session. Every query is
    * scoped by provider_id; RLS remains the authorization authority.
@@ -498,48 +557,28 @@ export const dbService = {
   }> {
     const { error: expirationError } = await sp.rpc('refresh_expired_compliance_documents');
     if (expirationError) throw expirationError;
-    const [providerResult, vehiclesResult, offeringsResult, bookingsResult, documentsResult, rulesResult, exceptionsResult] = await Promise.all([
+    const [providerResult, vehiclesResult, offeringsResult, documentsResult, rulesResult, exceptionsResult] = await Promise.all([
       sp.from('providers').select('*').eq('id', providerId).maybeSingle(),
       sp.from('vehicles').select('*').eq('provider_id', providerId).is('deleted_at', null),
       sp.from('service_offerings').select('*').eq('provider_id', providerId),
-      sp.from('bookings').select('*').eq('provider_id', providerId),
       sp.from('compliance_documents').select('*').eq('provider_id', providerId),
       sp.from('availabilities').select('*').eq('provider_id', providerId),
       sp.from('availability_exceptions').select('*').eq('provider_id', providerId),
     ]);
 
-    for (const result of [providerResult, vehiclesResult, offeringsResult, bookingsResult, documentsResult, rulesResult, exceptionsResult]) {
+    for (const result of [providerResult, vehiclesResult, offeringsResult, documentsResult, rulesResult, exceptionsResult]) {
       if (result.error) throw result.error;
     }
 
-    const rawBookings = bookingsResult.data || [];
-    let bookingCategoryMap = new Map<string, string>();
-    if (rawBookings.length > 0) {
-      const bookingIds = rawBookings.map((b: any) => b.id).filter(Boolean);
-      if (bookingIds.length > 0) {
-        const { data: categoriesData } = await sp.rpc('get_my_booking_categories', {
-          p_booking_ids: bookingIds,
-        });
-        if (categoriesData) {
-          bookingCategoryMap = new Map((categoriesData || []).map((c: any) => [c.booking_id, c.category]));
-        }
-      }
-    }
-
-    const offeringCategoryMap = new Map<string, string>(
-      (offeringsResult.data || []).map((o: any) => [o.id, o.category])
-    );
+    const bookings = await fetchMyProviderBookings(providerId);
 
     return {
       provider: providerResult.data ? mapProviderFromDb(providerResult.data) : null,
       vehicles: (vehiclesResult.data || []).map(mapVehicleFromDb),
-      offerings: (offeringsResult.data || []).map(mapOfferingFromDb),
-      bookings: rawBookings.map((row: any) =>
-        mapBookingFromDb(
-          row,
-          bookingCategoryMap.get(row.id) || offeringCategoryMap.get(row.offering_id)
-        )
-      ),
+      offerings: (offeringsResult.data || [])
+        .filter((row: any) => row.source !== 'AULA_AGORA')
+        .map(mapOfferingFromDb),
+      bookings,
       complianceDocuments: (documentsResult.data || []).map(mapComplianceFromDb),
       availabilityRules: rulesResult.data || [],
       availabilityExceptions: exceptionsResult.data || [],
@@ -1904,6 +1943,19 @@ export const dbService = {
     return data || [];
   },
 
+  async listMySchoolInvitationContexts(): Promise<SchoolInvitationContext[]> {
+    const { data, error } = await sp.rpc('list_my_school_invitation_contexts');
+    if (error) throw error;
+    return (data || []).map((row: any) => ({
+      id: row.invitation_id,
+      schoolId: row.school_id,
+      schoolName: row.school_name || 'Autoescola',
+      schoolAvatarUrl: row.school_avatar_url || undefined,
+      status: row.status,
+      expiresAt: row.expires_at || undefined,
+    }));
+  },
+
   async listSchoolInstructorInvitations(schoolId: string): Promise<any[]> {
     const { data, error } = await sp.rpc('list_school_instructor_invitations', { p_school_id: schoolId });
     if (error) throw error;
@@ -1936,6 +1988,15 @@ export const dbService = {
 
   async tryActivateSchoolInstructorMembership(membershipId: string): Promise<any> {
     const { data, error } = await sp.rpc('try_activate_school_instructor_membership', { p_membership_id: membershipId });
+    if (error) throw error;
+    return data;
+  },
+
+  async suspendSchoolInstructorMembership(membershipId: string, reason?: string): Promise<any> {
+    const { data, error } = await sp.rpc('suspend_school_instructor_membership', {
+      p_membership_id: membershipId,
+      p_reason: reason || null,
+    });
     if (error) throw error;
     return data;
   },
@@ -2046,45 +2107,53 @@ export const dbService = {
     if (error) throw error;
   },
 
-  async getMyInstantSettings(providerId: string): Promise<InstantLessonSettings[]> {
-    const { data, error } = await sp.rpc('get_my_instant_settings', { p_provider_id: providerId });
+  async getMyInstantSettings(providerId: string, offerings: ServiceOffering[] = []): Promise<InstantLessonSettings[]> {
+    let { data, error } = await sp.rpc('get_my_instant_vehicle_settings', { p_provider_id: providerId });
+    if (isMissingRpc(error, 'get_my_instant_vehicle_settings')) {
+      const legacy = await sp.rpc('get_my_instant_settings', { p_provider_id: providerId });
+      data = legacy.data;
+      error = legacy.error;
+      if (error) throw error;
+    }
     if (error) throw error;
-    return (data || []).map((row: any) => ({
-      id: row.id,
-      providerId: row.provider_id,
-      offeringId: row.offering_id,
-      instantEnabled: row.instant_enabled === true,
-      instantOnline: row.instant_online === true,
-      instantPriceInCents: Number(row.instant_price_in_cents || 0),
-      maxDistanceKm: Number(row.max_distance_km || 5),
-      updatedAt: row.updated_at,
-    }));
+    return (data || []).map((row: any) => {
+      const offering = offerings.find((item) => item.id === row.offering_id);
+      return mapInstantSettingRow(row, { instructorId: offering?.instructorId, vehicleId: offering?.vehicleId });
+    });
   },
 
   async saveMyInstantSetting(params: {
     providerId: string;
-    offeringId: string;
+    instructorId: string;
+    vehicleId: string;
     instantEnabled: boolean;
     instantPriceInCents: number;
     maxDistanceKm: number;
+    offeringId?: string;
   }): Promise<InstantLessonSettings> {
-    const { data, error } = await sp.rpc('save_my_instant_setting', {
+    let { data, error } = await sp.rpc('save_my_instant_vehicle_setting', {
       p_provider_id: params.providerId,
-      p_offering_id: params.offeringId,
+      p_instructor_id: params.instructorId,
+      p_vehicle_id: params.vehicleId,
       p_instant_enabled: params.instantEnabled,
       p_instant_price_in_cents: params.instantPriceInCents,
       p_max_distance_km: params.maxDistanceKm,
     });
+    if (isMissingRpc(error, 'save_my_instant_vehicle_setting')) {
+      if (!params.offeringId) throw new Error('INSTANT_SETTING_MIGRATION_REQUIRED');
+      const legacy = await sp.rpc('save_my_instant_setting', {
+        p_provider_id: params.providerId,
+        p_offering_id: params.offeringId,
+        p_instant_enabled: params.instantEnabled,
+        p_instant_price_in_cents: params.instantPriceInCents,
+        p_max_distance_km: params.maxDistanceKm,
+      });
+      data = legacy.data;
+      error = legacy.error;
+      if (!error) data = { ...data, instructor_id: params.instructorId, vehicle_id: params.vehicleId };
+    }
     if (error) throw error;
-    return {
-      id: data.id,
-      providerId: data.provider_id,
-      offeringId: data.offering_id,
-      instantEnabled: data.instant_enabled === true,
-      instantOnline: data.instant_online === true,
-      instantPriceInCents: Number(data.instant_price_in_cents || 0),
-      maxDistanceKm: Number(data.max_distance_km || 5),
-    };
+    return mapInstantSettingRow(data, { instructorId: params.instructorId, vehicleId: params.vehicleId });
   },
 
   async setMyInstantOnline(providerId: string, offeringId: string, online: boolean): Promise<void> {
@@ -2385,69 +2454,6 @@ export const dbService = {
 
   async setProviderOnTheWay(bookingId: string): Promise<void> {
     const { error } = await sp.rpc('set_provider_on_the_way', { p_booking_id: bookingId });
-    if (error) {
-      const errStr = JSON.stringify(error) + String(error.message || '') + String(error.code || '');
-      if (
-        error.code === 'PGRST202' ||
-        error.code === '42P01' ||
-        error.status === 404 ||
-        errStr.includes('404') ||
-        errStr.includes('Could not find the function')
-      ) {
-        console.warn('[setProviderOnTheWay] RPC missing on remote DB, applying fallback logic');
-        const now = new Date().toISOString();
-
-        // Always save in sessionStorage so the frontend session immediately transitions to ON_THE_WAY
-        try {
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem(`mazzi_on_the_way_${bookingId}`, now);
-          }
-        } catch (_) {}
-
-        try {
-          const { data: booking } = await sp
-            .from('bookings')
-            .select('id, snapshot_data, student_id')
-            .eq('id', bookingId)
-            .maybeSingle();
-
-          if (booking) {
-            const currentSnapshot = (booking.snapshot_data as Record<string, any>) || {};
-            const updatedSnapshot = {
-              ...currentSnapshot,
-              provider_on_the_way_at: now,
-            };
-
-            const { error: updateErr } = await sp
-              .from('bookings')
-              .update({
-                snapshot_data: updatedSnapshot,
-                updated_at: now,
-              })
-              .eq('id', bookingId);
-
-            if (updateErr) console.warn('[setProviderOnTheWay] Direct DB update blocked by RLS (expected when RPC is not deployed):', updateErr.message || updateErr);
-
-            if (booking.student_id) {
-              await sp.from('notifications').insert({
-                user_id: booking.student_id,
-                type: 'PROVIDER_CHECKIN',
-                title: 'PRO a caminho!',
-                body: 'Seu profissional aceitou a Aula Agora e já está a caminho do ponto de encontro.',
-                entity_type: 'booking',
-                entity_id: bookingId,
-                app_context: 'STUDENT',
-                navigation_action: 'details',
-              }).catch((e: any) => console.warn('[setProviderOnTheWay] Fallback notification insert skipped:', e?.message || e));
-            }
-          }
-        } catch (dbErr) {
-          console.warn('[setProviderOnTheWay] DB fallback query skipped:', dbErr);
-        }
-
-        return;
-      }
-      throw error;
-    }
+    if (error) throw error;
   }
 };

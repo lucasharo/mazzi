@@ -19,12 +19,14 @@ export interface MapProviderProps {
   className?: string;
   height?: string;
   showCoverageRadius?: boolean;
+  showMeetingPointPopup?: boolean;
   meetingPoint?: MapMeetingPoint;
   userLocation?: MapCoordinates;
   searchedLocation?: MapCoordinates & { label?: string };
   zoom?: number;
   providerMarker?: 'initials' | 'vehicle';
   followSelectedProvider?: boolean;
+  /** Enables map gestures, controls and marker interactions. */
   interactive?: boolean;
 }
 

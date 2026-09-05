@@ -203,7 +203,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const displayQuote = quote || resumedQuote;
   const isInstantLesson = resumeBooking?.snapshot?.source === 'AULA_AGORA';
-  const instantMeetingPoint = resumeBooking?.fullMeetingPoint || resumeBooking?.meetingPoint || '';
+  const instantMeetingPoint = resumeBooking?.fullMeetingPoint
+    || formatMeetingPoint(resumeBooking?.meetingPoint)
+    || formatMeetingPoint(resumeBooking?.snapshot?.meetingPoint)
+    || '';
   const displayInstructorName = displayQuote?.instructorName || provider?.name || 'Instrutor';
   const displayProviderName = displayQuote?.providerName || provider?.name || 'Autoescola';
   const displayVehicleName = displayQuote?.vehicleName || (vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Veículo');
@@ -241,8 +244,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setBooking(resumeBooking);
       setPayment(null);
       setPaymentMethod(null);
-      const persistedMeetingPoint = resumeBooking.meetingPoint?.trim();
-      const providerMeetingPoint = resumeBooking.snapshot?.meetingPoint?.trim();
+      const persistedMeetingPoint = formatMeetingPoint(resumeBooking.meetingPoint);
+      const providerMeetingPoint = formatMeetingPoint(resumeBooking.snapshot?.meetingPoint);
       const hasStudentMeetingPoint = Boolean(
         persistedMeetingPoint && providerMeetingPoint && persistedMeetingPoint !== providerMeetingPoint,
       );
@@ -1085,7 +1088,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         {/* Global Error Banner */}
         {errorMessage && (
-          <div role={stripePaymentPending ? 'status' : 'alert'} aria-live="polite" className={`p-3.5 rounded-2xl text-xs font-semibold flex items-start gap-2 ${stripePaymentPending ? 'bg-amber-50 border border-amber-200 text-amber-950' : 'bg-rose-50 border border-rose-200 text-rose-800'}`}>
+          <div role={stripePaymentPending ? 'status' : 'alert'} aria-live="polite" className={`mazzi-compact-card p-3.5 rounded-2xl text-xs font-semibold flex items-start gap-2 ${stripePaymentPending ? 'bg-amber-50 border border-amber-200 text-amber-950' : 'bg-rose-50 border border-rose-200 text-rose-800'}`}>
             {stripePaymentPending
               ? <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
               : <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />}
@@ -1097,7 +1100,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         {/* Payment environment banner */}
         {showTestCopy && step !== 'SUCCESS' && checkoutGatewayProvider === 'fake' && (
-          <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 font-bold flex items-center gap-2">
+          <div className="mazzi-compact-card p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 font-bold flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" aria-hidden="true" />
             <span>Pagamento simulado — nenhum valor será cobrado.</span>
           </div>
@@ -1118,7 +1121,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Provider & Schedule Summary */}
-            <div className="rounded-2xl border border-[#e9e6de] bg-white space-y-3 p-4 sm:p-5 text-xs text-slate-700 shadow-2xs">
+            <div className="mazzi-compact-card rounded-2xl border border-[#e9e6de] bg-white space-y-3 p-4 sm:p-5 text-xs text-slate-700 shadow-2xs">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <span className="font-extrabold text-slate-900 text-base block truncate">
@@ -1156,7 +1159,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Commercial Price Breakdown */}
-            <div className="rounded-2xl bg-white border border-[#e9e6de] p-4 space-y-2 text-slate-900 shadow-2xs">
+            <div className="mazzi-compact-card rounded-2xl bg-white border border-[#e9e6de] p-4 space-y-2 text-slate-900 shadow-2xs">
               <div className="flex items-center justify-between text-xs font-medium text-slate-600">
                 <span>Aula prática{durationLabel}</span>
                 <span className="font-semibold text-slate-800">{formatCentsToBRL(displayQuote.priceInCents)}</span>
@@ -1168,7 +1171,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Meeting Point Selection */}
-            <div className="rounded-2xl border border-[#e9e6de] bg-white p-4 space-y-3">
+            <div className="mazzi-compact-card rounded-2xl border border-[#e9e6de] bg-white p-4 space-y-3">
               <p className="text-xs font-bold text-slate-900">Ponto de encontro</p>
               {isInstantLesson ? (
                 <div className="flex items-start gap-2 text-sm text-slate-700">
@@ -1263,7 +1266,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-[var(--mazzi-border)] space-y-3">
+            <div className="mazzi-compact-card p-4 rounded-2xl bg-slate-50 border border-[var(--mazzi-border)] space-y-3">
               <p className="text-sm font-black text-slate-900">Sua sessão expirou</p>
               <p className="text-xs text-slate-600">Entre novamente para continuar com segurança.</p>
               <Button
@@ -1345,7 +1348,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Reservation summary: the student reviews the selected details before leaving for Stripe. */}
-            <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 shadow-2xs">
+            <div className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 shadow-2xs">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div>
                   <p className="mazzi-field-label">Confira sua aula</p>
@@ -1449,7 +1452,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {/* PIX Fake View */}
             {checkoutGatewayProvider === 'fake' && paymentMethod === 'PIX' && payment && (
-              <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] text-center space-y-3 shadow-2xs">
+              <div className="mazzi-compact-card p-4 rounded-2xl bg-white border border-[#e9e6de] text-center space-y-3 shadow-2xs">
                 <p className="text-xs font-bold text-slate-800">Código PIX Copia e Cola (Simulado)</p>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] text-slate-600 break-all select-all">
                   {payment.pixQrCode || `FAKE_PIX_SIMULATED_PAYMENT_ENV_DEVELOPMENT_${payment.id}`}
@@ -1495,7 +1498,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {/* Credit Card Fake View */}
             {checkoutGatewayProvider === 'fake' && paymentMethod === 'CREDIT_CARD' && payment && (
-              <div className="p-4 rounded-2xl bg-white border border-[#e9e6de] space-y-3 shadow-2xs">
+              <div className="mazzi-compact-card p-4 rounded-2xl bg-white border border-[#e9e6de] space-y-3 shadow-2xs">
                 <p className="text-xs font-bold text-slate-800 text-center">
                   Simulador de Testes de Cartão
                 </p>
@@ -1589,7 +1592,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>}
             </div>
 
-            <div className="space-y-1.5 rounded-2xl border border-amber-100 bg-[var(--mazzi-yellow-hover)]/35 p-4 text-left text-xs">
+            <div className="mazzi-compact-card space-y-1.5 rounded-2xl border border-amber-100 bg-[var(--mazzi-yellow-hover)]/35 p-4 text-left text-xs">
               <p className="font-extrabold text-[var(--mazzi-text)]">{booking.instructorName || booking.providerName}</p>
               <p className="text-[var(--mazzi-text)]">
                 {booking.scheduledStartAt

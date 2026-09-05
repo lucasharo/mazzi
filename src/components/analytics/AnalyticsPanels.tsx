@@ -200,7 +200,7 @@ export const ProviderAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refr
   }, [load, refreshKey]);
 
   return (
-    <section className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">
+    <section className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">

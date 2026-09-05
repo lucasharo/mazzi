@@ -5,12 +5,9 @@ import { ButtonBase } from '../ui/Button';
 import { formatCentsToBRL } from '../../domain/money';
 import { formatMeetingPoint, formatPendingPaymentMeetingPoint } from '../../lib/meeting-point';
 import { needsMeetingPointAddress } from '../../domain/maps/meeting-point-address';
+import type { InstantOperationalState } from '../../domain/instant-lesson';
 
-export type InstantLessonOperationalState =
-  | 'WAITING_PAYMENT'
-  | 'CONFIRMED'
-  | 'ON_THE_WAY'
-  | 'IN_PROGRESS';
+export type InstantLessonOperationalState = InstantOperationalState;
 
 interface InstantLessonActiveBannerProps {
   booking: Booking;
@@ -103,4 +100,3 @@ export const InstantLessonActiveBanner: React.FC<InstantLessonActiveBannerProps>
     </section>
   );
 };
-

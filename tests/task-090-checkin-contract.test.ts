@@ -7,6 +7,7 @@ const migrationPath = path.join(root, 'supabase/migrations/20260823220956_requir
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const providerModal = fs.readFileSync(path.join(root, 'src/apps/provider/components/ProviderBookingDetailsModal.tsx'), 'utf8');
 const studentModal = fs.readFileSync(path.join(root, 'src/apps/student/components/BookingDetailsModal.tsx'), 'utf8');
+const sharedBookingDetails = fs.readFileSync(path.join(root, 'src/components/booking/BookingDetailsShared.tsx'), 'utf8');
 const schedule = fs.readFileSync(path.join(root, 'src/apps/provider/components/ProviderScheduleTab.tsx'), 'utf8');
 
 describe('TASK-090 check-in contract', () => {
@@ -28,8 +29,7 @@ describe('TASK-090 check-in contract', () => {
     expect(migration).toContain('STUDENT_CHECKIN_REQUIRED');
     expect(migration).toContain("status::TEXT = 'IN_PROGRESS'");
     expect(providerModal).toContain('booking.instructorCheckedIn && booking.studentCheckedIn');
-    expect(providerModal).toContain('Aguardando abertura do check-in');
-    expect(studentModal).toContain('Check-in disponível a partir de');
+    expect(sharedBookingDetails).toContain('Aguardando abertura do check-in · disponível a partir de');
   });
 
   it('presents date-only blocks as one semantic phrase', () => {

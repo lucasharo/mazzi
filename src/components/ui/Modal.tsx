@@ -130,7 +130,7 @@ export const Modal: React.FC<ModalProps> = ({
   const modalContent = (
     <div
       id={id || 'mazzi-modal'}
-      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'modal' ? 'items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs' : 'items-stretch justify-stretch bg-[var(--mazzi-bg)]'} animate-in fade-in duration-150 ${className}`}
+      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'modal' ? 'items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs' : 'items-stretch justify-stretch bg-white'} animate-in fade-in duration-150 ${className}`}
       onClick={(e) => {
         if (presentation === 'modal' && closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
@@ -143,12 +143,12 @@ export const Modal: React.FC<ModalProps> = ({
         aria-label={title ? undefined : ariaLabel || 'Janela de diálogo'}
         tabIndex={-1}
         className={`relative w-full ${presentation === 'page' || presentation === 'fullscreen'
-          ? `h-full max-w-none rounded-none border-0 ${presentation === 'fullscreen' ? 'bg-transparent' : 'bg-[var(--mazzi-bg)]'} shadow-none`
-          : `${sizeStyles[size]} mb-8 max-h-[90vh] rounded-3xl border border-[var(--mazzi-border)] bg-white shadow-xl`}
+          ? 'h-full max-w-none rounded-none border-0 bg-white shadow-none'
+          : `${sizeStyles[size]} mb-8 max-h-[90vh] rounded-2xl border border-[var(--mazzi-border)] bg-white shadow-xl`}
           } overflow-clip flex flex-col animate-in ${presentation === 'modal' ? 'zoom-in-95' : presentation === 'page' ? 'slide-in-from-bottom-2' : ''} duration-150 text-left`}
       >
         {title && (
-          <div className={`${presentation === 'modal' ? 'bg-white' : 'bg-[var(--mazzi-bg)]'} px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between`}>
+          <div className="bg-white px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between">
             <div className="flex min-w-0 items-center gap-2">
               {headerAction}
               <h3 id={titleId} className="font-extrabold text-[var(--mazzi-dark)] text-base">{title}</h3>
@@ -172,7 +172,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {footer && (footerVariant === 'wizard'
-          ? <div className="shrink-0 bg-white px-4 pb-4 sm:px-6 sm:pb-6"><div className="mx-auto w-full max-w-[480px]"><WizardActionFooter>{footer}</WizardActionFooter></div></div>
+          ? <div className="shrink-0 bg-[var(--mazzi-modal-footer-bg)] px-4 pb-4 sm:px-6 sm:pb-6"><div className="mx-auto w-full max-w-[480px]"><WizardActionFooter>{footer}</WizardActionFooter></div></div>
           : <ModalActionFooter align="right" className={presentation === 'fullscreen' ? `!mx-0 ${footerClassName}` : footerClassName}>{footer}</ModalActionFooter>)}
       </div>
     </div>

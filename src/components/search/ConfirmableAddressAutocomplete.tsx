@@ -193,9 +193,7 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
                   title="Usar minha localização atual"
                   className="absolute left-4 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] transition hover:brightness-95 active:scale-95 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
                 >
-                  {isLocating
-                    ? <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
-                    : <Navigation className="h-5 w-5" aria-hidden="true" />}
+                  <Navigation className={`h-5 w-5 ${isLocating ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />
                 </ButtonBase>
               )}
               inputTrailing={(

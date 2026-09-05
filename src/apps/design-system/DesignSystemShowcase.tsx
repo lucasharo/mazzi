@@ -288,7 +288,7 @@ export const DesignSystemShowcase: React.FC = () => {
       {/* Main Layout Area */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto p-4 md:p-6 gap-6 text-left">
         {/* Desktop Sidebar Navigation */}
-        <aside className="w-64 shrink-0 hidden lg:block space-y-1 bg-white p-4 rounded-3xl border border-[#e9e6de] shadow-xs self-start sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
+        <aside className="w-64 shrink-0 hidden lg:block space-y-1 bg-white p-4 rounded-2xl border border-[#e9e6de] shadow-xs self-start sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
           <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-3 mb-2">
             Navegação do Catálogo
           </p>
@@ -322,7 +322,7 @@ export const DesignSystemShowcase: React.FC = () => {
           </div>
 
           <div className={getContainerWidth()}>
-            <div className="bg-white rounded-3xl border border-[#e9e6de] p-6 md:p-8 shadow-xs space-y-10">
+            <div className="bg-white rounded-2xl border border-[#e9e6de] p-6 md:p-8 shadow-xs space-y-10">
 
               {/* 1. FOUNDATIONS */}
               {activeSection === 'foundations' && (
@@ -614,7 +614,7 @@ export const DesignSystemShowcase: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="p-6 rounded-3xl bg-slate-50 border border-[#e9e6de] space-y-4">
+                  <div className="p-6 rounded-2xl bg-slate-50 border border-[#e9e6de] space-y-4">
                     <label className="mazzi-field-label block">Código de Verificação OTP ({AUTH_OTP_LENGTH} dígitos):</label>
                     <OtpInput value={otpVal} onChange={setOtpVal} />
                     <p className="text-[11px] font-mono text-slate-500">Valor atual: "{otpVal}"</p>
@@ -779,7 +779,7 @@ export const DesignSystemShowcase: React.FC = () => {
                       O exemplo abre o mesmo <code className="font-mono font-bold">SlotSelectorModal</code> usado pelo Aluno, com calendário, disponibilidade diária, períodos e resumo da seleção.
                     </p>
                   </div>
-                  <div className="mx-auto max-w-[430px] rounded-3xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] p-5 shadow-xs">
+                  <div className="mx-auto max-w-[430px] rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] p-5 shadow-xs">
                     <div className="flex items-start gap-3">
                       <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-600">
                         <CalendarClock className="h-6 w-6" aria-hidden="true" />
@@ -803,7 +803,7 @@ export const DesignSystemShowcase: React.FC = () => {
                     <h2 className="text-xl font-black text-[#202126]">15. Componentes de Chat</h2>
                   </div>
 
-                  <div className="p-4 rounded-3xl border border-slate-200 bg-slate-50 space-y-3">
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
                     <div className="p-3 rounded-2xl bg-white border border-slate-200 text-xs text-slate-800 max-w-[80%] space-y-1 shadow-2xs">
                       <p className="font-bold text-slate-900">Instrutor Carlos:</p>
                       <p>Olá! Estarei no ponto de encontro combinado às 09:00.</p>
@@ -827,7 +827,7 @@ export const DesignSystemShowcase: React.FC = () => {
                       Skeletons aparecem somente na região de dados que está sendo atualizada. O header, as abas e os controles da tela permanecem visíveis e interativos.
                     </p>
                   </div>
-                  <div className="space-y-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5">
+                  <div className="space-y-4 rounded-2xl border border-[var(--mazzi-border)] bg-white p-5">
                     <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Lista</h3>
                     <ContentSkeleton label="Atualizando lista" />
                     <h3 className="pt-2 text-xs font-black uppercase tracking-wider text-slate-500">Objeto</h3>
@@ -980,7 +980,7 @@ export const DesignSystemShowcase: React.FC = () => {
                   </div>
 
                   <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-3xl border border-[#e9e6de] bg-[#f7f5ef] p-5">
+                    <div className="rounded-2xl border border-[#e9e6de] bg-[#f7f5ef] p-5">
                       <AppHomeHeader
                         eyebrow="Aluno MAZZI"
                         eyebrowIcon={<UserRound className="h-3 w-3" aria-hidden="true" />}
@@ -990,7 +990,7 @@ export const DesignSystemShowcase: React.FC = () => {
                         onRefresh={() => undefined}
                       />
                     </div>
-                    <div className="rounded-3xl border border-[#e9e6de] bg-[#f7f5ef] p-5">
+                    <div className="rounded-2xl border border-[#e9e6de] bg-[#f7f5ef] p-5">
                       <AppHomeHeader
                         eyebrow="Instrutor MAZZI"
                         eyebrowIcon={<UserCheck className="h-3 w-3" aria-hidden="true" />}
@@ -1040,7 +1040,7 @@ export const DesignSystemShowcase: React.FC = () => {
 
                   <div className="space-y-3">
                     <h3 className="mazzi-section-title">Ações e status</h3>
-                    <div className="space-y-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5">
+                    <div className="space-y-4 rounded-2xl border border-[var(--mazzi-border)] bg-white p-5">
                       <div className="flex flex-wrap items-center gap-3">
                         <ButtonBase className="min-h-11 rounded-2xl border border-[var(--mazzi-border)] bg-white px-3.5 text-xs font-bold">ButtonBase</ButtonBase>
                         <Button variant="primary" leftIcon={<Check className="h-4 w-4" aria-hidden="true" />}>Button</Button>
@@ -1062,7 +1062,7 @@ export const DesignSystemShowcase: React.FC = () => {
 
                   <div className="space-y-3">
                     <h3 className="mazzi-section-title">Formulários e avaliação</h3>
-                    <div className="grid gap-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 md:grid-cols-2">
+                    <div className="grid gap-4 rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 md:grid-cols-2">
                       <Input label="Endereço" value={inputVal} onChange={(event) => setInputVal(event.target.value)} />
                       <Select label="Categoria" options={[{ value: 'B', label: 'Categoria B' }, { value: 'A', label: 'Categoria A' }]} />
                       <div className="md:col-span-2"><OtpInput value={otpVal} onChange={setOtpVal} length={8} /></div>
@@ -1087,13 +1087,13 @@ export const DesignSystemShowcase: React.FC = () => {
                         action={<PrimaryButton>Buscar aulas</PrimaryButton>}
                       />
                       <ErrorState message="Não foi possível carregar os dados agora." onRetry={() => undefined} />
-                      <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5"><LoadingScreen fullscreen={false} label="Atualizando conteúdo" /></div>
+                      <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-5"><LoadingScreen fullscreen={false} label="Atualizando conteúdo" /></div>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <h3 className="mazzi-section-title">Headers e navegação</h3>
-                    <div className="space-y-6 rounded-3xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] p-5">
+                    <div className="space-y-6 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] p-5">
                       <AppPageHeader
                         eyebrow="Sua jornada"
                         title="Minhas aulas"
@@ -1139,7 +1139,7 @@ export const DesignSystemShowcase: React.FC = () => {
                     ))}
                   </div>
 
-                  <div className="-mx-6 w-[calc(100%+3rem)] overflow-hidden rounded-3xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] shadow-xs sm:mx-0 sm:w-full">
+                  <div className="-mx-6 w-[calc(100%+3rem)] overflow-hidden rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] shadow-xs sm:mx-0 sm:w-full">
                     <div className="mx-auto min-h-[720px] w-full max-w-[430px] bg-[var(--mazzi-bg)] px-2 pb-6 pt-5 sm:px-5">
                       {studentPreviewTab === 'search' && (
                         <div className="space-y-7">
@@ -1255,7 +1255,7 @@ export const DesignSystemShowcase: React.FC = () => {
                             <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">Ana Beatriz Souza</h3>
                             <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">ana.aluno@mazzi.com.br</p>
                           </div>
-                          <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+                          <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
                             <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Dados do perfil</h4>
                             <dl className="mt-4 space-y-3 text-sm">
                               {[
@@ -1271,7 +1271,7 @@ export const DesignSystemShowcase: React.FC = () => {
                               ))}
                             </dl>
                           </div>
-                          <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+                          <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
                             <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Edição da foto</h4>
                             <div className="mt-4">
                               <ProfilePhotoPicker value={studentProfilePhoto} name="Ana Beatriz Souza" onChange={setStudentProfilePhoto} />
@@ -1298,7 +1298,7 @@ export const DesignSystemShowcase: React.FC = () => {
 
                   <div className="space-y-3">
                     <h3 className="mazzi-section-title">Overlays e fluxos do Aluno</h3>
-                    <div className="space-y-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+                    <div className="space-y-4 rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
                       <p className="text-xs font-normal leading-relaxed text-slate-600">
                         Os fluxos transacionais permanecem componentes únicos do produto. O catálogo referencia as APIs reais sem duplicar marcação ou regras de negócio.
                       </p>

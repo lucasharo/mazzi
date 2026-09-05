@@ -191,7 +191,7 @@ function ProfessionalPathOption({ icon, title, description, onClick }: Professio
     <Button
       type="button"
       variant="outline"
-      className="h-auto min-h-[104px] w-full items-center justify-start gap-3 whitespace-normal rounded-3xl px-4 py-4 text-left"
+      className="h-auto min-h-[104px] w-full items-center justify-start gap-3 whitespace-normal rounded-2xl px-4 py-4 text-left"
       contentClassName="flex-1 whitespace-normal"
       leftIcon={
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700">
@@ -836,7 +836,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
 
   const shell = (content: React.ReactNode) => (
     <main className="min-h-[100dvh] w-full bg-[var(--mazzi-bg)] flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="mazzi-card w-full max-w-md p-6 sm:p-8 rounded-3xl bg-white border border-[var(--mazzi-border)] shadow-sm text-left">
+      <div className="mazzi-card w-full max-w-md p-6 sm:p-8 rounded-2xl bg-white border border-[var(--mazzi-border)] shadow-sm text-left">
         {content}
       </div>
     </main>

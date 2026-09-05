@@ -21,6 +21,10 @@ integral e publicação DEV ainda pendentes, sem alegação de READY_FOR_RELEASE
 
 Foi implementada localmente a jornada de Aula Agora para Student e PRO: configuração por oferta, matching PostGIS em ondas, preço livre do PRO em centavos, aceite atômico no booking existente, notificações contextuais e tracking pós-match com o mapa Leaflet já utilizado pelo produto. Os gates locais passaram. A aplicação no Supabase DEV ainda está pendente porque o ledger remoto contém migrations ausentes no checkout local; Production permanece intocada.
 
+O dashboard do PRO também exibe o estado da Aula Agora e abre diretamente sua configuração, mantendo a ativação, pausa e disponibilidade online no painel de gestão existente.
+
+Atualização de disponibilidade por veículo (2026-09-05): a configuração do PRO agora exibe somente veículos `ACTIVE` na Gestão, mantém a habilitação de Aula Agora independente por carro e apresenta um único controle para a disponibilidade geral do instrutor. A migration `20260905223000_instant_vehicle_visibility.sql` foi aplicada e verificada no Supabase DEV; ofertas pendentes vinculadas a um carro desativado são expiradas sem alterar os demais veículos.
+
 ## 1. Separação de Responsabilidades da Documentação
 
 Para evitar divergências entre planejamento, arquitetura e código funcional:

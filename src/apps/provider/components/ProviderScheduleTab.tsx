@@ -496,7 +496,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       {/* RECURRING RULES SUBTAB */}
       {scheduleSubTab === 'rules' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+          <div className="mazzi-compact-card p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
             <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
             <p>
               As <strong>Regras Semanais</strong> definem os horários em que você costuma estar disponível para dar aulas. O motor de busca da MAZZI gera os slots automaticamente a partir dessas janelas.
@@ -516,7 +516,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               {availabilityRules.map((rule) => (
                 <div
                   key={rule.id}
-                  className="p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs flex items-center justify-between gap-3"
+                  className="mazzi-compact-card p-4 rounded-2xl bg-white border border-[#e9e6de] shadow-xs flex items-center justify-between gap-3"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -568,7 +568,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       {scheduleSubTab === 'exceptions' && (
         <div className="space-y-4">
           {globalBlockActionError && (
-            <div role="alert" className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-extrabold text-rose-950 flex items-center justify-between gap-3">
+            <div role="alert" className="mazzi-compact-card p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-extrabold text-rose-950 flex items-center justify-between gap-3">
               <span>{globalBlockActionError}</span>
               <ButtonBase type="button" onClick={() => setGlobalBlockActionError(null)} className="text-rose-600 hover:text-rose-900 font-bold cursor-pointer">
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -588,7 +588,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               {isInstructorUser && sortedGlobalBlocks.map((gb) => {
                 const editable = canChangeBlock(gb.end_at);
                 return (
-                <div key={`global-${gb.id}`} className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3">
+                <div key={`global-${gb.id}`} className="mazzi-compact-card rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3">
                   <div className="min-w-0 space-y-2">
                     <Badge variant="warning">Bloqueio rápido</Badge>
                     <p className="text-xs font-bold text-[var(--mazzi-text)]">{formatDateTimeBR(gb.start_at)} até {formatDateTimeBR(gb.end_at)}</p>
@@ -608,7 +608,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                 return (
                 <div
                   key={exc.id}
-                  className="rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3"
+                  className="mazzi-compact-card rounded-2xl border border-[#e9e6de] bg-white p-4 shadow-xs flex items-center justify-between gap-3"
                 >
                   <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -644,7 +644,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
 
       {/* SIMULATOR SUBTAB */}
       {false && (
-        <div className="p-5 rounded-3xl bg-white border border-[#e9e6de] shadow-xs space-y-4">
+        <div className="mazzi-compact-card rounded-2xl bg-white border border-[#e9e6de] shadow-xs space-y-4 p-5">
               <div className="flex items-center gap-2 text-sm font-bold text-[var(--mazzi-text)]">
             <Sparkles className="w-4 h-4 text-[#f6c945]" />
             <span>Simulador do Gerador de Vagas</span>

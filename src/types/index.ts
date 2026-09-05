@@ -41,7 +41,6 @@ export type BookingStatus =
   | 'PENDING_PAYMENT'
   | 'PAYMENT_FAILED'
   | 'CONFIRMED'
-  | 'ON_THE_WAY'
   | 'IN_PROGRESS'
   | 'COMPLETED'
   | 'CANCELLED_BY_STUDENT'
@@ -96,6 +95,21 @@ export interface StudentSavedAddress {
   state?: string;
   country?: string;
 }
+
+export type BookingMeetingPoint = string | StudentSavedAddress | {
+  type?: string;
+  formattedAddress?: string;
+  formatted_address?: string;
+  fullAddress?: string;
+  full_address?: string;
+  address?: string;
+  label?: string;
+  name?: string;
+  neighborhood?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+};
 
 export interface Provider {
   id: string;
@@ -300,6 +314,7 @@ export interface ServiceOffering {
   durationMinutes: number; // MVP: 50 minutes (CONTRAN hour-class)
   priceInCents: number; // Integer cents > 0 (e.g. 10000 = R$ 100,00)
   status: 'ACTIVE' | 'INACTIVE';
+  source?: 'AGENDA' | 'AULA_AGORA';
   createdAt: string;
   updatedAt: string;
 }
@@ -450,6 +465,7 @@ export interface Quote {
 
 export interface BookingSnapshot {
   source?: string;
+  provider_on_the_way_at?: string;
   providerId: string;
   providerName: string;
   providerType: ProviderType;
@@ -466,7 +482,8 @@ export interface BookingSnapshot {
   priceInCents: number;
   platformFeeInCents: number;
   totalInCents: number;
-  meetingPoint: string | { latitude?: number; longitude?: number; address?: string };
+  meetingPoint: BookingMeetingPoint;
+  meetingPointLabel?: string;
   fullMeetingPoint?: string;
 }
 
@@ -493,7 +510,10 @@ export interface Booking {
   snapshot: BookingSnapshot;
   studentCheckedIn?: boolean;
   instructorCheckedIn?: boolean;
+  /** Text label kept for existing booking consumers; exact structured data lives in snapshot.meetingPoint. */
   meetingPoint: string;
+  meetingPointLabel?: string;
+  providerOnTheWayAt?: string;
   fullMeetingPoint?: string;
   idempotencyKey?: string;
   priceInCents: number;
@@ -569,7 +589,12 @@ export type InstantLessonOfferStatus =
 export interface InstantLessonSettings {
   id?: string;
   providerId: string;
-  offeringId: string;
+  offeringId?: string;
+  instructorId?: string;
+  vehicleId?: string;
+  category?: VehicleCategory;
+  transmission?: TransmissionType;
+  durationMinutes?: number;
   instantEnabled: boolean;
   instantOnline: boolean;
   instantPriceInCents: number;

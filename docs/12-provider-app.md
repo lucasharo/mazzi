@@ -15,6 +15,10 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 - Perfil segue a composição do Aluno: avatar central, identificação, card de dados e edição no topo direito.
 - Listas vazias e ausência de próxima aula usam os componentes globais de estado vazio.
 - Formulários, botões, fontes, cores e bordas usam os mesmos componentes e tokens dos demais apps.
+- A configuração de Aula Agora é aberta em modal a partir da tela inicial; ela não ocupa uma aba própria dentro de Gestão.
+- Aula Agora possui configuração operacional própria por instrutor + veículo (preço e raio em centavos/km); ela não reutiliza nem altera o preço da oferta da agenda. A âncora interna dessa configuração fica fora da agenda e da busca pública.
+- A configuração de Aula Agora lista somente veículos com status `ACTIVE` na Gestão; o status cadastral do veículo não é repetido no card para evitar confusão.
+- Cada veículo possui seu próprio switch de habilitação para Aula Agora. Um único switch no painel controla a disponibilidade geral do instrutor; ao ativá-la, todos os veículos habilitados podem receber ofertas.
 
 ## Visões e Funcionalidades
 

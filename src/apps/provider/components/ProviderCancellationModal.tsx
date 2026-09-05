@@ -49,12 +49,12 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
   const footer = (
     <>
       <Button
-        variant="outline"
+        variant="secondary"
         size="sm"
-        className="min-w-0 flex-1 !whitespace-normal !px-2 text-center leading-tight min-h-[48px] rounded-2xl border-slate-300 bg-white font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
+        className="min-w-0 flex-1 !whitespace-normal !px-2 text-center leading-tight min-h-[48px] rounded-2xl"
         onClick={onClose}
         disabled={isProcessing}
-        leftIcon={<ArrowLeft className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />}
+        leftIcon={<ArrowLeft className="h-4 w-4 shrink-0 text-white" aria-hidden="true" />}
       >
         Manter aula
       </Button>
@@ -81,7 +81,7 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
     >
       <div className="space-y-5 text-left">
         {/* Policy Warning Banner */}
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-3">
+        <div className="mazzi-compact-card p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-3">
           <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-extrabold text-amber-950">Política de Cancelamento (DEC-013):</p>
@@ -92,8 +92,8 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
         </div>
 
         {/* Booking Summary */}
-        {booking.snapshot?.source === 'AULA_AGORA' && <div role="note" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">O cancelamento será analisado.</p><p>Cancelamento injustificado gera advertência. Ao atingir 3 em 30 dias, você fica 24 horas sem receber novas solicitações de Aula Agora. Aulas agendadas e repasses não são afetados. Emergências e problemas de segurança podem ser isentos após análise; você pode apresentar justificativa em Gestão.</p></div>}
-        <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-xs space-y-1">
+        {booking.snapshot?.source === 'AULA_AGORA' && <div role="note" className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">O cancelamento será analisado.</p><p>Cancelamento injustificado gera advertência. Ao atingir 3 em 30 dias, você fica 24 horas sem receber novas solicitações de Aula Agora. Aulas agendadas e repasses não são afetados. Emergências e problemas de segurança podem ser isentos após análise; você pode apresentar justificativa em Gestão.</p></div>}
+        <div className="mazzi-compact-card p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-xs space-y-1">
           <p className="font-extrabold text-slate-900">{booking.studentName}</p>
           <p className="text-slate-600">
             {booking.scheduledDate} • {booking.startTime} - {booking.endTime} (Cat. {booking.category})

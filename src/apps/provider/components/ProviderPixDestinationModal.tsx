@@ -79,7 +79,7 @@ export const ProviderPixDestinationModal: React.FC<ProviderPixDestinationModalPr
       )}
     >
       <form id="provider-pix-destination-form" className="space-y-4 text-left" onSubmit={(event) => { void handleSubmit(event); }}>
-        <div className="flex items-start gap-3 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
+        <div className="mazzi-compact-card flex items-start gap-3 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700">
             <QrCode className="h-5 w-5" aria-hidden="true" />
           </div>

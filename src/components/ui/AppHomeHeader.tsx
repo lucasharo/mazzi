@@ -10,6 +10,7 @@ interface AppHomeHeaderProps {
   title: string;
   subtitle: string;
   eyebrowIcon?: React.ReactNode;
+  titleClassName?: string;
   onOpenNotifications: () => void;
   onRefresh: () => void;
   onOpenProfile?: () => void;
@@ -23,6 +24,7 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
   title,
   subtitle,
   eyebrowIcon,
+  titleClassName,
   onOpenNotifications,
   onRefresh,
   onOpenProfile,
@@ -32,7 +34,7 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
   const appLabel = appContext === 'STUDENT' ? 'Aluno' : 'Profissional';
 
   return (
-    <header data-component="app-home-header" className="space-y-7">
+    <header data-component="app-home-header" className="space-y-[10px]">
       <div className="flex items-center justify-between gap-4">
         <div className="mazzi-brand-lockup min-w-0">
           <img src="/brand/mazzi-logo.png" alt="" width="42" height="42" aria-hidden="true" />
@@ -82,7 +84,7 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1.5">
           <p className="mazzi-eyebrow">{eyebrow}</p>
-          <h1 className="text-[28px] font-black leading-[1.04] tracking-[-0.045em] text-[var(--mazzi-dark)] sm:text-[34px]">
+          <h1 className={titleClassName || 'text-[28px] font-black leading-[1.04] tracking-[-0.045em] text-[var(--mazzi-dark)] sm:text-[34px]'}>
             {title}
           </h1>
           <p className="max-w-[42ch] text-xs font-medium leading-relaxed text-[var(--mazzi-muted)] sm:text-sm">

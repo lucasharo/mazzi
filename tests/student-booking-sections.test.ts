@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { getStudentBookingSection, isBookingEnded } from '../src/domain/booking';
+import { getStudentBookingSection, isBookingEnded, isBookingInProgress, sortBookingsForNext } from '../src/domain/booking';
 
 const studentApp = fs.readFileSync(path.join(process.cwd(), 'src/apps/student/StudentApp.tsx'), 'utf8');
 
@@ -45,6 +45,48 @@ describe('Student booking sections', () => {
     } as any;
     expect(isBookingEnded(booking, new Date('2026-08-28T11:30:00-03:00').getTime())).toBe(false);
     expect(isBookingEnded(booking, new Date('2026-08-28T11:50:00-03:00').getTime())).toBe(true);
+  });
+
+  it('prioritizes an active lesson over a future lesson for the dashboard card', () => {
+    const nowMs = new Date('2026-08-28T11:30:00-03:00').getTime();
+    const futureBooking = {
+      id: 'future',
+      status: 'CONFIRMED',
+      scheduledStartAt: '2026-08-28T12:00:00-03:00',
+      scheduledEndAt: '2026-08-28T12:50:00-03:00',
+    } as any;
+    const activeBooking = {
+      id: 'active',
+      status: 'IN_PROGRESS',
+      scheduledStartAt: '2026-08-28T11:00:00-03:00',
+      scheduledEndAt: '2026-08-28T11:50:00-03:00',
+    } as any;
+
+    expect(sortBookingsForNext([futureBooking, activeBooking], nowMs)[0].id).toBe('active');
+  });
+
+  it('recognizes a confirmed lesson inside its scheduled window as in progress', () => {
+    const nowMs = new Date('2026-08-28T11:30:00-03:00').getTime();
+    const booking = {
+      status: 'CONFIRMED',
+      scheduledStartAt: '2026-08-28T11:00:00-03:00',
+      scheduledEndAt: '2026-08-28T11:50:00-03:00',
+    } as any;
+
+    expect(isBookingInProgress(booking, nowMs)).toBe(true);
+    expect(isBookingInProgress(booking, new Date('2026-08-28T10:59:59-03:00').getTime())).toBe(false);
+    expect(isBookingInProgress(booking, new Date('2026-08-28T11:50:00-03:00').getTime())).toBe(false);
+  });
+
+  it('keeps an IN_PROGRESS lesson visible until the backend finishes it', () => {
+    const booking = {
+      status: 'IN_PROGRESS',
+      scheduledStartAt: '2026-08-28T11:00:00-03:00',
+      scheduledEndAt: '2026-08-28T11:50:00-03:00',
+    } as any;
+
+    expect(isBookingInProgress(booking, new Date('2026-08-28T12:15:00-03:00').getTime())).toBe(true);
+    expect(isBookingEnded(booking, new Date('2026-08-28T12:15:00-03:00').getTime())).toBe(false);
   });
 
   it('uses the Próximas title, includes future lessons from today, and preserves history filtering', () => {

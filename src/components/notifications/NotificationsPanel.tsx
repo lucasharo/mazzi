@@ -109,7 +109,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
   };
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="space-y-3 border-b border-slate-100 p-4">
         <div className="flex min-w-0 items-start gap-2">
           <div className="relative mt-0.5 shrink-0">

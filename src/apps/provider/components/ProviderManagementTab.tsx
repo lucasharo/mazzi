@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { InstantConductPanel } from '../../../components/instant/InstantConductPanel';
-import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, CalendarDays, Clock3, } from 'lucide-react';
+import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, CalendarDays, } from 'lucide-react';
 import {
-  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, ProviderPaymentAccount, AvailabilityRule, InstantLessonSettings, InstantLessonOffer, Booking, } from '../../../types';
+  Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, ProviderPaymentAccount, AvailabilityRule, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
@@ -24,13 +23,13 @@ import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 import { VehicleCatalogPicker } from '../../../components/vehicles/VehicleCatalogPicker';
 import { getStatusPresentation } from '../../../domain/status-presentation';
 import { ProviderAccountTab } from './ProviderAccountTab';
-import { ProviderInstantLessonPanel } from './ProviderInstantLessonPanel';
+import { isProviderPaymentAccountReady } from '../../../domain/payments/provider-payment-readiness';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
   isRefreshing?: boolean;
-  managementSubTab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account' | 'instant';
-  onSubTabChange: (tab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account' | 'instant') => void;
+  managementSubTab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account';
+  onSubTabChange: (tab: 'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account') => void;
   scheduleContent?: React.ReactNode;
   availabilityRules: AvailabilityRule[];
   vehicles: Vehicle[];
@@ -84,16 +83,8 @@ interface ProviderManagementTabProps {
   paymentAccount?: ProviderPaymentAccount | null;
   onOpenPayoutOnboarding?: () => void;
   isOpeningPayoutOnboarding?: boolean;
-  instantSettings: InstantLessonSettings[];
-  onSaveInstantSetting: (params: { offeringId: string; instantEnabled: boolean; instantPriceInCents: number; maxDistanceKm: number }) => Promise<void>;
-  onToggleInstantOnline: (setting: InstantLessonSettings, online: boolean) => Promise<void>;
-  onUpdateInstantLocation: () => Promise<void>;
-  instantLocationStatus?: 'IDLE' | 'UPDATING' | 'READY' | 'ERROR';
-  instantActionLoading?: boolean;
-  instantOffers: InstantLessonOffer[];
-  pendingPaymentInstantBookings: Booking[];
-  onRespondInstantOffer: (offerId: string, action: 'ACCEPT' | 'DECLINE') => Promise<void>;
-  instantOfferAction?: { offerId: string; action: 'ACCEPT' | 'DECLINE' } | null;
+  onboardingError?: string | null;
+  onShowFeedback?: (type: 'success' | 'warning' | 'error' | 'info', title: string, description?: string) => void;
 }
 
 export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
@@ -137,16 +128,8 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   paymentAccount,
   onOpenPayoutOnboarding,
   isOpeningPayoutOnboarding = false,
-  instantSettings,
-  onSaveInstantSetting,
-  onToggleInstantOnline,
-  onUpdateInstantLocation,
-  instantLocationStatus,
-  instantActionLoading,
-  instantOffers,
-  pendingPaymentInstantBookings,
-  onRespondInstantOffer,
-  instantOfferAction,
+  onboardingError,
+  onShowFeedback,
   scheduleContent,
 }) => {
   const [blockedVehicleId, setBlockedVehicleId] = useState<string | null>(null);
@@ -164,7 +147,9 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   const hasPendingSchedule = availabilityRules.length === 0;
   const hasPendingVehicles = !vehicles.some((vehicle) => vehicle.status === 'ACTIVE');
   const hasPendingOfferings = !offerings.some((offering) => offering.status === 'ACTIVE');
-  const hasPendingPayoutSetup = paymentAccount?.payoutsEnabled !== true;
+  const complianceEligibility = evaluateProviderEligibility(currentProvider, complianceDocs);
+  const hasPendingCompliance = !complianceEligibility.isEligible;
+  const hasPendingPayoutSetup = !isProviderPaymentAccountReady(paymentAccount);
   const runAsyncAction = async (key: string, action: () => Promise<void>) => {
     if (pendingAction) return;
     setPendingAction(key);
@@ -174,10 +159,12 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       setPendingAction(null);
     }
   };
-  const eligibleSchoolInstructors = schoolInstructors.filter((instructor) => {
+  const visibleSchoolInstructors = schoolInstructors.filter((instructor) => instructor.userId !== currentProvider.userId);
+  const eligibleSchoolInstructors = visibleSchoolInstructors.filter((instructor) => {
     const compliance = schoolInstructorSummary.find((entry) => entry.membershipId === instructor.id);
     return instructor.membershipStatus === 'ACTIVE' && instructor.isActive && compliance?.eligible === true;
   });
+  const hasPendingInstructors = isSchool && eligibleSchoolInstructors.length === 0;
 
   return (
     <div className="space-y-6 text-left">
@@ -199,33 +186,17 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           { id: 'schedule_blocks', label: 'Bloqueios', icon: <Ban className="h-3.5 w-3.5" /> },
           { id: 'vehicles', label: 'Veículos', icon: <Car className="h-3.5 w-3.5" />, hasPending: hasPendingVehicles },
            { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" />, hasPending: hasPendingOfferings },
-           { id: 'instant', label: 'Aula Agora', icon: <Clock3 className="h-3.5 w-3.5" /> },
-          { id: 'compliance', label: 'Compliance', icon: <ShieldCheck className="h-3.5 w-3.5" /> },
-          ...(isSchool ? [{ id: 'memberships' as const, label: 'Instrutores', icon: <Users className="h-3.5 w-3.5" /> }] : []),
+          { id: 'compliance', label: 'Compliance', icon: <ShieldCheck className="h-3.5 w-3.5" />, hasPending: hasPendingCompliance },
+          ...(isSchool ? [{
+            id: 'memberships' as const,
+            label: 'Instrutores',
+            icon: <Users className="h-3.5 w-3.5" />,
+            hasPending: hasPendingInstructors,
+          }] : []),
           { id: 'account', label: 'Conta bancária', icon: <WalletCards className="h-3.5 w-3.5" />, hasPending: hasPendingPayoutSetup },
         ]}
         className="mazzi-segmented"
       />
-
-      {managementSubTab === 'instant' && (
-        <div className="space-y-4"><InstantConductPanel />
-        <ProviderInstantLessonPanel
-          provider={currentProvider}
-          offerings={offerings}
-          vehicles={vehicles}
-          settings={instantSettings}
-          onSave={onSaveInstantSetting}
-          onToggleOnline={onToggleInstantOnline}
-          onUpdateLocation={onUpdateInstantLocation}
-          isLoading={instantActionLoading}
-          locationStatus={instantLocationStatus}
-          offers={instantOffers}
-          pendingPaymentInstantBookings={pendingPaymentInstantBookings}
-          onRespondOffer={onRespondInstantOffer}
-          offerAction={instantOfferAction}
-        />
-        </div>
-      )}
 
       {(managementSubTab === 'schedule_rules' || managementSubTab === 'schedule_blocks') && scheduleContent}
 
@@ -256,13 +227,13 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       )}
 
       {!isRefreshing && managementSubTab === 'offerings' && currentProvider.status !== 'ACTIVE' && (
-        <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
+        <div role="status" className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
           As ofertas só podem ser publicadas depois que o cadastro do prestador for aprovado. Status atual: <strong>{getStatusPresentation(currentProvider.status, 'provider').label}</strong>.
         </div>
       )}
 
       {!isRefreshing && managementSubTab === 'offerings' && offeringNotice && (
-        <div role="status" className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-medium text-sky-900">
+        <div role="status" className="mazzi-compact-card rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-medium text-sky-900">
           {offeringNotice}
         </div>
       )}
@@ -276,6 +247,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           isInviteModalOpen={isInviteInstructorModalOpen}
           onOpenInviteModal={() => setIsInviteInstructorModalOpen(true)}
           onCloseInviteModal={() => setIsInviteInstructorModalOpen(false)}
+          onShowFeedback={onShowFeedback}
         />
       )}
 
@@ -338,7 +310,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       {!isRefreshing && managementSubTab === 'offerings' && (
         <div className="space-y-4">
           {currentProvider.type === 'DRIVING_SCHOOL' && eligibleSchoolInstructors.length === 0 && (
-            <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+            <p className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
               Ative ao menos um instrutor antes de cadastrar uma oferta.
             </p>
           )}
@@ -375,7 +347,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                 return (
                   <div
                     key={o.id}
-                    className="p-5 rounded-3xl bg-white border border-[#e9e6de] shadow-xs space-y-3 flex flex-col justify-between"
+                    className="mazzi-compact-card rounded-2xl bg-white border border-[#e9e6de] shadow-xs space-y-3 flex flex-col justify-between p-5"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
@@ -452,7 +424,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
               {complianceTermsError}
             </div>
           )}
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+          <div className="mazzi-compact-card p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
             <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
             <p>
               Para manter o selo de <strong>Prestador Verificado</strong> e garantir segurança aos alunos, mantenha seus documentos de credenciamento (CNH/CNPJ/CRLV) sempre em dia.
@@ -532,6 +504,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
           paymentAccount={paymentAccount}
           onOpenPayoutOnboarding={onOpenPayoutOnboarding || (() => undefined)}
           isOpeningPayoutOnboarding={isOpeningPayoutOnboarding}
+          onboardingError={onboardingError}
           showHeader={false}
         />
       )}
@@ -698,7 +671,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         size="sm"
       >
         <div className="space-y-4 text-left">
-          <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+          <div className="mazzi-compact-card flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
             <p className="text-sm leading-relaxed">
               Já existe uma oferta ativa com o mesmo instrutor, veículo, categoria e transmissão. Deseja trocar para esta oferta?

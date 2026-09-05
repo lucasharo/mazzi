@@ -20,6 +20,7 @@ export const LocationPinPicker: React.FC<LocationPinPickerProps> = ({ latitude, 
   const selectedRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
   const setPin = (lat: number, lng: number) => {
     const position = { latitude: lat, longitude: lng };
     selectedRef.current = position;
@@ -47,24 +48,28 @@ export const LocationPinPicker: React.FC<LocationPinPickerProps> = ({ latitude, 
   }, []);
 
   const useCurrentLocation = () => {
+    if (isLocating) return;
     if (!navigator.geolocation) {
       setLocationError('A localização do dispositivo não está disponível. Escolha o ponto no mapa.');
       return;
     }
     setLocationError(null);
+    setIsLocating(true);
     navigator.geolocation.getCurrentPosition(({ coords }) => {
       setPin(coords.latitude, coords.longitude);
       mapRef.current?.setView([coords.latitude, coords.longitude], 16, { animate: true });
       onLocate?.(coords.latitude, coords.longitude);
+      setIsLocating(false);
     }, () => {
       setLocationError('Não foi possível obter sua localização. Confirme a permissão ou escolha o ponto no mapa.');
+      setIsLocating(false);
     }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
   };
 
   return <div className="space-y-3">
     <div ref={elementRef} className="h-64 overflow-hidden rounded-2xl border border-[var(--mazzi-border)]" aria-label="Mapa para confirmar localização" />
     <div className="grid min-w-0 grid-cols-2 gap-2">
-      <Button type="button" variant="outline" size="sm" className="min-w-0 px-2 text-[11px]" leftIcon={<LocateFixed className="h-3.5 w-3.5 shrink-0" />} onClick={useCurrentLocation}><span className="truncate">Minha localização</span></Button>
+      <Button type="button" variant="outline" size="sm" className="min-w-0 px-2 text-[11px]" leftIcon={<LocateFixed className={`h-3.5 w-3.5 shrink-0 ${isLocating ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />} onClick={useCurrentLocation} disabled={isLocating} aria-busy={isLocating}><span className="truncate">Minha localização</span></Button>
       <Button type="button" variant="primary" size="sm" className="min-w-0 px-2 text-[11px]" leftIcon={<MapPin className="h-3.5 w-3.5 shrink-0" />} disabled={!selectedPosition} onClick={() => { if (selectedPosition) onConfirm(selectedPosition.latitude, selectedPosition.longitude); }}><span className="truncate">Confirmar ponto</span></Button>
     </div>
     {locationError && <p className="px-1 text-[11px] leading-relaxed text-rose-700" role="alert">{locationError}</p>}

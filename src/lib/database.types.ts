@@ -132,6 +132,7 @@ export interface Database {
           duration_minutes: number;
           price_in_cents: number;
           is_active: boolean;
+          source: 'AGENDA' | 'AULA_AGORA';
           created_at: string;
           updated_at: string;
         };

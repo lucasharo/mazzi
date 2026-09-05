@@ -20,7 +20,7 @@ export const InstantLessonOfferCard: React.FC<InstantLessonOfferCardProps> = ({ 
   // incorrectly disable a still-pending offer.
   const actionable = offer.status === 'PENDING';
   return (
-    <article className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-4 shadow-sm" aria-label={`Oferta de Aula Agora de ${offer.providerName || 'profissional'}`}>
+    <article className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 shadow-sm" aria-label={`Oferta de Aula Agora de ${offer.providerName || 'profissional'}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="mazzi-eyebrow text-[9px] text-amber-700">Aula Agora</p>
@@ -38,7 +38,7 @@ export const InstantLessonOfferCard: React.FC<InstantLessonOfferCardProps> = ({ 
       {onAccept && onDecline && (
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Button variant="secondary" size="sm" leftIcon={<Check className="h-4 w-4" />} onClick={onAccept} isLoading={isLoading === 'accept'} disabled={!actionable}>Aceitar</Button>
-          <Button variant="outline" size="sm" leftIcon={<X className="h-4 w-4" />} onClick={onDecline} isLoading={isLoading === 'decline'} disabled={!actionable}>Recusar</Button>
+          <Button variant="dangerSoft" size="sm" leftIcon={<X className="h-4 w-4" />} onClick={onDecline} isLoading={isLoading === 'decline'} disabled={!actionable}>Recusar</Button>
         </div>
       )}
     </article>

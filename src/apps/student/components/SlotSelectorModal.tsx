@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, RefreshCw, Check, X, ArrowLeft } from 'lucide-react';
+import { Clock, RefreshCw, Check, X, ArrowLeft } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button, PrimaryButton, ButtonBase } from '../../../components/ui/Button';
 import { supabase } from '../../../lib/supabase';
@@ -8,6 +8,7 @@ import { STUDENT_BOOKING_HORIZON_DAYS } from '../../../domain/availability';
 import { BLOCKING_BOOKING_STATUSES, hasTimeIntervalOverlap } from '../../../domain/booking';
 import { getTodayInSaoPaulo } from '../../../lib/date-format';
 import type { Booking } from '../../../types';
+import { MonthlyCalendar } from '../../../components/ui/MonthlyCalendar';
 
 // Re-export and derive horizon constants from canonical domain source of truth
 export { STUDENT_BOOKING_HORIZON_DAYS };
@@ -55,11 +56,6 @@ export function splitDateRange(fromDate: string, daysToFetch: number, maxRangeDa
 export function formatDateOnly(dateOnly: string, options: Intl.DateTimeFormatOptions): string {
   const [year, month, day] = dateOnly.split('-').map(Number);
   return new Intl.DateTimeFormat('pt-BR', { ...options, timeZone: 'UTC' }).format(new Date(Date.UTC(year, month - 1, day)));
-}
-
-function weekdayIndex(dateOnly: string): number {
-  const [year, month, day] = dateOnly.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
 function groupSlots(slots: PublicSlot[]): Record<string, PublicSlot[]> {
@@ -339,94 +335,38 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           )}
 
           {!isLoading && !error && !hasAnySlots && (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
+            <div className="mazzi-compact-card rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
               <p className="text-sm font-bold text-slate-800">Nenhum horário disponível neste período.</p>
               <p className="mt-1 text-xs text-slate-500">Você pode consultar os próximos dias abaixo.</p>
             </div>
           )}
 
-          {/* Month & Calendar Grid */}
-          <div>
-            {(Object.entries(datesByMonth) as [string, string[]][]).filter(([month]) => month === visibleMonth).map(([month, monthDates]) => (
-              <section key={month}>
-                <div className="mb-2 flex items-center justify-between">
-                  <ButtonBase
-                    type="button"
-                    aria-label="Mês anterior"
-                    disabled={Object.keys(datesByMonth).indexOf(month) <= 0}
-                    onClick={() => {
-                      const months = Object.keys(datesByMonth);
-                      setVisibleMonth(months[months.indexOf(month) - 1]);
-                    }}
-                    className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </ButtonBase>
-                  <h4 className="text-[13px] font-bold capitalize text-[var(--mazzi-dark)]">
-                    {formatDateOnly(`${month}-01`, { month: 'long', year: 'numeric' })}
-                  </h4>
-                  <ButtonBase
-                    type="button"
-                    aria-label="Mês seguinte"
-                    disabled={isLoading || (Object.keys(datesByMonth).indexOf(month) >= Object.keys(datesByMonth).length - 1 && windowDays >= maxHorizonDays)}
-                    onClick={() => {
-                      const months = Object.keys(datesByMonth);
-                      const currentIndex = months.indexOf(month);
-                      if (currentIndex < months.length - 1) {
-                        setVisibleMonth(months[currentIndex + 1]);
-                        return;
-                      }
-                      const nextWindowDays = Math.min(maxHorizonDays, windowDays + LOAD_MORE_DAYS);
-                      const expandedMonths = Array.from({ length: nextWindowDays }, (_, index) => addDays(fromDate, index).slice(0, 7));
-                      const nextMonth = [...new Set(expandedMonths)].find((candidate) => candidate > month);
-                      if (nextMonth) setVisibleMonth(nextMonth);
-                      setWindowDays(nextWindowDays);
-                      void fetchSlots(nextWindowDays, false);
-                    }}
-                    className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </ButtonBase>
-                </div>
-
-                <div className="grid grid-cols-7 gap-px text-center">
-                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((weekday) => (
-                    <span key={`${month}-${weekday}`} className="text-[9px] font-bold uppercase text-slate-400 py-0">
-                      {weekday}
-                    </span>
-                  ))}
-                  {Array.from({ length: weekdayIndex(monthDates[0]) }, (_, index) => (
-                    <span key={`${month}-empty-${index}`} aria-hidden="true" />
-                  ))}
-                  {monthDates.map((date) => {
-                    const available = (slotsByDate[date] || []).length > 0;
-                    const isSelected = selectedDate === date;
-                    return (
-                      <ButtonBase
-                        key={date}
-                        type="button"
-                        disabled={!available}
-                        onClick={() => {
-                          setSelectedDate(date);
-                          setSelectedSlot(null);
-                        }}
-                        aria-label={`${formatDateOnly(date, { dateStyle: 'full' })}${available ? `, ${slotsByDate[date].length} horários disponíveis` : ', indisponível'}`}
-                        className={`h-9 min-h-0 rounded-lg p-1 text-center transition flex flex-col items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer ${
-                          isSelected
-                            ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
-                            : available
-                            ? 'bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] font-bold hover:bg-slate-200 border border-[var(--mazzi-border)]'
-                            : 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                        }`}
-                      >
-                        <span className="text-xs font-bold leading-none">{formatDateOnly(date, { day: '2-digit' })}</span>
-                      </ButtonBase>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
+          {/* Shared monthly calendar used by the student booking flow and quick blocks. */}
+          {visibleMonth && <MonthlyCalendar
+              month={visibleMonth}
+              dates={dates}
+              selectedDate={selectedDate}
+              isDateAvailable={(date) => (slotsByDate[date] || []).length > 0}
+              onSelectDate={(date) => { setSelectedDate(date); setSelectedSlot(null); }}
+              onPreviousMonth={() => {
+                const months = Object.keys(datesByMonth);
+                setVisibleMonth(months[months.indexOf(visibleMonth) - 1]);
+              }}
+              onNextMonth={() => {
+                const months = Object.keys(datesByMonth);
+                const currentIndex = months.indexOf(visibleMonth);
+                if (currentIndex < months.length - 1) { setVisibleMonth(months[currentIndex + 1]); return; }
+                const nextWindowDays = Math.min(maxHorizonDays, windowDays + LOAD_MORE_DAYS);
+                const expandedMonths = Array.from({ length: nextWindowDays }, (_, index) => addDays(fromDate, index).slice(0, 7));
+                const nextMonth = [...new Set(expandedMonths)].find((candidate) => candidate > visibleMonth);
+                if (nextMonth) setVisibleMonth(nextMonth);
+                setWindowDays(nextWindowDays);
+                void fetchSlots(nextWindowDays, false);
+              }}
+              canPrevious={Object.keys(datesByMonth).indexOf(visibleMonth) > 0}
+              canNext={!isLoading && (Object.keys(datesByMonth).indexOf(visibleMonth) < Object.keys(datesByMonth).length - 1 || windowDays < maxHorizonDays)}
+              nextMonthLoading={isLoading}
+            />}
 
           {/* Time Slots Section */}
           {selectedDate && (
@@ -456,7 +396,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                                 className={`min-h-11 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                                   isSelected
                                     ? 'border-amber-400/80 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
-                                    : 'border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] text-slate-700 hover:border-slate-400 hover:bg-slate-200'
+                                    : 'border-[var(--mazzi-border)] bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
                                 }`}
                               >
                                 <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />

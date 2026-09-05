@@ -14,7 +14,7 @@ interface InstantLessonStatusCardProps {
 export const InstantLessonStatusCard: React.FC<InstantLessonStatusCardProps> = ({ request, onCancel, isCancelling, paymentConfirmed }) => {
   const searching = request.status === 'SEARCHING';
   return (
-    <section className={`rounded-3xl border p-4 ${paymentConfirmed ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`} role="status" aria-live="polite">
+    <section className={`mazzi-compact-card rounded-2xl border p-4 ${paymentConfirmed ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`} role="status" aria-live="polite">
       <div className="flex items-start gap-3">
         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${paymentConfirmed ? 'bg-emerald-100 text-emerald-700' : 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]'}`}>
           {searching ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <MapPin className="h-5 w-5" aria-hidden="true" />}

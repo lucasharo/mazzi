@@ -39,7 +39,7 @@ export const StudentProMigrationCard: React.FC = () => {
   };
 
   return (
-    <section className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs" aria-labelledby="student-pro-profile-title">
+    <section className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs" aria-labelledby="student-pro-profile-title">
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
           <BriefcaseBusiness className="h-5 w-5" aria-hidden="true" />

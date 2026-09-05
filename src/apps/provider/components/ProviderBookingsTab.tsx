@@ -61,12 +61,12 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
 
       {/* Action Messages */}
       {actionSuccessMessage && (
-        <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-bold text-emerald-900">
+        <div className="mazzi-compact-card flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-bold text-emerald-900">
           <span>{actionSuccessMessage}</span>
         </div>
       )}
       {actionErrorMessage && (
-        <div className="flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-bold text-rose-900">
+        <div className="mazzi-compact-card flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-bold text-rose-900">
           <span>{actionErrorMessage}</span>
         </div>
       )}

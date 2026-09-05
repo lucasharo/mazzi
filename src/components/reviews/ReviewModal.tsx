@@ -101,7 +101,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Avaliar aula concluída" size="md" footer={footer}>
       {!booking ? null : (
         <div className="space-y-5 text-sm">
-          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-600">Sua aula</p>
             <p className="mt-1 font-black text-[var(--mazzi-text)]">{booking.instructorName || booking.providerName}</p>
             {booking.providerName !== booking.instructorName && <p className="text-xs font-semibold text-slate-500">{booking.providerName}</p>}

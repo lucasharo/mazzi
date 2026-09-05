@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const StripeHostedCheckout: React.FC<Props> = ({ amountInCents, isProcessing, onCheckout }) => (
-  <div className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-4">
+  <div className="mazzi-compact-card space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-4">
     <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-[var(--mazzi-text)]">
       <span className="flex min-w-0 items-center gap-2">
         <LockKeyhole className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />

@@ -21,6 +21,7 @@ export interface LeafletMapProps {
   className?: string;
   height?: string;
   showCoverageRadius?: boolean;
+  showMeetingPointPopup?: boolean;
   meetingPoint?: { lat: number; lng: number; title: string };
   userLocation?: { lat: number; lng: number };
   searchedLocation?: { lat: number; lng: number; label?: string };
@@ -37,6 +38,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   className = '',
   height = '360px',
   showCoverageRadius = false,
+  showMeetingPointPopup = true,
   meetingPoint: rawMeetingPoint,
   userLocation: rawUserLocation,
   searchedLocation: rawSearchedLocation,
@@ -119,17 +121,13 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     if (meetingPoint) {
       const meetingIcon = L.divIcon({
         className: 'custom-mazzi-marker',
-        html: followSelectedProvider ? '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' : `
-          <div style="background: #020617; border: 2px solid #FFC700; color: #FFFFFF; border-radius: 9999px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-weight: 900; font-size: 11px;">
-            📍
-          </div>
-        `,
-        iconSize: followSelectedProvider ? [28, 28] : [36, 36],
-        iconAnchor: followSelectedProvider ? [14, 27] : [18, 18],
+        html: '<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="#FFC700" stroke="#020617" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5.5-8 12-8 12S4 15.5 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3" fill="#FFFFFF"/></svg>',
+        iconSize: [38, 38],
+        iconAnchor: [19, 38],
       });
 
       const m = L.marker([meetingPoint.lat, meetingPoint.lng], { icon: meetingIcon, title: 'Local do aluno', alt: 'Local do aluno' }).addTo(group);
-      if (!followSelectedProvider) m.bindPopup(`
+      if (interactive && showMeetingPointPopup && !followSelectedProvider) m.bindPopup(`
         <div style="padding: 6px; font-family: system-ui, -apple-system, sans-serif;">
           <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; color: #D97706; display: block;">Ponto de Encontro da Aula</span>
           <strong style="font-size: 13px; color: #020617; display: block; margin-top: 2px;">${meetingPoint.title}</strong>
@@ -199,18 +197,20 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         </div>
       `;
 
-      if (providerMarker !== 'vehicle') marker.bindPopup(popupContent);
+      if (interactive && providerMarker !== 'vehicle') marker.bindPopup(popupContent);
 
-      marker.on('popupopen', () => {
-        const btn = document.getElementById(`leaflet-btn-${prov.id}`);
-        if (btn && onSelectProvider) {
-          btn.onclick = () => onSelectProvider(prov);
-        }
-      });
+      if (interactive) {
+        marker.on('popupopen', () => {
+          const btn = document.getElementById(`leaflet-btn-${prov.id}`);
+          if (btn && onSelectProvider) {
+            btn.onclick = () => onSelectProvider(prov);
+          }
+        });
 
-      marker.on('click', () => {
-        if (onSelectProvider) onSelectProvider(prov);
-      });
+        marker.on('click', () => {
+          if (onSelectProvider) onSelectProvider(prov);
+        });
+      }
     });
 
     if (followSelectedProvider) {
@@ -236,17 +236,36 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
     if (userLocation) {
       const userIcon = L.divIcon({ className: 'custom-mazzi-user-marker', html: '<div style="background:#2563EB;border:3px solid #fff;border-radius:9999px;width:18px;height:18px"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
-      L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(group).bindPopup('Sua localização');
+      const userMarker = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(group);
+      if (interactive) userMarker.bindPopup('Sua localização');
     }
     if (searchedLocation && (!userLocation || searchedLocation.lat !== userLocation.lat || searchedLocation.lng !== userLocation.lng)) {
       const searchIcon = L.divIcon({ className: 'custom-mazzi-search-marker', html: '<div style="background:#DC2626;border:3px solid #fff;border-radius:9999px 9999px 9999px 0;width:20px;height:20px;transform:rotate(-45deg)"></div>', iconSize: [20, 20], iconAnchor: [4, 18] });
-      L.marker([searchedLocation.lat, searchedLocation.lng], { icon: searchIcon }).addTo(group).bindPopup(searchedLocation.label || 'Endereço pesquisado');
+      const searchMarker = L.marker([searchedLocation.lat, searchedLocation.lng], { icon: searchIcon }).addTo(group);
+      if (interactive) searchMarker.bindPopup(searchedLocation.label || 'Endereço pesquisado');
     }
-  }, [providers, selectedProvider, showCoverageRadius, meetingPoint, userLocation, searchedLocation, zoom, providerMarker, onSelectProvider, followSelectedProvider]);
+  }, [providers, selectedProvider, showCoverageRadius, showMeetingPointPopup, meetingPoint, userLocation, searchedLocation, zoom, providerMarker, onSelectProvider, followSelectedProvider, interactive]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (interactive) {
+      map.dragging?.enable?.();
+      map.touchZoom?.enable?.();
+      map.scrollWheelZoom?.enable?.();
+      map.doubleClickZoom?.enable?.();
+    } else {
+      map.dragging?.disable?.();
+      map.touchZoom?.disable?.();
+      map.scrollWheelZoom?.disable?.();
+      map.doubleClickZoom?.disable?.();
+    }
+  }, [interactive]);
 
   return (
     <div
-      className={`w-full rounded-3xl overflow-hidden border border-slate-200 shadow-sm relative z-0 ${className}`}
+      className={`w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative z-0 ${className}`}
       style={{ height }}
     >
       <div ref={mapContainerRef} className="absolute inset-0" />

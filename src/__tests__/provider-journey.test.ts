@@ -19,6 +19,7 @@ import { performProviderCancellation, CancellationDomainError } from '../domain/
 import { toPublicProviderProfile } from '../domain/providers';
 import { approveProvider } from '../domain/provider-lifecycle-service';
 import { AuthContext } from '../domain/rbac';
+import { formatMeetingPoint } from '../lib/meeting-point';
 
 describe('SPRINT 11 — PROVIDER APP JOURNEY & LESSON LIFECYCLE TESTS', () => {
   let mockBooking: Booking;
@@ -273,7 +274,7 @@ describe('SPRINT 11 — PROVIDER APP JOURNEY & LESSON LIFECYCLE TESTS', () => {
       instructorId: 'prov_1',
       studentId: 'usr_student_1',
       state: 'IN_PROGRESS',
-      meetingPoint: cancelledBooking.meetingPoint,
+      meetingPoint: formatMeetingPoint(cancelledBooking.meetingPoint),
       createdAt: '2026-08-14T10:00:00Z',
       updatedAt: '2026-08-14T10:00:00Z',
     };

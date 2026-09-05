@@ -165,7 +165,7 @@ export function InstantLessonWizard({ category = 'B', location, locationLabel, c
             </div>
           </div>
         </div>
-        {addressValid ? <div className="overflow-hidden rounded-2xl border border-[var(--mazzi-border)]"><UniversalMap providers={[]} meetingPoint={{ ...draft.location!, title: draft.address }} height="200px" zoom={16} interactive={false} /></div>
+        {addressValid ? <div className="overflow-hidden rounded-2xl border border-[var(--mazzi-border)]"><UniversalMap providers={[]} meetingPoint={{ ...draft.location!, title: draft.address }} height="200px" zoom={16} showMeetingPointPopup={false} interactive={false} /></div>
           : <div className="flex min-h-40 items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-500 p-5 text-sm text-slate-600"><MapPin className="h-6 w-6 shrink-0" aria-hidden="true" />Confirme um endereço para ver o ponto no mapa.</div>}
       </div>}
       {draft.step === 1 && <fieldset disabled={busy} className="min-w-0 space-y-2 text-slate-900"><legend className="sr-only">Câmbio</legend>

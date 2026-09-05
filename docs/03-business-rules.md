@@ -57,6 +57,9 @@
 
 ## 6. Verificação de Fornecedores (Compliance)
 - Apenas fornecedores com status `ACTIVE` e veículos com status `ACTIVE` têm ofertas listadas na busca pública e podem receber reservas.
+- Ofertas `AULA_AGORA` são operacionais e independentes das ofertas `AGENDA`; não aparecem na agenda/busca pública, mas continuam sujeitas a compliance, disponibilidade e à trava transacional de conflito.
+- Na Aula Agora, somente veículos com status `ACTIVE` na Gestão podem ser elegíveis. A habilitação é independente por veículo: desativar um carro não desativa os demais.
+- A disponibilidade do instrutor é controlada por um único estado geral no PRO; quando desligada, nenhum veículo habilitado recebe novas ofertas. Ofertas pendentes de um veículo desativado expiram.
 - Rejeições de documentos exigem motivo formal registrado em log de auditoria.
 
 ## 7. Mapas e Geolocalização
@@ -68,3 +71,4 @@
 - Convites usam `target_user_id` ou e-mail normalizado; CPF/documento não participa do fluxo.
 - Vínculos passam por `PENDING_COMPLIANCE`, `ACTIVE`, `SUSPENDED` e `ENDED`; encerramento preserva histórico e recontratação reutiliza o vínculo encerrado.
 - Contratação e início/check-in exigem vínculo, compliance global e compliance do contexto válidos.
+- A busca pública só lista ofertas ativas que tenham pelo menos uma regra semanal recorrente ativa compatível com o instrutor e o veículo e um cadastro de recebimentos Stripe Connect concluído (`status = ACTIVE`, `charges_enabled = true` e `payouts_enabled = true`). Exceções de disponibilidade não substituem o cadastro base da agenda para fins de descoberta pública.

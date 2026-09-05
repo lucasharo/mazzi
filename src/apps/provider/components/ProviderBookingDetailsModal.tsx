@@ -1,27 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Building2,
-  Calendar,
-  Car,
   CheckCircle2,
-  Clock,
   Clock3,
   Compass,
-  CreditCard,
-  AlertCircle,
   MapPin,
   MessageSquare,
   Navigation,
   Play,
   UserCheck,
-  UserRound,
-  X,
   XCircle,
 } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { Button, SecondaryButton } from '../../../components/ui/Button';
-import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { formatMeetingPoint, formatPendingPaymentMeetingPoint } from '../../../lib/meeting-point';
 import { needsMeetingPointAddress } from '../../../domain/maps/meeting-point-address';
 import { formatCentsToBRL } from '../../../domain/money';
@@ -30,8 +21,8 @@ import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
 import { UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
-import { UniversalMap } from '../../../components/maps/UniversalMap';
 import { ExternalNavigationModal } from '../../../components/instant/ExternalNavigationModal';
+import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices } from '../../../components/booking/BookingDetailsShared';
 
 export interface ProviderBookingDetailsModalProps {
   isOpen: boolean;
@@ -83,12 +74,13 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const [checkInError, setCheckInError] = useState<string | null>(null);
   const [checkInNow, setCheckInNow] = useState(() => new Date());
   const [navModalOpen, setNavModalOpen] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !booking) return undefined;
     setCheckInNow(new Date());
     setHasArrivedState(hasArrivedProp);
-    const timer = window.setInterval(() => setCheckInNow(new Date()), 15_000);
+    const timer = window.setInterval(() => setCheckInNow(new Date()), 1_000);
     return () => window.clearInterval(timer);
   }, [isOpen, booking?.id, hasArrivedProp]);
 
@@ -96,11 +88,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
 
   const isInstant =
     booking.snapshot?.source === 'AULA_AGORA' ||
-    (booking as any).snapshot_data?.source === 'AULA_AGORA' ||
-    Boolean(onSetOnTheWay);
+    (booking as any).snapshot_data?.source === 'AULA_AGORA';
 
   const isWaitingPayment = isWaitingPaymentProp || booking.status === 'PENDING_PAYMENT';
-  const isOnTheWay = isOnTheWayProp || booking.status === 'ON_THE_WAY';
+  const isOnTheWay = isOnTheWayProp || Boolean(booking.providerOnTheWayAt || booking.snapshot?.provider_on_the_way_at);
   const isArrived = hasArrivedProp || hasArrivedState || Boolean(booking.instructorCheckedIn);
 
   const snapshot = booking.snapshot || {
@@ -112,10 +103,14 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     transmission: undefined,
   } as Booking['snapshot'];
 
+  const isProviderMeetingPoint = [booking.meetingPoint, snapshot.meetingPoint].some((value) => (
+    typeof value === 'object' && value !== null && (value as { type?: string }).type === 'PROVIDER_ADDRESS'
+  ));
+  const shouldWaitForStudentAtProviderLocation = isProviderMeetingPoint;
+
   const isConfirmed = booking.status === 'CONFIRMED';
   const isInProgress = booking.status === 'IN_PROGRESS';
   const isCompleted = booking.status === 'COMPLETED';
-  const isCancelled = booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER';
   const duration = calculateLessonDurationMinutes(booking);
   const studentName = booking.studentName?.trim() || 'Aluno';
   const providerName = snapshot.providerName || booking.providerName;
@@ -124,19 +119,23 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const category = booking.offering?.category || snapshot.category || 'B';
   const transmission = formatTransmissionLabel(booking.offering?.transmission || snapshot.transmission || 'MANUAL');
 
+  const rawMeetingPoint = booking.meetingPoint || snapshot.meetingPoint || booking.fullMeetingPoint;
   const meetingPointText = isWaitingPayment
-    ? formatPendingPaymentMeetingPoint(booking.meetingPoint || snapshot.meetingPoint || booking.fullMeetingPoint)
-    : formatMeetingPoint(booking.meetingPoint || snapshot.meetingPoint) ||
-      (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint) ? booking.fullMeetingPoint : '') ||
-      'Ponto de encontro indicado no mapa';
+    ? formatPendingPaymentMeetingPoint(rawMeetingPoint)
+    : isProviderMeetingPoint && booking.fullMeetingPoint
+      ? booking.fullMeetingPoint
+      : formatMeetingPoint(rawMeetingPoint) ||
+        (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint) ? booking.fullMeetingPoint : '') ||
+        'Ponto de encontro indicado no mapa';
 
   const latitude = (booking.meetingPoint as any)?.latitude ?? (snapshot?.meetingPoint as any)?.latitude;
   const longitude = (booking.meetingPoint as any)?.longitude ?? (snapshot?.meetingPoint as any)?.longitude;
 
-  const mapPoint = latitude != null && longitude != null
+  const hasExactMeetingPoint = typeof latitude === 'number' && Number.isFinite(latitude)
+    && typeof longitude === 'number' && Number.isFinite(longitude);
+  const mapPoint = hasExactMeetingPoint
     ? { lat: latitude, lng: longitude, title: meetingPointText }
     : undefined;
-
   const lessonStart = booking.lessonStartedAt || '';
   const lessonEnd = booking.lessonFinishedAt || '';
   const durationLabel = booking.status === 'COMPLETED' && lessonStart && lessonEnd
@@ -158,8 +157,6 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     startTime: booking.startTime,
     status: booking.status,
     alreadyCheckedIn: Boolean(booking.instructorCheckedIn),
-    isOnTheWay: isOnTheWay || Boolean(booking.snapshot?.provider_on_the_way_at),
-    hasArrived: isArrived,
     now: checkInNow,
   });
 
@@ -178,7 +175,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   };
 
   const handleStartLesson = async () => {
-    if (!onStartLesson || isStarting) return;
+    if (!onStartLesson || isStarting || !booking.instructorCheckedIn || !booking.studentCheckedIn) return;
     setIsStarting(true);
     try {
       await onStartLesson(booking);
@@ -194,6 +191,19 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
       await onSetOnTheWay(booking.id);
     } finally {
       setSubmittingDisplacement(false);
+    }
+  };
+
+  const handleCopyAddress = async () => {
+    if (isWaitingPayment || !meetingPointText || meetingPointText === 'Ponto de encontro indicado no mapa') return;
+    if (!navigator.clipboard?.writeText) return;
+
+    try {
+      await navigator.clipboard.writeText(meetingPointText);
+      setAddressCopied(true);
+      window.setTimeout(() => setAddressCopied(false), 1800);
+    } catch {
+      setAddressCopied(false);
     }
   };
 
@@ -215,7 +225,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
                 Finalizar aula
               </Button>
             )
-          ) : !isOnTheWay && !isArrived ? (
+          ) : !isOnTheWay && !isArrived && !shouldWaitForStudentAtProviderLocation ? (
             <Button
               type="button"
               variant="primary"
@@ -226,7 +236,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             >
               Estou a caminho
             </Button>
-          ) : !isArrived ? (
+          ) : !isArrived && !shouldWaitForStudentAtProviderLocation ? (
             <Button
               type="button"
               variant="primary"
@@ -243,8 +253,12 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             >
               Cheguei ao local
             </Button>
+          ) : shouldWaitForStudentAtProviderLocation && !isArrived ? (
+            <div className="mazzi-compact-card rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs font-bold text-slate-700" role="status">
+              Ponto de encontro no local do PRO. Aguarde o aluno chegar.
+            </div>
           ) : (
-            onStartLesson && (
+            booking.instructorCheckedIn && booking.studentCheckedIn ? (
               <Button
                 type="button"
                 variant="primary"
@@ -256,42 +270,41 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               >
                 Iniciar aula
               </Button>
+            ) : (
+              <div
+                className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs font-bold text-amber-900"
+                role="status"
+              >
+                Aguardando o check-in do aluno para iniciar a aula.
+              </div>
             )
           )}
-          <div className="flex w-full items-center gap-3">
-            <Button
+          {onOpenChat && (
+            <SecondaryButton
               type="button"
-              variant="outline"
-              className={`${onOpenChat ? 'flex-1' : 'w-full'} rounded-2xl border-[var(--mazzi-border)] bg-white font-bold text-slate-700 hover:bg-slate-50`}
-              onClick={onClose}
-              leftIcon={<X className="h-4 w-4 text-slate-500" aria-hidden="true" />}
+              size="sm"
+              className="w-full rounded-2xl font-bold shadow-sm transition-all hover:shadow-md"
+              onClick={() => onOpenChat(booking)}
+              leftIcon={<MessageSquare className="h-4 w-4 text-white" aria-hidden="true" />}
+              aria-label="Abrir conversa no chat sobre esta aula"
             >
-              Fechar
-            </Button>
-            {onOpenChat && (
-              <SecondaryButton
-                type="button"
-                size="sm"
-                className="flex-1 rounded-2xl border-slate-300 bg-white font-bold text-slate-700 shadow-sm transition-all hover:shadow-md"
-                onClick={() => onOpenChat(booking)}
-                leftIcon={<MessageSquare className="h-4 w-4 text-slate-500" aria-hidden="true" />}
-                aria-label="Abrir conversa no chat sobre esta aula"
-              >
-                Mensagens
-              </SecondaryButton>
-            )}
-          </div>
+              Mensagens
+            </SecondaryButton>
+          )}
         </div>
       ) : (
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full rounded-2xl border-[var(--mazzi-border)] bg-white font-bold text-slate-700 hover:bg-slate-50"
-          onClick={onClose}
-          leftIcon={<X className="h-4 w-4 text-slate-500" aria-hidden="true" />}
-        >
-          Fechar
-        </Button>
+        onOpenChat ? (
+          <SecondaryButton
+            type="button"
+            size="sm"
+            className="w-full rounded-2xl font-bold shadow-sm transition-all hover:shadow-md"
+            onClick={() => onOpenChat(booking)}
+            leftIcon={<MessageSquare className="h-4 w-4 text-white" aria-hidden="true" />}
+            aria-label="Abrir conversa no chat sobre esta aula"
+          >
+            Mensagens
+          </SecondaryButton>
+        ) : null
       )}
     </div>
   );
@@ -326,25 +339,12 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         </Button>
       )}
       <div className="flex w-full items-center gap-3">
-        {onOpenChat && (
-          <SecondaryButton
-            type="button"
-            size="sm"
-            className={`${canCancel || booking.status === 'DISPUTED' ? 'min-w-0 flex-1' : 'w-full'} rounded-2xl border-slate-300 bg-white font-bold text-slate-700 shadow-sm transition-all hover:shadow-md`}
-            onClick={() => onOpenChat(booking)}
-            leftIcon={<MessageSquare className="h-4 w-4 text-slate-500" aria-hidden="true" />}
-            aria-label="Abrir conversa no chat sobre esta aula"
-          >
-            Mensagens
-          </SecondaryButton>
-        )}
-        {(booking.status === 'COMPLETED' || booking.status === 'DISPUTED') && <BookingDisputePanel booking={booking} currentUserId={currentUserId} display="action" />}
         {canCancel && onCancelBooking && (
           <Button
             type="button"
             variant="dangerSoft"
             size="sm"
-            className="w-1/2"
+            className={`${onOpenChat ? 'min-w-0 flex-1' : 'w-full'}`}
             onClick={() => onCancelBooking(booking)}
             aria-label="Cancelar aula"
             leftIcon={<XCircle className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />}
@@ -352,6 +352,19 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             Cancelar aula
           </Button>
         )}
+        {onOpenChat && (
+          <SecondaryButton
+            type="button"
+            size="sm"
+            className={`${canCancel || booking.status === 'DISPUTED' ? 'min-w-0 flex-1' : 'w-full'} order-2 rounded-2xl font-bold shadow-sm transition-all hover:shadow-md`}
+            onClick={() => onOpenChat(booking)}
+            leftIcon={<MessageSquare className="h-4 w-4 text-white" aria-hidden="true" />}
+            aria-label="Abrir conversa no chat sobre esta aula"
+          >
+            Mensagens
+          </SecondaryButton>
+        )}
+        {(booking.status === 'COMPLETED' || booking.status === 'DISPUTED') && <BookingDisputePanel booking={booking} currentUserId={currentUserId} display="action" />}
       </div>
     </div>
   );
@@ -374,10 +387,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         footer={UNPAID_BOOKING_STATUSES.includes(booking.status) && !isInstant ? undefined : isInstant ? instantFooter : standardFooter}
       >
         <div className="space-y-4 text-left" data-component="provider-booking-details-modal">
-          {isInstant && (
+          {isInstant && !isCompleted && (
             <>
               {isWaitingPayment ? (
-                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4">
+                <div className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4">
                   <div className="flex items-start gap-3">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-900">
                       <Clock3 className="h-5 w-5 animate-pulse" aria-hidden="true" />
@@ -391,7 +404,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
                   </div>
                 </div>
               ) : (
-                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="mazzi-compact-card rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <div className="flex items-start gap-3">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white shadow-xs">
                       {isArrived ? (
@@ -404,14 +417,18 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
                     </span>
                     <div>
                       <h3 className="text-base font-extrabold text-slate-900">
-                        {isArrived
+                        {isInProgress
+                          ? 'Aula em andamento'
+                          : isArrived
                           ? 'Você chegou ao ponto de encontro!'
                           : isOnTheWay
                           ? 'Você está a caminho!'
                           : 'Pagamento Confirmado!'}
                       </h3>
                       <p className="mt-1 text-xs font-medium text-slate-600">
-                        {isArrived
+                        {isInProgress
+                          ? 'A aula já foi iniciada. Acompanhe abaixo os detalhes e o status de presença.'
+                          : isArrived
                           ? 'O check-in foi liberado para você e para o aluno. Faça seu check-in para iniciar a aula.'
                           : isOnTheWay
                           ? 'O aluno já foi avisado e está aguardando você no ponto de encontro.'
@@ -424,197 +441,65 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             </>
           )}
 
-          {!isInstant && (
-            <div className="flex items-center justify-between rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
-              <div className="min-w-0">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mazzi-muted)]">Aluno</p>
-                <p className="mt-0.5 truncate text-sm font-extrabold text-[var(--mazzi-dark)]">{studentName}</p>
-                <p className="mt-1 text-[11px] font-medium text-slate-500">Aula #{booking.id.slice(0, 8)}</p>
-              </div>
-              <StatusBadge status={booking.status} instructorCheckedIn={Boolean(booking.instructorCheckedIn || isArrived)} />
-            </div>
-          )}
+          <BookingDetailsHeader
+            status={booking.status}
+            audience="provider"
+            title={studentName}
+            subtitle={`Aula #${booking.id.slice(0, 8)}`}
+            instructorCheckedIn={Boolean(booking.instructorCheckedIn || isArrived)}
+          />
 
-          {/* Horário & Ponto de Encontro */}
-          <div className="space-y-2.5 rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 shadow-xs">
-            <div className="flex items-center gap-2 text-sm font-extrabold text-[var(--mazzi-dark)]">
-              <Calendar className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
-              <span>Data: {booking.scheduledDate}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-              <Clock className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-              <span>
-                {booking.status === 'COMPLETED' && lessonStart && lessonEnd
-                  ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
-                  : `Horário: ${booking.startTime} às ${booking.endTime}`}
-                {durationLabel ? ` · ${durationLabel}` : ''}
-              </span>
-            </div>
-            {meetingPointText && (
-              <div className="p-3.5 rounded-2xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] space-y-2.5">
-                <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--mazzi-muted)]">
-                  <MapPin className="h-3.5 w-3.5 text-amber-600 shrink-0" aria-hidden="true" />
-                  Ponto de encontro exato
-                </span>
-                <p className="text-xs font-extrabold text-[var(--mazzi-dark)] break-words pt-0.5">{meetingPointText}</p>
-                {!isWaitingPayment && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full rounded-2xl font-bold text-xs"
-                    onClick={() => {
-                      if (onOpenNavigation) onOpenNavigation();
-                      setNavModalOpen(true);
-                    }}
-                    leftIcon={<Compass className="h-4 w-4 text-white" aria-hidden="true" />}
-                  >
-                    Abrir navegação
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
+          <BookingPresenceCard
+            audience="provider"
+            booking={booking}
+            visible={booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS' || isOnTheWay}
+            checkInAvailability={checkInAvailability}
+            checkInError={checkInError}
+            isCheckingIn={isCheckingIn}
+            onCheckIn={handleCheckIn}
+          />
 
-          {/* UniversalMap Preview */}
-          {mapPoint && (
-            <div className="overflow-hidden rounded-2xl border border-[var(--mazzi-border)] shadow-xs">
-              <UniversalMap
-                providers={[]}
-                meetingPoint={mapPoint}
-                height="180px"
-                zoom={16}
-                interactive={false}
-              />
-            </div>
-          )}
+          <BookingDetailsOverview
+            providerLabel="Autoescola"
+            providerName={providerName}
+            instructorName={instructorName}
+            vehicleName={vehicleName}
+            category={category}
+            transmission={transmission}
+            dateLabel={booking.scheduledDate}
+            timeLabel={booking.status === 'COMPLETED' && lessonStart && lessonEnd
+              ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
+              : `Horário: ${booking.startTime} às ${booking.endTime}`}
+            durationLabel={durationLabel}
+            meetingPoint={meetingPointText}
+            isProviderAddress={isProviderMeetingPoint}
+            showCopyAddress={!isWaitingPayment && !isProviderMeetingPoint}
+            addressCopied={addressCopied}
+            onCopyAddress={handleCopyAddress}
+            hasExactMeetingPoint={hasExactMeetingPoint}
+            showNavigation={!isWaitingPayment && !isProviderMeetingPoint}
+            onOpenNavigation={() => {
+              if (onOpenNavigation) onOpenNavigation();
+              setNavModalOpen(true);
+            }}
+          />
+          {mapPoint && <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} />}
 
-          {/* Status de Presença e Check-in */}
-          {(booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS' || isOnTheWay) && (
-            <div className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 shadow-xs">
-              <h4 className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
-                <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                Status de presença na aula
-              </h4>
-              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                <div>
-                  <span className="block text-xs font-bold text-slate-800">Check-in do aluno</span>
-                  <span className="block text-[11px] text-slate-500">
-                    {booking.studentCheckedIn ? 'Presença confirmada no ponto de encontro' : 'Aguardando check-in do aluno'}
-                  </span>
-                </div>
-                {booking.studentCheckedIn ? (
-                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-                    Realizado {booking.checkinStudentAt ? `às ${formatTimeBR(booking.checkinStudentAt)}` : ''}
-                  </span>
-                ) : (
-                  <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Aguardando</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <span className="block text-xs font-bold text-slate-800">Seu check-in</span>
-                  <span className="block text-[11px] text-slate-500">
-                    {booking.instructorCheckedIn ? 'Presença confirmada no ponto de encontro' : 'Aguardando seu check-in'}
-                  </span>
-                </div>
-                {booking.instructorCheckedIn ? (
-                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-                    Realizado {booking.checkinInstructorAt ? `às ${formatTimeBR(booking.checkinInstructorAt)}` : ''}
-                  </span>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    isLoading={isCheckingIn}
-                    disabled={isCheckingIn || !checkInAvailability.canCheckIn || !onCheckIn}
-                    onClick={handleCheckIn}
-                    leftIcon={<UserCheck className="h-3.5 w-3.5" aria-hidden="true" />}
-                    aria-label="Fazer check-in na aula"
-                  >
-                    {checkInAvailability.canCheckIn ? 'Fazer check-in' : 'Check-in em breve'}
-                  </Button>
-                )}
-              </div>
-              {!booking.instructorCheckedIn && !checkInAvailability.canCheckIn && checkInAvailability.opensAt && (
-                <p className="text-[11px] font-semibold text-slate-500">
-                  Aguardando abertura do check-in · disponível a partir de {formatTimeBR(checkInAvailability.opensAt)}
-                </p>
-              )}
-              {checkInError && (
-                <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-800">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
-                  <span>{checkInError}</span>
-                </div>
-              )}
-            </div>
-          )}
+          <BookingPaymentSummary
+            items={[
+              { label: 'Valor líquido', amount: formatCentsToBRL(netAmountInCents) },
+              { label: 'Taxa de Serviço MAZZI', amount: formatCentsToBRL(platformFeeInCents) },
+            ]}
+            total={formatCentsToBRL(bookingTotalInCents)}
+          />
 
-          {/* Detalhamento do Profissional & Veículo */}
-          <div className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 shadow-xs">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Detalhes da aula</h4>
-            <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
-              <div className="space-y-1">
-                <span className="block text-[11px] font-medium text-slate-400">Autoescola</span>
-                <div className="flex items-center gap-1.5 font-bold text-[var(--mazzi-dark)]">
-                  <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden="true" />
-                  <span className="truncate">{providerName}</span>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <span className="block text-[11px] font-medium text-slate-400">Instrutor</span>
-                <div className="flex items-center gap-1.5 font-bold text-[var(--mazzi-dark)]">
-                  <UserRound className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden="true" />
-                  <span className="truncate">{instructorName}</span>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <span className="block text-[11px] font-medium text-slate-400">Veículo</span>
-                <div className="flex items-center gap-1.5 font-bold text-[var(--mazzi-dark)]">
-                  <Car className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden="true" />
-                  <span className="truncate">{vehicleName}</span>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <span className="block text-[11px] font-medium text-slate-400">Categoria / Câmbio</span>
-                <span className="font-bold text-[var(--mazzi-dark)]">
-                  Cat. {category} · {transmission}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Resumo do Pagamento */}
-          <div className="space-y-2 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
-            <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--mazzi-dark)]">
-              <CreditCard className="h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden="true" />
-              Resumo do Pagamento
-            </h4>
-            <div className="flex items-center justify-between text-xs text-slate-700">
-              <span>Valor líquido</span>
-              <span className="font-bold">{formatCentsToBRL(netAmountInCents)}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-700">
-              <span>Taxa de Serviço MAZZI</span>
-              <span className="font-bold">{formatCentsToBRL(platformFeeInCents)}</span>
-            </div>
-            <div className="flex items-center justify-between border-t border-[var(--mazzi-border)] pt-2 text-sm font-bold text-[var(--mazzi-dark)]">
-              <span>Total da aula</span>
-              <span>{formatCentsToBRL(bookingTotalInCents)}</span>
-            </div>
-          </div>
-
-          {isCancelled && booking.cancellationReason && (
-            <div role="status" className="space-y-1 rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-900">
-              <div className="flex items-center gap-1.5 font-extrabold">
-                <XCircle className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
-                <span>Motivo do cancelamento</span>
-              </div>
-              <p className="pl-5 text-[11px] font-medium text-rose-700">{booking.cancellationReason}</p>
-            </div>
-          )}
+          <BookingCancellationNotice booking={booking} />
+          <BookingPaymentStateNotices
+            isPendingPayment={isWaitingPayment}
+            isHoldValid={booking.holdExpiresAt ? new Date(booking.holdExpiresAt).getTime() > Date.now() : true}
+            minutesLeft={booking.holdExpiresAt ? Math.max(1, Math.ceil((new Date(booking.holdExpiresAt).getTime() - Date.now()) / (1000 * 60))) : null}
+            isExpired={booking.status === 'EXPIRED' || (isWaitingPayment && Boolean(booking.holdExpiresAt) && new Date(booking.holdExpiresAt).getTime() <= Date.now())}
+          />
 
           <BookingDisputePanel booking={booking} currentUserId={currentUserId} />
         </div>

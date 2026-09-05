@@ -49,7 +49,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   return (
     <div
       id={id || 'mazzi-error-state'}
-      className="p-6 my-4 rounded-3xl border border-rose-200 bg-rose-50/60 flex flex-col items-center justify-center text-center max-w-md mx-auto text-left"
+      className="p-6 my-4 rounded-2xl border border-rose-200 bg-rose-50/60 flex flex-col items-center justify-center text-center max-w-md mx-auto text-left"
     >
       <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mb-3">
         <AlertCircle className="w-6 h-6" />

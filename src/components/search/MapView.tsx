@@ -112,6 +112,7 @@ export const MapView: React.FC<MapViewProps> = ({
         showCoverageRadius={showRadius}
         userLocation={userLocation}
         searchedLocation={searchedLocation}
+        interactive={false}
       />
 
       <p className="text-[10px] text-slate-400 text-center flex items-center justify-center gap-1">

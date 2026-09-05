@@ -4,6 +4,7 @@
 
 import { Booking, BookingStatus, UserRole, AuditLog } from '../types';
 import { FinancialLedgerService } from './payments/financial-ledger';
+import { formatMeetingPoint } from '../lib/meeting-point';
 
 export type LessonSessionState =
   | 'NOT_STARTED'
@@ -149,7 +150,7 @@ export function performProviderCheckIn(params: CheckInParams): {
     studentId: booking.studentId,
     state: 'CHECKED_IN',
     instructorCheckedInAt: now.toISOString(),
-    meetingPoint: booking.meetingPoint,
+    meetingPoint: booking.meetingPointLabel || formatMeetingPoint(booking.meetingPoint),
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };

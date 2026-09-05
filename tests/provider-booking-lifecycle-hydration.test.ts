@@ -173,4 +173,30 @@ describe('TASK-052 — Provider Booking Lifecycle Hydration & Reload Resilience 
     expect(b.status).toBe('IN_PROGRESS');
     expect(b.instructorCheckedIn).toBe(false);
   });
+
+  it('K. provider displacement keeps CONFIRMED status and exposes the persisted operational timestamp', () => {
+    const row = {
+      ...baseDbRow,
+      status: 'CONFIRMED',
+      meeting_point: {
+        latitude: -23.5583,
+        longitude: -46.6601,
+        address: 'Rua Exata, 100, São Paulo',
+      },
+      snapshot_data: {
+        ...baseDbRow.snapshot_data,
+        provider_on_the_way_at: '2026-09-04T16:01:00Z',
+        meetingPoint: {
+          latitude: -23.5583,
+          longitude: -46.6601,
+          address: 'Rua Exata, 100, São Paulo',
+        },
+      },
+    };
+    const booking = mapBookingFromDb(row);
+
+    expect(booking.status).toBe('CONFIRMED');
+    expect(booking.providerOnTheWayAt).toBe('2026-09-04T16:01:00Z');
+    expect(booking.snapshot.meetingPoint).toMatchObject({ latitude: -23.5583, longitude: -46.6601 });
+  });
 });

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, CalendarClock, History, ChevronRight, Car, Phone, ShieldCheck, Lock, Mail, Camera } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, History, Car, Phone, ShieldCheck, Lock, Mail, Camera } from 'lucide-react';
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
 import { LessonWizardHeader } from '../../components/ui/LessonWizardHeader';
 import { Check, X, ArrowLeft } from 'lucide-react';
@@ -7,6 +7,7 @@ import { instantOptionClassName } from '../../components/instant/instant-option-
 import {
   Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, StudentSavedAddress, InstantLessonPriceOption, InstantLessonRequest, InstantLessonOffer, InstantLessonTracking, TransmissionType, VehicleCategory, } from '../../types';
 import { BookingCard } from '../../components/ui/BookingCard';
+import { UpcomingBookingCard, UpcomingBookingEmptyCard } from '../../components/ui/UpcomingBookingCard';
 import { EmptyState, ErrorState } from '../../components/ui/EmptyState';
 import { AppPageHeader } from '../../components/ui/AppPageHeader';
 import { AppBottomNav } from '../../components/ui/AppBottomNav';
@@ -16,7 +17,8 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
 
-import { getBookingEndTimestamp, getStudentBookingSection, isBookingEnded, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { getBookingEndTimestamp, getStudentBookingSection, isBookingEnded, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { getInstantLessonAvailabilityNotice } from '../../domain/instant-lesson';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { SearchHeader } from '../../components/search/SearchHeader';
 import { FilterDrawer } from '../../components/search/FilterDrawer';
@@ -35,7 +37,7 @@ import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import { NOTIFICATIONS_CHANGED } from '../../components/ui/NotificationIndicator';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
-import { formatDateBR, formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/date-format';
+import { formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
@@ -51,6 +53,7 @@ import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messag
 import { disableStoredPushDevice } from '../../lib/push-device-registry';
 import { StudentProMigrationCard } from './components/StudentProMigrationCard';
 import { InstantLessonModal } from './components/InstantLessonModal';
+import { InstantLessonAvailabilityNotice } from '../../components/instant/InstantLessonAvailabilityNotice';
 import { ToastContainer, type ToastMessage } from '../../components/ui/Toast';
 import { dismissInitialSplash, signalInitialNavigationReady } from '../../lib/initial-splash';
 
@@ -610,6 +613,7 @@ export const StudentApp: React.FC = () => {
   const [reviewsEligibilityStatus, setReviewsEligibilityStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [searchLoading, setSearchLoading] = useState(isRealSupabase);
   const [searchError, setSearchError] = useState(false);
+  const initialBookingsReadySignaledRef = useRef(false);
 
   useEffect(() => {
     async function loadBookings() {
@@ -666,6 +670,15 @@ export const StudentApp: React.FC = () => {
     }
     void loadBookings();
   }, [user?.id, bookingsRefreshKey]);
+
+  // Keep the startup splash over the first complete lesson render. This
+  // prevents action buttons from changing visibility immediately after the
+  // app becomes visible while booking status is still being derived.
+  useEffect(() => {
+    if (!user || bookingsLoading || initialBookingsReadySignaledRef.current) return;
+    initialBookingsReadySignaledRef.current = true;
+    signalInitialNavigationReady();
+  }, [bookingsLoading, user]);
 
   // Stripe returns to the app through success_url/cancel_url. The browser
   // return is not authoritative: wait for the signed webhook to update the
@@ -1130,6 +1143,16 @@ function applyStrictProviderFilters(
   const [selectedBookingForChat, setSelectedBookingForChat] = useState<Booking | null>(null);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
 
+  const refreshBookingForDetails = useCallback(async (bookingId: string): Promise<Booking | null> => {
+    const bookings = await loadBookingsData();
+    const refreshedBooking = bookings.find((candidate) => candidate.id === bookingId) || null;
+    if (!refreshedBooking) return null;
+
+    setConfirmedBookings(bookings);
+    setSelectedBookingForDetails((current) => current?.id === bookingId ? refreshedBooking : current);
+    return refreshedBooking;
+  }, [loadBookingsData]);
+
   // Checkout Flow Modal States
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSlotSelectorOpen, setIsSlotSelectorOpen] = useState(false);
@@ -1149,7 +1172,10 @@ function applyStrictProviderFilters(
   const pickedOfferingContext = bookingContextChoices.find(ctx => (ctx.offering_id || ctx.offeringId) === pickedOfferingId);
   const bookingWizardSteps = [
     ...(groupBookingContextsByInstructor(bookingContextsForSelection).length > 1 ? ['Instrutor'] : []),
-    ...(groupBookingContextsByInstructor(bookingContextsForSelection).some(ctx => uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, ctx.instructor_id || ctx.instructorId)).length > 1) ? ['Veículo'] : []),
+    ...(groupBookingContextsByInstructor(bookingContextsForSelection).some(ctx => {
+      const contexts = filterBookingContextsByInstructor(bookingContextsForSelection, ctx.instructor_id || ctx.instructorId);
+      return groupBookingContextsByVehicle(contexts).length > 1 || uniqueBookingOfferingContexts(contexts).length > 1;
+    }) ? ['Veículo'] : []),
     'Horário', 'Confirmação',
   ];
   const closeBookingWizard = () => {
@@ -1212,9 +1238,13 @@ function applyStrictProviderFilters(
         const contextsForInstructor = rawProv?.type === 'DRIVING_SCHOOL' && instructorId
           ? filterBookingContextsByInstructor(bookingContexts, instructorId)
           : bookingContexts;
+        const distinctVehicles = groupBookingContextsByVehicle(contextsForInstructor);
         const distinctOfferings = uniqueBookingOfferingContexts(contextsForInstructor);
-        if (distinctOfferings.length > 1) {
-          setBookingContextChoices(distinctOfferings);
+        if (distinctVehicles.length > 1 || distinctOfferings.length > 1) {
+          // Prefer one choice per vehicle when the instructor has multiple cars.
+          // If there is only one car with multiple offerings, keep each offering
+          // available so duration/price choices are not lost.
+          setBookingContextChoices(distinctVehicles.length > 1 ? distinctVehicles : distinctOfferings);
           setOfferingPickerProvider(rawProv || null);
           setOfferingPickerSlot(slot || null);
           return;
@@ -1286,6 +1316,11 @@ function applyStrictProviderFilters(
 
   const [nowMs, setNowMs] = useState(() => Date.now());
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   // Automatic transition timer: re-evaluate the lists when the next lesson ends.
   useEffect(() => {
     const futureEnds = confirmedBookings
@@ -1306,7 +1341,7 @@ function applyStrictProviderFilters(
 
   // Filter Bookings for Upcoming vs History with strict temporal classification
   const upcomingBookings = useMemo(() => {
-    return confirmedBookings
+    const upcoming = confirmedBookings
       .filter((b) => {
         if (isBookingEnded(b, nowMs)) return false;
 
@@ -1318,9 +1353,15 @@ function applyStrictProviderFilters(
         }
 
         return false;
-      })
-      .sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b));
+      });
+
+    return sortBookingsForNext(upcoming, nowMs);
   }, [confirmedBookings, nowMs]);
+
+  const instantAvailabilityNotice = useMemo(
+    () => getInstantLessonAvailabilityNotice(confirmedBookings, nowMs),
+    [confirmedBookings, nowMs],
+  );
 
   const confirmedLessonBookings = useMemo(() => {
     return confirmedBookings
@@ -1493,20 +1534,50 @@ function applyStrictProviderFilters(
     <div className="mazzi-app text-[var(--mazzi-text)]">
       <ToastContainer toasts={notificationToasts} onDismiss={(id) => setNotificationToasts((current) => current.filter((toast) => toast.id !== id))} />
         <main className="mazzi-mobile text-left">
+          {activeTab !== 'search' && upcomingBookings[0] && (
+            <div className="mb-5">
+              <UpcomingBookingCard booking={upcomingBookings[0]} perspective="student" onSelect={setSelectedBookingForDetails} />
+            </div>
+          )}
+
           {/* SEARCH TAB */}
           {activeTab === 'search' && (
-            <div className="space-y-7">
+            <div className="space-y-[10px]">
               <AppHomeHeader
                 eyebrow="Aulas práticas"
                 eyebrowIcon={<UserRound className="h-5 w-5" aria-hidden="true" />}
                 title="Encontre perto de você"
+                titleClassName="text-[14px] font-black leading-[1.2] tracking-[-0.02em] text-[var(--mazzi-dark)] sm:text-[14px]"
                 subtitle={`Olá, ${user?.name?.split(' ')[0] || 'aluno'}. Busque por região e escolha o melhor horário para sua próxima aula.`}
                 onOpenNotifications={() => setIsNotificationsOpen(true)}
                 onRefresh={() => setSearchRefreshKey((value) => value + 1)}
                 isRefreshing={searchLoading}
                 appContext="STUDENT"
               />
-              {/* Search Header */}
+              {instantAvailabilityNotice ? (
+                <InstantLessonAvailabilityNotice notice={instantAvailabilityNotice} />
+              ) : (
+                <section className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm" aria-labelledby="instant-lesson-cta-title">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p id="instant-lesson-cta-title" className="font-extrabold text-[var(--mazzi-dark)]">Precisa de uma aula agora?</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-600">Encontre um profissional disponível perto de você.</p>
+                    </div>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => setIsInstantLessonOpen(true)} leftIcon={<Clock className="h-4 w-4" />}>
+                      Aula Agora
+                    </Button>
+                  </div>
+                </section>
+              )}
+
+              {/* Widget de Próxima Aula Agendada (componente compartilhado com o PRO) */}
+              {upcomingBookings.length > 0 ? (
+                <UpcomingBookingCard booking={upcomingBookings[0]} perspective="student" onSelect={setSelectedBookingForDetails} />
+              ) : (
+                <UpcomingBookingEmptyCard onViewBookings={() => setActiveTab('bookings')} />
+              )}
+
+              {/* Search Header — remains close to the next lesson context. */}
               <SearchHeader
                 searchRequest={searchRequest}
                 onUpdateSearch={handleUpdateSearch}
@@ -1524,67 +1595,10 @@ function applyStrictProviderFilters(
                 }}
               />
 
-              <section className="rounded-3xl border border-amber-200 bg-amber-50 p-4 shadow-sm" aria-labelledby="instant-lesson-cta-title">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p id="instant-lesson-cta-title" className="font-extrabold text-[var(--mazzi-dark)]">Precisa de uma aula agora?</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-600">Encontre um profissional disponível perto de você.</p>
-                  </div>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setIsInstantLessonOpen(true)} leftIcon={<Clock className="h-4 w-4" />}>
-                    Aula Agora
-                  </Button>
-                </div>
-              </section>
-
-              {/* Widget de Próxima Aula Agendada (Acesso Rápido - Base Visual V3) */}
-              {upcomingBookings.length > 0 && (
-                <section
-                  className="mazzi-card flex items-center justify-between gap-3.5 p-3.5 sm:p-4 transition-all hover:shadow-md cursor-pointer active:scale-[0.99]"
-                  onClick={() => setSelectedBookingForDetails(upcomingBookings[0])}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedBookingForDetails(upcomingBookings[0]);
-                    }
-                  }}
-                  aria-label={`Próxima aula em ${formatDateBR(upcomingBookings[0].scheduledDate)} às ${upcomingBookings[0].startTime}. Toque para ver detalhes.`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
-                      <CalendarClock className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="mazzi-eyebrow text-[9px] text-[#8b6800]">Próxima aula</p>
-                      <strong className="block truncate text-sm font-extrabold text-[var(--mazzi-dark)] sm:text-base">
-                        {formatDateBR(upcomingBookings[0].scheduledDate)} · {upcomingBookings[0].startTime}
-                      </strong>
-                      <span className="block truncate text-xs font-medium text-[var(--mazzi-muted)]">
-                        {upcomingBookings[0].instructorName || 'Instrutor'} · {upcomingBookings[0].snapshot?.durationMinutes || 50} min
-                      </span>
-                    </div>
-                  </div>
-                  <ButtonBase
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedBookingForDetails(upcomingBookings[0]);
-                    }}
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 cursor-pointer"
-                    aria-label="Ver detalhes da próxima aula"
-                  >
-                    <ChevronRight className="h-5 w-5" aria-hidden="true" />
-                  </ButtonBase>
-                </section>
-              )}
-
-              <section aria-labelledby="student-results-title" className="mt-8">
+              <section aria-label="Quantidade de profissionais encontrados" className="mt-[10px]">
                 <div className="flex items-end justify-between gap-3">
                   <div>
-                    <p className="mazzi-eyebrow mb-2 text-[9px]">Resultados na sua região</p>
-                    <h2 id="student-results-title" className="mazzi-section-title">Profissionais próximos</h2>
-                    <p className="mt-1 text-xs font-semibold text-[var(--mazzi-muted)]" aria-live="polite">
+                    <p className="text-sm font-extrabold text-[var(--mazzi-text)]" aria-live="polite">
                       {locationStatus === 'RESOLVING' && searchRequest.latitude === undefined ? 'Obtendo sua localização…' : searchLoading ? 'Buscando profissionais…' : formatStudentResultCount(searchResponse?.totalCount || 0)}
                     </p>
                   </div>
@@ -1622,7 +1636,7 @@ function applyStrictProviderFilters(
               </section>
 
               {searchError && (
-                  <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                  <div role="alert" className="mazzi-compact-card flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
                   <span>Não foi possível buscar profissionais agora.</span>
                   <ButtonBase type="button" onClick={() => setSearchRefreshKey((value) => value + 1)} className="inline-flex items-center gap-1.5 font-bold underline">
                     <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -1662,7 +1676,7 @@ function applyStrictProviderFilters(
                   {searchLoading && !(searchResponse?.results?.length) || (locationStatus === 'RESOLVING' && searchRequest.latitude === undefined) ? (
                     <ContentSkeleton count={4} label="Carregando profissionais" />
                   ) : searchError ? null : (searchRequest.latitude === undefined || searchRequest.longitude === undefined) ? (
-                    <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+                    <div className="mazzi-compact-card rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
                       <p className="text-sm font-bold text-slate-800">Informe sua localização para encontrar instrutores próximos.</p>
                       <p className="text-xs text-slate-500 mt-1">Digite seu endereço ou bairro na busca acima para ver os profissionais disponíveis na sua região.</p>
                     </div>
@@ -1727,7 +1741,7 @@ function applyStrictProviderFilters(
 
           {/* BOOKINGS TAB (MINHAS AULAS) */}
           {activeTab === 'bookings' && (
-            <div className="space-y-5">
+            <div className="space-y-[10px]">
               <AppPageHeader
                 eyebrow="Sua jornada"
                 title="Minhas aulas"
@@ -1878,7 +1892,7 @@ function applyStrictProviderFilters(
 
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
-            <div className="space-y-5">
+            <div className="space-y-[10px]">
               <AppPageHeader
                 eyebrow="Sua conta"
                 title="Meu Perfil"
@@ -1909,7 +1923,7 @@ function applyStrictProviderFilters(
                 <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p>
               </div>
 
-              <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+              <div className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
                 <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Dados do perfil</h4>
                 {isEditingProfile ? (
                   <Modal
@@ -1930,7 +1944,7 @@ function applyStrictProviderFilters(
                   >
                     <div className="space-y-4 text-left">
                       {/* 1. Card de Foto de Perfil */}
-                      <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 space-y-2.5 shadow-2xs">
+                      <div className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 space-y-2.5 shadow-2xs">
                         <ProfileSectionHeader title="Foto de perfil" icon={Camera} badge="Identificação" />
                         <div id="student-profile-photo">
                           <ProfilePhotoPicker
@@ -1946,7 +1960,7 @@ function applyStrictProviderFilters(
                       </div>
 
                       {/* 2. Card de Dados Pessoais (Editáveis) */}
-                      <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 space-y-3.5 shadow-2xs">
+                      <div className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 space-y-3.5 shadow-2xs">
                         <ProfileSectionHeader title="Dados pessoais" icon={UserRound} />
 
                         <div>
@@ -1996,7 +2010,7 @@ function applyStrictProviderFilters(
                       </div>
 
                       {/* 3. Card de Segurança da Conta (Protegido) */}
-                      <div className="rounded-2xl border border-[var(--mazzi-border)] bg-slate-50/70 p-4 space-y-3 shadow-2xs">
+                      <div className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-slate-50/70 p-4 space-y-3 shadow-2xs">
                         <ProfileSectionHeader
                           title="Segurança da conta"
                           icon={ShieldCheck}
@@ -2148,6 +2162,7 @@ function applyStrictProviderFilters(
           setBookingsRefreshKey((k) => k + 1);
           setSelectedBookingForDetails(updated);
         }}
+        onRefreshBooking={refreshBookingForDetails}
         onReview={reviewsEligibilityStatus === 'SUCCESS' && ['COMPLETED', 'DISPUTED'].includes(selectedBookingForDetails?.status || '') && !reviewedBookingIds.has(selectedBookingForDetails.id)
           ? (bookingToReview) => setSelectedBookingForReview(bookingToReview)
           : undefined}
@@ -2203,20 +2218,21 @@ function applyStrictProviderFilters(
           ariaLabel="Escolha o instrutor"
           footerVariant="wizard"
           className="instant-light"
-          footer={<div className="flex w-full items-center gap-3"><Button type="button" variant="outline" className="shrink-0" leftIcon={<X className="h-4 w-4" aria-hidden="true" />} onClick={closeBookingWizard}>Fechar</Button><Button type="button" className="min-w-0 flex-1" leftIcon={pickedInstructorContext && uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 ? <CalendarIcon className="h-4 w-4" aria-hidden="true" /> : <Car className="h-4 w-4" aria-hidden="true" />} disabled={!pickedInstructorContext} onClick={() => {
+          footer={<div className="flex w-full items-center gap-3"><Button type="button" variant="outline" className="shrink-0" leftIcon={<X className="h-4 w-4" aria-hidden="true" />} onClick={closeBookingWizard}>Fechar</Button><Button type="button" className="min-w-0 flex-1" leftIcon={pickedInstructorContext && groupBookingContextsByVehicle(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 && uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 ? <CalendarIcon className="h-4 w-4" aria-hidden="true" /> : <Car className="h-4 w-4" aria-hidden="true" />} disabled={!pickedInstructorContext} onClick={() => {
             if (!pickedInstructorContext) return;
             const contexts = filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!);
+            const vehicles = groupBookingContextsByVehicle(contexts);
             const offerings = uniqueBookingOfferingContexts(contexts);
             setInstructorPickerProvider(null);
             setInstructorChoices([]);
-            if (offerings.length > 1) {
-              setBookingContextChoices(offerings);
+            if (vehicles.length > 1 || offerings.length > 1) {
+              setBookingContextChoices(vehicles.length > 1 ? vehicles : offerings);
               setOfferingPickerProvider(instructorPickerProvider);
               setOfferingPickerSlot(null);
             } else {
               openCheckoutForContext(instructorPickerProvider, offerings[0] || contexts[0]);
             }
-          }}>{pickedInstructorContext && uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 ? 'Escolher horário' : 'Escolher veículo'}</Button></div>}
+          }}>{pickedInstructorContext && groupBookingContextsByVehicle(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 && uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 ? 'Escolher horário' : 'Escolher veículo'}</Button></div>}
           size="sm"
         >
           <div className="min-h-0 space-y-3">

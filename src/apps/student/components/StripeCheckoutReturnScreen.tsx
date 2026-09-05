@@ -104,7 +104,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
                   : 'O Checkout da Stripe foi concluído. Estamos finalizando a confirmação segura da sua reserva.'}
               </p>
 
-              {booking && <div className="mt-5 w-full max-w-xl rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 text-left sm:p-5">
+              {booking && <div className="mazzi-compact-card mt-5 w-full max-w-xl rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 text-left sm:p-5">
                 <div className="flex items-start justify-between gap-3 border-b border-[var(--mazzi-border)] pb-3">
                   <div>
                     <p className="mazzi-field-label">Confira sua aula</p>

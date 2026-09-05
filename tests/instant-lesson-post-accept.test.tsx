@@ -59,13 +59,16 @@ const mockBooking: Booking = {
 describe('Instant Lesson Post-Accept & Active Journey Flow', () => {
   describe('Migration & RPC Contract Integrity', () => {
     it('defines public.set_provider_on_the_way in forward migration', () => {
-      const migrationPath = path.join(process.cwd(), 'supabase/migrations/20260904170000_task_089_instant_provider_on_the_way.sql');
+      const migrationPath = path.join(process.cwd(), 'supabase/migrations/20260904200000_task_091_aula_agora_consolidation.sql');
       expect(fs.existsSync(migrationPath)).toBe(true);
       const sql = fs.readFileSync(migrationPath, 'utf8');
       expect(sql).toContain('CREATE OR REPLACE FUNCTION public.set_provider_on_the_way');
       expect(sql).toContain('snapshot_data');
-      expect(sql).toContain("NOT IN ('CONFIRMED', 'IN_PROGRESS')");
+      expect(sql).toContain("v_booking.status <> 'CONFIRMED'");
       expect(sql).toContain('p_booking_id');
+      expect(sql).toContain("'PROVIDER_ON_THE_WAY'");
+      expect(sql).toContain("'is_idempotent', TRUE");
+      expect(sql).toContain("ARRAY['meetingPoint','meeting_point','fullMeetingPoint','latitude','longitude']");
     });
   });
 
@@ -85,7 +88,7 @@ describe('Instant Lesson Post-Accept & Active Journey Flow', () => {
     });
 
     it('renders on the way status in banner when operationalState is ON_THE_WAY', () => {
-      const onTheWayBooking: Booking = { ...mockBooking, status: 'ON_THE_WAY' };
+      const onTheWayBooking: Booking = { ...mockBooking, providerOnTheWayAt: '2026-09-04T16:01:00Z' };
       const { container } = render(<InstantLessonActiveBanner booking={onTheWayBooking} operationalState="ON_THE_WAY" onOpenDetails={vi.fn()} />);
       expect(container.textContent).toContain('Você está a caminho');
     });

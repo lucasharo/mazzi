@@ -24,6 +24,8 @@ describe('Stripe hosted onboarding contract', () => {
 
     expect(edgeFunction).toContain('account_links');
     expect(edgeFunction).toContain('core/account_links');
+    expect(edgeFunction).toContain('Stripe-Version": "2026-08-26.preview"');
+    expect(edgeFunction).not.toContain('Stripe-Version": "2026-08-26.dahlia"');
     expect(edgeFunction).toContain('type: "account_update"');
     expect(edgeFunction).toContain('accountWasExisting');
     expect(edgeFunction).toContain('configurations: ["recipient", "merchant"]');
@@ -42,6 +44,10 @@ describe('Stripe hosted onboarding contract', () => {
     expect(edgeFunction).toContain('date_of_birth');
     expect(edgeFunction).toContain('contact_phone');
     expect(edgeFunction).toContain('identity.business_details');
+    expect(edgeFunction).toContain('entity_type === "company"');
+    expect(edgeFunction).toContain('core/accounts/${created.id}/persons');
+    expect(edgeFunction).toContain('relationship: { representative: true');
+    expect(edgeFunction).not.toContain('businessDetails: {');
     expect(edgeFunction).toContain('individual.address = address');
     expect(edgeFunction).toContain('formatPostalCode');
     expect(edgeFunction).toContain('`${digits.slice(0, 5)}-${digits.slice(5)}`');

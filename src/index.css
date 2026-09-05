@@ -12,8 +12,7 @@
   margin: 1.5rem -1.5rem -1.5rem;
   padding: 1rem 1.5rem max(1rem, calc(env(safe-area-inset-bottom) + 0.75rem));
   border-top: 1px solid color-mix(in srgb, var(--mazzi-border) 60%, transparent);
-  background: var(--mazzi-surface);
-  box-shadow: 0 -4px 16px rgb(0 0 0 / 5%);
+  background: var(--mazzi-modal-footer-bg);
 }
 
 .mazzi-modal-actions > * {
@@ -33,6 +32,7 @@
 :root {
   --mazzi-bg: #f7f5ef;
   --mazzi-surface: #ffffff;
+  --mazzi-modal-footer-bg: #ffffff;
   --mazzi-surface-soft: #f1f0eb;
   --mazzi-text: #33363f;
   --mazzi-muted: #77766f;
@@ -111,7 +111,9 @@ body {
 .mazzi-segmented > button { min-height: 44px; flex: 1 1 0%; border-radius: 12px; padding: 10px 12px; color: var(--mazzi-muted); font-size: 12px; font-weight: 700; transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease; }
 .mazzi-segmented > button:hover { color: var(--mazzi-dark); background: rgba(255,255,255,.55); }
 .mazzi-segmented > button[aria-selected="true"], .mazzi-segmented > button[data-active="true"] { background: var(--mazzi-yellow); color: var(--mazzi-dark); box-shadow: 0 2px 8px rgba(32,33,38,.08); }
-.mazzi-card { border-radius: 22px; background: var(--mazzi-surface); border: 1px solid var(--mazzi-border); box-shadow: var(--mazzi-shadow); }
+/* Compact card rhythm shared by Student, PRO and reusable card surfaces. */
+.mazzi-card { padding: .600rem; border-radius: 22px; background: var(--mazzi-surface); border: 1px solid var(--mazzi-border); box-shadow: var(--mazzi-shadow); }
+.mazzi-compact-card { padding: .600rem; }
 .mazzi-soft-card { border-radius: 18px; background: var(--mazzi-surface-soft); border: 1px solid var(--mazzi-border); }
 .mazzi-hero { display: grid; grid-template-columns: 1.08fr .92fr; overflow: hidden; border-radius: 28px; box-shadow: var(--mazzi-shadow); }
 .mazzi-hero > :first-child { background: linear-gradient(135deg, var(--mazzi-yellow-soft), var(--mazzi-yellow)); color: var(--mazzi-dark); }
@@ -208,9 +210,8 @@ body {
   z-index: 20;
   margin: 0;
   padding: 1rem 1.5rem max(1rem, env(safe-area-inset-bottom));
-  background: rgb(255 255 255 / 0.96);
+  background: var(--mazzi-modal-footer-bg);
   border-top: 1px solid var(--mazzi-border);
-  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.05);
   backdrop-filter: blur(8px);
 }
 

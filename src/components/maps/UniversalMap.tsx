@@ -15,6 +15,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
     height = '380px',
     className = '',
     showCoverageRadius = false,
+    showMeetingPointPopup = true,
     meetingPoint,
     userLocation,
     searchedLocation,
@@ -77,6 +78,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
           onSelectProvider={onSelectProvider}
           height={height}
           showCoverageRadius={showRadius}
+          showMeetingPointPopup={showMeetingPointPopup}
           meetingPoint={meetingPoint}
           userLocation={userLocation}
           searchedLocation={searchedLocation}

@@ -327,24 +327,26 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
 
       {/* Modern Integrated Composer */}
       {!chatBlockedForSending && <div className="shrink-0 space-y-1.5 pb-[env(safe-area-inset-bottom)]">
-        <div className="relative flex min-h-14 items-center rounded-2xl bg-white border border-[var(--mazzi-border)] focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-[var(--mazzi-focus-glow)] transition-all shadow-xs">
-          <Textarea
-            aria-label="Mensagem"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            rows={1}
-            maxLength={2000}
-            className="!h-14 !min-h-14 w-full resize-none !border-0 bg-transparent px-4 py-3.5 pr-16 text-xs leading-relaxed text-[var(--mazzi-text)] placeholder:text-slate-400 focus:!border-0 focus:outline-none focus:!ring-0 disabled:cursor-not-allowed disabled:bg-slate-50 sm:text-sm"
-            placeholder={booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER' ? 'Chat encerrado por cancelamento da aula.' : 'Escreva uma mensagem sobre esta aula...'}
-            disabled={!conversation || loading || sending || chatBlockedForSending || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
-          />
+        <div className="flex min-h-14 min-w-0 items-center overflow-hidden rounded-2xl border border-[var(--mazzi-border)] bg-white transition-all shadow-xs focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-[var(--mazzi-focus-glow)]">
+          <div className="min-w-0 flex-1">
+            <Textarea
+              aria-label="Mensagem"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              rows={1}
+              maxLength={2000}
+              className="!h-14 !min-h-14 w-full resize-none !border-0 bg-transparent px-4 !pt-[17px] !pb-[13px] !pr-3 text-xs !leading-[22px] text-[var(--mazzi-text)] placeholder:text-slate-400 focus:!border-0 focus:outline-none focus:!ring-0 disabled:cursor-not-allowed disabled:bg-slate-50 sm:text-sm"
+              placeholder={booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER' ? 'Chat encerrado por cancelamento da aula.' : 'Escreva uma mensagem sobre esta aula...'}
+              disabled={!conversation || loading || sending || chatBlockedForSending || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
+            />
+          </div>
           <ButtonBase
             type="button"
             onClick={handleSend}
             disabled={!conversation || loading || sending || chatBlockedForSending || !draft.trim() || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             aria-label="Enviar mensagem"
             title="Enviar mensagem"
-            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
+            className="mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
           >
             {sending ? (
               <RefreshCw className="h-4 w-4 animate-spin text-current" aria-hidden="true" />

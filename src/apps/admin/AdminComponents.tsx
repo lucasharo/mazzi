@@ -451,7 +451,7 @@ export const ProvidersTab: React.FC<{
         {selectedProv ? (
           <div className="space-y-6">
             {/* Header do Parceiro */}
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 text-[var(--mazzi-text)] space-y-4 shadow-sm relative overflow-hidden">
+            <div className="p-5 rounded-2xl bg-white border border-slate-200 text-[var(--mazzi-text)] space-y-4 shadow-sm relative overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
                 <div>
                   <div className="flex items-center gap-2">
@@ -668,7 +668,7 @@ export const ProvidersTab: React.FC<{
             </div>
           </div>
         ) : (
-          <div className="p-12 text-center text-xs text-slate-400 border border-dashed rounded-3xl">
+          <div className="p-12 text-center text-xs text-slate-400 border border-dashed rounded-2xl">
             Selecione um prestador na lista ao lado para inspecionar os detalhes regulatórios.
           </div>
         )}
@@ -874,7 +874,7 @@ export const ComplianceTab: React.FC<{
       {/* Coluna Direita: Detalhes, Visualização de Arquivos Simulados e Análise */}
       <div className="lg:col-span-2 space-y-6 lg:pt-10">
         {selectedDoc ? (
-          <div className="space-y-6 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+          <div className="space-y-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div className="border-b border-slate-100 pb-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -979,13 +979,13 @@ export const ComplianceTab: React.FC<{
             )}
           </div>
         ) : (
-          <div className="p-12 text-center text-xs text-slate-400 border border-dashed rounded-3xl">
+          <div className="p-12 text-center text-xs text-slate-400 border border-dashed rounded-2xl">
             Selecione um documento na fila de compliance para realizar a análise.
           </div>
         )}
 
         {/* Quadro Estático de Requisitos Regulatórios do MVP */}
-        <div className="p-5 border rounded-3xl bg-slate-50 text-xs text-slate-600 space-y-3">
+        <div className="p-5 border rounded-2xl bg-slate-50 text-xs text-slate-600 space-y-3">
           <h4 className="font-bold text-slate-900 uppercase text-xs">Quadro de Requisitos Obrigatórios do MVP</h4>
           <p className="text-[11px] leading-relaxed">
             Conforme a regulamentação brasileira (Código de Trânsito Brasileiro e resoluções do CONTRAN), o credenciamento de parceiros exige:
@@ -1129,7 +1129,7 @@ const [filterStatus, setFilterStatus] = useState<string>('AWAITING_REVIEW');
       {/* Coluna Direita: Ficha do Veículo */}
       <div className="lg:col-span-2 space-y-6 lg:pt-10">
         {selectedVeh ? (
-          <div className="space-y-6 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+          <div className="space-y-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div className="border-b border-slate-100 pb-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -1216,7 +1216,7 @@ const [filterStatus, setFilterStatus] = useState<string>('AWAITING_REVIEW');
             )}
           </div>
         ) : (
-          <div className="p-12 text-center text-xs text-slate-400 border border-dashed rounded-3xl">
+          <div className="p-12 text-center text-xs text-slate-400 border border-dashed rounded-2xl">
             Selecione um veículo na fila de homologação para analisar os detalhes.
           </div>
         )}
@@ -1379,7 +1379,7 @@ export const BookingsTab: React.FC<{
       {/* Coluna Direita: Ficha de Detalhes */}
       <div className="lg:col-span-2 space-y-6 lg:pt-10">
         {selectedBook ? (
-          <div className="space-y-6 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+          <div className="space-y-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div className="border-b border-slate-100 pb-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -1479,7 +1479,7 @@ export const BookingsTab: React.FC<{
             </div>
           </div>
         ) : (
-          <div className="p-12 text-center text-xs text-slate-400 border border-dashed rounded-3xl">
+          <div className="p-12 text-center text-xs text-slate-400 border border-dashed rounded-2xl">
             Selecione uma reserva no monitor ao lado para inspecionar os detalhes operacionais.
           </div>
         )}
@@ -1565,7 +1565,7 @@ export const AdminDisputesPanel: React.FC<{ bookings: Booking[]; refreshKey?: nu
   };
   const selectedBooking = selected ? bookings.find((booking) => booking.id === selected.bookingId) : undefined;
   return (
-    <section className="space-y-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+    <section className="space-y-4 rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
       <div className="flex items-center gap-3"><ShieldAlert className="h-6 w-6 text-amber-700" /><div><h3 className="text-lg font-black text-[var(--mazzi-dark)]">Contestações</h3><p className="text-xs text-slate-600">Acompanhe os relatos e ajude a encontrar uma solução justa para cada aula.</p></div></div>
       {error && <p role="alert" className="text-xs font-bold text-rose-700">{error}</p>}
       {active.length === 0 && !error ? <p className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-600">Nenhuma contestação aguardando análise.</p> : <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.9fr)]">
@@ -1742,7 +1742,7 @@ export const FinancialTab: React.FC<{
           <div className="lg:col-span-1 space-y-3">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ferramenta de Estornos</h4>
             {selectedBooking ? (
-              <div className="p-4 rounded-3xl border border-slate-200 bg-white space-y-4 shadow-sm text-xs">
+              <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-4 shadow-sm text-xs">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">AULA SELECIONADA</span>
                   <h5 className="font-extrabold text-sm text-slate-900">Aula de {selectedBooking.studentName || 'Aluno não identificado'}</h5>
@@ -1773,7 +1773,7 @@ export const FinancialTab: React.FC<{
                 )}
               </div>
             ) : (
-              <div className="p-6 text-center text-xs text-slate-400 border border-dashed rounded-3xl bg-slate-50">
+              <div className="p-6 text-center text-xs text-slate-400 border border-dashed rounded-2xl bg-slate-50">
                 Selecione uma transação ao lado para operar estorno.
               </div>
             )}
@@ -1987,13 +1987,13 @@ export const UsersTab: React.FC<{
       {/* Direita: Governança de acesso — alinhada ao campo de pesquisa */}
       <div className="lg:col-span-2 space-y-6 lg:pt-6">
         {!actor.roles.includes('PLATFORM_ADMIN') ? (
-          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800">
             <h3 className="font-bold">Acesso restrito</h3>
             <p className="mt-1 text-xs leading-relaxed">Somente administradores da plataforma podem adicionar acessos administrativos.</p>
           </div>
         ) : (
           <>
-            <div className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+            <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
               <div className="mb-4 flex items-start gap-3">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700"><ShieldCheck className="h-5 w-5" /></span>
                 <div><h3 className="font-bold text-[var(--mazzi-dark)]">Adicionar usuário administrativo</h3><p className="mt-1 text-xs text-[var(--mazzi-muted)]">Convide um novo usuário ou conceda acesso adicional sem remover os perfis que ele já possui.</p></div>
@@ -2005,7 +2005,7 @@ export const UsersTab: React.FC<{
               </div>
             </div>
             {selectedUser ? (
-          <div className="p-5 bg-white border border-slate-200 rounded-3xl space-y-6 shadow-xs">
+          <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-6 shadow-xs">
             <div className="border-b border-slate-100 pb-4">
               <h3 className="text-base font-black text-slate-900">{selectedUser.name}</h3>
               <div className="text-[11px] text-slate-600 space-y-1 mt-2.5">
@@ -2024,7 +2024,7 @@ export const UsersTab: React.FC<{
             </div>
           </div>
         ) : (
-          <div className="p-12 text-center text-xs text-slate-500 border border-dashed border-[var(--mazzi-border)] rounded-3xl bg-white">
+          <div className="p-12 text-center text-xs text-slate-500 border border-dashed border-[var(--mazzi-border)] rounded-2xl bg-white">
             Selecione uma pessoa na lista para conceder acesso adicional.
           </div>
         )}</>
@@ -2244,7 +2244,7 @@ export const SettingsTab: React.FC<{
         </div>
       )}
 
-      <div className="p-5 bg-white border border-slate-200 rounded-3xl space-y-4 shadow-xs">
+      <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-4 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
             <label className="mazzi-field-label block">Taxa de Serviço da Plataforma (%)</label>

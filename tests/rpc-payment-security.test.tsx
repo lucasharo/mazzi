@@ -117,6 +117,56 @@ describe('TASK-009 Security Hotfix — Real Behavioral Spies & Security Tests', 
       // Cleanup
       vi.restoreAllMocks();
     });
+
+    it('does not crash when an Aula Agora booking resumes with a structured meeting point', async () => {
+      render(
+        <CheckoutModal
+          isOpen={true}
+          onClose={vi.fn()}
+          provider={{ id: 'p-provider-1', name: 'Instrutor Carlos' } as any}
+          vehicle={{ id: 'v-vehicle-1', make: 'Hyundai', model: 'HB20' } as any}
+          offering={{ id: 'off-100', name: 'Aula Agora', duration_minutes: 50, category: 'B', transmission: 'MANUAL' } as any}
+          scheduledDate="2026-09-04"
+          startTime="19:00"
+          endTime="19:50"
+          onBookingConfirmed={vi.fn()}
+          resumeBooking={{
+            id: 'b1000000-0000-4000-8000-000000000100',
+            quoteId: 'q-100',
+            studentId: 's-student-1',
+            providerId: 'p-provider-1',
+            offeringId: 'off-100',
+            status: 'PENDING_PAYMENT',
+            totalInCents: 10000,
+            platformFeeInCents: 1000,
+            scheduledStartAt: '2026-09-04T19:00:00Z',
+            scheduledEndAt: '2026-09-04T19:50:00Z',
+            meetingPoint: 'Pedreira',
+            fullMeetingPoint: 'R Icaveta 143, Pedreira, São Paulo',
+            snapshot: {
+              source: 'AULA_AGORA',
+              category: 'B',
+              providerName: 'Instrutor Carlos',
+              instructorName: 'Instrutor Carlos',
+              vehicleName: 'Hyundai HB20',
+              transmission: 'MANUAL',
+              durationMinutes: 50,
+              priceInCents: 10000,
+              platformFeeInCents: 1000,
+              totalInCents: 10000,
+              meetingPoint: { formattedAddress: 'Pedreira, São Paulo' },
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as any}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Confirmar pagamento/i)).toBeTruthy();
+      });
+      expect(screen.queryByText(/Não foi possível carregar esta área/i)).toBeNull();
+    });
   });
 
   describe('Requirement 7: Real Security Test — Cross Student Access Denied', () => {

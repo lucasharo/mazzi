@@ -44,7 +44,7 @@ export const InstantLessonTrackingCard: React.FC<InstantLessonTrackingCardProps>
     : undefined;
 
   return (
-    <section className={`flex min-h-0 ${onOpenTracking ? 'shrink-0' : 'flex-1'} flex-col overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-sm`} aria-labelledby="instant-tracking-title">
+    <section className={`flex min-h-0 ${onOpenTracking ? 'shrink-0' : 'flex-1'} flex-col overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm`} aria-labelledby="instant-tracking-title">
       <div className="flex shrink-0 items-center gap-3 p-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><Navigation className="h-5 w-5" aria-hidden="true" /></span>
         <div className="min-w-0"><h3 id="instant-tracking-title" className="font-extrabold text-[var(--mazzi-dark)]">{tracking ? 'Profissional a caminho' : 'Aguardando localização do profissional'}</h3><p className="mt-1 text-xs font-semibold text-slate-500">{tracking ? `Última atualização: ${new Date(tracking.recordedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'O mapa será atualizado quando o sinal de GPS retornar.'}</p></div>

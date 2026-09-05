@@ -19,7 +19,7 @@ export const ListEmptyState: React.FC<ListEmptyStateProps> = ({
 }) => (
   <div
     id={id || 'mazzi-list-empty-state'}
-    className="mazzi-list-empty-state mx-auto my-4 flex max-w-md flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center"
+    className="mazzi-list-empty-state mx-auto my-4 flex max-w-md flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center"
   >
     <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
       {icon || <Inbox className="h-7 w-7" aria-hidden="true" />}

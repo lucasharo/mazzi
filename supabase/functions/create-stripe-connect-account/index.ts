@@ -144,7 +144,6 @@ function buildStripePrefill(provider: any) {
     const businessDetails: Record<string, unknown> = {
       ...(cleanText(provider?.legal_name) || cleanText(provider?.trade_name) ? { registered_name: cleanText(provider?.legal_name) || cleanText(provider?.trade_name) } : {}),
       ...(phone ? { phone } : {}),
-      product_description: DEFAULT_PRODUCT_DESCRIPTION,
     };
     if (isValidCnpj(documentNumber)) businessDetails.id_numbers = [{ type: "br_cnpj", value: documentNumber }];
     const address = buildStripeAddress(provider);
@@ -180,6 +179,27 @@ function buildStripePrefill(provider: any) {
       locales: ["pt-BR"],
     },
   };
+}
+
+function buildCompanyRepresentative(provider: any) {
+  const representativeName = cleanText(provider?.representative_name || provider?.user_name);
+  const companyNames = new Set([cleanText(provider?.legal_name)?.toLowerCase(), cleanText(provider?.trade_name)?.toLowerCase()].filter(Boolean));
+  // Never send the school's legal/trade name as if it were a natural person.
+  if (!representativeName || companyNames.has(representativeName.toLowerCase())) return null;
+
+  const representative: Record<string, unknown> = {
+    ...splitPersonName(representativeName),
+    ...(cleanText(provider?.user_email) ? { email: cleanText(provider.user_email) } : {}),
+    ...(normalizeBrazilianPhone(provider?.user_phone || provider?.phone) ? { phone: normalizeBrazilianPhone(provider?.user_phone || provider?.phone) } : {}),
+    relationship: { representative: true, title: cleanText(provider?.representative_title) || "CEO" },
+  };
+  const dateOfBirth = parseBirthDate(provider?.birth_date);
+  const address = buildStripeAddress(provider);
+  const cpf = isValidCpf(provider?.user_cpf) ? digitsOnly(provider.user_cpf) : "";
+  if (dateOfBirth) representative.date_of_birth = dateOfBirth;
+  if (address) representative.address = address;
+  if (cpf) representative.id_numbers = [{ type: "br_cpf", value: cpf }];
+  return representative;
 }
 
 function isAllowedOrigin(origin: string) {
@@ -249,7 +269,10 @@ async function stripeV2Request(path: string, secret: string, body: Record<string
     headers: {
       Authorization: `Bearer ${secret}`,
       "Content-Type": "application/json",
-      "Stripe-Version": "2026-08-26.dahlia",
+      // Keep this aligned with the Stripe Accounts v2 version currently
+      // enabled for the DEV platform. Using an unavailable codename makes
+      // Stripe reject the request before it can create the Connect account.
+      "Stripe-Version": "2026-08-26.preview",
       ...(idempotency ? { "Idempotency-Key": idempotency } : {}),
     },
     body: JSON.stringify(body),
@@ -312,6 +335,16 @@ Deno.serve(async (request) => {
         metadata: { mazzi_provider_id: provider.id, mazzi_account_gateway: accountGateway },
         include: ["configuration.recipient", "identity", "requirements"],
       }, `mazzi-connect-account-${accountGateway}-${provider.id}`);
+      if (providerPrefill.identity.entity_type === "company") {
+        const representative = buildCompanyRepresentative({
+          ...provider,
+          user_email: provider.user_email || userData.user.email,
+        });
+        if (representative) {
+          await stripeV2Request(`core/accounts/${created.id}/persons`, stripeSecretKey, representative, `mazzi-connect-representative-${accountGateway}-${provider.id}`)
+            .catch((error) => console.warn("could not prefill company representative", error));
+        }
+      }
       const { data: inserted, error: insertError } = await userClient.rpc(upsertAccountRpc, {
         p_external_account_id: created.id, p_status: "PENDING", p_charges_enabled: false, p_payouts_enabled: false,
         p_metadata: { source: "provider_profile" },
@@ -426,7 +459,12 @@ Deno.serve(async (request) => {
     // o estado autoritativo da Stripe. Não criamos um segundo link.
     return reply(request, 200, { account: synced });
   } catch (error) {
-    console.error("connect account onboarding failed", error);
-    return reply(request, 502, { message: "Não foi possível concluir o cadastro de recebimentos. Revise os dados bancários e tente novamente." });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("connect account onboarding failed", { message, providerId: provider?.id });
+    const isDevelopment = Deno.env.get("ENVIRONMENT") !== "production";
+    return reply(request, 502, {
+      message: "Não foi possível concluir o cadastro de recebimentos. Revise os dados bancários e tente novamente.",
+      ...(isDevelopment ? { detail: message } : {}),
+    });
   }
 });

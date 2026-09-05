@@ -1,17 +1,17 @@
 import React from 'react';
-import { Clock, AlertTriangle, ArrowRight, Star, Calendar, SlidersHorizontal, Plus, } from 'lucide-react';
-import { Provider, Booking, ComplianceDocument, Vehicle } from '../../../types';
-import { StatusBadge } from '../../../components/ui/StatusBadge';
-import { Badge } from '../../../components/ui/Badge';
+import { AlertTriangle, ArrowRight, Star, Calendar, SlidersHorizontal, Plus, Mail, Check, CircleX, Building2, } from 'lucide-react';
+import { Provider, Booking, ComplianceDocument, Vehicle, InstantLessonSettings } from '../../../types';
+import type { SchoolInvitationContext } from '../../../lib/db-service';
 import { Button, ButtonBase } from '../../../components/ui/Button';
-import { ObjectEmptyState } from '../../../components/ui/ObjectEmptyState';
-import { AppPageHeader } from '../../../components/ui/AppPageHeader';
-import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { evaluateProviderEligibility } from '../../../domain/compliance';
 import { resolveComplianceDocumentStatus } from '../../../domain/provider-compliance-presentation';
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
 import { ComplianceStatusAlert } from '../../../components/ui/ComplianceStatusAlert';
 import { ProviderEarningsDashboardCard } from './ProviderEarningsTab';
+import { Modal } from '../../../components/ui/Modal';
+import { UpcomingBookingCard, UpcomingBookingEmptyCard } from '../../../components/ui/UpcomingBookingCard';
+import { ProviderInstantLessonSummaryCard } from './ProviderInstantLessonSummaryCard';
+import { getInstantLessonAvailabilityNotice } from '../../../domain/instant-lesson';
 
 interface ProviderDashboardTabProps {
   currentProvider: Provider;
@@ -19,14 +19,22 @@ interface ProviderDashboardTabProps {
   confirmedBookings: Booking[];
   completedBookings: Booking[];
   nextBooking: Booking | null;
+  activeInstantBooking?: Booking | null;
   providerDocs: ComplianceDocument[];
   providerVehicles: Vehicle[];
   onSelectBooking: (booking: Booking) => void;
   onNavigateTab: (tabId: 'dashboard' | 'bookings' | 'earnings' | 'management' | 'profile') => void;
   onOpenAddVehicleModal: () => void;
   onOpenAddOfferingModal: () => void;
+  instantSettings?: InstantLessonSettings[];
+  bookings?: Booking[];
+  nowMs?: number;
+  onOpenInstantSettings?: () => void;
   calendarLoadError?: string | null;
   isRefreshing?: boolean;
+  schoolInvitations?: SchoolInvitationContext[];
+  onAcceptSchoolInvitation?: (invitationId: string) => Promise<void>;
+  onDeclineSchoolInvitation?: (invitationId: string) => Promise<void>;
 }
 
 export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
@@ -35,30 +43,36 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   confirmedBookings,
   completedBookings,
   nextBooking,
+  activeInstantBooking = null,
   providerDocs,
   providerVehicles,
   onSelectBooking,
   onNavigateTab,
   onOpenAddVehicleModal,
+  instantSettings = [],
+  bookings,
+  nowMs = Date.now(),
+  onOpenInstantSettings = () => onNavigateTab('management'),
   calendarLoadError,
   isRefreshing = false,
+  schoolInvitations = [],
+  onAcceptSchoolInvitation,
+  onDeclineSchoolInvitation,
 }) => {
+  const [selectedInvitation, setSelectedInvitation] = React.useState<typeof schoolInvitations[number] | null>(null);
+  const [invitationAction, setInvitationAction] = React.useState<'ACCEPT' | 'DECLINE' | null>(null);
   const complianceEligibility = evaluateProviderEligibility(currentProvider, providerDocs);
   const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility, providerDocs);
+  const instantAvailabilityNotice = getInstantLessonAvailabilityNotice(bookings || confirmedBookings, nowMs);
+  const dashboardBooking = activeInstantBooking || nextBooking;
 
   return (
-    <div className="space-y-6 text-left">
-      <AppPageHeader
-        eyebrow="Hoje"
-        title="Sua rotina operacional"
-        subtitle={!calendarLoadError ? 'Aulas agendadas hoje' : undefined}
-      />
-
+    <div className="space-y-[10px] text-left">
       {isRefreshing && <ContentSkeleton mode="object" label="Atualizando painel" />}
 
       {!isRefreshing && calendarLoadError && (
         <div className="space-y-4">
-          <div className="p-6 rounded-3xl bg-amber-50 border border-amber-200 text-left space-y-2">
+          <div className="mazzi-compact-card p-6 rounded-2xl bg-amber-50 border border-amber-200 text-left space-y-2">
             <h3 className="text-sm font-bold text-amber-950 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
               Agenda unificada indisponível
@@ -72,6 +86,42 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
 
       {/* Compliance status: shared with the PRO profile */}
       {!isRefreshing && <ComplianceStatusAlert status={complianceStatus} />}
+
+      {/* Próxima aula fica logo após o credenciamento para priorizar o próximo compromisso. */}
+      {!isRefreshing && !calendarLoadError && (
+        dashboardBooking ? (
+          <UpcomingBookingCard booking={dashboardBooking} perspective="provider" onSelect={onSelectBooking} />
+        ) : (
+          <UpcomingBookingEmptyCard onViewBookings={() => onNavigateTab('bookings')} />
+        )
+      )}
+
+      {!isRefreshing && (
+        <ProviderInstantLessonSummaryCard settings={instantSettings} availabilityNotice={instantAvailabilityNotice} onOpenSettings={onOpenInstantSettings} />
+      )}
+
+      {!isRefreshing && schoolInvitations.length > 0 && (
+        <ButtonBase
+          type="button"
+          onClick={() => setSelectedInvitation(schoolInvitations[0])}
+          className="mazzi-compact-card group flex min-h-24 w-full items-center justify-between gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-left shadow-xs transition hover:border-amber-400 hover:bg-amber-100"
+          aria-label="Abrir convite de autoescola"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            {schoolInvitations[0].schoolAvatarUrl ? (
+              <img src={schoolInvitations[0].schoolAvatarUrl} alt="" className="h-12 w-12 shrink-0 rounded-2xl object-cover" />
+            ) : (
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-200 text-amber-900"><Building2 className="h-5 w-5" aria-hidden="true" /></span>
+            )}
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Convite pendente</p>
+              <p className="mt-1 truncate text-base font-black text-slate-950">{schoolInvitations[0].schoolName}</p>
+              <p className="mt-1 text-xs font-semibold text-amber-900">Toque para aceitar ou recusar.</p>
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5 shrink-0 text-amber-700 transition group-hover:translate-x-1" aria-hidden="true" />
+        </ButtonBase>
+      )}
 
       {!isRefreshing && !calendarLoadError && (
         <>
@@ -107,70 +157,6 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
                 {currentProvider.ratingAverage?.toFixed(1) || '5.0'}
               </p>
             </div>
-          </div>
-
-          {/* NEXT LESSON OPERATIONAL WIDGET */}
-          <div className="space-y-4 rounded-3xl bg-[var(--mazzi-dark)] p-5 text-white shadow-[var(--mazzi-shadow)]">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[#f6c945]" />
-                <h2 className="text-sm font-bold uppercase tracking-wider text-white">
-                  Próxima Aula Agendada
-                </h2>
-              </div>
-              <Badge variant="warning">Próxima Aula</Badge>
-            </div>
-
-            {nextBooking ? (
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-base font-bold text-white">{nextBooking.studentName}</p>
-                      <span className="rounded-md border border-[var(--mazzi-yellow)]/40 bg-[var(--mazzi-yellow)]/20 px-2 py-0.5 text-[10px] font-bold text-[var(--mazzi-yellow)]">
-                        Cat. {nextBooking.category}
-                      </span>
-                      {(nextBooking.snapshot?.providerName || nextBooking.providerName) && (
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                          {nextBooking.snapshot?.providerName || nextBooking.providerName}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-[#f6c945] font-extrabold">
-                      {nextBooking.scheduledDate} • {nextBooking.startTime} - {nextBooking.endTime}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      Veículo: <span className="text-white font-semibold">{nextBooking.snapshot.vehicleName}</span>
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      Encontro: <span className="text-white font-semibold">{formatMeetingPoint(nextBooking.meetingPoint)}</span>
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:items-end gap-2 shrink-0">
-                    <StatusBadge status={nextBooking.status} instructorCheckedIn={Boolean(nextBooking.instructorCheckedIn)} />
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => onSelectBooking(nextBooking)}
-                      rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                    >
-                      Abrir Detalhes & Check-in
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <ObjectEmptyState
-                title="Nenhuma aula confirmada"
-                description="Não há aulas agendadas para os próximos horários."
-                action={(
-                  <Button variant="primary" size="sm" onClick={() => onNavigateTab('bookings')}>
-                    Ver minhas aulas
-                  </Button>
-                )}
-              />
-            )}
           </div>
 
           <ProviderEarningsDashboardCard onNavigate={() => onNavigateTab('earnings')} refreshKey={isRefreshing ? 1 : 0} />
@@ -230,8 +216,42 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         </ButtonBase>
       </div>}
 
+      <Modal
+        isOpen={Boolean(selectedInvitation)}
+        onClose={() => invitationAction === null && setSelectedInvitation(null)}
+        title="Convite da autoescola"
+        size="sm"
+        presentation="page"
+        portal
+        className="instant-light"
+        footerVariant="wizard"
+        footer={selectedInvitation ? <div className="flex w-full items-center gap-3">
+          <Button variant="dangerSoft" size="sm" className="min-w-0 flex-1" disabled={invitationAction !== null} isLoading={invitationAction === 'DECLINE'} onClick={async () => {
+            if (!selectedInvitation || !onDeclineSchoolInvitation) return;
+            setInvitationAction('DECLINE');
+            try { await onDeclineSchoolInvitation(selectedInvitation.id); setSelectedInvitation(null); } finally { setInvitationAction(null); }
+          }} leftIcon={<CircleX className="h-4 w-4" />}>Recusar</Button>
+          <Button variant="primary" size="sm" className="min-w-0 flex-[3]" disabled={invitationAction !== null} isLoading={invitationAction === 'ACCEPT'} onClick={async () => {
+            if (!selectedInvitation || !onAcceptSchoolInvitation) return;
+            setInvitationAction('ACCEPT');
+            try { await onAcceptSchoolInvitation(selectedInvitation.id); setSelectedInvitation(null); } finally { setInvitationAction(null); }
+          }} leftIcon={<Check className="h-4 w-4" />}>Aceitar</Button>
+        </div> : undefined}
+      >
+        <div className="space-y-4 text-center">
+          <div className="mazzi-compact-card flex flex-col items-center rounded-2xl bg-amber-50 p-5">
+            {selectedInvitation?.schoolAvatarUrl ? <img src={selectedInvitation.schoolAvatarUrl} alt="" className="h-20 w-20 rounded-2xl object-cover shadow-xs" /> : <span className="flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-200 text-amber-900 shadow-xs"><Building2 className="h-8 w-8" aria-hidden="true" /></span>}
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Autoescola</p><p className="mt-1 text-lg font-black text-slate-950">{selectedInvitation?.schoolName || 'Autoescola'}</p>
+          </div>
+          <p className="text-center text-sm leading-relaxed text-slate-700">
+            Você foi convidado para atuar como instrutor em <strong>{selectedInvitation?.schoolName || 'esta autoescola'}</strong>.
+          </p>
+          <p className="text-center text-xs font-semibold text-slate-500">Aceite para iniciar o processo de vínculo e compliance.</p>
+        </div>
+      </Modal>
+
       {/* Operational Alerts */}
-      <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-2">
+      <div className="mazzi-compact-card p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-2">
         <div className="flex items-center gap-2 font-bold">
           <AlertTriangle className="w-4 h-4 text-amber-700" />
           <span>Alertas da Operação MAZZI Pro:</span>

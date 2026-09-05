@@ -178,15 +178,66 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
       expect(screen.getByText('Avaliação do Perfil:')).toBeTruthy();
     });
 
-    it('Quando calendarLoadError == null, Dashboard renderiza hero, métricas operacionais e widget da próxima aula normalmente', () => {
+    it('Quando calendarLoadError == null, Dashboard renderiza métricas operacionais e widget da próxima aula normalmente', () => {
       render(<ProviderDashboardTab {...defaultDashboardProps} calendarLoadError={null} />);
 
       expect(screen.queryByText('Agenda unificada indisponível')).toBeNull();
-      expect(screen.getByText('Aulas agendadas hoje')).toBeTruthy();
+      expect(screen.queryByText('Sua rotina operacional')).toBeNull();
+      expect(screen.queryByText('Aulas agendadas hoje')).toBeNull();
       expect(screen.getByText('Aulas Hoje')).toBeTruthy();
       expect(screen.getByText('Confirmadas')).toBeTruthy();
       expect(screen.getByText('Concluídas')).toBeTruthy();
-      expect(screen.getByText('Próxima Aula Agendada')).toBeTruthy();
+      expect(screen.getByText('Nenhuma aula agendada')).toBeTruthy();
+    });
+
+    it('não exibe o fallback vazio quando o card global da aula ativa já está presente', () => {
+      render(
+        <ProviderDashboardTab
+          {...defaultDashboardProps}
+          activeInstantBooking={{
+            id: 'active-instant',
+            status: 'IN_PROGRESS',
+            scheduledDate: '2026-09-05',
+            startTime: '16:30',
+            endTime: '17:20',
+            scheduledStartAt: '2026-09-05T16:30:00-03:00',
+            scheduledEndAt: '2026-09-05T17:20:00-03:00',
+            studentName: 'Aluno 01',
+            instructorName: 'Instrutor 05',
+            providerId: 'p_1',
+            studentId: 'student-1',
+            instructorId: 'instructor-5',
+            vehicleId: 'vehicle-1',
+            vehicleName: 'Hyundai HB20',
+            offeringId: 'offering-1',
+            category: 'B',
+            meetingPoint: 'Paulista',
+            priceInCents: 9000,
+            platformFeeInCents: 900,
+            totalInCents: 9000,
+            snapshot: { durationMinutes: 50 } as any,
+            createdAt: '2026-09-05T16:00:00-03:00',
+          } as any}
+        />,
+      );
+
+      expect(screen.queryByText('Nenhuma aula agendada')).toBeNull();
+    });
+
+    it('exibe o estado da Aula Agora e abre sua configuração', () => {
+      const onOpenInstantSettings = vi.fn();
+      render(
+        <ProviderDashboardTab
+          {...defaultDashboardProps}
+          instantSettings={[{ providerId: 'p_1', offeringId: 'offering_1', instantEnabled: true, instantOnline: true, instantPriceInCents: 9000, maxDistanceKm: 5 }]}
+          onOpenInstantSettings={onOpenInstantSettings}
+        />,
+      );
+
+      expect(screen.getByText('Aula Agora')).toBeTruthy();
+      expect(screen.getByText('Disponível')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: /Configurar/i }));
+      expect(onOpenInstantSettings).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -385,6 +436,86 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
       fireEvent.click(screen.getByRole('button', { name: 'Fazer check-in na aula' }));
 
       expect((await screen.findByRole('alert')).textContent).toContain('O check-in ainda não está disponível.');
+    });
+
+    it('só exibe Iniciar aula depois dos dois check-ins na Aula Agora', async () => {
+      const onStartLesson = vi.fn().mockResolvedValue(undefined);
+      const booking = {
+        id: 'bk_instant_both_checkins',
+        providerId: 'p_instant',
+        status: 'CONFIRMED',
+        studentName: 'Aluno Aula Agora',
+        scheduledDate: '20/08/2026',
+        startTime: '09:00',
+        endTime: '09:50',
+        scheduledStartAt: '2026-08-20T09:00:00-03:00',
+        category: 'B',
+        instructorCheckedIn: true,
+        studentCheckedIn: false,
+        meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' },
+        snapshot: { source: 'AULA_AGORA', meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' } },
+      };
+
+      const { rerender } = render(
+        <ProviderBookingDetailsModal
+          {...defaultModalProps}
+          booking={booking}
+          onStartLesson={onStartLesson}
+          onSetOnTheWay={vi.fn().mockResolvedValue(undefined)}
+          hasArrived
+          canCancelBooking={() => false}
+        />
+      );
+
+      expect(screen.queryByRole('button', { name: 'Iniciar aula' })).toBeNull();
+      expect(screen.getByRole('status').textContent).toContain('Aguardando o check-in do aluno');
+
+      rerender(
+        <ProviderBookingDetailsModal
+          {...defaultModalProps}
+          booking={{ ...booking, studentCheckedIn: true }}
+          onStartLesson={onStartLesson}
+          onSetOnTheWay={vi.fn().mockResolvedValue(undefined)}
+          hasArrived
+          canCancelBooking={() => false}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Iniciar aula' }));
+      await waitFor(() => expect(onStartLesson).toHaveBeenCalledTimes(1));
+    });
+
+    it('não exibe a mensagem de chegada quando a Aula Agora já foi concluída', () => {
+      const completedBooking = {
+        id: 'bk_instant_completed',
+        providerId: 'p_instant',
+        status: 'COMPLETED',
+        studentName: 'Aluno Aula Concluída',
+        scheduledDate: '20/08/2026',
+        startTime: '09:00',
+        endTime: '09:50',
+        scheduledStartAt: '2026-08-20T09:00:00-03:00',
+        scheduledEndAt: '2026-08-20T09:50:00-03:00',
+        category: 'B',
+        instructorCheckedIn: true,
+        studentCheckedIn: true,
+        lessonStartedAt: '2026-08-20T12:00:00Z',
+        lessonFinishedAt: '2026-08-20T12:50:00Z',
+        meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' },
+        snapshot: { source: 'AULA_AGORA', meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' } },
+      };
+
+      render(
+        <ProviderBookingDetailsModal
+          {...defaultModalProps}
+          booking={completedBooking}
+          hasArrived
+          canCancelBooking={() => false}
+        />
+      );
+
+      expect(screen.queryByText('Você chegou ao ponto de encontro!')).toBeNull();
+      expect(screen.queryByText('O check-in foi liberado para você e para o aluno. Faça seu check-in para iniciar a aula.')).toBeNull();
     });
   });
 });

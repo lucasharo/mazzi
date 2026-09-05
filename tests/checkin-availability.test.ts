@@ -22,18 +22,9 @@ describe('check-in availability window', () => {
     expect(getCheckInAvailability({ scheduledStartAt: start, status: 'CONFIRMED', alreadyCheckedIn: true, now: new Date('2026-08-27T12:00:00-03:00') }).reason).toBe('ALREADY_CHECKED_IN');
   });
 
-  it('immediately unlocks check-in for PRO and Student when ON_THE_WAY, isOnTheWay, or hasArrived is active', () => {
-    // Before 15-min window, normally NOT_OPEN_YET
+  it('keeps check-in locked before the official window even when travel flags are active', () => {
     const earlyTime = new Date('2026-08-27T06:00:00-03:00');
     expect(getCheckInAvailability({ scheduledStartAt: start, status: 'CONFIRMED', alreadyCheckedIn: false, now: earlyTime }).canCheckIn).toBe(false);
-
-    // Unlocked with ON_THE_WAY status
-    expect(getCheckInAvailability({ scheduledStartAt: start, status: 'ON_THE_WAY', alreadyCheckedIn: false, now: earlyTime }).canCheckIn).toBe(true);
-
-    // Unlocked with isOnTheWay flag
-    expect(getCheckInAvailability({ scheduledStartAt: start, status: 'CONFIRMED', alreadyCheckedIn: false, isOnTheWay: true, now: earlyTime }).canCheckIn).toBe(true);
-
-    // Unlocked with hasArrived flag
-    expect(getCheckInAvailability({ scheduledStartAt: start, status: 'CONFIRMED', alreadyCheckedIn: false, hasArrived: true, now: earlyTime }).canCheckIn).toBe(true);
+    expect(getCheckInAvailability({ scheduledStartAt: start, status: 'CONFIRMED', alreadyCheckedIn: false, now: earlyTime }).reason).toBe('NOT_OPEN_YET');
   });
 });

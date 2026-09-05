@@ -68,6 +68,18 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const visibleReasons = useMemo(() => {
+    if (!currentUserId) return reasons;
+    return reasons.filter((item) => currentUserId === booking.studentId
+      ? item.value !== 'STUDENT_NO_SHOW'
+      : item.value !== 'PROVIDER_NO_SHOW' && item.value !== 'SERVICE_MISMATCH');
+  }, [booking.studentId, currentUserId]);
+
+  useEffect(() => {
+    if (!visibleReasons.some((item) => item.value === reasonCode)) {
+      setReasonCode(visibleReasons[0]?.value || 'LESSON_NOT_DELIVERED');
+    }
+  }, [reasonCode, visibleReasons]);
 
   const activeDispute = useMemo(() => disputes.find((item) => item.bookingId === booking.id && ['OPEN', 'AWAITING_STUDENT_RESPONSE', 'AWAITING_PROVIDER_RESPONSE', 'UNDER_REVIEW'].includes(item.status)), [booking.id, disputes]);
 
@@ -200,7 +212,7 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
         ? isStudent ? 'Aguardando resposta do PRO' : 'Aguardando sua resposta'
         : 'Contestação em análise';
     const contestContent = (
-      <section className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4" aria-label="Contestação da reserva">
+      <section className="mazzi-compact-card space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4" aria-label="Contestação da reserva">
         <div className="flex items-start gap-2"><MessageSquareWarning className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" /><div><p className="text-xs font-black text-amber-950">{responseStatusLabel}</p><p className="text-[11px] font-medium text-amber-800">{isStudent ? 'Seu pagamento está seguro durante a contestação.' : 'O repasse está bloqueado até a resolução da contestação.'}</p>{canRespond && <p className="mt-1 text-[11px] font-bold text-amber-900">Você deve responder até {new Date(activeDispute.responseDueAt).toLocaleString('pt-BR')}. Após esse prazo, a contestação será finalizada.</p>}</div></div>
         <p className="text-xs font-semibold text-slate-800">{reasons.find((item) => item.value === activeDispute.reasonCode)?.label}</p>
         {activeDispute.informationRequest && <p className="rounded-xl border border-amber-200 bg-white p-3 text-xs font-semibold text-amber-900"><strong>Informações solicitadas:</strong> {activeDispute.informationRequest}</p>}
@@ -231,7 +243,7 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
 
   return (
     <>
-      <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <section className="mazzi-compact-card rounded-2xl border border-slate-200 bg-white p-4">
         <Button type="button" variant="dangerSoft" size="sm" className="min-h-11 w-full" onClick={() => setIsOpening(true)} leftIcon={<AlertTriangle className="h-4 w-4" aria-hidden="true" />}>Informar problema com a aula</Button>
       </section>
 
@@ -257,7 +269,7 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
         )}
       >
         <div className="space-y-6 pb-4">
-          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4" aria-label="Informação importante">
+          <section className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4" aria-label="Informação importante">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
               <div>
@@ -269,7 +281,7 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
 
           <div className="space-y-2">
             <label htmlFor={`dispute-reason-${booking.id}`} className="block text-sm font-extrabold text-slate-900">Motivo da contestação</label>
-            <Select id={`dispute-reason-${booking.id}`} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as BookingDisputeReason)} options={reasons} />
+            <Select id={`dispute-reason-${booking.id}`} value={reasonCode} onChange={(event) => setReasonCode(event.target.value as BookingDisputeReason)} options={visibleReasons} />
           </div>
 
           {filePicker}

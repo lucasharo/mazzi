@@ -25,7 +25,6 @@ export const PAYMENT_PROCESSING_GRACE_MINUTES = 5;
 export const BLOCKING_BOOKING_STATUSES: BookingStatus[] = [
   'PENDING_PAYMENT',
   'CONFIRMED',
-  'ON_THE_WAY',
   'IN_PROGRESS',
 ];
 
@@ -33,7 +32,6 @@ export const BLOCKING_BOOKING_STATUSES: BookingStatus[] = [
 export const TODAY_BOOKING_STATUSES: BookingStatus[] = [
   'PENDING_PAYMENT',
   'CONFIRMED',
-  'ON_THE_WAY',
   'IN_PROGRESS',
   'COMPLETED',
 ];
@@ -79,6 +77,25 @@ export function isBookingStarted(booking: Booking, nowMs = Date.now()): boolean 
   return startTs > 0 && startTs <= nowMs;
 }
 
+export function isBookingInProgress(booking: Booking, nowMs = Date.now()): boolean {
+  // The backend status can briefly remain CONFIRMED while the scheduled
+  // window is already active. The UI must still communicate the live state;
+  // IN_PROGRESS remains authoritative when the backend has already moved it.
+  if (booking.status === 'IN_PROGRESS') return true;
+  return booking.status === 'CONFIRMED' && isBookingStarted(booking, nowMs) && !isBookingEnded(booking, nowMs);
+}
+
+/** Prioritizes a live lesson before the next future lesson for dashboard cards. */
+export function sortBookingsForNext(bookings: Booking[], nowMs = Date.now()): Booking[] {
+  return [...bookings].sort((a, b) => {
+    const aInProgress = isBookingInProgress(a, nowMs);
+    const bInProgress = isBookingInProgress(b, nowMs);
+
+    if (aInProgress !== bInProgress) return aInProgress ? -1 : 1;
+    return getBookingStartTimestamp(a) - getBookingStartTimestamp(b);
+  });
+}
+
 export function getBookingEndTimestamp(booking: Booking): number {
   const endIso = booking.scheduledEndAt || (booking.snapshot as any)?.scheduledEndAt;
   if (endIso) {
@@ -107,6 +124,10 @@ export function getBookingEndTimestamp(booking: Booking): number {
 }
 
 export function isBookingEnded(booking: Booking, nowMs = Date.now()): boolean {
+  // A live session can run past its scheduled end while the participants are
+  // still completing it. Keep IN_PROGRESS visible until the backend moves it
+  // to a terminal status.
+  if (booking.status === 'IN_PROGRESS') return false;
   const endTs = getBookingEndTimestamp(booking);
   return endTs > 0 && endTs <= nowMs;
 }

@@ -27,7 +27,7 @@ export const ProviderHeader: React.FC<ProviderHeaderProps> = ({
   const isSchool = currentProvider?.type === 'DRIVING_SCHOOL' || currentRole === 'SCHOOL_STAFF';
 
   return (
-    <header className="bg-transparent text-[var(--mazzi-dark)]">
+    <header className="-mb-[10px] bg-transparent text-[var(--mazzi-dark)]">
       <div className="mazzi-provider-content mx-auto w-full max-w-[680px] px-5 pt-5 sm:px-7 lg:max-w-[760px]">
         <AppHomeHeader
           eyebrow={isSchool ? 'Autoescola / CFC' : 'Instrutor MAZZI'}

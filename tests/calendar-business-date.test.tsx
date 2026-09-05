@@ -25,8 +25,9 @@ describe('canonical MAZZI business date', () => {
           onDateChange={() => undefined}
         />,
       );
-      expect(markup).toContain('23/08/2026 1 horários disponíveis');
-      expect(markup).toContain('24/08/2026 0 horários disponíveis');
+      expect(markup).toContain('Agosto de 2026');
+      expect(markup).toContain('domingo, 23 de agosto de 2026, disponível');
+      expect(markup).toContain('segunda-feira, 24 de agosto de 2026, indisponível');
     } finally {
       vi.useRealTimers();
     }

@@ -68,7 +68,7 @@ function MetricCard({ label, value, helper, icon, tone = 'light' }: { label: str
     danger: 'border-rose-200 bg-rose-50 text-rose-950',
   }[tone];
   return (
-    <div className={`rounded-2xl border p-4 shadow-2xs ${styles}`}>
+    <div className={`mazzi-compact-card rounded-2xl border p-4 shadow-2xs ${styles}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px] font-black uppercase tracking-[0.12em] opacity-70">{label}</span>
         <span className="text-amber-600" aria-hidden="true">{icon}</span>
@@ -96,7 +96,7 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
   const areaPoints = `${plotLeft},${plotBottom} ${linePoints} ${plotRight},${plotBottom}`;
   const labelIndexes = points.length > 2 ? [0, Math.floor((points.length - 1) / 2), points.length - 1] : points.map((_, index) => index);
   return (
-    <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-earnings-series-title">
+    <section className="mazzi-compact-card min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-earnings-series-title">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="provider-earnings-series-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
@@ -137,7 +137,7 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
 function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
   const statusLabel = (status?: string) => status === 'AVAILABLE' ? 'Disponível' : status === 'PROCESSING' ? 'Em transferência' : status === 'BLOCKED' ? 'Bloqueado' : 'Agendado';
   return (
-    <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-upcoming-payouts-title">
+    <section className="mazzi-compact-card min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-upcoming-payouts-title">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="provider-upcoming-payouts-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
@@ -148,7 +148,7 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
         <span className="text-sm font-black text-slate-900">{formatMoney(summary.upcoming_total_cents)}</span>
       </div>
       {summary.upcoming_payouts.length === 0 ? (
-        <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Nenhum repasse previsto para os próximos 7 dias.</p>
+        <p className="mazzi-compact-card mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Nenhum repasse previsto para os próximos 7 dias.</p>
       ) : (
         <div className="mt-4 divide-y divide-slate-100">
           {summary.upcoming_payouts.map((item) => (
@@ -174,7 +174,7 @@ function ReviewsCard({ summary }: { summary: ProviderEarningsSummary }) {
   const insights = buildProviderEarningsInsights(summary.reviews);
   const overall = summary.reviews.rating_overall;
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-earnings-reviews-title">
+    <section className="mazzi-compact-card rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-earnings-reviews-title">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="provider-earnings-reviews-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
@@ -186,7 +186,7 @@ function ReviewsCard({ summary }: { summary: ProviderEarningsSummary }) {
       </div>
 
       {overall == null ? (
-        <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Você ainda não recebeu avaliações.</p>
+        <p className="mazzi-compact-card mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Você ainda não recebeu avaliações.</p>
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
           {Object.entries(summary.reviews.dimensions).map(([key, value]) => (
@@ -198,7 +198,7 @@ function ReviewsCard({ summary }: { summary: ProviderEarningsSummary }) {
         </div>
       )}
 
-      <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+      <div className="mazzi-compact-card mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
         {!insights.isUnlocked ? (
           <>
             <div className="flex items-center justify-between gap-3 text-xs font-bold text-amber-950">
@@ -225,7 +225,7 @@ function ReviewsCard({ summary }: { summary: ProviderEarningsSummary }) {
 
 function EmptyEarningsState() {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
+    <div className="mazzi-compact-card rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
       <Wallet className="mx-auto h-6 w-6 text-slate-400" aria-hidden="true" />
       <p className="mt-2 text-sm font-black text-slate-700">Sem ganhos no período</p>
       <p className="mt-1 text-xs font-medium text-slate-500">Quando uma aula concluída gerar um payout, ela aparecerá aqui.</p>
@@ -284,14 +284,14 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
       )}
 
       {!isLoading && error && (
-        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+        <div role="alert" className="mazzi-compact-card rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
           <div className="flex items-start gap-3"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /><div><p className="font-bold">Não foi possível carregar os ganhos.</p><p className="mt-1 text-xs font-medium">{error}</p><Button variant="dangerSoft" size="sm" className="mt-3" onClick={() => void load()} leftIcon={<RefreshCw className="h-4 w-4" aria-hidden="true" />}>Tentar novamente</Button></div></div>
         </div>
       )}
 
       {!isLoading && !error && summary && (
         <>
-          <section className="rounded-3xl bg-[var(--mazzi-dark)] p-5 text-white shadow-[var(--mazzi-shadow)]" aria-labelledby="provider-earnings-main-title">
+          <section className="mazzi-compact-card rounded-2xl bg-[var(--mazzi-dark)] p-5 text-white shadow-[var(--mazzi-shadow)]" aria-labelledby="provider-earnings-main-title">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--mazzi-yellow)]">Ganhos líquidos</p>
@@ -312,7 +312,7 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
             <MetricCard label="Ticket médio líquido" value={formatMoney(summary.current.average_ticket_cents, false)} helper="Por aula com ganho" icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />} />
           </div>
 
-          {summary.current.failed_cents > 0 && <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-900"><span className="font-black">Requer atenção:</span> existem {formatMoney(summary.current.failed_cents)} em repasses que falharam.</div>}
+          {summary.current.failed_cents > 0 && <div className="mazzi-compact-card rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-900"><span className="font-black">Requer atenção:</span> existem {formatMoney(summary.current.failed_cents)} em repasses que falharam.</div>}
 
           <div className="grid gap-5 lg:grid-cols-2"><UpcomingPayouts summary={summary} /><EarningsSeries summary={summary} /></div>
           <ReviewsCard summary={summary} />
@@ -334,7 +334,7 @@ export const ProviderEarningsDashboardCard: React.FC<{ onNavigate: () => void; r
   }, [refreshKey]);
 
   return (
-    <section className="rounded-3xl border border-amber-200 bg-amber-50/70 p-5 shadow-2xs" aria-labelledby="provider-dashboard-earnings-title">
+    <section className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50/70 p-5 shadow-2xs" aria-labelledby="provider-dashboard-earnings-title">
       <div className="flex items-start justify-between gap-3">
         <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Seus ganhos</p><h2 id="provider-dashboard-earnings-title" className="mt-1 text-lg font-black text-slate-950">Últimos 30 dias</h2></div>
         <Wallet className="h-5 w-5 text-amber-700" aria-hidden="true" />

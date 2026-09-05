@@ -56,7 +56,7 @@ Na criação da conta, o backend pré-preenche os dados confiáveis que já exis
 
 O link recebe `return_url` e `refresh_url`. Na primeira abertura, o MAZZI pré-preenche a conta antes de gerar o link; nas aberturas seguintes usa `account_update`, permitindo revisar o endereço e enviar comprovantes solicitados pela Stripe. No retorno, o MAZZI mantém o splash até sincronizar `charges_enabled`, `payouts_enabled`, requisitos e o resumo mascarado da conta, abrindo a aba **Conta bancária** já atualizada. Se o link expirar ou já tiver sido usado, a `refresh_url` gera um novo link automaticamente. O retorno ao MAZZI não é tratado como conclusão: repasses novos só ficam habilitados quando `payouts_enabled=true`.
 
-Os repasses novos usam `STRIPE_CONNECT` e contas sem onboarding concluído permanecem bloqueadas. Em produção, o mesmo fluxo hospedado deverá ser habilitado somente após homologação; Production permanece intocada.
+Os repasses novos usam `STRIPE_CONNECT` e contas sem onboarding concluído permanecem bloqueadas. Um PRO só fica visível na busca pública depois que a Stripe informar `charges_enabled=true` e `payouts_enabled=true`. Em produção, o mesmo fluxo hospedado deverá ser habilitado somente após homologação; Production permanece intocada.
 
 ### Decisão de produto — onboarding Connect hospedado
 

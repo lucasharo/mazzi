@@ -1,22 +1,34 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { ButtonBase } from '../ui/Button';
+import { MonthlyCalendar } from '../ui/MonthlyCalendar';
 import { EmergencyBlockableSlot, selectContiguousHourRange } from '../../domain/emergency-block';
 import { getTodayInSaoPaulo } from '../../lib/date-format';
+
+function formatSelectedDate(date: string): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(year, month - 1, day)));
+}
 
 export const DateTimeSlotPicker: React.FC<{ slotsByDate: Record<string, EmergencyBlockableSlot[]>; selectedDate: string; selectedSlot?: EmergencyBlockableSlot | null; selectedSlots?: EmergencyBlockableSlot[]; selectionMode?: 'single' | 'hour-range'; onDateChange: (date: string) => void; onSlotChange?: (slot: EmergencyBlockableSlot) => void; onSlotsChange?: (slots: EmergencyBlockableSlot[]) => void; maxHorizonDays?: number; }> = ({ slotsByDate, selectedDate, selectedSlot = null, selectedSlots = [], selectionMode = 'single', onDateChange, onSlotChange, onSlotsChange, maxHorizonDays = 30 }) => {
   const businessToday = getTodayInSaoPaulo();
   const initialDate = selectedDate || businessToday;
   const [month, setMonth] = useState(() => new Date(`${initialDate}T12:00:00-03:00`));
   const dates = useMemo(() => Array.from({ length: maxHorizonDays }, (_, index) => getTodayInSaoPaulo(new Date(Date.parse(`${businessToday}T12:00:00-03:00`) + index * 86400000))), [businessToday, maxHorizonDays]);
-  const monthLabel = month.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
-  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
   const slots = slotsByDate[selectedDate] || [];
   const groups = { Manhã: slots.filter((slot) => Number(slot.startTime.slice(0, 2)) < 12), Tarde: slots.filter((slot) => Number(slot.startTime.slice(0, 2)) >= 12 && Number(slot.startTime.slice(0, 2)) < 18), Noite: slots.filter((slot) => Number(slot.startTime.slice(0, 2)) >= 18) };
   return <div className="space-y-4">
-    <div className="flex items-center justify-between"><ButtonBase type="button" aria-label="Mês anterior" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft className="h-5 w-5" /></ButtonBase><strong className="capitalize text-sm text-[var(--mazzi-text)]">{monthLabel}</strong><ButtonBase type="button" aria-label="Próximo mês" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight className="h-5 w-5" /></ButtonBase></div>
-    <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => <span key={day}>{day}</span>)}{Array.from({ length: firstDay }).map((_, index) => <span key={`empty-${index}`} />)}{Array.from({ length: daysInMonth }, (_, index) => { const date = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`; const count = slotsByDate[date]?.length || 0; const enabled = dates.includes(date) && count > 0; return <ButtonBase key={date} type="button" disabled={!enabled} aria-label={`${new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR')} ${count} horários disponíveis`} aria-pressed={selectedDate === date} onClick={() => onDateChange(date)} className={`min-h-10 rounded-xl text-xs font-bold ${selectedDate === date ? 'bg-[var(--mazzi-yellow)] text-slate-900' : enabled ? 'bg-slate-50 text-slate-700 hover:bg-amber-50' : 'text-slate-300'}`}>{index + 1}</ButtonBase>; })}</div>
-    {selectedDate && <div className="space-y-3"><h3 className="text-sm font-bold text-slate-900">Horários livres</h3>{Object.entries(groups).map(([label, grouped]) => grouped.length > 0 && <div key={label} className="space-y-2"><p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{grouped.map((slot) => { const isSelected = selectionMode === 'hour-range' ? selectedSlots.some((item) => item.startAt === slot.startAt) : selectedSlot?.startAt === slot.startAt; return <ButtonBase key={slot.startAt} type="button" aria-label={`Selecionar ${slot.startTime}`} aria-pressed={isSelected} onClick={() => { if (selectionMode === 'single') { onSlotChange?.(slot); return; } onSlotsChange?.(selectContiguousHourRange({ availableSlots: slotsByDate[selectedDate] || [], selectedSlots, clickedSlot: slot })); }} className={`min-h-11 rounded-xl border px-3 text-sm font-bold ${isSelected ? 'border-[var(--mazzi-yellow)] bg-[var(--mazzi-yellow)] text-slate-900' : 'border-slate-200 bg-white text-slate-700'}`}><Clock className="mr-1 inline h-3.5 w-3.5" />{slot.startTime}</ButtonBase>; })}</div></div>)}</div>}
+    <MonthlyCalendar
+      month={monthKey}
+      dates={dates}
+      selectedDate={selectedDate}
+      isDateAvailable={(date) => dates.includes(date) && (slotsByDate[date]?.length || 0) > 0}
+      onSelectDate={onDateChange}
+      onPreviousMonth={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+      onNextMonth={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+    />
+    {selectedDate && <div className="space-y-3 border-t border-[var(--mazzi-border)] pt-1.5"><h3 className="mb-2 text-[13px] font-bold text-[var(--mazzi-dark)]"><span className="sr-only">Horários livres</span>{formatSelectedDate(selectedDate)}</h3>{Object.entries(groups).map(([label, grouped]) => grouped.length > 0 && <div key={label} className="space-y-2"><p className="mb-1 text-[9px] font-bold uppercase text-slate-400">{label}</p><div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">{grouped.map((slot) => { const isSelected = selectionMode === 'hour-range' ? selectedSlots.some((item) => item.startAt === slot.startAt) : selectedSlot?.startAt === slot.startAt; return <ButtonBase key={slot.startAt} type="button" aria-label={`Selecionar ${slot.startTime} até ${slot.endTime}`} aria-pressed={isSelected} onClick={() => { if (selectionMode === 'single') { onSlotChange?.(slot); return; } onSlotsChange?.(selectContiguousHourRange({ availableSlots: slotsByDate[selectedDate] || [], selectedSlots, clickedSlot: slot })); }} className={`min-h-11 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition flex items-center justify-center gap-1 ${isSelected ? 'border-[var(--mazzi-yellow)] bg-[var(--mazzi-yellow)] text-slate-900 shadow-xs' : 'border-[var(--mazzi-border)] bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`}><Clock className="h-3 w-3 shrink-0" /><span className="font-bold">{slot.startTime}</span></ButtonBase>; })}</div></div>)}</div>}
   </div>;
 };

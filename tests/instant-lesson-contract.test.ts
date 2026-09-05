@@ -13,9 +13,12 @@ const instantRequestCleanupMigration = readFileSync('supabase/migrations/2026090
 const instantPaymentStatusMigration = readFileSync('supabase/migrations/20260904143000_task_089_instant_payment_status_notification.sql', 'utf8');
 const instantPaymentMapGateMigration = readFileSync('supabase/migrations/20260904150000_task_089_instant_payment_map_gate.sql', 'utf8');
 const instantBlockersFixMigration = readFileSync('supabase/migrations/20260904160000_task_089_instant_lesson_blockers_and_rbac_fix.sql', 'utf8');
+const instantVehicleVisibilityMigration = readFileSync('supabase/migrations/20260905223000_instant_vehicle_visibility.sql', 'utf8');
 const dbService = readFileSync('src/lib/db-service.ts', 'utf8');
 const instantModal = readFileSync('src/apps/student/components/InstantLessonModal.tsx', 'utf8');
 const instantWizard = readFileSync('src/components/instant/InstantLessonWizard.tsx', 'utf8');
+const leafletMap = readFileSync('src/components/maps/LeafletMap.tsx', 'utf8');
+const searchMap = readFileSync('src/components/search/MapView.tsx', 'utf8');
 const studentApp = readFileSync('src/apps/student/StudentApp.tsx', 'utf8');
 const providerApp = readFileSync('src/apps/provider/ProviderApp.tsx', 'utf8');
 const providerInstantPanel = readFileSync('src/apps/provider/components/ProviderInstantLessonPanel.tsx', 'utf8');
@@ -28,6 +31,15 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(instantModal).toContain('activeRequest.request.meetingPoint?.longitude');
     expect(instantModal).not.toContain('activeRequest.request.latitude');
     expect(instantModal).not.toContain('activeRequest.request.longitude');
+  });
+  it('keeps static maps non-interactive and reserves map actions for tracking', () => {
+    expect(instantWizard).toContain('showMeetingPointPopup={false}');
+    expect(instantWizard).toContain('interactive={false}');
+    expect(instantModal).toContain('showMeetingPointPopup={false}');
+    expect(searchMap).toContain('interactive={false}');
+    expect(leafletMap).toContain('interactive = true');
+    expect(leafletMap).toContain('if (interactive && showMeetingPointPopup && !followSelectedProvider)');
+    expect(leafletMap).toContain('if (interactive && providerMarker !== \'vehicle\') marker.bindPopup');
   });
   it('creates the four private matching entities with restrictive RLS', () => {
     for (const table of ['provider_instant_settings', 'instant_lesson_requests', 'instant_lesson_offers', 'instant_provider_locations']) {
@@ -192,5 +204,20 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(instantBlockersFixMigration).toContain('auth.uid() <> p_instructor_id');
     expect(instantBlockersFixMigration).toContain('COUNT(DISTINCT c.instructor_id)');
     expect(instantBlockersFixMigration).toContain('DISTINCT ON (o.instructor_id)');
+  });
+
+  it('keeps Aula Agora independent per vehicle and expires stale disabled offers', () => {
+    expect(providerInstantPanel).toContain('Um único controle para aceitar Aula Agora.');
+    expect(providerInstantPanel).toContain("const activeVehicles = vehicles.filter((vehicle) => vehicle.status === 'ACTIVE');");
+    expect(providerInstantPanel).not.toContain('Veículo ativo');
+    expect(providerInstantPanel).toContain('Aceitar Aula Agora');
+    expect(providerInstantPanel).toContain('Carro habilitado para Aula Agora');
+    expect(providerInstantPanel.match(/Aceitar Aula Agora/g)).toHaveLength(1);
+    expect(providerApp).toContain('const targetSettings = instantSettings.filter');
+    expect(providerApp).toContain('const instructorWasOnline = instantSettings.some');
+    expect(providerApp).toContain('saved = { ...saved, instantOnline: true }');
+    expect(instantVehicleVisibilityMigration).toContain('NEW.instant_online := FALSE');
+    expect(instantVehicleVisibilityMigration).toContain("SET status = 'EXPIRED'");
+    expect(instantVehicleVisibilityMigration).not.toContain('UPDATE public.provider_instant_settings');
   });
 });

@@ -19,7 +19,7 @@ const ProfessionalOnlyScreen: React.FC = () => {
   const { logout } = useAuth();
   return (
     <main className="min-h-screen bg-[var(--mazzi-bg)] px-5 py-8 text-[var(--mazzi-text)]">
-      <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center rounded-3xl border border-[var(--mazzi-border)] bg-white p-6 text-center shadow-xs">
+      <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center rounded-2xl border border-[var(--mazzi-border)] bg-white p-6 text-center shadow-xs">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">✓</div>
         <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Perfil profissional</p>
         <h1 className="mt-1 text-xl font-extrabold">Acesse o MAZZI PRO</h1>
@@ -58,6 +58,14 @@ const StudentGate: React.FC = () => {
         clearPendingNotificationTarget();
         return;
       }
+    }
+
+    // StudentApp releases this gate after the first booking-driven render.
+    // Keeping it pending here avoids exposing the shell before its actions
+    // and lesson status have been resolved.
+    if (auth.user?.roles.includes('STUDENT')) {
+      setStartupNavigationPending(true);
+      return;
     }
     setStartupNavigationPending(false);
   }, [auth.isAuthenticated, auth.isLoading]);

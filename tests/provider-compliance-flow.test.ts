@@ -4,12 +4,15 @@ import { describe, expect, it } from 'vitest';
 const read = (file: string) => readFileSync(file, 'utf8');
 const providerApp = read('src/apps/provider/ProviderApp.tsx');
 const managementTab = read('src/apps/provider/components/ProviderManagementTab.tsx');
+const dashboardTab = read('src/apps/provider/components/ProviderDashboardTab.tsx');
+const invitationMigration = read('supabase/migrations/20260905103000_school_invitation_contexts.sql');
 const dbService = read('src/lib/db-service.ts');
 const adminComponents = read('src/apps/admin/AdminComponents.tsx');
 const errorMapper = read('src/lib/error-mapper.ts');
 const globalCompliance = read('src/domain/compliance.ts');
 const storageMigration = read('supabase/migrations/20260814000005_compliance_regulatory_hardening.sql');
 const runtimeMigration = read('supabase/migrations/20260821212131_school_compliance_runtime_rpcs.sql');
+const ownerAccessMigration = read('supabase/migrations/20260905100000_fix_school_owner_admin_access.sql');
 
 describe('provider offering and compliance reconciliation contracts', () => {
   it('keeps the server-side offering RPC as the lifecycle authority', () => {
@@ -102,5 +105,28 @@ describe('provider offering and compliance reconciliation contracts', () => {
     expect(runtimeMigration).toContain('public.is_compliance_reviewer()');
     expect(storageMigration).toContain('is_compliance_reviewer()');
     expect(storageMigration).toContain('bucket_id = \'provider-compliance-docs\'');
+  });
+
+  it('recognizes an active direct school owner as an administrator', () => {
+    expect(ownerAccessMigration).toContain("p.type = 'DRIVING_SCHOOL'");
+    expect(ownerAccessMigration).toContain('p.user_id = auth.uid()');
+    expect(ownerAccessMigration).toContain("u.status = 'ACTIVE'");
+    expect(ownerAccessMigration).toContain("role = 'SCHOOL_ADMIN'");
+  });
+
+  it('shows pending school invitations on the instructor dashboard', () => {
+    expect(managementTab).not.toContain("label: 'Convites'");
+    expect(dashboardTab).toContain('schoolInvitations');
+    expect(dashboardTab).toContain('Abrir convite de autoescola');
+    expect(dashboardTab).toContain('onAcceptSchoolInvitation');
+    expect(dashboardTab).toContain('onDeclineSchoolInvitation');
+    expect(invitationMigration).toContain('school_avatar_url');
+    expect(invitationMigration).toContain('COALESCE(p.trade_name, p.legal_name)');
+  });
+
+  it('separates approved compliance from the school membership lifecycle', () => {
+    const memberships = read('src/apps/provider/components/SchoolMembershipPanel.tsx');
+    expect(memberships).toContain('const complianceApproved = compliance?.globalComplianceValid === true && compliance.membershipComplianceValid === true;');
+    expect(memberships).toContain("complianceApproved ? 'Compliance aprovado' : 'Compliance pendente'");
   });
 });

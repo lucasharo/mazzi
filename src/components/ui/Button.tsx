@@ -61,7 +61,7 @@ export const Button: React.FC<ButtonProps> = ({
     secondary:
       'bg-[var(--mazzi-dark)] text-white hover:bg-[#34353a] active:bg-black font-bold shadow-xs',
     outline:
-      'border border-[var(--mazzi-border)] text-[var(--mazzi-dark)] bg-white hover:bg-slate-50 hover:border-slate-300 font-bold shadow-2xs',
+      'border border-[var(--mazzi-dark)] bg-[var(--mazzi-dark)] text-white hover:bg-[#34353a] hover:border-[#34353a] active:bg-black font-bold shadow-xs',
     ghost:
       'text-[var(--mazzi-dark)] hover:text-slate-950 hover:bg-slate-100 font-semibold',
     dangerSoft:

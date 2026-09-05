@@ -44,7 +44,7 @@ export const ComplianceStatusAlert: React.FC<ComplianceStatusAlertProps> = ({
   const copy = getComplianceAlertCopy(resolvedStatus);
 
   return <section
-    className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-4 shadow-xs"
+    className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 shadow-xs"
     role="status"
     aria-label={copy.title}
   >

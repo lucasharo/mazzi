@@ -29,7 +29,7 @@ Os tokens e utilitários globais vivem em `src/index.css`. Cabeçalhos não deve
 - Fonte global única, herdada por todos os componentes e apps.
 - Títulos de página usam `AppPageHeader`; títulos da tela inicial usam `AppHomeHeader`.
 - Botões usam peso `font-bold`, tamanho visual pequeno por padrão e área interativa mínima de 44 px.
-- Grupos de botões de ação devem ficar alinhados à direita, inclusive quando quebram em mais de uma linha.
+- Grupos de botões de ação devem ficar alinhados à direita em cards, modais e rodapés, inclusive quando quebram em mais de uma linha; o botão principal nunca deve ficar solto à esquerda.
 - Textos auxiliares usam peso normal ou semibold conforme hierarquia, sem aumento global de peso por app.
 
 ## 3. Botões e ícones

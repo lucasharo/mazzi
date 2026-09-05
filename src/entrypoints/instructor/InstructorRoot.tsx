@@ -42,6 +42,12 @@ const InstructorGate: React.FC = () => {
         return;
       }
     }
+
+    // ProviderApp releases this gate after its initial workspace render.
+    if (auth.user?.roles.some((role) => ['INSTRUCTOR', 'SCHOOL_ADMIN', 'SCHOOL_STAFF'].includes(role))) {
+      setStartupNavigationPending(true);
+      return;
+    }
     setStartupNavigationPending(false);
   }, [auth.isAuthenticated, auth.isLoading]);
   React.useEffect(() => {

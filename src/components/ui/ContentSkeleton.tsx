@@ -64,7 +64,7 @@ export const ContentSkeleton: React.FC<ContentSkeletonProps> = ({
     return (
       <div aria-busy="true" aria-label={label} className="max-w-3xl space-y-5">
         <Skeleton variant="text" className="h-7 w-48" />
-        <div className="space-y-5 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+        <div className="mazzi-compact-card space-y-5 rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
           {Array.from({ length: 5 }, (_, index) => (
             <div key={index} className="space-y-2">
               <Skeleton variant="text" className="h-3 w-28" />
@@ -79,7 +79,7 @@ export const ContentSkeleton: React.FC<ContentSkeletonProps> = ({
 
   if (mode === 'object') {
     return (
-      <div aria-busy="true" aria-label={label} className="space-y-4 rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+        <div aria-busy="true" aria-label={label} className="mazzi-compact-card space-y-4 rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
         <div className="flex items-center gap-3">
           <Skeleton variant="circular" className="h-12 w-12 shrink-0" />
           <div className="min-w-0 flex-1 space-y-2">
@@ -99,7 +99,7 @@ export const ContentSkeleton: React.FC<ContentSkeletonProps> = ({
   return (
     <div aria-busy="true" aria-label={label} className="space-y-3">
       {Array.from({ length: count }, (_, index) => (
-        <div key={index} className="rounded-3xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+        <div key={index} className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <Skeleton variant="circular" className="h-11 w-11 shrink-0" />
             <div className="min-w-0 flex-1 space-y-2">
