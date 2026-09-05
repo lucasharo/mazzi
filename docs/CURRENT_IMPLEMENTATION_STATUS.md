@@ -16,14 +16,16 @@ processo mantendo somente o último endereço confirmado por usuário. Fundo bra
 progresso sem rótulos visíveis. Consulta de preços apenas na última etapa,
 proteção de duplo envio e recuperação de erro. Pagamento/tracking preservados.
 Validação anterior ao último ajuste cosmético: 888 testes, lint e quatro builds
-aprovados. Conferência real local de endereço e câmbio em 390px; homologação
-integral e publicação DEV ainda pendentes, sem alegação de READY_FOR_RELEASE.
+aprovados. Conferência real local de endereço e câmbio em 390px; a homologação
+integral do fluxo continua sendo acompanhada sem alegação de READY_FOR_RELEASE.
 
-Foi implementada localmente a jornada de Aula Agora para Student e PRO: configuração por oferta, matching PostGIS em ondas, preço livre do PRO em centavos, aceite atômico no booking existente, notificações contextuais e tracking pós-match com o mapa Leaflet já utilizado pelo produto. Os gates locais passaram. A aplicação no Supabase DEV ainda está pendente porque o ledger remoto contém migrations ausentes no checkout local; Production permanece intocada.
+Foi implementada localmente a jornada de Aula Agora para Student e PRO: configuração por oferta, matching PostGIS em ondas, preço livre do PRO em centavos, aceite atômico no booking existente, notificações contextuais e tracking pós-match com o mapa Leaflet já utilizado pelo produto. As mudanças de disponibilidade canônica foram aplicadas e verificadas no Supabase DEV; Production permanece intocada.
 
 O dashboard do PRO também exibe o estado da Aula Agora e abre diretamente sua configuração, mantendo a ativação, pausa e disponibilidade online no painel de gestão existente.
 
 Atualização de disponibilidade por veículo (2026-09-05): a configuração do PRO agora exibe somente veículos `ACTIVE` na Gestão, mantém a habilitação de Aula Agora independente por carro e apresenta um único controle para a disponibilidade geral do instrutor. A migration `20260905223000_instant_vehicle_visibility.sql` foi aplicada e verificada no Supabase DEV; ofertas pendentes vinculadas a um carro desativado são expiradas sem alterar os demais veículos.
+
+Atualização canônica (2026-09-05): o status online passou a ser persistido em `provider_instant_instructor_status` por `provider_id + instructor_id`, com um único RPC atômico e autorização para o próprio instrutor. As migrations `20260905230000_task_089_canonical_instructor_availability.sql` e `20260905232000_task_089_canonical_status_rls.sql` foram aplicadas e verificadas no Supabase DEV. O matching avalia todos os veículos elegíveis antes de escolher um por instrutor, deduplica ondas por instrutor e revalida o veículo no aceite; a agenda permanece separada e Production permanece intocada.
 
 ## 1. Separação de Responsabilidades da Documentação
 

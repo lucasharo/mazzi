@@ -14,6 +14,8 @@ const instantPaymentStatusMigration = readFileSync('supabase/migrations/20260904
 const instantPaymentMapGateMigration = readFileSync('supabase/migrations/20260904150000_task_089_instant_payment_map_gate.sql', 'utf8');
 const instantBlockersFixMigration = readFileSync('supabase/migrations/20260904160000_task_089_instant_lesson_blockers_and_rbac_fix.sql', 'utf8');
 const instantVehicleVisibilityMigration = readFileSync('supabase/migrations/20260905223000_instant_vehicle_visibility.sql', 'utf8');
+const canonicalInstructorAvailabilityMigration = readFileSync('supabase/migrations/20260905230000_task_089_canonical_instructor_availability.sql', 'utf8');
+const canonicalStatusRlsMigration = readFileSync('supabase/migrations/20260905232000_task_089_canonical_status_rls.sql', 'utf8');
 const dbService = readFileSync('src/lib/db-service.ts', 'utf8');
 const instantModal = readFileSync('src/apps/student/components/InstantLessonModal.tsx', 'utf8');
 const instantWizard = readFileSync('src/components/instant/InstantLessonWizard.tsx', 'utf8');
@@ -213,11 +215,24 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(providerInstantPanel).toContain('Aceitar Aula Agora');
     expect(providerInstantPanel).toContain('Carro habilitado para Aula Agora');
     expect(providerInstantPanel.match(/Aceitar Aula Agora/g)).toHaveLength(1);
-    expect(providerApp).toContain('const targetSettings = instantSettings.filter');
-    expect(providerApp).toContain('const instructorWasOnline = instantSettings.some');
-    expect(providerApp).toContain('saved = { ...saved, instantOnline: true }');
+    expect(providerApp).toContain('dbService.setMyInstantInstructorOnline');
+    expect(providerApp).not.toContain('dbService.setMyInstantOnline');
+    expect(providerApp).not.toContain('const instructorWasOnline = instantSettings.some');
+    expect(providerApp).not.toContain('saved = { ...saved, instantOnline: true }');
     expect(instantVehicleVisibilityMigration).toContain('NEW.instant_online := FALSE');
     expect(instantVehicleVisibilityMigration).toContain("SET status = 'EXPIRED'");
     expect(instantVehicleVisibilityMigration).not.toContain('UPDATE public.provider_instant_settings');
+  });
+
+  it('uses one canonical instructor status while keeping vehicle eligibility independent', () => {
+    expect(canonicalInstructorAvailabilityMigration).toContain('CREATE TABLE IF NOT EXISTS public.provider_instant_instructor_status');
+    expect(canonicalInstructorAvailabilityMigration).toContain('PRIMARY KEY (provider_id, instructor_id)');
+    expect(canonicalInstructorAvailabilityMigration).toContain('auth.uid() <> p_instructor_id');
+    expect(canonicalInstructorAvailabilityMigration).toContain('CREATE OR REPLACE FUNCTION public.set_my_instant_instructor_online');
+    expect(canonicalInstructorAvailabilityMigration).toContain('old.instructor_id=o.instructor_id');
+    expect(canonicalInstructorAvailabilityMigration).toContain('ROW_NUMBER() OVER(PARTITION BY e.instructor_id');
+    expect(canonicalInstructorAvailabilityMigration).toContain('INSTANT_VEHICLE_UNAVAILABLE');
+    expect(canonicalInstructorAvailabilityMigration).toContain('provider_instant_instructor_status ist');
+    expect(canonicalStatusRlsMigration).toContain('USING (FALSE)');
   });
 });

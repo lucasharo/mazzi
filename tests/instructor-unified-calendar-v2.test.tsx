@@ -229,7 +229,9 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
       render(
         <ProviderDashboardTab
           {...defaultDashboardProps}
+          currentUserId="instructor-1"
           instantSettings={[{ providerId: 'p_1', offeringId: 'offering_1', instantEnabled: true, instantOnline: true, instantPriceInCents: 9000, maxDistanceKm: 5 }]}
+          instantInstructorStatuses={[{ providerId: 'p_1', instructorId: 'instructor-1', instantOnline: true }]}
           onOpenInstantSettings={onOpenInstantSettings}
         />,
       );

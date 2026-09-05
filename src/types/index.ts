@@ -602,6 +602,13 @@ export interface InstantLessonSettings {
   updatedAt?: string;
 }
 
+export interface InstantLessonInstructorStatus {
+  providerId: string;
+  instructorId: string;
+  instantOnline: boolean;
+  updatedAt?: string;
+}
+
 export interface InstantLessonPriceOption {
   maxPriceInCents: number | null;
   eligibleProviderCount: number;

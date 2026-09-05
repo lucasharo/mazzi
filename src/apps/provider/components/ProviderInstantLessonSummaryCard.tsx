@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clock3, Settings2 } from 'lucide-react';
-import type { InstantLessonSettings } from '../../../types';
+import type { InstantLessonInstructorStatus, InstantLessonSettings } from '../../../types';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { InstantLessonAvailabilityNotice } from '../../../components/instant/InstantLessonAvailabilityNotice';
@@ -8,21 +8,26 @@ import type { InstantLessonAvailabilityNotice as InstantLessonAvailabilityNotice
 
 interface ProviderInstantLessonSummaryCardProps {
   settings?: InstantLessonSettings[];
+  providerId?: string;
+  instructorStatuses?: InstantLessonInstructorStatus[];
+  currentUserId?: string;
   availabilityNotice?: InstantLessonAvailabilityNoticeData | null;
   onOpenSettings: () => void;
 }
 
-export const ProviderInstantLessonSummaryCard: React.FC<ProviderInstantLessonSummaryCardProps> = ({ settings = [], availabilityNotice, onOpenSettings }) => {
+export const ProviderInstantLessonSummaryCard: React.FC<ProviderInstantLessonSummaryCardProps> = ({ settings = [], providerId, instructorStatuses = [], currentUserId, availabilityNotice, onOpenSettings }) => {
   if (availabilityNotice) return <InstantLessonAvailabilityNotice notice={availabilityNotice} />;
 
   const enabledSettings = settings.filter((setting) => setting.instantEnabled);
-  const onlineSettings = enabledSettings.filter((setting) => setting.instantOnline);
-  const isAvailable = onlineSettings.length > 0;
+  const instructorStatus = currentUserId ? instructorStatuses.find((status) => status.providerId === providerId && status.instructorId === currentUserId) : undefined;
+  const isAvailable = instructorStatus?.instantOnline === true;
   const isConfigured = enabledSettings.length > 0;
 
-  const status = isAvailable
-    ? { label: 'Disponível', variant: 'success' as const, description: 'Você está disponível para receber solicitações imediatas.' }
-    : isConfigured
+  const status = !currentUserId || !instructorStatus
+    ? { label: 'Por instrutor', variant: 'neutral' as const, description: 'A disponibilidade é controlada individualmente por cada instrutor.' }
+    : isAvailable
+      ? { label: 'Disponível', variant: 'success' as const, description: 'Você está disponível para receber solicitações imediatas.' }
+      : isConfigured
       ? { label: 'Pausada', variant: 'warning' as const, description: 'A Aula Agora está configurada, mas pausada no momento.' }
       : { label: 'Desativada', variant: 'neutral' as const, description: 'Ative uma oferta para começar a receber aulas imediatas.' };
 

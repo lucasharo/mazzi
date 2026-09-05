@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle, ArrowRight, Star, Calendar, SlidersHorizontal, Plus, Mail, Check, CircleX, Building2, } from 'lucide-react';
-import { Provider, Booking, ComplianceDocument, Vehicle, InstantLessonSettings } from '../../../types';
+import { Provider, Booking, ComplianceDocument, Vehicle, InstantLessonSettings, InstantLessonInstructorStatus } from '../../../types';
 import type { SchoolInvitationContext } from '../../../lib/db-service';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { evaluateProviderEligibility } from '../../../domain/compliance';
@@ -27,6 +27,8 @@ interface ProviderDashboardTabProps {
   onOpenAddVehicleModal: () => void;
   onOpenAddOfferingModal: () => void;
   instantSettings?: InstantLessonSettings[];
+  instantInstructorStatuses?: InstantLessonInstructorStatus[];
+  currentUserId?: string;
   bookings?: Booking[];
   nowMs?: number;
   onOpenInstantSettings?: () => void;
@@ -50,6 +52,8 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   onNavigateTab,
   onOpenAddVehicleModal,
   instantSettings = [],
+  instantInstructorStatuses = [],
+  currentUserId,
   bookings,
   nowMs = Date.now(),
   onOpenInstantSettings = () => onNavigateTab('management'),
@@ -97,7 +101,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
       )}
 
       {!isRefreshing && (
-        <ProviderInstantLessonSummaryCard settings={instantSettings} availabilityNotice={instantAvailabilityNotice} onOpenSettings={onOpenInstantSettings} />
+        <ProviderInstantLessonSummaryCard providerId={currentProvider.id} settings={instantSettings} instructorStatuses={instantInstructorStatuses} currentUserId={currentUserId} availabilityNotice={instantAvailabilityNotice} onOpenSettings={onOpenInstantSettings} />
       )}
 
       {!isRefreshing && schoolInvitations.length > 0 && (

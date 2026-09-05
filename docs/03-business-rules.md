@@ -59,7 +59,8 @@
 - Apenas fornecedores com status `ACTIVE` e veículos com status `ACTIVE` têm ofertas listadas na busca pública e podem receber reservas.
 - Ofertas `AULA_AGORA` são operacionais e independentes das ofertas `AGENDA`; não aparecem na agenda/busca pública, mas continuam sujeitas a compliance, disponibilidade e à trava transacional de conflito.
 - Na Aula Agora, somente veículos com status `ACTIVE` na Gestão podem ser elegíveis. A habilitação é independente por veículo: desativar um carro não desativa os demais.
-- A disponibilidade do instrutor é controlada por um único estado geral no PRO; quando desligada, nenhum veículo habilitado recebe novas ofertas. Ofertas pendentes de um veículo desativado expiram.
+- A disponibilidade do instrutor é controlada por um único estado canônico por `provider_id + instructor_id`; quando desligada, nenhum veículo habilitado recebe novas ofertas. O campo legado por veículo permanece apenas para compatibilidade e não participa do matching.
+- Ofertas pendentes de um veículo desativado expiram somente para aquele veículo; reservas `PENDING_PAYMENT`, `CONFIRMED` e `IN_PROGRESS` não são alteradas.
 - Rejeições de documentos exigem motivo formal registrado em log de auditoria.
 
 ## 7. Mapas e Geolocalização

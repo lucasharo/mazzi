@@ -41,6 +41,7 @@ import {
   BookingDisputeResolution,
   MazziPaymentStatus,
   InstantLessonSettings,
+  InstantLessonInstructorStatus,
   InstantLessonPriceOption,
   InstantLessonRequest,
   InstantLessonOffer,
@@ -74,6 +75,15 @@ function mapInstantSettingRow(row: any, fallback?: { instructorId?: string; vehi
     instantOnline: row.instant_online === true,
     instantPriceInCents: Number(row.instant_price_in_cents || 0),
     maxDistanceKm: Number(row.max_distance_km || 5),
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapInstantInstructorStatusRow(row: any): InstantLessonInstructorStatus {
+  return {
+    providerId: row.provider_id,
+    instructorId: row.instructor_id,
+    instantOnline: row.instant_online === true,
     updatedAt: row.updated_at,
   };
 }
@@ -2122,6 +2132,13 @@ export const dbService = {
     });
   },
 
+  async getMyInstantInstructorStatuses(providerId: string): Promise<InstantLessonInstructorStatus[]> {
+    const { data, error } = await sp.rpc('get_my_instant_instructor_statuses', { p_provider_id: providerId });
+    if (isMissingRpc(error, 'get_my_instant_instructor_statuses')) return [];
+    if (error) throw error;
+    return (data || []).map(mapInstantInstructorStatusRow);
+  },
+
   async saveMyInstantSetting(params: {
     providerId: string;
     instructorId: string;
@@ -2156,10 +2173,10 @@ export const dbService = {
     return mapInstantSettingRow(data, { instructorId: params.instructorId, vehicleId: params.vehicleId });
   },
 
-  async setMyInstantOnline(providerId: string, offeringId: string, online: boolean): Promise<void> {
-    const { error } = await sp.rpc('set_my_instant_online', {
+  async setMyInstantInstructorOnline(providerId: string, instructorId: string, online: boolean): Promise<void> {
+    const { error } = await sp.rpc('set_my_instant_instructor_online', {
       p_provider_id: providerId,
-      p_offering_id: offeringId,
+      p_instructor_id: instructorId,
       p_online: online,
     });
     if (error) throw error;

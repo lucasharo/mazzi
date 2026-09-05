@@ -22,6 +22,7 @@ import {
   ProviderPaymentAccount,
   ProviderPayoutDetail,
   InstantLessonSettings,
+  InstantLessonInstructorStatus,
   InstantLessonOffer,
 } from '../../types';
 import { Modal } from '../../components/ui/Modal';
@@ -151,6 +152,7 @@ export const ProviderApp: React.FC = () => {
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>([]);
   const [availabilityExceptions, setAvailabilityExceptions] = useState<AvailabilityException[]>([]);
   const [instantSettings, setInstantSettings] = useState<InstantLessonSettings[]>([]);
+  const [instantInstructorStatuses, setInstantInstructorStatuses] = useState<InstantLessonInstructorStatus[]>([]);
   const [instantOffers, setInstantOffers] = useState<InstantLessonOffer[]>([]);
   const [instantOfferSheetId, setInstantOfferSheetId] = useState<string | null>(null);
   const [instantOffersServerNow, setInstantOffersServerNow] = useState<string | null>(null);
@@ -487,10 +489,16 @@ export const ProviderApp: React.FC = () => {
       setVehicles(workspace.vehicles);
       setOfferings(workspace.offerings);
       try {
-        setInstantSettings(await dbService.getMyInstantSettings(workspace.provider.id, workspace.offerings));
+        const [loadedInstantSettings, loadedInstructorStatuses] = await Promise.all([
+          dbService.getMyInstantSettings(workspace.provider.id, workspace.offerings),
+          dbService.getMyInstantInstructorStatuses(workspace.provider.id),
+        ]);
+        setInstantSettings(loadedInstantSettings);
+        setInstantInstructorStatuses(loadedInstructorStatuses);
       } catch (instantError) {
         console.warn('Instant lesson settings load failed:', instantError);
         setInstantSettings([]);
+        setInstantInstructorStatuses([]);
       }
 
       if (workspace.provider.type === 'DRIVING_SCHOOL') {
@@ -600,6 +608,7 @@ export const ProviderApp: React.FC = () => {
       setAvailabilityRules([]);
       setAvailabilityExceptions([]);
       setInstantSettings([]);
+      setInstantInstructorStatuses([]);
       setWorkspaceError(err.message || 'Não foi possível carregar seus dados.');
     } finally {
       if (!isSilent) setWorkspaceLoading(false);
@@ -771,13 +780,13 @@ export const ProviderApp: React.FC = () => {
     : user?.role || currentRole;
 
   const refreshInstantProviderLocation = useCallback((): Promise<void> => {
-    if (!currentProvider?.id || !user?.id || !navigator.geolocation || !instantSettings.some((setting) => setting.instantEnabled && setting.instantOnline)) {
+    const currentInstructorIsOnline = instantInstructorStatuses.some((status) => status.providerId === currentProvider?.id && status.instructorId === user?.id && status.instantOnline);
+    if (!currentProvider?.id || !user?.id || !navigator.geolocation || !currentInstructorIsOnline) {
       return Promise.resolve();
     }
     if (instantLocationRefreshInFlightRef.current) return instantLocationRefreshInFlightRef.current;
 
     setInstantLocationStatus('UPDATING');
-    const onlineSettings = instantSettings.filter((setting) => setting.instantEnabled && setting.instantOnline);
     const request = new Promise<GeolocationPosition>((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, {
         enableHighAccuracy: false,
@@ -786,25 +795,22 @@ export const ProviderApp: React.FC = () => {
       });
     })
       .then(async (position) => {
-        const results = await Promise.allSettled(onlineSettings.map((setting) => {
-          return dbService.upsertMyInstantLocation(
-            currentProvider.id,
-            setting.instructorId || user.id,
-            position.coords.latitude,
-            position.coords.longitude,
-          );
-        }));
-        if (!results.some((result) => result.status === 'fulfilled')) throw new Error('INSTANT_LOCATION_UPDATE_FAILED');
+        await dbService.upsertMyInstantLocation(
+          currentProvider.id,
+          user.id,
+          position.coords.latitude,
+          position.coords.longitude,
+        );
       })
       .then(() => setInstantLocationStatus('READY'))
       .catch(() => { setInstantLocationStatus('ERROR'); })
       .finally(() => { instantLocationRefreshInFlightRef.current = null; });
     instantLocationRefreshInFlightRef.current = request;
     return request;
-  }, [currentProvider?.id, instantSettings, offerings, user?.id]);
+  }, [currentProvider?.id, instantInstructorStatuses, user?.id]);
 
   useEffect(() => {
-    if (!isRealSupabase || !currentProvider?.id || !user?.id || !instantSettings.some((setting) => setting.instantEnabled && setting.instantOnline)) return undefined;
+    if (!isRealSupabase || !currentProvider?.id || !user?.id || !instantInstructorStatuses.some((status) => status.providerId === currentProvider.id && status.instructorId === user.id && status.instantOnline)) return undefined;
     void refreshInstantProviderLocation();
     // A PRO tab may stay in the background while the student searches in
     // another tab. Keep attempting the heartbeat there; the database still
@@ -817,7 +823,7 @@ export const ProviderApp: React.FC = () => {
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [currentProvider?.id, instantSettings, isRealSupabase, refreshInstantProviderLocation, user?.id]);
+  }, [currentProvider?.id, instantInstructorStatuses, isRealSupabase, refreshInstantProviderLocation, user?.id]);
 
   const loadInstantOffers = useCallback((): Promise<void> => {
     if (instantOffersInFlightRef.current) return instantOffersInFlightRef.current;
@@ -868,23 +874,17 @@ export const ProviderApp: React.FC = () => {
 
   const handleSaveInstantSetting = async (params: { instructorId: string; vehicleId: string; instantEnabled: boolean; instantPriceInCents: number; maxDistanceKm: number }) => {
     if (!currentProvider) return;
-    const instructorWasOnline = instantSettings.some((item) => item.instantEnabled && item.instantOnline);
     const existingSetting = instantSettings.find((item) => item.instructorId === params.instructorId && item.vehicleId === params.vehicleId);
     const offeringId = existingSetting?.offeringId || offerings.find((item) => item.status === 'ACTIVE' && item.instructorId === params.instructorId && item.vehicleId === params.vehicleId)?.id;
-    let saved = await dbService.saveMyInstantSetting({ providerId: currentProvider.id, offeringId, ...params });
-    if (params.instantEnabled && instructorWasOnline && saved.offeringId && !saved.instantOnline) {
-      await dbService.setMyInstantOnline(currentProvider.id, saved.offeringId, true);
-      saved = { ...saved, instantOnline: true };
-    }
+    const saved = await dbService.saveMyInstantSetting({ providerId: currentProvider.id, offeringId, ...params });
     setInstantSettings((current) => [...current.filter((item) => !(item.instructorId === saved.instructorId && item.vehicleId === saved.vehicleId)), saved]);
   };
 
-  const handleToggleInstantOnline = async (online: boolean) => {
-    if (!currentProvider) return;
+  const handleToggleInstantOnline = async (instructorId: string, online: boolean) => {
+    if (!currentProvider || user?.id !== instructorId) return;
     setInstantActionLoading(true);
     try {
-      const targetSettings = instantSettings.filter((setting) => setting.offeringId && (online ? setting.instantEnabled : setting.instantOnline));
-      if (online && targetSettings.length === 0) throw new Error('INSTANT_VEHICLE_NOT_ENABLED');
+      if (online && !instantSettings.some((setting) => setting.instructorId === instructorId && setting.instantEnabled)) throw new Error('INSTANT_VEHICLE_NOT_ENABLED');
       if (online && user?.id) {
         setInstantLocationStatus('UPDATING');
         await new Promise<void>((resolve, reject) => {
@@ -897,8 +897,11 @@ export const ProviderApp: React.FC = () => {
         });
         setInstantLocationStatus('READY');
       }
-      await Promise.all(targetSettings.map((setting) => dbService.setMyInstantOnline(currentProvider.id, setting.offeringId as string, online)));
-      setInstantSettings((current) => current.map((item) => ({ ...item, instantOnline: item.instantEnabled ? online : false })));
+      await dbService.setMyInstantInstructorOnline(currentProvider.id, instructorId, online);
+      setInstantInstructorStatuses((current) => [
+        ...current.filter((item) => !(item.providerId === currentProvider.id && item.instructorId === instructorId)),
+        { providerId: currentProvider.id, instructorId, instantOnline: online, updatedAt: new Date().toISOString() },
+      ]);
     } catch (error) {
       setInstantLocationStatus('ERROR');
       throw error;
@@ -1963,6 +1966,8 @@ status: 'IN_REVIEW',
             onSelectBooking={setSelectedBooking}
             onNavigateTab={setActiveTab}
             instantSettings={instantSettings}
+            instantInstructorStatuses={instantInstructorStatuses}
+            currentUserId={user?.id}
             onOpenInstantSettings={() => {
               setIsInstantSettingsOpen(true);
               void loadInstantOffers();
@@ -2395,6 +2400,8 @@ status: 'IN_REVIEW',
             vehicles={vehicles}
             instructorOptions={instantInstructorOptions}
             settings={instantSettings}
+            instructorStatuses={instantInstructorStatuses}
+            currentUserId={user?.id}
             onSave={handleSaveInstantSetting}
             onToggleOnline={handleToggleInstantOnline}
             isLoading={instantActionLoading}
