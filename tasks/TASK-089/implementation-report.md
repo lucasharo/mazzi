@@ -157,7 +157,9 @@ Verificações realizadas: colunas e constraint da janela presentes; 2 status ex
 - `npm test -- --pool=threads --maxWorkers=1 --fileParallelism=false`: 145 arquivos, 952 testes aprovados.
 - Testes focados Aula Agora: 4 arquivos, 38 testes aprovados.
 - `npm run build:all`: Student, Instructor, Admin e Landing aprovados; somente avisos existentes de chunks grandes.
-- `git diff --check`: pendente para a etapa final antes do commit.
+- `git diff --check`: aprovado antes do commit.
+- `MAZZI CI`: aprovado no commit `dc47c88`.
+- `MAZZI Database Baseline Verify`: aprovado no commit `dc47c88`.
 
 ### Limitações conhecidas
 

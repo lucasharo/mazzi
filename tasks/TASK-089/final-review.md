@@ -1,7 +1,7 @@
 # Final Review — TASK-089
 
 TASK: TASK-089
-STATUS: READY_FOR_MERGE
+STATUS: DONE
 OWNER: MAZZI Tech Lead
 LAST_UPDATED: 2026-09-05
 
@@ -34,4 +34,4 @@ O fluxo não adiciona estado `ON_THE_WAY` ao booking, não altera a agenda tradi
 
 ## 6. Decisão Final
 
-READY_FOR_MERGE. Após push, confirmar os dois workflows obrigatórios. Se ambos concluírem com sucesso, atualizar este artefato para `STATUS: DONE`.
+DONE. Os dois workflows obrigatórios concluíram com sucesso no commit final `dc47c88`: `MAZZI CI` e `MAZZI Database Baseline Verify`.
