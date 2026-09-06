@@ -606,6 +606,8 @@ export interface InstantLessonInstructorStatus {
   providerId: string;
   instructorId: string;
   instantOnline: boolean;
+  onlineSince?: string | null;
+  onlineExpiresAt?: string | null;
   updatedAt?: string;
 }
 

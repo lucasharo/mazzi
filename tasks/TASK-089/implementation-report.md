@@ -1,5 +1,5 @@
 TASK: TASK-089
-STATUS: READY_FOR_QA_WITH_ENVIRONMENT_BLOCKER
+STATUS: READY_FOR_QA
 OWNER: MAZZI Dev
 LAST_UPDATED: 2026-09-04
 
@@ -120,3 +120,50 @@ No fluxo Student, o aceite agora fecha o modal de busca e abre o resumo da próp
 # Handoff para QA
 
 Auditar os critérios AC01–AC37, especialmente concorrência do aceite, RLS, notificações por contexto, waves, expiração, privacidade pré-match e o fluxo completo Student/PRO após a aplicação controlada da migration no DEV.
+
+## Consolidação final — 2026-09-05
+
+### O que foi implementado
+
+- A disponibilidade do instrutor agora possui `online_since` e `online_expires_at` no estado canônico por `provider_id + instructor_id`.
+- A ativação explícita cria uma janela de no máximo 1 hora. Getters, preview e matching aplicam `online_expires_at > NOW()` e reconciliam estados vencidos.
+- Refresh, atualização de GPS, aceite/recusa e salvamento de veículo não renovam a janela. O painel mostra o switch desligado e a mensagem de expiração; uma nova janela exige nova ativação.
+- A configuração `instant_enabled` continua independente por veículo, inclusive depois da expiração do instrutor. Veículos seguem filtrados por status cadastral `ACTIVE`.
+- O fixture de regressão foi atualizado para informar o status canônico com expiração, eliminando dependência do campo legacy.
+
+### Arquivos desta consolidação
+
+- `src/domain/instant-lesson.ts`
+- `src/types/index.ts`
+- `src/lib/db-service.ts`
+- `src/apps/provider/ProviderApp.tsx`
+- `src/apps/provider/components/ProviderInstantLessonPanel.tsx`
+- `src/apps/provider/components/ProviderInstantLessonSummaryCard.tsx`
+- `tests/instant-lesson-domain.test.ts`
+- `tests/instant-lesson-contract.test.ts`
+- `tests/instructor-unified-calendar-v2.test.tsx`
+- `supabase/migrations/20260905234000_task_089_instructor_availability_window.sql`
+
+### Migration e validação DEV
+
+`20260905234000_task_089_instructor_availability_window.sql` foi aplicada no Supabase DEV `bhvpkgonhlujmxvwnxix`. O ledger remoto registrou a migration como `20260906000100 / task_089_instructor_availability_window`.
+
+Verificações realizadas: colunas e constraint da janela presentes; 2 status existentes com expiração; matching, preview, getters e save revalidados com `NOW()`; funções disponíveis somente para `authenticated`; Production não foi acessada.
+
+### Portões executados
+
+- `npx tsc --noEmit --pretty false --skipLibCheck`: aprovado.
+- `npm run lint`: aprovado.
+- `npm test -- --pool=threads --maxWorkers=1 --fileParallelism=false`: 145 arquivos, 952 testes aprovados.
+- Testes focados Aula Agora: 4 arquivos, 38 testes aprovados.
+- `npm run build:all`: Student, Instructor, Admin e Landing aprovados; somente avisos existentes de chunks grandes.
+- `git diff --check`: pendente para a etapa final antes do commit.
+
+### Limitações conhecidas
+
+- ETA continua geodésico/conservador, não roteamento viário.
+- Os advisors do Supabase retornam avisos históricos fora do escopo desta task; a tabela canônica mantém RLS restritiva e o novo índice de FK foi criado.
+
+### Handoff atualizado para QA
+
+Auditar AC01–AC22 e os contratos já existentes, com atenção a 10:59/11:00, refresh sem extensão, reativação, perda antecipada de elegibilidade, isolamento por instrutor, multi-carro e preservação de `instant_enabled`.

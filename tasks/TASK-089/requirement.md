@@ -3,7 +3,7 @@
 TASK: TASK-089
 STATUS: PRODUCT_READY
 OWNER: MAZZI Product
-LAST_UPDATED: 2026-09-03
+LAST_UPDATED: 2026-09-05
 
 ## 1. Objetivo
 
@@ -53,6 +53,8 @@ Aluno, instrutor autônomo, autoescola e administrador (configurações e audito
 9. O booking criado usa o preço snapshot e o lifecycle existente. Cancelamento antes do match não gera cobrança.
 10. Antes do match o aluno não recebe latitude/longitude exatas individuais. Depois do match recebe somente a localização do vencedor autorizada pelo contrato.
 11. O mapa pré-match mostra apenas presença/quantidade ou localização protegida e não permite escolher um PRO.
+12. A disponibilidade pessoal do instrutor é uma única janela backend-owned de no máximo 1 hora: `online_since` registra a ativação e `online_expires_at` encerra a janela. Refresh, GPS, aceite, recusa e salvamento de veículo não renovam a janela; nova janela exige nova ativação explícita.
+13. Expiração e perda de elegibilidade desligam a participação no matching sem alterar `instant_enabled` dos veículos. O painel mostra o switch OFF e orienta a ativação novamente.
 
 ## 7. Fluxos principais
 
@@ -100,6 +102,10 @@ Mensagens públicas: “Confirme sua localização para encontrar um profissiona
 - **AC16**: Novas tabelas/RPCs têm RLS restritiva; anon não acessa tabelas diretamente; Student acessa somente a própria request e PRO somente offers direcionadas.
 - **AC17**: Pagamento continua no contrato existente de DEV/mock, com zero chamadas de gateway real e zero dinheiro real.
 - **AC18**: `npm run lint`, `npm test`, `npm run build:all` e `git diff --check` passam integralmente; CI e Database Baseline Verify ficam verdes antes do release.
+- **AC19**: Ao ativar a disponibilidade, o backend grava `online_since` e `online_expires_at` exatamente uma hora depois; 10:59 permanece elegível e 11:00 não participa de novas ofertas.
+- **AC20**: Refresh, atualização de localização, salvamento de veículo, aceite ou recusa não estendem `online_expires_at`; reativação explícita cria nova janela.
+- **AC21**: O matching exige disponibilidade manual vigente, elegibilidade atual, veículo cadastral ACTIVE e `instant_enabled`; a expiração do instrutor preserva a configuração independente dos veículos.
+- **AC22**: O status canônico é isolado por `provider_id + instructor_id`, o toggle é uma única RPC e uma autoescola não altera a disponibilidade física de outro instrutor.
 
 ## 11. Dependências
 
@@ -121,3 +127,7 @@ Concorrência de aceites, privacidade de localização, conflito com próxima au
 ## 14. Handoff para Tech Lead
 
 Auditar o schema e os serviços existentes antes de criar entidades. Produzir plano com migration incremental, RLS/RBAC, RPCs atômicas, estratégia de realtime/localização, reuse report, testes de concorrência/privacidade/agenda e ordem de implantação exclusivamente em DEV.
+
+## 15. Addendum de consolidação
+
+O estado online do instrutor é `DEPRECATED_COMPATIBILITY_ONLY` quando refletido em `provider_instant_settings.instant_online`; a autoridade é `provider_instant_instructor_status`. Registros legados ativos foram migrados para uma janela limitada e não recebem uma extensão indefinida.

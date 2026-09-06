@@ -16,6 +16,7 @@ const instantBlockersFixMigration = readFileSync('supabase/migrations/2026090416
 const instantVehicleVisibilityMigration = readFileSync('supabase/migrations/20260905223000_instant_vehicle_visibility.sql', 'utf8');
 const canonicalInstructorAvailabilityMigration = readFileSync('supabase/migrations/20260905230000_task_089_canonical_instructor_availability.sql', 'utf8');
 const canonicalStatusRlsMigration = readFileSync('supabase/migrations/20260905232000_task_089_canonical_status_rls.sql', 'utf8');
+const availabilityWindowMigration = readFileSync('supabase/migrations/20260905234000_task_089_instructor_availability_window.sql', 'utf8');
 const dbService = readFileSync('src/lib/db-service.ts', 'utf8');
 const instantModal = readFileSync('src/apps/student/components/InstantLessonModal.tsx', 'utf8');
 const instantWizard = readFileSync('src/components/instant/InstantLessonWizard.tsx', 'utf8');
@@ -234,5 +235,17 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(canonicalInstructorAvailabilityMigration).toContain('INSTANT_VEHICLE_UNAVAILABLE');
     expect(canonicalInstructorAvailabilityMigration).toContain('provider_instant_instructor_status ist');
     expect(canonicalStatusRlsMigration).toContain('USING (FALSE)');
+  });
+
+  it('keeps instructor availability in a backend-owned one-hour window', () => {
+    expect(availabilityWindowMigration).toContain('online_since TIMESTAMPTZ');
+    expect(availabilityWindowMigration).toContain('online_expires_at TIMESTAMPTZ');
+    expect(availabilityWindowMigration).toContain("v_online_expires_at := v_online_since + INTERVAL '1 hour'");
+    expect(availabilityWindowMigration).toContain('ist.online_expires_at > NOW()');
+    expect(availabilityWindowMigration).toContain('ist.online_expires_at>v_now');
+    expect(availabilityWindowMigration).toContain('DROP FUNCTION IF EXISTS public.get_my_instant_instructor_statuses(UUID)');
+    expect(providerInstantPanel).toContain('Sua disponibilidade da Aula Agora expirou. Ative novamente para receber novas solicitações.');
+    expect(providerInstantPanel).toContain('isInstantInstructorAvailabilityActive');
+    expect(providerApp).toContain('isInstantInstructorAvailabilityActive');
   });
 });

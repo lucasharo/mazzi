@@ -1,5 +1,9 @@
 # 12 — Aplicação MAZZI Pro (Instrutores e Autoescolas)
 
+## Aula Agora — janela de disponibilidade
+
+O controle único **Aceitar Aula Agora** pertence ao instrutor, não ao carro. Ao ligá-lo, a API registra uma janela de até 1 hora (`online_since`/`online_expires_at`). A interface apresenta o tempo restante e mostra o switch desligado quando a janela expira. Atualizar a tela ou a localização não reinicia o contador; o instrutor precisa ativar novamente. Os switches dos veículos continuam independentes e controlam apenas `instant_enabled`.
+
 ## Conceito Unificado com RBAC
 Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoescola/CFC, adaptando o layout e permissões dinamicamente de acordo com o papel do usuário logado (`INSTRUCTOR`, `SCHOOL_ADMIN`, `SCHOOL_STAFF`).
 

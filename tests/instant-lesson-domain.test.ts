@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   INSTANT_MATCH_WAVE_SIZE,
+  INSTANT_INSTRUCTOR_AVAILABILITY_WINDOW_MINUTES,
   INSTANT_LESSON_SAFETY_MARGIN_MINUTES,
   buildInstantPriceOptions,
   fitsInstantLessonWindow,
+  formatInstantInstructorAvailability,
   isInstantCandidateEligible,
+  isInstantInstructorAvailabilityActive,
   isInstantLocationFresh,
   rankInstantCandidates,
   selectInstantMatchWave,
@@ -48,5 +51,23 @@ describe('Aula Agora domain rules', () => {
     expect(isInstantLocationFresh(30)).toBe(true);
     expect(isInstantLocationFresh(31)).toBe(false);
     expect(isInstantLocationFresh(-1)).toBe(false);
+  });
+
+  it('expires instructor availability at one hour without renewing on refresh', () => {
+    const onlineSince = '2026-09-05T10:00:00.000Z';
+    const onlineExpiresAt = '2026-09-05T11:00:00.000Z';
+    const status = { instantOnline: true, onlineSince, onlineExpiresAt };
+    const atTenFiftyNine = new Date('2026-09-05T10:59:00.000Z').getTime();
+    const atEleven = new Date('2026-09-05T11:00:00.000Z').getTime();
+
+    expect(INSTANT_INSTRUCTOR_AVAILABILITY_WINDOW_MINUTES).toBe(60);
+    expect(isInstantInstructorAvailabilityActive(status, atTenFiftyNine)).toBe(true);
+    expect(formatInstantInstructorAvailability(status, atTenFiftyNine)).toBe('Disponível por mais 1 min.');
+    expect(isInstantInstructorAvailabilityActive(status, atEleven)).toBe(false);
+    expect(formatInstantInstructorAvailability(status, atEleven)).toBeNull();
+  });
+
+  it('fails closed when the backend has no expiry timestamp', () => {
+    expect(isInstantInstructorAvailabilityActive({ instantOnline: true }, Date.now())).toBe(false);
   });
 });

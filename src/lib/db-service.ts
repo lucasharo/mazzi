@@ -84,6 +84,8 @@ function mapInstantInstructorStatusRow(row: any): InstantLessonInstructorStatus 
     providerId: row.provider_id,
     instructorId: row.instructor_id,
     instantOnline: row.instant_online === true,
+    onlineSince: row.online_since,
+    onlineExpiresAt: row.online_expires_at,
     updatedAt: row.updated_at,
   };
 }
@@ -2173,13 +2175,14 @@ export const dbService = {
     return mapInstantSettingRow(data, { instructorId: params.instructorId, vehicleId: params.vehicleId });
   },
 
-  async setMyInstantInstructorOnline(providerId: string, instructorId: string, online: boolean): Promise<void> {
-    const { error } = await sp.rpc('set_my_instant_instructor_online', {
+  async setMyInstantInstructorOnline(providerId: string, instructorId: string, online: boolean): Promise<InstantLessonInstructorStatus> {
+    const { data, error } = await sp.rpc('set_my_instant_instructor_online', {
       p_provider_id: providerId,
       p_instructor_id: instructorId,
       p_online: online,
     });
     if (error) throw error;
+    return mapInstantInstructorStatusRow(data || { provider_id: providerId, instructor_id: instructorId, instant_online: online });
   },
 
   async upsertMyInstantLocation(providerId: string, instructorId: string, latitude: number, longitude: number): Promise<void> {

@@ -3,7 +3,7 @@
 TASK: TASK-089
 STATUS: TECH_READY
 OWNER: MAZZI Tech Lead
-LAST_UPDATED: 2026-09-03
+LAST_UPDATED: 2026-09-05
 
 ## 1. Resumo técnico
 
@@ -64,7 +64,7 @@ As novas tabelas terão RLS habilitado sem `USING (true)`: aluno somente suas re
 
 ## 5. Contrato de domínio
 
-Centralizar em `src/domain/instant-lesson.ts` as constantes `INSTANT_LESSON_MAX_ARRIVAL_MINUTES = 30`, `INSTANT_LESSON_SAFETY_MARGIN_MINUTES = 15`, `INSTANT_MATCH_WAVE_SIZE = 3`, `INSTANT_OFFER_TIMEOUT_SECONDS = 15`, freshness e cadências. O módulo será puro e testará preço como gate, ranking sem preço primário, distância conservadora, conflito dinâmico, self-match, buckets de teto e estados.
+Centralizar em `src/domain/instant-lesson.ts` as constantes `INSTANT_LESSON_MAX_ARRIVAL_MINUTES = 30`, `INSTANT_LESSON_SAFETY_MARGIN_MINUTES = 15`, `INSTANT_MATCH_WAVE_SIZE = 3`, `INSTANT_OFFER_TIMEOUT_SECONDS = 15`, janela de disponibilidade de 60 minutos, freshness e cadências. O módulo será puro e testará preço como gate, ranking sem preço primário, distância conservadora, conflito dinâmico, self-match, buckets de teto e estados.
 
 ## 6. Estratégia de UI
 
@@ -76,23 +76,28 @@ PRO terá uma seção/aba de Gestão para preço, raio, toggle online, status de
 
 Usar o canal realtime existente e RPCs sanitizadas. PRO envia somente latest location em 20–30 s ou mudança relevante; Student recebe tracking do vencedor em 5–10 s após o match. Se realtime cair, recuperar o estado por RPC sem criar request/offer duplicada. Localização stale não entra em nova elegibilidade.
 
-## 8. Testes obrigatórios
+## 8. Disponibilidade do instrutor
+
+Persistir `online_since` e `online_expires_at` em `provider_instant_instructor_status`. A RPC de ativação cria uma janela nova de 1 hora somente quando chamada explicitamente; getters e matching reconciliam expiração e sempre aplicam `online_expires_at > NOW()`. O estado por veículo continua restrito a `instant_enabled`.
+
+## 9. Testes obrigatórios
 
 - Domínio: buckets, preço livre, ranking/ETA, travel-duration-travel-margin, freshness e estados.
 - Contrato SQL: tabelas/RLS/grants/constraints/RPCs, snapshot e ausência de acesso anon.
 - Concorrência: duas respostas aceitas simultaneamente geram um único winner/booking.
 - Segurança: cruzamento student/request, PRO/offer, localização antes/depois do match e self-match.
 - UI: jornada Student, configuração/offer PRO, loading/error/expired, acessibilidade e 375/390/430 px sem overflow.
+- Disponibilidade: 10:59/11:00, refresh sem renovação, reativação com nova expiração, perda de elegibilidade e preservação de A/B por veículo.
 - Regressão: agendamento tradicional, booking/payment existentes, builds dos quatro targets.
 
-## 9. O que não alterar
+## 10. O que não alterar
 
 - Migrations históricas, Production, Supabase PRD, checkout Stripe e política financeira atual.
 - Contratos de cancelamento, review, notificações e booking lifecycle, exceto extensões mínimas de `source`/metadata aprovadas pela migration.
 - Busca tradicional e seu comportamento de preço/ordenamento.
 - Auth/RBAC global e componentes existentes sem necessidade demonstrada.
 
-## 10. Ordem de implementação
+## 11. Ordem de implementação
 
 1. Adicionar domínio/tipos e testes puros.
 2. Criar migration incremental e testes de contrato.
@@ -102,6 +107,6 @@ Usar o canal realtime existente e RPCs sanitizadas. PRO envia somente latest loc
 6. Aplicar migration somente no Supabase DEV depois da revisão local e dos gates.
 7. Revalidar DEV publicado, CI e Database Baseline Verify; somente então commit/push/deploy DEV.
 
-## 11. Instruções ao Dev
+## 12. Instruções ao Dev
 
 Não usar acesso direto a tabelas novas no frontend, `service_role`, floats, alertas nativos, coordenadas exatas pré-match ou números mágicos fora do domínio. Não declarar a task pronta antes de registrar os artefatos, executar os gates e entregar evidência de que Production e dinheiro real não foram tocados.

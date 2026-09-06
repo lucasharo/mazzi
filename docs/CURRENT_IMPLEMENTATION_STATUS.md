@@ -1,5 +1,13 @@
 # MAZZI — Current Implementation Status
 
+## TASK-089 — janela de disponibilidade do instrutor (2026-09-05)
+
+- Implementada a janela backend-owned de 1 hora com `online_since` e `online_expires_at` em `provider_instant_instructor_status`.
+- Matching, preview e getters exigem `online_expires_at > NOW()`; expiração é reconciliada e não depende de job eventual.
+- Refresh, GPS, aceite/recusa e salvamento de veículo não renovam a janela. Reativação explícita cria nova janela.
+- Configuração por veículo (`instant_enabled`) permanece independente e o campo legado `instant_online` é apenas compatibilidade.
+- Migration aplicada somente no Supabase DEV `bhvpkgonhlujmxvwnxix`; Production não foi alterada.
+
 **Última revisão**: 2026-09-01
 *Nota: Este documento deve ser atualizado sempre que uma TASK alterar o estado de uma feature relevante.*
 

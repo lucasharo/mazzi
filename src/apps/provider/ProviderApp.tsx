@@ -59,7 +59,7 @@ import {
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
 import { getBookingStartTimestamp, getStudentBookingSection, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
-import { INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS } from '../../domain/instant-lesson';
+import { INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS, isInstantInstructorAvailabilityActive } from '../../domain/instant-lesson';
 import { buildFullDayBlockRange, formatDateBR, formatTimeBR, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
@@ -780,7 +780,7 @@ export const ProviderApp: React.FC = () => {
     : user?.role || currentRole;
 
   const refreshInstantProviderLocation = useCallback((): Promise<void> => {
-    const currentInstructorIsOnline = instantInstructorStatuses.some((status) => status.providerId === currentProvider?.id && status.instructorId === user?.id && status.instantOnline);
+    const currentInstructorIsOnline = instantInstructorStatuses.some((status) => status.providerId === currentProvider?.id && status.instructorId === user?.id && isInstantInstructorAvailabilityActive(status));
     if (!currentProvider?.id || !user?.id || !navigator.geolocation || !currentInstructorIsOnline) {
       return Promise.resolve();
     }
@@ -810,7 +810,7 @@ export const ProviderApp: React.FC = () => {
   }, [currentProvider?.id, instantInstructorStatuses, user?.id]);
 
   useEffect(() => {
-    if (!isRealSupabase || !currentProvider?.id || !user?.id || !instantInstructorStatuses.some((status) => status.providerId === currentProvider.id && status.instructorId === user.id && status.instantOnline)) return undefined;
+    if (!isRealSupabase || !currentProvider?.id || !user?.id || !instantInstructorStatuses.some((status) => status.providerId === currentProvider.id && status.instructorId === user.id && isInstantInstructorAvailabilityActive(status))) return undefined;
     void refreshInstantProviderLocation();
     // A PRO tab may stay in the background while the student searches in
     // another tab. Keep attempting the heartbeat there; the database still
@@ -897,10 +897,10 @@ export const ProviderApp: React.FC = () => {
         });
         setInstantLocationStatus('READY');
       }
-      await dbService.setMyInstantInstructorOnline(currentProvider.id, instructorId, online);
+      const savedStatus = await dbService.setMyInstantInstructorOnline(currentProvider.id, instructorId, online);
       setInstantInstructorStatuses((current) => [
         ...current.filter((item) => !(item.providerId === currentProvider.id && item.instructorId === instructorId)),
-        { providerId: currentProvider.id, instructorId, instantOnline: online, updatedAt: new Date().toISOString() },
+        savedStatus,
       ]);
     } catch (error) {
       setInstantLocationStatus('ERROR');

@@ -1,5 +1,13 @@
 # 03 — Regras de Negócio Inegociáveis
 
+## Aula Agora — disponibilidade do instrutor
+
+- O botão **Aceitar Aula Agora** representa somente a disponibilidade física do instrutor, com estado canônico por `provider_id + instructor_id`.
+- Ao ativar, o backend grava `online_since` e `online_expires_at` em uma janela máxima de 1 hora. `NOW() < online_expires_at` é obrigatório para novas ofertas.
+- Refresh, atualização de GPS, aceite/recusa de oferta e salvamento de veículo não renovam a janela. Nova janela exige ativação explícita.
+- Expiração ou perda de elegibilidade remove o instrutor do matching sem desligar a configuração independente `provider_instant_settings.instant_enabled` de cada veículo.
+- `provider_instant_settings.instant_online` é mantido somente para compatibilidade legada e não é fonte de verdade.
+
 ## 1. Tratamento Financeiro
 - **Valores Monetários em Centavos:** É expressamente proibido o uso de números de ponto flutuante (`float`) para preços, taxas, comissões ou repasses. Todo cálculo e armazenamento é feito em inteiros (`integer`/`bigint`). Exemplo: R$ 100,00 = `10000`.
 - **Snapshot Imutável:** Qualquer alteração posterior de preço na oferta ou dados cadastrais do fornecedor não afeta reservas prévias já criadas.

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock3, Settings2 } from 'lucide-react';
 import type { InstantLessonInstructorStatus, InstantLessonSettings } from '../../../types';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { InstantLessonAvailabilityNotice } from '../../../components/instant/InstantLessonAvailabilityNotice';
+import { formatInstantInstructorAvailability, isInstantInstructorAvailabilityActive } from '../../../domain/instant-lesson';
 import type { InstantLessonAvailabilityNotice as InstantLessonAvailabilityNoticeData } from '../../../domain/instant-lesson';
 
 interface ProviderInstantLessonSummaryCardProps {
@@ -16,18 +17,28 @@ interface ProviderInstantLessonSummaryCardProps {
 }
 
 export const ProviderInstantLessonSummaryCard: React.FC<ProviderInstantLessonSummaryCardProps> = ({ settings = [], providerId, instructorStatuses = [], currentUserId, availabilityNotice, onOpenSettings }) => {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   if (availabilityNotice) return <InstantLessonAvailabilityNotice notice={availabilityNotice} />;
 
   const enabledSettings = settings.filter((setting) => setting.instantEnabled);
   const instructorStatus = currentUserId ? instructorStatuses.find((status) => status.providerId === providerId && status.instructorId === currentUserId) : undefined;
-  const isAvailable = instructorStatus?.instantOnline === true;
+  const isAvailable = instructorStatus ? isInstantInstructorAvailabilityActive(instructorStatus, now) : false;
   const isConfigured = enabledSettings.length > 0;
+  const availabilityLabel = instructorStatus ? formatInstantInstructorAvailability(instructorStatus, now) : null;
 
   const status = !currentUserId || !instructorStatus
     ? { label: 'Por instrutor', variant: 'neutral' as const, description: 'A disponibilidade é controlada individualmente por cada instrutor.' }
     : isAvailable
-      ? { label: 'Disponível', variant: 'success' as const, description: 'Você está disponível para receber solicitações imediatas.' }
-      : isConfigured
+      ? { label: 'Disponível', variant: 'success' as const, description: `${availabilityLabel || 'Você está disponível'} para receber solicitações imediatas.` }
+      : instructorStatus.instantOnline && instructorStatus.onlineExpiresAt
+        ? { label: 'Expirada', variant: 'warning' as const, description: 'Sua disponibilidade da Aula Agora expirou. Ative novamente para receber novas solicitações.' }
+        : isConfigured
       ? { label: 'Pausada', variant: 'warning' as const, description: 'A Aula Agora está configurada, mas pausada no momento.' }
       : { label: 'Desativada', variant: 'neutral' as const, description: 'Ative uma oferta para começar a receber aulas imediatas.' };
 

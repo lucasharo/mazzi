@@ -40,6 +40,25 @@ export const INSTANT_OFFER_TIMEOUT_SECONDS = 15;
 export const INSTANT_LOCATION_FRESHNESS_SECONDS = 30;
 export const INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS = 10;
 export const INSTANT_STUDENT_TRACKING_INTERVAL_SECONDS = 8;
+export const INSTANT_INSTRUCTOR_AVAILABILITY_WINDOW_MINUTES = 60;
+
+export function isInstantInstructorAvailabilityActive(
+  status: { instantOnline: boolean; onlineExpiresAt?: string | null },
+  nowMs = Date.now(),
+): boolean {
+  if (!status.instantOnline || !status.onlineExpiresAt) return false;
+  const expiresAtMs = new Date(status.onlineExpiresAt).getTime();
+  return Number.isFinite(expiresAtMs) && nowMs < expiresAtMs;
+}
+
+export function formatInstantInstructorAvailability(
+  status: { instantOnline: boolean; onlineExpiresAt?: string | null },
+  nowMs = Date.now(),
+): string | null {
+  if (!status.instantOnline || !status.onlineExpiresAt) return null;
+  const remainingMinutes = Math.ceil((new Date(status.onlineExpiresAt).getTime() - nowMs) / 60_000);
+  return remainingMinutes > 0 ? `Disponível por mais ${remainingMinutes} min.` : null;
+}
 
 export interface InstantLessonAvailabilityNotice {
   reason: 'IN_PROGRESS' | 'CONFLICT';
