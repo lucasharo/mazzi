@@ -24,6 +24,7 @@ import {
   InstantLessonSettings,
   InstantLessonInstructorStatus,
   InstantLessonOffer,
+  InstantLessonPlatformConfig,
 } from '../../types';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
@@ -31,6 +32,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Badge } from '../../components/ui/Badge';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
+import { SettingsPanel } from '../../components/settings/SettingsPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
 import { NOTIFICATIONS_CHANGED } from '../../components/ui/NotificationIndicator';
 import { ProviderAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
@@ -60,6 +62,7 @@ import {
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
 import { getBookingStartTimestamp, getStudentBookingSection, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
 import { INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS, isInstantInstructorAvailabilityActive } from '../../domain/instant-lesson';
+import { DEFAULT_PLATFORM_CONFIGURATION } from '../../domain/platform-config';
 import { buildFullDayBlockRange, formatDateBR, formatTimeBR, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
@@ -86,7 +89,6 @@ import { ProviderManagementTab } from './components/ProviderManagementTab';
 import { ProviderProfileTab } from './components/ProviderProfileTab';
 import { ProviderEarningsTab } from './components/ProviderEarningsTab';
 import { ProviderInstantLessonPanel } from './components/ProviderInstantLessonPanel';
-import { InstantConductPanel } from '../../components/instant/InstantConductPanel';
 import { ProviderCancellationModal } from './components/ProviderCancellationModal';
 import { ProviderBookingDetailsModal } from './components/ProviderBookingDetailsModal';
 import { UpcomingBookingCard } from '../../components/ui/UpcomingBookingCard';
@@ -94,7 +96,7 @@ import { InstantLessonOperationalModal } from '../../components/instant/InstantL
 import { InstantLessonOfferBottomSheet } from '../../components/instant/InstantLessonOfferBottomSheet';
 import { ExternalNavigationModal } from '../../components/instant/ExternalNavigationModal';
 import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
-import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Clock3, Info, LogOut, RefreshCw, Sparkles, Upload, WalletCards, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowRight, Calendar as CalendarIcon, CheckCircle2, Clock3, Info, LogOut, RefreshCw, Sparkles, Upload, WalletCards, XCircle } from 'lucide-react';
 
 export function canProviderCommerciallyCancelBooking(
   booking: { status: string; providerId: string },
@@ -123,7 +125,7 @@ export function canProviderCommerciallyCancelBooking(
 }
 
 export const ProviderApp: React.FC = () => {
-  const { user, logout, isLoading: isAuthLoading } = useAuth();
+  const { user, logout, isLoading: isAuthLoading, hasPerm } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
   const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'bookings', 'earnings', 'management', 'profile']);
@@ -152,6 +154,10 @@ export const ProviderApp: React.FC = () => {
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>([]);
   const [availabilityExceptions, setAvailabilityExceptions] = useState<AvailabilityException[]>([]);
   const [instantSettings, setInstantSettings] = useState<InstantLessonSettings[]>([]);
+  const [instantPlatformConfig, setInstantPlatformConfig] = useState<InstantLessonPlatformConfig>({
+    maxEtaMinutes: DEFAULT_PLATFORM_CONFIGURATION.instantMaxEtaMinutes,
+    offerExpirationSeconds: DEFAULT_PLATFORM_CONFIGURATION.instantOfferExpirationSeconds,
+  });
   const [instantInstructorStatuses, setInstantInstructorStatuses] = useState<InstantLessonInstructorStatus[]>([]);
   const [instantOffers, setInstantOffers] = useState<InstantLessonOffer[]>([]);
   const [instantOfferSheetId, setInstantOfferSheetId] = useState<string | null>(null);
@@ -185,6 +191,7 @@ export const ProviderApp: React.FC = () => {
   const [bookingActionSuccess, setBookingActionSuccess] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [selectedPayoutDetail, setSelectedPayoutDetail] = useState<ProviderPayoutDetail | null>(null);
   const [earningsFocusKey, setEarningsFocusKey] = useState(0);
 
@@ -489,16 +496,22 @@ export const ProviderApp: React.FC = () => {
       setVehicles(workspace.vehicles);
       setOfferings(workspace.offerings);
       try {
-        const [loadedInstantSettings, loadedInstructorStatuses] = await Promise.all([
+        const [loadedInstantSettings, loadedInstructorStatuses, loadedInstantPlatformConfig] = await Promise.all([
           dbService.getMyInstantSettings(workspace.provider.id, workspace.offerings),
           dbService.getMyInstantInstructorStatuses(workspace.provider.id),
+          dbService.getInstantLessonPlatformConfig(),
         ]);
         setInstantSettings(loadedInstantSettings);
         setInstantInstructorStatuses(loadedInstructorStatuses);
+        setInstantPlatformConfig(loadedInstantPlatformConfig);
       } catch (instantError) {
         console.warn('Instant lesson settings load failed:', instantError);
         setInstantSettings([]);
         setInstantInstructorStatuses([]);
+        setInstantPlatformConfig({
+          maxEtaMinutes: DEFAULT_PLATFORM_CONFIGURATION.instantMaxEtaMinutes,
+          offerExpirationSeconds: DEFAULT_PLATFORM_CONFIGURATION.instantOfferExpirationSeconds,
+        });
       }
 
       if (workspace.provider.type === 'DRIVING_SCHOOL') {
@@ -762,6 +775,12 @@ export const ProviderApp: React.FC = () => {
   }, [bookings, selectedBooking?.id, selectedBooking?.status]);
 
   const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
+  const instantOffersPollingEnabled = useMemo(() => (
+    Boolean(currentProvider?.id) && instantInstructorStatuses.some((status) => (
+      status.providerId === currentProvider?.id
+      && isInstantInstructorAvailabilityActive(status, bookingClockMs)
+    ))
+  ), [bookingClockMs, currentProvider?.id, instantInstructorStatuses]);
   const instantInstructorOptions = useMemo(() => {
     if (!currentProvider) return [];
     if (currentProvider.type === 'INSTRUCTOR') {
@@ -774,6 +793,15 @@ export const ProviderApp: React.FC = () => {
       .filter((instructor) => schoolInstructorSummary.find((summary) => summary.membershipId === instructor.id)?.eligible === true)
       .map((instructor) => ({ id: instructor.userId, name: instructor.name }));
   }, [currentProvider, schoolInstructorSummary, schoolInstructors, user?.id]);
+  const schoolInstantInstructorOptions = useMemo(() => {
+    if (!currentProvider || currentProvider.type !== 'DRIVING_SCHOOL') return [];
+    return schoolInstructors
+      .filter((instructor) => instructor.userId !== currentProvider.userId)
+      .filter((instructor) => instructor.membershipStatus === 'ACTIVE' && instructor.isActive)
+      .map((instructor) => ({ id: instructor.userId, name: instructor.name }));
+  }, [currentProvider, schoolInstructors]);
+  const canManageInstantInstructorAvailability = currentProvider?.type === 'DRIVING_SCHOOL'
+    && hasPerm('school.schedule.manage');
   const cancellationUserRole = currentProvider?.type === 'INSTRUCTOR'
     && currentProvider.userId === user?.id
     ? 'INSTRUCTOR'
@@ -826,6 +854,7 @@ export const ProviderApp: React.FC = () => {
   }, [currentProvider?.id, instantInstructorStatuses, isRealSupabase, refreshInstantProviderLocation, user?.id]);
 
   const loadInstantOffers = useCallback((): Promise<void> => {
+    if (!instantOffersPollingEnabled) return Promise.resolve();
     if (instantOffersInFlightRef.current) return instantOffersInFlightRef.current;
     const request = dbService.getMyInstantOffers()
       .then((snapshot) => {
@@ -839,7 +868,7 @@ export const ProviderApp: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isRealSupabase || !currentProvider?.id) return;
+    if (!isRealSupabase || !currentProvider?.id || !instantOffersPollingEnabled) return;
     void loadInstantOffers();
     const pollTimer = window.setInterval(() => void loadInstantOffers(), 5000);
     const refreshOnVisibility = () => {
@@ -855,7 +884,7 @@ export const ProviderApp: React.FC = () => {
       document.removeEventListener('visibilitychange', refreshOnVisibility);
       void supabase.removeChannel(channel);
     };
-  }, [currentProvider?.id, isRealSupabase, loadInstantOffers, user?.id]);
+  }, [currentProvider?.id, instantOffersPollingEnabled, isRealSupabase, loadInstantOffers, user?.id]);
 
   useEffect(() => {
     const pendingOffers = instantOffers.filter((offer) => offer.status === 'PENDING');
@@ -881,11 +910,13 @@ export const ProviderApp: React.FC = () => {
   };
 
   const handleToggleInstantOnline = async (instructorId: string, online: boolean) => {
-    if (!currentProvider || user?.id !== instructorId) return;
+    if (!currentProvider) return;
     setInstantActionLoading(true);
     try {
       if (online && !instantSettings.some((setting) => setting.instructorId === instructorId && setting.instantEnabled)) throw new Error('INSTANT_VEHICLE_NOT_ENABLED');
-      if (online && user?.id) {
+      // A school administrator changes only the instructor's canonical
+      // availability. Only the instructor can publish the instructor's GPS.
+      if (online && user?.id === instructorId) {
         setInstantLocationStatus('UPDATING');
         await new Promise<void>((resolve, reject) => {
           if (!navigator.geolocation) { reject(new Error('LOCATION_UNAVAILABLE')); return; }
@@ -902,6 +933,13 @@ export const ProviderApp: React.FC = () => {
         ...current.filter((item) => !(item.providerId === currentProvider.id && item.instructorId === instructorId)),
         savedStatus,
       ]);
+      showProviderFeedback(
+        online ? 'success' : 'info',
+        online ? 'Instrutor disponível' : 'Instrutor pausado',
+        online
+          ? 'O instrutor está disponível para Aula Agora por até 1 hora.'
+          : 'O instrutor não receberá novas solicitações de Aula Agora.',
+      );
     } catch (error) {
       setInstantLocationStatus('ERROR');
       throw error;
@@ -2188,6 +2226,7 @@ status: 'IN_REVIEW',
             formError={profileFormError}
             isSavingProfile={isSavingProfile}
             onLogout={handleLogout}
+            onOpenNotifications={() => setIsSettingsOpen(true)}
           />
         )}
 
@@ -2255,16 +2294,27 @@ status: 'IN_REVIEW',
         </Modal>
       )}
 
-      {/* Notifications Panel Modal */}
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setIsSettingsOpen(false)}
+          title="Configurações"
+        >
+          <div className="w-full">
+            <SettingsPanel appContext="PRO" userId={user?.id} />
+          </div>
+        </Modal>
+      )}
+
+      {/* Received notifications modal */}
       {isNotificationsOpen && (
         <Modal
           isOpen={true}
           onClose={() => setIsNotificationsOpen(false)}
-          title="Notificações MAZZI Pro"
+          title="Notificações"
         >
-          <div className="max-h-[460px] overflow-y-auto">
-            <NotificationsPanel appContext="PRO" userId={user?.id} onNavigate={openNotificationTarget} />
-          </div>
+          <NotificationsPanel appContext="PRO" userId={user?.id} onNavigate={openNotificationTarget} />
         </Modal>
       )}
 
@@ -2290,7 +2340,7 @@ status: 'IN_REVIEW',
               <p className="mt-1 text-3xl font-black tracking-tight text-[var(--mazzi-dark)]">{formatCentsToBRL(selectedPayoutDetail.amount_in_cents)}</p>
               <div className="mt-4 space-y-3 border-t border-[var(--mazzi-border)] pt-4 text-sm">
                 <div className="flex items-start gap-3">
-                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-[#e9a918]" aria-hidden="true" />
+                  <CalendarIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#e9a918]" aria-hidden="true" />
                   <div><p className="text-xs text-[var(--mazzi-muted)]">Previsão de repasse</p><p className="font-bold text-[var(--mazzi-text)]">{formatDateBR(selectedPayoutDetail.scheduled_release_at)} às {formatTimeBR(selectedPayoutDetail.scheduled_release_at)}</p></div>
                 </div>
                 {selectedPayoutDetail.processed_at && <div className="flex items-start gap-3">
@@ -2393,15 +2443,17 @@ status: 'IN_REVIEW',
         className="instant-light"
       >
         <div className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:p-6">
-          <InstantConductPanel />
           <ProviderInstantLessonPanel
             provider={currentProvider}
             offerings={offerings}
             vehicles={vehicles}
             instructorOptions={instantInstructorOptions}
+            availabilityInstructorOptions={currentProvider?.type === 'DRIVING_SCHOOL' ? schoolInstantInstructorOptions : instantInstructorOptions}
             settings={instantSettings}
+            platformConfig={instantPlatformConfig}
             instructorStatuses={instantInstructorStatuses}
             currentUserId={user?.id}
+            canManageInstructorAvailability={canManageInstantInstructorAvailability}
             onSave={handleSaveInstantSetting}
             onToggleOnline={handleToggleInstantOnline}
             isLoading={instantActionLoading}

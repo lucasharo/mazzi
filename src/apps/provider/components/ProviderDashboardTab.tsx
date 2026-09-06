@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ArrowRight, Star, Calendar, SlidersHorizontal, Plus, Mail, Check, CircleX, Building2, } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Star, Calendar, Plus, Mail, Check, CircleX, Building2, } from 'lucide-react';
 import { Provider, Booking, ComplianceDocument, Vehicle, InstantLessonSettings, InstantLessonInstructorStatus } from '../../../types';
 import type { SchoolInvitationContext } from '../../../lib/db-service';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -180,7 +180,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
       )}
 
       {/* Quick Action Cards */}
-      {!isRefreshing && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {!isRefreshing && <div className="grid grid-cols-1 gap-3">
         <ButtonBase
           type="button"
           onClick={() => onNavigateTab('management')}
@@ -192,28 +192,9 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 transition group-hover:text-amber-700">
-                Gerenciar Agenda & Horários
+                Gerenciar agenda, veículos e ofertas
               </h3>
-              <p className="text-xs text-slate-500">Configure regras semanais e bloqueios</p>
-            </div>
-          </div>
-          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition" />
-        </ButtonBase>
-
-        <ButtonBase
-          type="button"
-          onClick={() => onNavigateTab('management')}
-          className="mazzi-card group flex min-h-20 cursor-pointer items-center justify-between p-4 text-left transition hover:border-slate-300"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#202126] font-bold flex items-center justify-center">
-              <SlidersHorizontal className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 transition group-hover:text-slate-700">
-                Gestão de Veículos & Ofertas
-              </h3>
-              <p className="text-xs text-slate-500">Cadastre modelos, categorias e preços</p>
+              <p className="text-xs text-slate-500">Configure horários, veículos, categorias e preços</p>
             </div>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition" />

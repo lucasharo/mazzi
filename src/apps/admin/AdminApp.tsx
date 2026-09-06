@@ -174,6 +174,10 @@ export const AdminApp: React.FC = () => {
               if (item.value?.checkin_window_before_minutes !== null && item.value?.checkin_window_before_minutes !== undefined) mappedConfig.checkInWindowBeforeMinutes = Number(item.value.checkin_window_before_minutes);
               if (item.value?.contestation_response_hours !== null && item.value?.contestation_response_hours !== undefined) mappedConfig.contestationResponseHours = Number(item.value.contestation_response_hours);
             }
+            if (item.key === 'instant_lesson_settings') {
+              if (item.value?.max_eta_minutes !== null && item.value?.max_eta_minutes !== undefined) mappedConfig.instantMaxEtaMinutes = Number(item.value.max_eta_minutes);
+              if (item.value?.offer_expiration_seconds !== null && item.value?.offer_expiration_seconds !== undefined) mappedConfig.instantOfferExpirationSeconds = Number(item.value.offer_expiration_seconds);
+            }
           }
           setPlatformConfig(mappedConfig);
         }
@@ -391,9 +395,15 @@ export const AdminApp: React.FC = () => {
       const persistedUpdates = Object.fromEntries(
         Object.entries(updates).filter(([, value]) => typeof value === 'number'),
       ) as Record<string, number>;
-      const { contestationResponseHours, ...standardUpdates } = persistedUpdates;
+      const { contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds, ...standardUpdates } = persistedUpdates;
       if (Object.keys(standardUpdates).length > 0) await dbService.updatePlatformConfigs(standardUpdates);
       if (contestationResponseHours !== undefined) await dbService.updateContestationResponseHours(contestationResponseHours);
+      if (instantMaxEtaMinutes !== undefined || instantOfferExpirationSeconds !== undefined) {
+        await dbService.updateAdminInstantLessonConfig({
+          maxEtaMinutes: instantMaxEtaMinutes ?? platformConfig.instantMaxEtaMinutes,
+          offerExpirationSeconds: instantOfferExpirationSeconds ?? platformConfig.instantOfferExpirationSeconds,
+        });
+      }
       setPlatformConfig((current) => ({
         ...current,
         ...updates,

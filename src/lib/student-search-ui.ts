@@ -1,7 +1,7 @@
 import { SearchRequest } from '../types';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../domain/search';
 
-export const STUDENT_NAV_ITEMS = ['search', 'bookings', 'messages', 'profile'] as const;
+export const STUDENT_NAV_ITEMS = ['home', 'bookings', 'profile'] as const;
 
 export function countAdditionalStudentFilters(searchRequest: SearchRequest): number {
   return [

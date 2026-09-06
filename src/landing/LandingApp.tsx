@@ -1,6 +1,6 @@
 import {
   ArrowRight,
-  CalendarDays,
+  Calendar as CalendarIcon,
   Check,
   ChevronRight,
   MapPin,
@@ -21,7 +21,7 @@ const benefits = [
     description: 'Veja instrutores e autoescolas disponíveis na sua região, com avaliações e ofertas claras.',
   },
   {
-    icon: CalendarDays,
+    icon: CalendarIcon,
     eyebrow: 'Sem complicação',
     title: 'Agende no seu ritmo',
     description: 'Escolha o melhor horário para a sua rotina e acompanhe sua reserva em um só lugar.',

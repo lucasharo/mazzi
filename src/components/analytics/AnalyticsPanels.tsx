@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BarChart3, Calendar as CalendarRange, TrendingUp, Users, Car, CalendarCheck, CreditCard, Star } from 'lucide-react';
+import { BarChart3, Calendar as CalendarIcon, TrendingUp, Users, Car, CreditCard, Star } from 'lucide-react';
 import { dbService } from '../../lib/db-service';
 import {
   AdminAnalyticsSummary, AnalyticsPeriodPreset, ProviderAnalyticsSummary, } from '../../types';
@@ -63,7 +63,7 @@ function PeriodSelector({
               : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-950'
           }`}
         >
-          <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" />
+          <CalendarIcon className="h-3.5 w-3.5" aria-hidden="true" />
           {days} dias
         </ButtonBase>
       ))}
@@ -133,7 +133,7 @@ export const AdminAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refresh
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard label="Alunos ativos" value={summary.users.active_students} helper="Base ativa total" icon={<Users className="w-4 h-4" />} />
             <MetricCard label="Prestadores ativos" value={summary.supply.active_providers} helper={`${summary.supply.active_individual_providers} instrutores · ${summary.supply.active_driving_schools} CFCs`} icon={<Car className="w-4 h-4" />} />
-            <MetricCard label="Reservas confirmadas" value={summary.bookings.confirmed} helper={`${summary.bookings.created} criadas no período`} icon={<CalendarCheck className="w-4 h-4" />} />
+            <MetricCard label="Reservas confirmadas" value={summary.bookings.confirmed} helper={`${summary.bookings.created} criadas no período`} icon={<CalendarIcon className="w-4 h-4" />} />
             <MetricCard label="Volume DEV pago" value={formatCentsToBRL(summary.financial_dev.paid_volume_cents)} helper={summary.financial_dev.label} icon={<CreditCard className="w-4 h-4" />} dark />
           </div>
 
@@ -153,8 +153,8 @@ export const AdminAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refresh
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
               <h3 className="text-sm font-black text-slate-900 mb-3">Operação</h3>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <MetricCard label="Concluídas" value={summary.bookings.completed} icon={<CalendarCheck className="w-4 h-4" />} />
-                <MetricCard label="Canceladas" value={summary.bookings.cancelled} icon={<CalendarCheck className="w-4 h-4" />} />
+                <MetricCard label="Concluídas" value={summary.bookings.completed} icon={<CalendarIcon className="w-4 h-4" />} />
+                <MetricCard label="Canceladas" value={summary.bookings.cancelled} icon={<CalendarIcon className="w-4 h-4" />} />
                 <MetricCard label="Veículos ativos" value={summary.supply.active_vehicles} icon={<Car className="w-4 h-4" />} />
                 <MetricCard label="Ofertas ativas" value={summary.supply.active_offerings} icon={<BarChart3 className="w-4 h-4" />} />
               </div>
@@ -218,7 +218,7 @@ export const ProviderAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refr
 
       {summary && !isLoading && !error && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <MetricCard label="Confirmadas" value={summary.bookings.confirmed} helper={`${summary.bookings.upcoming} próximas`} icon={<CalendarCheck className="w-4 h-4" />} />
+          <MetricCard label="Confirmadas" value={summary.bookings.confirmed} helper={`${summary.bookings.upcoming} próximas`} icon={<CalendarIcon className="w-4 h-4" />} />
           <MetricCard label="Concluídas" value={summary.bookings.completed} helper={`${summary.bookings.cancelled} canceladas`} icon={<TrendingUp className="w-4 h-4" />} />
           <MetricCard label="Recebido DEV" value={formatCentsToBRL(summary.financial_dev.paid_volume_cents)} helper={summary.financial_dev.label} icon={<CreditCard className="w-4 h-4" />} dark />
           <MetricCard label="Avaliação" value={summary.quality.rating_average ?? '—'} helper={`${summary.quality.reviews_count} avaliações`} icon={<Star className="w-4 h-4" />} />

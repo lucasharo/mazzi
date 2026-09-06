@@ -42,7 +42,7 @@ export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, 
     return <BookingDetailsModal isOpen={isOpen} onClose={onClose} booking={booking} currentUserId={currentUserId} onOpenChat={onOpenChat} onBookingUpdated={onBookingUpdated} useHistory={false}
       trackingPreview={showTrackingMap ? <InstantLessonTrackingCard request={activeRequest.request} tracking={tracking} providerName={activeRequest.offer?.providerName} onOpenTracking={() => setTrackingOpen(true)} /> : undefined} />;
   }
-  return <Modal className={!activeRequest ? 'instant-light' : ''} isOpen={isOpen} onClose={() => { if (trackingOpen) setTrackingOpen(false); else onClose(); }} title={activeRequest ? (trackingOpen ? 'Acompanhamento da aula' : 'Aula Agora') : undefined} ariaLabel="Aula Agora" size="md" useHistory={false} fillContent={showTrackingMap || !activeRequest}>
+  return <Modal className={!activeRequest ? 'instant-light' : ''} isOpen={isOpen} onClose={onClose} title={activeRequest ? (trackingOpen ? 'Acompanhamento da aula' : 'Aula Agora') : undefined} ariaLabel="Aula Agora" size="md" useHistory={false} fillContent={showTrackingMap || !activeRequest}>
     {activeRequest ? <div className={showTrackingMap ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden' : 'space-y-4'}>
       {!showTrackingMap && <div className="shrink-0">
       <InstantLessonStatusCard request={activeRequest.request} paymentConfirmed={bookingStatus === 'CONFIRMED' || bookingStatus === 'IN_PROGRESS'} onCancel={() => void onCancelRequest(activeRequest.request.id)} isCancelling={isLoading} />

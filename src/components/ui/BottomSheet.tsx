@@ -27,7 +27,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   ariaLabel,
   closeOnEscape = true,
   closeOnBackdrop = true,
-  useHistory = false,
+  useHistory = true,
 }) => {
   const generatedId = useId();
   const titleId = `${id || generatedId}-title`;

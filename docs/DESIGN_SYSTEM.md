@@ -26,7 +26,11 @@ Os tokens e utilitários globais vivem em `src/index.css`. Cabeçalhos não deve
 
 ## 2. Tipografia
 
-- Fonte global única, herdada por todos os componentes e apps.
+- Fonte global única: `Inter`, com fallback `ui-sans-serif`, `system-ui` e fontes nativas da plataforma. Código e valores técnicos usam a família mono do token `--mazzi-font-family-mono`.
+- Escala atualmente usada nos apps: `9px` (microtexto), `10px` (overline/label), `11px` (metadado), `12px` (caption e botão pequeno), `13px` (corpo compacto), `14px` (card/label), `16px` (corpo), `18px` (seção), `20px` (tela), `24px` (página) e `28–38px` (título principal/hero).
+- Pesos permitidos: `400` normal para leitura, `500` medium para apoio, `600` semibold para destaque, `700` bold para ações e labels, `800` extrabold para títulos e `900` black para marca e hero. Os pesos thin, light e extralight não fazem parte da tipografia de produto.
+- Alturas de linha: `1` para elementos compactos, `1.04` para títulos de destaque, `1.15–1.25` para títulos e labels, `1.5` para corpo e `1.625` para instruções longas.
+- Os tokens primitivos e as classes semânticas (`mazzi-type-*`) ficam em `src/index.css`; o catálogo executável em `src/apps/design-system` exibe a escala completa e seus usos.
 - Títulos de página usam `AppPageHeader`; títulos da tela inicial usam `AppHomeHeader`.
 - Botões usam peso `font-bold`, tamanho visual pequeno por padrão e área interativa mínima de 44 px.
 - Grupos de botões de ação devem ficar alinhados à direita em cards, modais e rodapés, inclusive quando quebram em mais de uma linha; o botão principal nunca deve ficar solto à esquerda.

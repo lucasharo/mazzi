@@ -2,7 +2,7 @@
 
 ## Aula Agora — janela de disponibilidade
 
-O controle único **Aceitar Aula Agora** pertence ao instrutor, não ao carro. Ao ligá-lo, a API registra uma janela de até 1 hora (`online_since`/`online_expires_at`). A interface apresenta o tempo restante e mostra o switch desligado quando a janela expira. Atualizar a tela ou a localização não reinicia o contador; o instrutor precisa ativar novamente. Os switches dos veículos continuam independentes e controlam apenas `instant_enabled`.
+O controle único **Aula Agora** pertence ao instrutor, não ao carro. Ao ligá-lo, a API registra uma janela de até 1 hora (`online_since`/`online_expires_at`). A interface apresenta o tempo restante e mostra o switch desligado quando a janela expira. Atualizar a tela ou a localização não reinicia o contador; o instrutor precisa ativar novamente. Os switches dos veículos continuam independentes e controlam apenas `instant_enabled`. Para instrutores autônomos, somente o próprio instrutor pode alterar o status; em autoescolas, o próprio instrutor ou um usuário autorizado da mesma autoescola pode controlar cada instrutor individualmente.
 
 ## Conceito Unificado com RBAC
 Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoescola/CFC, adaptando o layout e permissões dinamicamente de acordo com o papel do usuário logado (`INSTRUCTOR`, `SCHOOL_ADMIN`, `SCHOOL_STAFF`).
@@ -22,7 +22,7 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 - A configuração de Aula Agora é aberta em modal a partir da tela inicial; ela não ocupa uma aba própria dentro de Gestão.
 - Aula Agora possui configuração operacional própria por instrutor + veículo (preço e raio em centavos/km); ela não reutiliza nem altera o preço da oferta da agenda. A âncora interna dessa configuração fica fora da agenda e da busca pública.
 - A configuração de Aula Agora lista somente veículos com status `ACTIVE` na Gestão; o status cadastral do veículo não é repetido no card para evitar confusão.
-- Cada veículo possui seu próprio switch de habilitação para Aula Agora. Um único switch por instrutor controla a disponibilidade geral; ao ativá-lo, todos os veículos habilitados podem receber ofertas. Em autoescolas, os estados de outros instrutores são somente leitura.
+- Cada veículo possui seu próprio switch de habilitação para Aula Agora. Um único switch por instrutor controla a disponibilidade geral; ao ativá-lo, todos os veículos habilitados podem receber ofertas. Em autoescolas, usuários autorizados podem alterar o status de cada instrutor sem alterar os carros, preços ou raios configurados.
 
 ## Visões e Funcionalidades
 

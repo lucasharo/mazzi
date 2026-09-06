@@ -602,6 +602,11 @@ export interface InstantLessonSettings {
   updatedAt?: string;
 }
 
+export interface InstantLessonPlatformConfig {
+  maxEtaMinutes: number;
+  offerExpirationSeconds: number;
+}
+
 export interface InstantLessonInstructorStatus {
   providerId: string;
   instructorId: string;
@@ -951,6 +956,7 @@ export type NotificationType =
   | 'NEW_MESSAGE'
   | 'STUDENT_CHECKIN'
   | 'PROVIDER_CHECKIN'
+  | 'PROVIDER_ON_THE_WAY'
   | 'LESSON_STARTED'
   | 'LESSON_COMPLETED'
   | 'CONTESTATION_UPDATED'

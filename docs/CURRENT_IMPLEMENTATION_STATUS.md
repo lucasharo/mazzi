@@ -1,5 +1,18 @@
 # MAZZI — Current Implementation Status
 
+## Configurações — centralização de preferências (2026-09-05)
+
+- A entrada do Perfil agora se chama **Configurações** e abre a tela compartilhada de configurações no Aluno e no PRO.
+- **Notificações** permanece como seção interna, reutilizando as preferências e o contrato de backend já existentes.
+- Nenhum backend ou ambiente de Production foi alterado nesta mudança.
+
+## TASK-092 — Preferências de notificações na central (2026-09-05)
+
+- Aluno e PRO acessam a central de notificações pelo link do Perfil; os switches ficam dentro da central, com feedback de carregamento/erro.
+- Preferências são persistidas por usuário em `user_notification_preferences`, com padrão habilitado para tipos sem registro.
+- O backend bloqueia novas notificações explicitamente desabilitadas sem remover o histórico; RPCs, RLS e trigger foram aplicados somente no Supabase DEV `bhvpkgonhlujmxvwnxix`.
+- Production permanece intocada.
+
 ## TASK-089 — janela de disponibilidade do instrutor (2026-09-05)
 
 - Implementada a janela backend-owned de 1 hora com `online_since` e `online_expires_at` em `provider_instant_instructor_status`.
@@ -14,6 +27,18 @@
 ---
 
 > TASK-086 local: o contrato de ganhos, navegação profunda e service worker foi implementado localmente. O registry/push E2E permanece pendente da configuração aprovada de FCM/Web Push no DEV; nenhuma mutação remota foi feita.
+
+## 7. Atualização de implementação — 2026-09-06 (Aula Agora)
+
+- TASK-095 (App Aluno): a Home foi reorganizada como dashboard/hub, com próxima aula compacta, cards separados para Aula Agora e Agendar Aula, métricas reais em grade 2×2 e Sua Jornada desabilitada como “Em breve”. A busca tradicional permanece intacta e só é aberta pelo fluxo Agendar Aula; a navegação inferior foi renomeada para Início e usa ícone de grade.
+- O card resumido do Aula Agora no PRO foi compactado, mantendo destaque visual e alinhamento com o padrão do App Aluno.
+- O painel de ocorrências foi removido do modal de configuração do PRO; a operação administrativa continua disponível no painel de disputas.
+- Os textos do card agora usam os parâmetros administráveis `max_eta_minutes` e `offer_expiration_seconds`, exibidos como “Deslocamento máximo” e “A oferta expira em”.
+- O Admin pode configurar esses dois parâmetros; a atualização é protegida por permissão, auditada em `audit_logs` e consumida pelos RPCs de opções de preço e dispatch do matching.
+- A configuração por veículo não possui mais botão Salvar: o switch é a única ação. Ao ativar, preço e distância ficam bloqueados; ao desativar, ficam editáveis e são persistidos automaticamente ao sair do campo.
+- A migration `20260906002000_task_093_instant_platform_config.sql` foi aplicada e validada no projeto Supabase DEV `bhvpkgonhlujmxvwnxix`. Production permanece intocada.
+- A migration corretiva `20260906003000_task_093_fix_instant_request_dispatch_alias.sql` remove a ambiguidade `42702` do dispatch chamado na criação de uma solicitação Aula Agora.
+- A tela de configurações foi reorganizada com cabeçalho próprio e card de notificações responsivo; o conteúdo não fica mais limitado a `460px` no PRO e rola dentro do modal quando necessário.
 
 ## 7. TASK-089 — Aula Agora — 2026-09-03
 
@@ -34,6 +59,8 @@ O dashboard do PRO também exibe o estado da Aula Agora e abre diretamente sua c
 Atualização de disponibilidade por veículo (2026-09-05): a configuração do PRO agora exibe somente veículos `ACTIVE` na Gestão, mantém a habilitação de Aula Agora independente por carro e apresenta um único controle para a disponibilidade geral do instrutor. A migration `20260905223000_instant_vehicle_visibility.sql` foi aplicada e verificada no Supabase DEV; ofertas pendentes vinculadas a um carro desativado são expiradas sem alterar os demais veículos.
 
 Atualização canônica (2026-09-05): o status online passou a ser persistido em `provider_instant_instructor_status` por `provider_id + instructor_id`, com um único RPC atômico e autorização para o próprio instrutor. As migrations `20260905230000_task_089_canonical_instructor_availability.sql` e `20260905232000_task_089_canonical_status_rls.sql` foram aplicadas e verificadas no Supabase DEV. O matching avalia todos os veículos elegíveis antes de escolher um por instrutor, deduplica ondas por instrutor e revalida o veículo no aceite; a agenda permanece separada e Production permanece intocada.
+
+TASK-094 (2026-09-06): o RPC canônico agora permite que usuários autorizados da mesma autoescola alterem individualmente o status Aula Agora de instrutores vinculados, mantendo o instrutor autônomo restrito ao próprio usuário. A janela de 1 hora, o vínculo por tenant, a elegibilidade dos veículos, o matching e a independência dos carros foram preservados. Cada alteração registra `actor_id`, estado anterior e novo estado em `audit_logs`. A migration `20260906010000_task_094_school_controls_instant_instructor_status.sql` foi aplicada e verificada somente no Supabase DEV `bhvpkgonhlujmxvwnxix`; Production permanece intocada.
 
 ## 1. Separação de Responsabilidades da Documentação
 

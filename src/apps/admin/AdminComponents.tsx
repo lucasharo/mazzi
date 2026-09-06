@@ -4,7 +4,7 @@
 // ============================================================================
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ShieldAlert, FileCheck2, CalendarCheck, TrendingUp, History, CheckCircle2, XCircle, Eye, EyeOff, Search, Filter, UserCheck, AlertTriangle, FileText, ShieldCheck, Ban, Settings, DollarSign, Users, Lock, ArrowRightLeft, Info, Calendar, Layers, MapPin, RefreshCw, Car, ArrowRight, } from 'lucide-react';
+import { ShieldAlert, FileCheck2, TrendingUp, History, CheckCircle2, XCircle, Eye, EyeOff, Search, Filter, UserCheck, AlertTriangle, FileText, ShieldCheck, Ban, Settings, DollarSign, Users, Lock, ArrowRightLeft, Info, Calendar, Layers, MapPin, RefreshCw, Car, ArrowRight, } from 'lucide-react';
 import {
   Provider, ComplianceDocument, Vehicle, Booking, AuditLog, User, UserRole, BookingStatus, Payout, BookingDispute, BookingDisputeResolution, } from '../../types';
 import { Button, ButtonBase } from '../../components/ui/Button';
@@ -2189,6 +2189,8 @@ export const SettingsTab: React.FC<{
   const [radius, setRadius] = useState<number | ''>(config.searchRadiusDefaultsKm);
   const [checkInWindowBefore, setCheckInWindowBefore] = useState<number | ''>(config.checkInWindowBeforeMinutes);
   const [contestationResponseHours, setContestationResponseHours] = useState<number | ''>(config.contestationResponseHours);
+  const [instantMaxEtaMinutes, setInstantMaxEtaMinutes] = useState<number | ''>(config.instantMaxEtaMinutes);
+  const [instantOfferExpirationSeconds, setInstantOfferExpirationSeconds] = useState<number | ''>(config.instantOfferExpirationSeconds);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -2202,11 +2204,13 @@ export const SettingsTab: React.FC<{
     setRadius(config.searchRadiusDefaultsKm);
     setCheckInWindowBefore(config.checkInWindowBeforeMinutes);
     setContestationResponseHours(config.contestationResponseHours);
+    setInstantMaxEtaMinutes(config.instantMaxEtaMinutes);
+    setInstantOfferExpirationSeconds(config.instantOfferExpirationSeconds);
   }, [config]);
 
   const handleSave = async () => {
     if (!isAuthorized) return;
-    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius, checkInWindowBefore, contestationResponseHours].some((value) => value === '')) return;
+    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius, checkInWindowBefore, contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds].some((value) => value === '')) return;
     try {
       setIsSaving(true);
       await onUpdateConfig({
@@ -2220,6 +2224,8 @@ export const SettingsTab: React.FC<{
         searchRadiusDefaultsKm: radius,
         checkInWindowBeforeMinutes: checkInWindowBefore,
         contestationResponseHours,
+        instantMaxEtaMinutes,
+        instantOfferExpirationSeconds,
       });
     } finally {
       setIsSaving(false);
@@ -2364,6 +2370,28 @@ export const SettingsTab: React.FC<{
               className="text-xs"
             />
             <span className="text-[10px] text-slate-400 block">Define com quantos minutos de antecedência aluno e prestador podem fazer check-in.</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+          <div className="mb-3 flex items-start gap-2">
+            <Settings className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+            <div>
+              <h3 className="text-sm font-extrabold text-amber-950">Aula Agora</h3>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">Parâmetros usados pelo matching e pelas ofertas imediatas.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="mazzi-field-label block">Tempo máximo de deslocamento (minutos)</label>
+              <Input type="number" min={1} max={120} value={instantMaxEtaMinutes} onChange={(e) => setInstantMaxEtaMinutes(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+              <span className="block text-[10px] text-slate-500">Limite de distância convertido em tempo estimado para encontrar um instrutor.</span>
+            </div>
+            <div className="space-y-1">
+              <label className="mazzi-field-label block">Validade da oferta (segundos)</label>
+              <Input type="number" min={5} max={120} value={instantOfferExpirationSeconds} onChange={(e) => setInstantOfferExpirationSeconds(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+              <span className="block text-[10px] text-slate-500">Tempo para o instrutor aceitar ou recusar a oferta recebida.</span>
+            </div>
           </div>
         </div>
 

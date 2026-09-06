@@ -383,7 +383,6 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         title={modalTitle}
         ariaLabel="Detalhes operacionais da aula"
         size="md"
-        useHistory={false}
         footer={UNPAID_BOOKING_STATUSES.includes(booking.status) && !isInstant ? undefined : isInstant ? instantFooter : standardFooter}
       >
         <div className="space-y-4 text-left" data-component="provider-booking-details-modal">

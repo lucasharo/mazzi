@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Search, Calendar as CalendarIcon, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, History, Car, Phone, ShieldCheck, Lock, Mail, Camera } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, LayoutGrid, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, History, Car, Phone, ShieldCheck, Lock, Mail, Camera } from 'lucide-react';
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { LessonWizardHeader } from '../../components/ui/LessonWizardHeader';
-import { Check, X, ArrowLeft } from 'lucide-react';
+import { Check, X, ArrowLeft, ChevronRight } from 'lucide-react';
 import { instantOptionClassName } from '../../components/instant/instant-option-style';
 import {
   Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, StudentSavedAddress, InstantLessonPriceOption, InstantLessonRequest, InstantLessonOffer, InstantLessonTracking, TransmissionType, VehicleCategory, } from '../../types';
 import { BookingCard } from '../../components/ui/BookingCard';
+import { Card } from '../../components/ui/Card';
 import { UpcomingBookingCard, UpcomingBookingEmptyCard } from '../../components/ui/UpcomingBookingCard';
 import { EmptyState, ErrorState } from '../../components/ui/EmptyState';
 import { AppPageHeader } from '../../components/ui/AppPageHeader';
@@ -34,7 +36,9 @@ import { dbService } from '../../lib/db-service';
 import { studentCheckInAndRehydrateBooking } from '../../lib/student-booking-actions';
 import { supabase } from '../../lib/supabase';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
+import { SettingsPanel } from '../../components/settings/SettingsPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
+import { NotificationCenterLink } from '../../components/notifications/NotificationCenterLink';
 import { NOTIFICATIONS_CHANGED } from '../../components/ui/NotificationIndicator';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
 import { formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/date-format';
@@ -110,6 +114,9 @@ function getInitialStripeCheckoutReturn(): { status: StripeCheckoutReturnStatus 
 }
 
 export const MAX_MAP_RESULTS = 50;
+
+type StudentTab = 'home' | 'bookings' | 'profile';
+type StudentBookingFlowStep = 'overview' | 'search';
 
 export function mergePagedProviderResults(
   previous: PublicSearchProviderResult[],
@@ -231,17 +238,57 @@ export function isBookingSlotCompatibleWithOffering(slot: any | null | undefined
   return Boolean(slotOfferingId && slotOfferingId === offeringId);
 }
 
+interface StudentDashboardStats {
+  today: number;
+  upcoming: number;
+  completed: number;
+  cancelled: number;
+}
+
+const StudentStatsGrid: React.FC<{ stats: StudentDashboardStats }> = ({ stats }) => {
+  const items = [
+    { label: 'Aulas hoje', value: stats.today, icon: <CalendarIcon className="h-5 w-5" aria-hidden="true" /> },
+    { label: 'Agendadas', value: stats.upcoming, icon: <CalendarIcon className="h-5 w-5" aria-hidden="true" /> },
+    { label: 'Concluídas', value: stats.completed, icon: <Check className="h-5 w-5" aria-hidden="true" /> },
+    { label: 'Canceladas', value: stats.cancelled, icon: <X className="h-5 w-5" aria-hidden="true" /> },
+  ];
+
+  return (
+    <section aria-label="Resumo das aulas" className="grid grid-cols-2 gap-2">
+      {items.map((item) => (
+        <Card key={item.label} padding="none" className="mazzi-compact-card flex min-h-[68px] items-center justify-between gap-2 rounded-2xl shadow-xs">
+          <div className="min-w-0">
+            <p className="mazzi-eyebrow text-[9px] text-[var(--mazzi-muted)]">{item.label}</p>
+            <p className="mt-0.5 text-[24px] font-black leading-none tracking-[-0.04em] text-[var(--mazzi-dark)] tabular-nums">{item.value}</p>
+          </div>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)]">
+            {item.icon}
+          </span>
+        </Card>
+      ))}
+    </section>
+  );
+};
+
+const StudentDashboardSkeleton: React.FC = () => (
+  <section aria-label="Carregando resumo das aulas" aria-busy="true" className="grid grid-cols-2 gap-2.5">
+    {Array.from({ length: 4 }, (_, index) => <Skeleton key={index} variant="card" className="h-[88px] rounded-2xl" />)}
+  </section>
+);
+
 export const StudentApp: React.FC = () => {
   const { user, logout } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
-  const [activeTab, setActiveTab] = useMobileAppRoute<'search' | 'bookings' | 'profile'>('student', 'search', ['search', 'bookings', 'profile']);
+  const [activeTab, setActiveTab] = useMobileAppRoute<StudentTab>('student', 'home', ['home', 'bookings', 'profile']);
+  const [bookingFlowStep, setBookingFlowStep] = useState<StudentBookingFlowStep>('overview');
   const [bookingTab, setBookingTab] = useState<'confirmed' | 'today' | 'history'>('confirmed');
   const [bookingQuickFilter, setBookingQuickFilter] = useState<'all' | 'confirmed' | 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'disputed'>('all');
   const [searchLocation, setSearchLocation] = useState('');
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'map'>('list');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isInstantLessonOpen, setIsInstantLessonOpen] = useState(false);
   const [activeInstantLesson, setActiveInstantLesson] = useState<{ request: InstantLessonRequest; offer?: InstantLessonOffer } | null>(null);
   const [instantLessonTracking, setInstantLessonTracking] = useState<InstantLessonTracking | null>(null);
@@ -282,6 +329,11 @@ export const StudentApp: React.FC = () => {
   const checkoutContextRequestInFlightRef = useRef<string | null>(null);
   const checkoutPaymentStatusInFlightRef = useRef<{ paymentId: string; promise: Promise<any> } | null>(null);
   const checkoutVerificationInFlightRef = useRef<{ key: string; promise: Promise<any> } | null>(null);
+
+  const openBookingSearch = () => {
+    setBookingFlowStep('search');
+    setActiveTab('bookings');
+  };
 
   const requestBookingsRefresh = useCallback((source: 'realtime' | 'manual' = 'manual') => {
     if (bookingsLoadInFlightRef.current) {
@@ -578,10 +630,11 @@ export const StudentApp: React.FC = () => {
   }, [user?.id, isRealSupabase]);
 
   useEffect(() => {
+    if (activeTab !== 'bookings' || bookingFlowStep !== 'search') return;
     if (locationRequestStartedRef.current) return;
     locationRequestStartedRef.current = true;
     void requestUserLocation().catch(() => undefined);
-  }, [requestUserLocation]);
+  }, [activeTab, bookingFlowStep, requestUserLocation]);
 
   useEffect(() => {
     setProfileName(user?.name || '');
@@ -906,7 +959,7 @@ export const StudentApp: React.FC = () => {
     clearStripeCheckoutReturnParams();
     void loadActiveInstantLesson().finally(() => {
       setStripeCheckoutReturn(null);
-      setActiveTab('search');
+      openBookingSearch();
       setIsInstantLessonOpen(true);
     });
   }, [loadActiveInstantLesson]);
@@ -1123,7 +1176,7 @@ function applyStrictProviderFilters(
   useEffect(() => {
     const loadedResults = searchResponse?.results?.length || 0;
     const mapAtSafeLimit = searchViewMode === 'map' && loadedResults >= MAX_MAP_RESULTS;
-    if (activeTab !== 'search' || !searchResponse?.hasMore || searchLoading || mapAtSafeLimit) return undefined;
+    if (activeTab !== 'bookings' || bookingFlowStep !== 'search' || !searchResponse?.hasMore || searchLoading || mapAtSafeLimit) return undefined;
     const sentinel = searchEndRef.current;
     if (!sentinel || typeof IntersectionObserver === 'undefined') return undefined;
 
@@ -1133,7 +1186,7 @@ function applyStrictProviderFilters(
     }, { rootMargin: '320px 0px' });
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [activeTab, searchViewMode, searchLoading, searchResponse?.hasMore, searchResponse?.results?.length]);
+  }, [activeTab, bookingFlowStep, searchViewMode, searchLoading, searchResponse?.hasMore, searchResponse?.results?.length]);
 
   // Selected Public Profile View State
   const [selectedPublicProfile, setSelectedPublicProfile] = useState<PublicSearchProviderResult | null>(null);
@@ -1178,11 +1231,33 @@ function applyStrictProviderFilters(
     }) ? ['Veículo'] : []),
     'Horário', 'Confirmação',
   ];
-  const closeBookingWizard = () => {
+  const bookingWizardStepsWithSearch = ['Profissional', ...bookingWizardSteps];
+  const closeStudentWizard = () => {
+    setActiveTab('home');
+    setBookingFlowStep('overview');
+    setIsInstantLessonOpen(false);
+    setIsFilterDrawerOpen(false);
+    setSelectedPublicProfile(null);
     setInstructorPickerProvider(null);
+    setInstructorChoices([]);
     setOfferingPickerProvider(null);
+    setBookingContextChoices([]);
+    setOfferingPickerSlot(null);
     setIsSlotSelectorOpen(false);
     setIsCheckoutOpen(false);
+    setCheckoutProvider(null);
+    setCheckoutVehicle(null);
+    setCheckoutOffering(null);
+    setSelectedSlot(null);
+    setPickedInstructorId(null);
+    setPickedOfferingId(null);
+    setResumeBooking(null);
+  };
+  const closeBookingSearch = closeStudentWizard;
+  const closeBookingWizard = closeStudentWizard;
+  const closeCheckoutFlow = () => {
+    setIsCheckoutOpen(false);
+    setResumeBooking(null);
   };
   const backToBookingChoices = () => {
     if (!checkoutProvider) return;
@@ -1384,6 +1459,15 @@ function applyStrictProviderFilters(
     [confirmedBookings, nowMs],
   );
 
+  const studentDashboardStats = useMemo<StudentDashboardStats>(() => ({
+    today: todayBookings.length,
+    upcoming: upcomingBookings.length,
+    completed: historyBookings.filter((booking) => booking.status === 'COMPLETED').length,
+    cancelled: historyBookings.filter((booking) => (
+      booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'
+    )).length,
+  }), [historyBookings, todayBookings.length, upcomingBookings.length]);
+
   const bookingQuickFilterOptions = useMemo(() => bookingTab === 'history'
     ? [
         { value: 'all' as const, label: 'Todas' },
@@ -1529,55 +1613,113 @@ function applyStrictProviderFilters(
     profileName.trim() &&
     (!profileBirthDate || validateBirthDate(profileBirthDate).valid),
   );
+  const navigationTab = activeTab;
 
   return (
     <div className="mazzi-app text-[var(--mazzi-text)]">
       <ToastContainer toasts={notificationToasts} onDismiss={(id) => setNotificationToasts((current) => current.filter((toast) => toast.id !== id))} />
         <main className="mazzi-mobile text-left">
-          {activeTab !== 'search' && upcomingBookings[0] && (
-            <div className="mb-5">
-              <UpcomingBookingCard booking={upcomingBookings[0]} perspective="student" onSelect={setSelectedBookingForDetails} />
-            </div>
-          )}
-
-          {/* SEARCH TAB */}
-          {activeTab === 'search' && (
-            <div className="space-y-[10px]">
+          {/* HOME TAB — dashboard do aluno, sem resultados de busca inline */}
+          {activeTab === 'home' && (
+            <div className="space-y-3">
               <AppHomeHeader
-                eyebrow="Aulas práticas"
+                eyebrow="Aluno Mazzi"
                 eyebrowIcon={<UserRound className="h-5 w-5" aria-hidden="true" />}
-                title="Encontre perto de você"
-                titleClassName="text-[14px] font-black leading-[1.2] tracking-[-0.02em] text-[var(--mazzi-dark)] sm:text-[14px]"
-                subtitle={`Olá, ${user?.name?.split(' ')[0] || 'aluno'}. Busque por região e escolha o melhor horário para sua próxima aula.`}
+                title={`Olá, ${user?.name?.split(' ')[0] || 'aluno'}`}
+                subtitle="Encontre sua próxima aula e acompanhe seus agendamentos."
                 onOpenNotifications={() => setIsNotificationsOpen(true)}
-                onRefresh={() => setSearchRefreshKey((value) => value + 1)}
-                isRefreshing={searchLoading}
+                onRefresh={() => setBookingsRefreshKey((value) => value + 1)}
+                isRefreshing={bookingsLoading}
                 appContext="STUDENT"
               />
+
+              {bookingsLoading ? (
+                <div aria-label="Carregando próxima aula" aria-busy="true">
+                  <Skeleton variant="card" className="h-[86px] rounded-2xl" />
+                </div>
+              ) : bookingsError ? (
+                <ErrorState message="Não foi possível carregar sua próxima aula." onRetry={() => setBookingsRefreshKey((value) => value + 1)} />
+              ) : upcomingBookings.length > 0 ? (
+                <UpcomingBookingCard booking={upcomingBookings[0]} perspective="student" onSelect={setSelectedBookingForDetails} />
+              ) : (
+                <UpcomingBookingEmptyCard onViewBookings={() => setActiveTab('bookings')} />
+              )}
+
               {instantAvailabilityNotice ? (
                 <InstantLessonAvailabilityNotice notice={instantAvailabilityNotice} />
               ) : (
-                <section className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm" aria-labelledby="instant-lesson-cta-title">
-                  <div className="flex items-center justify-between gap-3">
+                <section className="mazzi-compact-card rounded-2xl border border-white/10 bg-[var(--mazzi-dark)] p-4 shadow-sm" aria-labelledby="student-instant-lesson-cta-title">
+                  <div className="flex items-start gap-3">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs">
+                      <Clock className="h-5 w-5" aria-hidden="true" />
+                    </span>
                     <div className="min-w-0 flex-1">
-                      <p id="instant-lesson-cta-title" className="font-extrabold text-[var(--mazzi-dark)]">Precisa de uma aula agora?</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-600">Encontre um profissional disponível perto de você.</p>
+                      <p id="student-instant-lesson-cta-title" className="font-extrabold text-white">Aula Agora</p>
+                      <p className="mt-1 text-xs font-semibold leading-relaxed text-white/70">Encontre um profissional disponível perto de você.</p>
                     </div>
-                    <Button type="button" variant="secondary" size="sm" onClick={() => setIsInstantLessonOpen(true)} leftIcon={<Clock className="h-4 w-4" />}>
+                  </div>
+                  <div className="mt-4 border-t border-white/15 pt-3">
+                    <Button type="button" variant="primary" size="sm" className="w-full" onClick={() => setIsInstantLessonOpen(true)} leftIcon={<Clock className="h-4 w-4" aria-hidden="true" />}>
                       Aula Agora
                     </Button>
                   </div>
                 </section>
               )}
 
-              {/* Widget de Próxima Aula Agendada (componente compartilhado com o PRO) */}
-              {upcomingBookings.length > 0 ? (
-                <UpcomingBookingCard booking={upcomingBookings[0]} perspective="student" onSelect={setSelectedBookingForDetails} />
-              ) : (
-                <UpcomingBookingEmptyCard onViewBookings={() => setActiveTab('bookings')} />
-              )}
+              <section className="mazzi-card rounded-2xl p-4 shadow-sm" aria-labelledby="student-schedule-lesson-title">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
+                    <CalendarIcon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p id="student-schedule-lesson-title" className="font-extrabold text-[var(--mazzi-dark)]">Agendar Aula</p>
+                    <p className="mt-1 text-xs font-semibold leading-relaxed text-[var(--mazzi-muted)]">Pesquise profissionais, veja horários e agende sua próxima aula.</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Button type="button" variant="primary" size="sm" className="w-full" onClick={openBookingSearch} leftIcon={<Search className="h-4 w-4" aria-hidden="true" />}>
+                    Buscar profissionais
+                  </Button>
+                </div>
+              </section>
 
-              {/* Search Header — remains close to the next lesson context. */}
+              {bookingsLoading ? <StudentDashboardSkeleton /> : <StudentStatsGrid stats={studentDashboardStats} />}
+
+              <Card padding="md" className="flex min-h-[82px] items-center gap-3 rounded-2xl bg-[var(--mazzi-surface-soft)] shadow-xs" aria-label="Sua jornada: em breve" aria-disabled="true">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[var(--mazzi-dark)]">
+                  <MapIcon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="mazzi-eyebrow text-[9px] text-[var(--mazzi-muted)]">Sua jornada</p>
+                  <p className="mt-0.5 font-extrabold text-[var(--mazzi-dark)]">Em breve</p>
+                  <p className="text-xs font-medium text-[var(--mazzi-muted)]">Mais aulas, mais conquistas!</p>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* AGENDA WIZARD — busca de profissionais como etapa interna do fluxo */}
+          {activeTab === 'bookings' && bookingFlowStep === 'search' && (
+            <Modal
+              id="student-booking-search-wizard"
+              isOpen
+              onClose={closeStudentWizard}
+              ariaLabel="Agendar aula: buscar profissionais"
+              presentation="page"
+              fillContent
+              className="instant-light"
+            >
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+                  <div className="space-y-[10px]">
+                    <LessonWizardHeader
+                      steps={bookingWizardStepsWithSearch}
+                      current="Profissional"
+                      title="Buscar profissionais"
+                      onClose={closeStudentWizard}
+                    />
+                    <p className="-mt-2 text-sm font-semibold leading-relaxed text-slate-500">Escolha um profissional para consultar a agenda e agendar sua próxima aula.</p>
+
               <SearchHeader
                 searchRequest={searchRequest}
                 onUpdateSearch={handleUpdateSearch}
@@ -1730,17 +1872,20 @@ function applyStrictProviderFilters(
               />
 
               {/* Public Profile Modal */}
-      <ProviderPublicProfileModal
+                    <ProviderPublicProfileModal
                 isOpen={!!selectedPublicProfile}
                 onClose={() => setSelectedPublicProfile(null)}
                 result={selectedPublicProfile}
                 onSelectSlotToBook={(id, date, slot) => handleOpenCheckoutByProviderId(id, date, slot)}
-              />
-            </div>
+                    />
+                  </div>
+                </div>
+              </div>
+            </Modal>
           )}
 
           {/* BOOKINGS TAB (MINHAS AULAS) */}
-          {activeTab === 'bookings' && (
+          {activeTab === 'bookings' && bookingFlowStep === 'overview' && (
             <div className="space-y-[10px]">
               <AppPageHeader
                 eyebrow="Sua jornada"
@@ -1756,6 +1901,25 @@ function applyStrictProviderFilters(
                   <RefreshCw className={`h-5 w-5 text-slate-700 ${bookingsLoading ? 'animate-spin text-amber-600' : ''}`} aria-hidden="true" />
                 </ButtonBase>}
               />
+
+              <Card padding="sm" className="rounded-2xl shadow-xs" data-component="agenda-wizard-entry">
+                <p className="mazzi-eyebrow px-2 pt-1 text-[9px] text-[var(--mazzi-muted)]">Agendar uma aula</p>
+                <ButtonBase
+                  type="button"
+                  onClick={openBookingSearch}
+                  className="mt-1 flex min-h-16 w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-[var(--mazzi-surface-soft)] active:scale-[0.99]"
+                  aria-label="Buscar profissionais para agendar uma aula"
+                >
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)]">
+                    <Search className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-extrabold text-[var(--mazzi-dark)]">Buscar profissionais</span>
+                    <span className="mt-0.5 block text-xs font-medium leading-relaxed text-[var(--mazzi-muted)]">Escolha um profissional e encontre um horário disponível.</span>
+                  </span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-[var(--mazzi-muted)]" aria-hidden="true" />
+                </ButtonBase>
+              </Card>
 
               {/* Filter Tabs */}
               <div role="tablist" aria-label="Aulas" className="grid grid-cols-3 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
@@ -1836,7 +2000,7 @@ function applyStrictProviderFilters(
                       description={bookingQuickFilter === 'all' ? 'Você não possui aulas confirmadas no momento.' : 'Tente selecionar outro filtro rápido.'}
                       actionLabel="Buscar aulas"
                       actionIcon={<Search className="h-4 w-4" aria-hidden="true" />}
-                      onAction={() => setActiveTab('search')}
+                      onAction={openBookingSearch}
                     />
                   ) : (
                     filteredUpcomingBookings.map((b) => (
@@ -2099,6 +2263,8 @@ function applyStrictProviderFilters(
 
               <StudentProMigrationCard />
 
+              <NotificationCenterLink onOpen={() => setIsSettingsOpen(true)} />
+
               <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4">
                 <Button variant="ghost" size="sm" className="text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void handleLogout(); }}>
                   Sair
@@ -2108,25 +2274,32 @@ function applyStrictProviderFilters(
           )}
         </main>
 
-        {/* Bottom navigation: 3 main tabs for Student (Search, Bookings, Profile) */}
+        {/* Bottom navigation: 3 main tabs for Student (Início, Aulas, Perfil) */}
         <AppBottomNav
           ariaLabel="Navegação principal"
-          activeId={activeTab}
+          activeId={navigationTab}
           items={[
-            { id: 'search', label: 'Buscar', icon: <Search className="w-5 h-5" /> },
+            { id: 'home', label: 'Início', icon: <LayoutGrid className="w-5 h-5" /> },
             { id: 'bookings', label: 'Aulas', icon: <CalendarIcon className="w-5 h-5" /> },
             { id: 'profile', label: 'Perfil', icon: <User className="w-5 h-5" /> },
           ]}
-          onChange={(tab) => setActiveTab(tab)}
+          onChange={(tab) => {
+            setBookingFlowStep('overview');
+            setActiveTab(tab);
+          }}
         />
 
-      <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações" size="md" useHistory={false}>
+      <Modal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} title="Notificações" size="md">
         <NotificationsPanel appContext="STUDENT" userId={user?.id} onNavigate={openNotificationTarget} />
+      </Modal>
+
+      <Modal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} title="Configurações" size="md">
+        <SettingsPanel appContext="STUDENT" userId={user?.id} />
       </Modal>
 
       <InstantLessonModal
         isOpen={isInstantLessonOpen}
-        onClose={() => setIsInstantLessonOpen(false)}
+        onClose={closeStudentWizard}
         location={userLocation}
         locationLabel={searchLocation || 'Minha localização atual'}
         onRequestLocation={requestUserLocation}
@@ -2214,7 +2387,7 @@ function applyStrictProviderFilters(
       {instructorPickerProvider && (
         <Modal
           isOpen={true}
-          onClose={() => { setInstructorPickerProvider(null); setInstructorChoices([]); }}
+          onClose={closeStudentWizard}
           ariaLabel="Escolha o instrutor"
           footerVariant="wizard"
           className="instant-light"
@@ -2236,7 +2409,7 @@ function applyStrictProviderFilters(
           size="sm"
         >
           <div className="min-h-0 space-y-3">
-            <LessonWizardHeader steps={bookingWizardSteps} current="Instrutor" title="Quem vai acompanhar sua aula?" onClose={closeBookingWizard} />
+            <LessonWizardHeader steps={bookingWizardStepsWithSearch} current="Instrutor" title="Quem vai acompanhar sua aula?" onClose={closeStudentWizard} />
             <p className="text-sm font-semibold text-slate-500">Escolha quem vai acompanhar sua aula na autoescola.</p>
             <div className="max-h-[min(52vh,28rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 pb-1">
               {instructorChoices.map((ctx) => (
@@ -2259,7 +2432,7 @@ function applyStrictProviderFilters(
       {offeringPickerProvider && (
         <Modal
           isOpen={true}
-          onClose={() => { setOfferingPickerProvider(null); setBookingContextChoices([]); setOfferingPickerSlot(null); }}
+          onClose={closeStudentWizard}
           ariaLabel="Escolha a oferta"
           footerVariant="wizard"
           className="instant-light"
@@ -2274,7 +2447,7 @@ function applyStrictProviderFilters(
           size="sm"
         >
           <div className="min-h-0 space-y-3">
-            <LessonWizardHeader steps={bookingWizardSteps} current="Veículo" title="Qual carro você prefere?" onClose={closeBookingWizard} />
+            <LessonWizardHeader steps={bookingWizardStepsWithSearch} current="Veículo" title="Qual carro você prefere?" onClose={closeStudentWizard} />
             <p className="text-sm font-semibold text-slate-500">Escolha o veículo e a duração da sua aula.</p>
             <div className="max-h-[min(52vh,28rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 pb-1">
               {bookingContextChoices.map((ctx) => {
@@ -2314,9 +2487,9 @@ function applyStrictProviderFilters(
       {/* Slot Selector Modal */}
       {isSlotSelectorOpen && checkoutOffering && (
         <SlotSelectorModal
-          wizardHeader={<LessonWizardHeader steps={bookingWizardSteps} current="Horário" title="Quando será sua aula?" onClose={closeBookingWizard} />}
+          wizardHeader={<LessonWizardHeader steps={bookingWizardStepsWithSearch} current="Horário" title="Quando será sua aula?" onClose={closeStudentWizard} />}
           onBack={bookingWizardSteps.length > 2 ? backToBookingChoices : closeBookingWizard}
-          backLabel={bookingWizardSteps.indexOf('Horário') === 0 ? 'Fechar' : 'Voltar'}
+          backLabel="Voltar"
           isOpen={isSlotSelectorOpen}
           onClose={() => setIsSlotSelectorOpen(false)}
           offeringId={checkoutOffering.id}
@@ -2337,13 +2510,11 @@ function applyStrictProviderFilters(
       {/* Complete Checkout Journey Modal */}
       {((isCheckoutOpen && selectedSlot && checkoutProvider && checkoutVehicle && checkoutOffering) || !!resumeBooking) && (
         <CheckoutModal
-          wizardHeader={!resumeBooking ? <LessonWizardHeader steps={bookingWizardSteps} current="Confirmação" title="Confira sua aula" onClose={closeBookingWizard} /> : undefined}
+          wizardHeader={!resumeBooking ? <LessonWizardHeader steps={bookingWizardStepsWithSearch} current="Confirmação" title="Confira sua aula" onClose={closeStudentWizard} /> : undefined}
           isOpen={isCheckoutOpen || !!resumeBooking}
           presentation="page"
-          onClose={() => {
-            setIsCheckoutOpen(false);
-            setResumeBooking(null);
-          }}
+          onClose={closeCheckoutFlow}
+          onExit={closeStudentWizard}
           provider={checkoutProvider}
           vehicle={checkoutVehicle}
           offering={checkoutOffering}
@@ -2382,6 +2553,7 @@ function applyStrictProviderFilters(
           }}
           onGoToBookings={() => {
             setResumeBooking(null);
+            setBookingFlowStep('overview');
             setActiveTab('bookings');
           }}
         />
@@ -2398,13 +2570,14 @@ function applyStrictProviderFilters(
             clearStripeCheckoutReturnParams();
             setStripeCheckoutReturn(null);
             setBookingsRefreshKey((value) => value + 1);
+            setBookingFlowStep('overview');
             setActiveTab('bookings');
           }}
           onBackToSearch={() => {
             stripeCheckoutFlowActiveRef.current = false;
             clearStripeCheckoutReturnParams();
             setStripeCheckoutReturn(null);
-            setActiveTab('search');
+            openBookingSearch();
           }}
         />
       )}

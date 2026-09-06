@@ -174,7 +174,7 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
 
       // Non-calendar data remains visible
       expect(screen.getByText('Credenciamento Ativo • Verificado pela MAZZI')).toBeTruthy();
-      expect(screen.getByText('Gestão de Veículos & Ofertas')).toBeTruthy();
+      expect(screen.getByText('Gerenciar agenda, veículos e ofertas')).toBeTruthy();
       expect(screen.getByText('Avaliação do Perfil:')).toBeTruthy();
     });
 
@@ -236,9 +236,9 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
         />,
       );
 
-      expect(screen.getByText('Aula Agora')).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Aula Agora' })).toBeTruthy();
       expect(screen.getByText('Disponível')).toBeTruthy();
-      fireEvent.click(screen.getByRole('button', { name: /Configurar/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Aula Agora/i }));
       expect(onOpenInstantSettings).toHaveBeenCalledTimes(1);
     });
   });

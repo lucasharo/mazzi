@@ -124,7 +124,6 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       onClose={() => setIsMapModalOpen(false)}
       title="Confirmar localização no mapa"
       size="lg"
-      useHistory={false}
       portal
       layer="nested"
     >

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
-  CalendarDays,
+  Calendar as CalendarIcon,
   CheckCircle2,
   Clock3,
   LockKeyhole,
@@ -141,7 +141,7 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="provider-upcoming-payouts-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
-            <CalendarDays className="h-4 w-4 text-amber-500" aria-hidden="true" /> Próximos repasses
+                  <CalendarIcon className="h-4 w-4 text-amber-500" aria-hidden="true" /> Próximos repasses
           </h2>
           <p className="mt-1 text-xs font-medium text-slate-500">Previsão dos próximos 7 dias.</p>
         </div>

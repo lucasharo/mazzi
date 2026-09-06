@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, CalendarDays, } from 'lucide-react';
+import { Car, Plus, ShieldCheck, Upload, AlertCircle, Check, Ban, Tag, Users, Info, SlidersHorizontal, RefreshCw, Power, PowerOff, Save, XCircle, Pencil, Eye, EyeOff, WalletCards, Calendar as CalendarIcon, } from 'lucide-react';
 import {
   Vehicle, ServiceOffering, ComplianceDocument, Provider, VehicleCategory, VehicleType, TransmissionType, ProviderPaymentAccount, AvailabilityRule, } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -182,7 +182,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
         activeTab={managementSubTab}
         onChange={(tab) => onSubTabChange(tab as ProviderManagementTabProps['managementSubTab'])}
         tabs={[
-          { id: 'schedule_rules', label: 'Horários', icon: <CalendarDays className="h-3.5 w-3.5" />, hasPending: hasPendingSchedule },
+          { id: 'schedule_rules', label: 'Horários', icon: <CalendarIcon className="h-3.5 w-3.5" />, hasPending: hasPendingSchedule },
           { id: 'schedule_blocks', label: 'Bloqueios', icon: <Ban className="h-3.5 w-3.5" /> },
           { id: 'vehicles', label: 'Veículos', icon: <Car className="h-3.5 w-3.5" />, hasPending: hasPendingVehicles },
            { id: 'offerings', label: 'Ofertas', icon: <Tag className="h-3.5 w-3.5" />, hasPending: hasPendingOfferings },

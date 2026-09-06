@@ -14,6 +14,7 @@ import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { Modal } from '../../../components/ui/Modal';
 import { evaluateProviderEligibility } from '../../../domain/compliance';
 import { resolveComplianceDocumentStatus } from '../../../domain/provider-compliance-presentation';
+import { NotificationCenterLink } from '../../../components/notifications/NotificationCenterLink';
 
 interface ProviderProfileTabProps {
   currentProvider: Provider;
@@ -49,6 +50,7 @@ interface ProviderProfileTabProps {
   formError?: string | null;
   isSavingProfile?: boolean;
   onLogout: () => void;
+  onOpenNotifications: () => void;
 }
 
 export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
@@ -69,6 +71,7 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
   formError,
   isSavingProfile = false,
   onLogout,
+  onOpenNotifications,
 }) => {
   const isSchool = currentProvider.type === 'DRIVING_SCHOOL' || currentRole === 'SCHOOL_STAFF';
   const canEditProfile = currentRole !== 'SCHOOL_STAFF';
@@ -247,6 +250,8 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
           </Modal>
         )}
       </div>
+
+      <NotificationCenterLink onOpen={onOpenNotifications} />
 
       {/* Logout: same quiet footer action as Student */}
       <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4">

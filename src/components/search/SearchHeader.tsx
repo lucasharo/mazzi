@@ -76,6 +76,7 @@ export const SearchHeader: React.FC<SearchHeaderProps> = ({
       if (!location) throw new Error('CURRENT_LOCATION_UNAVAILABLE');
       const { lat, lng } = location;
       const geocoded = await activeGeocodingProvider.reverseGeocode(lat, lng);
+      setAddressInput(geocoded.formattedAddress);
       skipNextLocationNameSync.current = true;
       onLocationResolved?.(geocoded.formattedAddress, lat, lng);
       onUpdateSearch({ latitude: lat, longitude: lng });

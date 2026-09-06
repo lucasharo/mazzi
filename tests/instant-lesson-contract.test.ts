@@ -122,6 +122,13 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(providerApp).toContain("document.removeEventListener('visibilitychange', refreshOnVisibility);");
   });
 
+  it('does not poll instant offers while every instructor is paused or expired', () => {
+    expect(providerApp).toContain('const instantOffersPollingEnabled = useMemo(() =>');
+    expect(providerApp).toContain('isInstantInstructorAvailabilityActive(status, bookingClockMs)');
+    expect(providerApp).toContain('if (!instantOffersPollingEnabled) return Promise.resolve();');
+    expect(providerApp).toContain('!instantOffersPollingEnabled) return;');
+  });
+
   it('uses the backend clock for the offer countdown', () => {
     expect(dbService).toContain("sp.rpc('get_my_instant_offers_snapshot')");
     expect(offerClockMigration).toContain('get_my_instant_offers_snapshot');
@@ -210,12 +217,12 @@ describe('TASK-089 Aula Agora persistence contract', () => {
   });
 
   it('keeps Aula Agora independent per vehicle and expires stale disabled offers', () => {
-    expect(providerInstantPanel).toContain('Um único controle para aceitar Aula Agora.');
+    expect(providerInstantPanel).toContain('Disponível por até 1h após a ativação.');
     expect(providerInstantPanel).toContain("const activeVehicles = vehicles.filter((vehicle) => vehicle.status === 'ACTIVE');");
     expect(providerInstantPanel).not.toContain('Veículo ativo');
-    expect(providerInstantPanel).toContain('Aceitar Aula Agora');
+    expect(providerInstantPanel).toContain("{isOnline ? 'Online' : 'Offline'}");
     expect(providerInstantPanel).toContain('Carro habilitado para Aula Agora');
-    expect(providerInstantPanel.match(/Aceitar Aula Agora/g)).toHaveLength(1);
+    expect(providerInstantPanel).not.toContain('Aceitar Aula Agora');
     expect(providerApp).toContain('dbService.setMyInstantInstructorOnline');
     expect(providerApp).not.toContain('dbService.setMyInstantOnline');
     expect(providerApp).not.toContain('const instructorWasOnline = instantSettings.some');
@@ -244,7 +251,7 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(availabilityWindowMigration).toContain('ist.online_expires_at > NOW()');
     expect(availabilityWindowMigration).toContain('ist.online_expires_at>v_now');
     expect(availabilityWindowMigration).toContain('DROP FUNCTION IF EXISTS public.get_my_instant_instructor_statuses(UUID)');
-    expect(providerInstantPanel).toContain('Sua disponibilidade da Aula Agora expirou. Ative novamente para receber novas solicitações.');
+    expect(providerInstantPanel).toContain('A disponibilidade da Aula Agora expirou. Ative novamente para receber novas solicitações.');
     expect(providerInstantPanel).toContain('isInstantInstructorAvailabilityActive');
     expect(providerApp).toContain('isInstantInstructorAvailabilityActive');
   });

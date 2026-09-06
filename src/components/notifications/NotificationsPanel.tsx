@@ -7,15 +7,15 @@ import { dbService } from '../../lib/db-service';
 import { formatDateTimeBR } from '../../lib/date-format';
 import { NOTIFICATIONS_CHANGED } from '../ui/NotificationIndicator';
 import { targetFromNotification, type NotificationNavigationTarget } from '../../lib/notification-navigation';
-import { PushNotificationOptIn } from './PushNotificationOptIn';
 
 interface NotificationsPanelProps {
   appContext: NonNullable<Notification['appContext']>;
   userId?: string;
   onNavigate?: (target: NotificationNavigationTarget) => void;
+  showHeading?: boolean;
 }
 
-export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appContext, userId, onNavigate }) => {
+export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appContext, onNavigate, showHeading = true }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +110,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="space-y-3 border-b border-slate-100 p-4">
+      {showHeading && <div className="space-y-3 border-b border-slate-100 p-4">
         <div className="flex min-w-0 items-start gap-2">
           <div className="relative mt-0.5 shrink-0">
             <Bell className="h-5 w-5 text-slate-800" />
@@ -135,13 +135,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
             Atualizar
           </Button>
         </div>
-      </div>
-
-      {appContext !== 'ADMIN' && (
-        <div className="border-b border-slate-100 p-4">
-          <PushNotificationOptIn appContext={appContext} userId={userId} onRegistered={() => void loadNotifications({ force: true })} />
-        </div>
-      )}
+      </div>}
 
       {error && (
         <div role="alert" className="m-4 flex gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar as CalendarPlus, Car, Clock, MapPin, ShieldCheck, Star } from 'lucide-react';
+import { Calendar as CalendarIcon, Car, Clock, MapPin, ShieldCheck, Star } from 'lucide-react';
 import { PublicSearchProviderResult, TransmissionType } from '../../types';
 import { formatCentsToBRL } from '../../domain/money';
 import { Modal } from '../ui/Modal';
@@ -52,7 +52,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
         onClose();
         onSelectSlotToBook?.(result.providerId);
       }}
-      leftIcon={<CalendarPlus className="h-4 w-4 shrink-0" aria-hidden="true" />}
+      leftIcon={<CalendarIcon className="h-4 w-4 shrink-0" aria-hidden="true" />}
       aria-label={`Agendar aula com ${result.displayName}`}
     >
       Agendar aula

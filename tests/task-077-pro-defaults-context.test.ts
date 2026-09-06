@@ -10,6 +10,7 @@ const migration = fs.readFileSync(
 const dbService = fs.readFileSync(path.join(process.cwd(), 'src/lib/db-service.ts'), 'utf8');
 const studentApp = fs.readFileSync(path.join(process.cwd(), 'src/apps/student/StudentApp.tsx'), 'utf8');
 const providerApp = fs.readFileSync(path.join(process.cwd(), 'src/apps/provider/ProviderApp.tsx'), 'utf8');
+const settingsPanel = fs.readFileSync(path.join(process.cwd(), 'src/components/settings/SettingsPanel.tsx'), 'utf8');
 const adminApp = fs.readFileSync(path.join(process.cwd(), 'src/apps/admin/AdminApp.tsx'), 'utf8');
 const appLogin = fs.readFileSync(path.join(process.cwd(), 'src/components/auth/AppLogin.tsx'), 'utf8');
 
@@ -37,8 +38,9 @@ describe('TASK-077 PRO defaults and contextual notifications', () => {
     expect(migration).toContain('resolve_notification_app_context');
     expect(dbService).toContain(".eq('app_context', appContext)");
     expect(dbService).toContain('markAllNotificationsAsRead(appContext');
-    expect(studentApp).toContain('<NotificationsPanel appContext="STUDENT"');
-    expect(providerApp).toContain('<NotificationsPanel appContext="PRO"');
+    expect(studentApp).toContain('<SettingsPanel appContext="STUDENT"');
+    expect(providerApp).toContain('<SettingsPanel appContext="PRO"');
+    expect(settingsPanel).toContain('<NotificationPreferences appContext={appContext} showHeading={false} />');
     expect(adminApp).not.toContain('<NotificationsPanel appContext="ADMIN" />');
   });
 

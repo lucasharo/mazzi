@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Car, Bike, ShieldCheck, Star, CheckCircle2, AlertTriangle, Clock, History, MapPin, Calendar as CalendarIcon, Calendar as CalendarClock, Calendar as CalendarRange, ChevronRight, Info, MessageSquare, XCircle, RotateCcw, Check, Search, SlidersHorizontal, ArrowLeft, Pencil, Trash, Plus, Building2, UserCheck, UserRound, UserPen, ClipboardList, CreditCard, RefreshCw, Ban, Send, Sparkles, Smartphone, Monitor, Copy, CheckCheck, FileCode, Layers, Palette, Type, ToggleLeft, Navigation as NavIcon, PackageOpen, Home, BookOpen, List, Map, } from 'lucide-react';
+import { Bell, Car, Bike, ShieldCheck, Star, CheckCircle2, AlertTriangle, Clock, History, MapPin, Calendar as CalendarIcon, ChevronRight, Info, MessageSquare, XCircle, RotateCcw, Check, Search, SlidersHorizontal, ArrowLeft, Pencil, Trash, Plus, Building2, UserCheck, UserRound, UserPen, ClipboardList, CreditCard, RefreshCw, Ban, Send, Sparkles, Smartphone, Monitor, Copy, CheckCheck, FileCode, Layers, Palette, Type, ToggleLeft, Navigation as NavIcon, PackageOpen, Home, BookOpen, List, Map, } from 'lucide-react';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -391,45 +391,68 @@ export const DesignSystemShowcase: React.FC = () => {
 
               {/* 2. TYPOGRAPHY */}
               {activeSection === 'typography' && (
-                <section className="space-y-6">
+                <section data-section="typography" className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-black text-[#202126]">2. Tipografia & Pesos Oficiais</h2>
-                    <p className="text-xs text-slate-600 mt-1">
-                      Regra de consistência: Botões e ações utilizam obrigatoriamente <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-rose-600">font-bold</code> ou <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-rose-600">font-extrabold</code>.
+                    <h2 className="mazzi-type-section text-[var(--mazzi-dark)]">2. Tipografia oficial dos apps</h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+                      Fonte, tamanhos, pesos e alturas de linha usados atualmente por Aluno, PRO e Admin. Os tokens ficam em <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs text-rose-700">src/index.css</code> e os exemplos abaixo são a referência visual para novos componentes.
                     </p>
                   </div>
 
-                  <div className="space-y-4 p-4 rounded-2xl bg-slate-50 border border-[#e9e6de]">
-                    <div className="border-b pb-3">
-                      <p className="text-[10px] font-mono text-slate-400">Page Title — 24px / font-black</p>
-                      <h1 className="text-2xl font-black text-[#202126]">Título de Página MAZZI</h1>
-                    </div>
-                    <div className="border-b pb-3">
-                      <p className="text-[10px] font-mono text-slate-400">Section Title — 18px / font-extrabold</p>
-                      <h2 className="text-lg font-extrabold text-[#202126]">Título de Seção Importante</h2>
-                    </div>
-                    <div className="border-b pb-3">
-                      <p className="text-[10px] font-mono text-slate-400">Card Title — 14px / font-bold</p>
-                      <h3 className="text-sm font-bold text-[#202126]">Card de Instrutor Credenciado</h3>
-                    </div>
-                    <div className="border-b pb-3">
-                      <p className="text-[10px] font-mono text-slate-400">Body Text — 13px / font-medium</p>
-                      <p className="text-xs font-medium text-slate-700 leading-relaxed">
-                        Agendamento rápido de aulas práticas de autoescola com instrutores validados.
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-mono text-slate-400">Button Label Standard — 12-14px / font-bold (OBRIGATÓRIO)</p>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-[#202126] bg-[#f6c945] px-3 py-1.5 rounded-xl">
-                          Confirmar Horário (font-bold)
-                        </span>
-                        <span className="font-bold text-xs text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl">
-                          Cancelar aula (font-bold)
-                        </span>
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,1fr)]">
+                    <article className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+                      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 className="mazzi-type-card-title text-[var(--mazzi-dark)]">Escala de tamanhos e usos</h3>
+                        <code className="mazzi-type-mono text-slate-500">--mazzi-type-size-*</code>
                       </div>
+                      <div className="divide-y divide-[var(--mazzi-border)]">
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">9px</code><span className="mazzi-type-micro text-[var(--mazzi-dark)]">Microtexto de apoio</span><span className="text-xs text-slate-500">contexto secundário</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">10px</code><span className="mazzi-type-overline text-[var(--mazzi-dark)]">LABEL DE CAMPO</span><span className="text-xs text-slate-500">labels e overlines</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">11px</code><span className="mazzi-type-meta text-[var(--mazzi-dark)]">Metadado · status · tempo</span><span className="text-xs text-slate-500">informação compacta</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">12px</code><span className="mazzi-type-caption text-[var(--mazzi-dark)]">Texto auxiliar de ação</span><span className="text-xs text-slate-500">captions e botões pequenos</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">13px</code><span className="mazzi-type-body-compact text-[var(--mazzi-dark)]">Informação curta de card e formulário</span><span className="text-xs text-slate-500">texto compacto</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">14px</code><span className="mazzi-type-card-title text-[var(--mazzi-dark)]">Título de card ou label de destaque</span><span className="text-xs text-slate-500">hierarquia intermediária</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">16px</code><span className="mazzi-type-body text-[var(--mazzi-dark)]">Texto base de leitura confortável</span><span className="text-xs text-slate-500">corpo padrão</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">18px</code><span className="mazzi-type-section text-[var(--mazzi-dark)]">Título de seção</span><span className="text-xs text-slate-500">grupos e blocos</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">20px</code><span className="mazzi-type-screen text-[var(--mazzi-dark)]">Título de tela</span><span className="text-xs text-slate-500">cabeçalhos internos</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">24px</code><span className="mazzi-type-page text-[var(--mazzi-dark)]">Título de página</span><span className="text-xs text-slate-500">AppPageHeader</span></div>
+                        <div className="grid gap-2 py-3 sm:grid-cols-[72px_minmax(0,1fr)_minmax(150px,0.8fr)] sm:items-center"><code className="mazzi-type-mono text-slate-500">28–38px</code><span className="mazzi-type-display text-[var(--mazzi-dark)]">Título principal do app</span><span className="text-xs text-slate-500">AppHomeHeader e hero</span></div>
+                      </div>
+                    </article>
+
+                    <div className="space-y-4">
+                      <article className="rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-5">
+                        <h3 className="mazzi-type-card-title text-[var(--mazzi-dark)]">Pesos disponíveis</h3>
+                        <div className="mt-4 space-y-2 text-[var(--mazzi-dark)]">
+                          <p className="font-normal">400 · Normal — leitura</p>
+                          <p className="font-medium">500 · Medium — apoio</p>
+                          <p className="font-semibold">600 · Semibold — destaque</p>
+                          <p className="font-bold">700 · Bold — ação e label</p>
+                          <p className="font-extrabold">800 · Extrabold — títulos</p>
+                          <p className="font-black">900 · Black — marca e hero</p>
+                        </div>
+                      </article>
+                      <article className="rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-5">
+                        <h3 className="mazzi-type-card-title text-[var(--mazzi-dark)]">Alturas de linha</h3>
+                        <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                          <p><code className="mazzi-type-mono">1</code> · compacta para eyebrow e status</p>
+                          <p><code className="mazzi-type-mono">1.04</code> · títulos de destaque</p>
+                          <p><code className="mazzi-type-mono">1.15–1.25</code> · títulos e labels</p>
+                          <p><code className="mazzi-type-mono">1.5</code> · corpo e textos auxiliares</p>
+                          <p><code className="mazzi-type-mono">1.625</code> · textos longos e instruções</p>
+                        </div>
+                      </article>
+                      <article className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-5">
+                        <h3 className="mazzi-type-card-title text-[var(--mazzi-dark)]">Famílias</h3>
+                        <p className="mt-3 font-sans text-sm text-slate-700"><strong>Inter</strong> para toda a interface, com fallback de sistema.</p>
+                        <p className="mt-2 mazzi-type-mono text-slate-500">Mono para códigos, valores técnicos e tokens.</p>
+                      </article>
                     </div>
                   </div>
+
+                  <p className="mazzi-type-caption rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                    Regra de uso: prefira os componentes e classes compartilhados. Pesos muito altos ficam reservados para marca e títulos; textos auxiliares devem permanecer em normal, medium ou semibold para evitar o aspecto pesado.
+                  </p>
                 </section>
               )}
 
@@ -782,7 +805,7 @@ export const DesignSystemShowcase: React.FC = () => {
                   <div className="mx-auto max-w-[430px] rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-bg)] p-5 shadow-xs">
                     <div className="flex items-start gap-3">
                       <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-600">
-                        <CalendarClock className="h-6 w-6" aria-hidden="true" />
+                        <CalendarIcon className="h-6 w-6" aria-hidden="true" />
                       </div>
                       <div className="min-w-0">
                         <h3 className="text-base font-bold text-[var(--mazzi-dark)]">Escolha sua aula</h3>
@@ -899,9 +922,9 @@ export const DesignSystemShowcase: React.FC = () => {
                       <div className="w-full min-w-0 max-w-[430px]">
                         <div role="tablist" aria-label="Filtros de aulas" className="mazzi-segmented overflow-x-auto">
                           {([
-                            ['all', 'Todas', CalendarRange, 'min-w-[72px]'],
+                            ['all', 'Todas', CalendarIcon, 'min-w-[72px]'],
                             ['today', 'Hoje', Clock, 'min-w-[64px]'],
-                            ['upcoming', 'Próximas', CalendarClock, 'min-w-[84px]'],
+                            ['upcoming', 'Próximas', CalendarIcon, 'min-w-[84px]'],
                             ['history', 'Histórico', History, 'min-w-[88px]'],
                           ] as const).map(([value, label, Icon, minWidth]) => (
                             <ButtonBase

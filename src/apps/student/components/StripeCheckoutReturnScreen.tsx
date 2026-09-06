@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarDays, Car, CheckCircle2, ExternalLink, MapPin, Sparkles, UserRound, WifiOff, XCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Car, CheckCircle2, ExternalLink, MapPin, Sparkles, UserRound, WifiOff, XCircle } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Button } from '../../../components/ui/Button';
 import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
@@ -117,7 +117,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
 
                 <div className="divide-y divide-[var(--mazzi-border)]">
                   <div className="flex gap-3 py-3">
-                    <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden="true" />
+                    <CalendarIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden="true" />
                     <div>
                       <p className="text-[11px] text-[var(--mazzi-muted)]">Data e horário</p>
                       <p className="mt-1 text-[13px] font-extrabold text-[var(--mazzi-dark)]">{scheduleDate} · {scheduleStart} às {scheduleEnd}</p>

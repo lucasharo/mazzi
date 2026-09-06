@@ -32,6 +32,7 @@ export interface CheckoutModalProps {
   wizardHeader?: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
+  onExit?: () => void;
   presentation?: 'modal' | 'page';
   provider: Provider | null;
   vehicle: Vehicle | null;
@@ -128,6 +129,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   wizardHeader,
   isOpen,
   onClose,
+  onExit,
   presentation = 'modal',
   provider,
   vehicle,
@@ -1049,7 +1051,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={onExit || onClose}
       className={wizardHeader ? 'instant-light' : ''}
       ariaLabel="Confirmar sua aula"
       footerVariant={wizardHeader ? 'wizard' : 'default'}

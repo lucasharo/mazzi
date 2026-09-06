@@ -125,7 +125,7 @@ export const ExternalNavigationModal: React.FC<ExternalNavigationModalProps> = (
               type="button"
               variant="outline"
               onClick={() => handleOpenApp(app.id)}
-              className="flex w-full min-h-12 items-center justify-between gap-3 rounded-2xl border border-[var(--mazzi-border)] bg-white px-4 py-3 text-left font-extrabold text-[var(--mazzi-dark)] transition hover:bg-slate-50 hover:border-slate-300"
+              className="!flex w-full !min-h-12 !justify-between gap-3 rounded-2xl !border-slate-700 !bg-white px-4 py-3 text-left !font-extrabold !text-[var(--mazzi-dark)] transition hover:!border-slate-400 hover:!bg-slate-50"
               leftIcon={getNavigationAppIcon(app.id)}
               rightIcon={<ExternalLink className="h-4 w-4 text-slate-400" aria-hidden="true" />}
             >
@@ -149,4 +149,3 @@ export const ExternalNavigationModal: React.FC<ExternalNavigationModalProps> = (
     </BottomSheet>
   );
 };
-

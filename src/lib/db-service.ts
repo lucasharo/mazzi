@@ -22,6 +22,7 @@ import {
   Message,
   Review,
   Notification,
+  NotificationType,
   AdminAnalyticsSummary,
   ProviderAnalyticsSummary,
   ProviderEarningsSummary,
@@ -1532,6 +1533,24 @@ export const dbService = {
     return (data || []).map(mapNotificationFromDb);
   },
 
+  async getMyNotificationPreferences(): Promise<Partial<Record<NotificationType, boolean>>> {
+    const { data, error } = await sp.rpc('get_my_notification_preferences');
+    if (error) throw error;
+    return (data || []).reduce((preferences: Partial<Record<NotificationType, boolean>>, row: any) => {
+      preferences[row.notification_type as NotificationType] = row.enabled === true;
+      return preferences;
+    }, {});
+  },
+
+  async setMyNotificationPreference(type: NotificationType, enabled: boolean): Promise<boolean> {
+    const { data, error } = await sp.rpc('set_my_notification_preference', {
+      p_notification_type: type,
+      p_enabled: enabled,
+    });
+    if (error) throw error;
+    return data === true;
+  },
+
   async reviewProvider(providerId: string, status: ProviderStatus, reason?: string): Promise<Provider> {
     const { data, error } = await sp.rpc('admin_review_provider', {
       p_provider_id: providerId,
@@ -2035,6 +2054,24 @@ export const dbService = {
     });
     if (error) throw error;
     return data || [];
+  },
+
+  async getInstantLessonPlatformConfig(): Promise<{ maxEtaMinutes: number; offerExpirationSeconds: number }> {
+    const { data, error } = await sp.rpc('get_instant_lesson_platform_config');
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return {
+      maxEtaMinutes: Number(row?.max_eta_minutes || 30),
+      offerExpirationSeconds: Number(row?.offer_expiration_seconds || 15),
+    };
+  },
+
+  async updateAdminInstantLessonConfig(params: { maxEtaMinutes: number; offerExpirationSeconds: number }): Promise<void> {
+    const { error } = await sp.rpc('update_admin_instant_lesson_config', {
+      p_max_eta_minutes: params.maxEtaMinutes,
+      p_offer_expiration_seconds: params.offerExpirationSeconds,
+    });
+    if (error) throw error;
   },
 
   async savePlatformConfig(key: string, value: any): Promise<void> {
