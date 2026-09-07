@@ -854,7 +854,6 @@ export const ProviderApp: React.FC = () => {
   }, [currentProvider?.id, instantInstructorStatuses, isRealSupabase, refreshInstantProviderLocation, user?.id]);
 
   const loadInstantOffers = useCallback((): Promise<void> => {
-    if (!instantOffersPollingEnabled) return Promise.resolve();
     if (instantOffersInFlightRef.current) return instantOffersInFlightRef.current;
     const request = dbService.getMyInstantOffers()
       .then((snapshot) => {
@@ -867,24 +866,43 @@ export const ProviderApp: React.FC = () => {
     return request;
   }, []);
 
+  const pollInstantOffers = useCallback((): Promise<void> => {
+    if (!instantOffersPollingEnabled) return Promise.resolve();
+    return loadInstantOffers();
+  }, [instantOffersPollingEnabled, loadInstantOffers]);
+
+  useEffect(() => {
+    if (!isRealSupabase || !currentProvider?.id) return;
+    // Load once even when the availability status is still being restored or
+    // has just expired. The RPC returns only this instructor's pending offers,
+    // so this does not keep a paused professional in the polling loop.
+    void loadInstantOffers();
+    const channel = supabase
+      .channel(`instant-offers-${user?.id || 'anonymous'}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'instant_lesson_offers',
+        ...(user?.id ? { filter: `instructor_id=eq.${user.id}` } : {}),
+      }, () => { void loadInstantOffers(); })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentProvider?.id, isRealSupabase, loadInstantOffers, user?.id]);
+
   useEffect(() => {
     if (!isRealSupabase || !currentProvider?.id || !instantOffersPollingEnabled) return;
-    void loadInstantOffers();
-    const pollTimer = window.setInterval(() => void loadInstantOffers(), 5000);
+    const pollTimer = window.setInterval(() => void pollInstantOffers(), 5000);
     const refreshOnVisibility = () => {
       if (document.visibilityState === 'visible') void loadInstantOffers();
     };
     document.addEventListener('visibilitychange', refreshOnVisibility);
-    const channel = supabase
-      .channel(`instant-offers-${user?.id || 'anonymous'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'instant_lesson_offers' }, () => { void loadInstantOffers(); })
-      .subscribe();
     return () => {
       window.clearInterval(pollTimer);
       document.removeEventListener('visibilitychange', refreshOnVisibility);
-      void supabase.removeChannel(channel);
     };
-  }, [currentProvider?.id, instantOffersPollingEnabled, isRealSupabase, loadInstantOffers, user?.id]);
+  }, [currentProvider?.id, instantOffersPollingEnabled, isRealSupabase, loadInstantOffers, pollInstantOffers]);
 
   useEffect(() => {
     const pendingOffers = instantOffers.filter((offer) => offer.status === 'PENDING');
