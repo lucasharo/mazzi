@@ -386,6 +386,18 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
         vi.useRealTimers();
       }
     });
+
+    it('I. exibe cancelamento para CONFIRMED sem início real mesmo após o horário agendado', () => {
+      render(
+        <BookingDetailsModal
+          isOpen={true}
+          onClose={vi.fn()}
+          booking={baseConfirmedBooking}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: 'Cancelar esta aula' })).toBeTruthy();
+    });
   });
 
   // --- 7. CHECKOUT MODAL REAL SUCCESS FLOW TEST ---

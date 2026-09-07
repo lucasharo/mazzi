@@ -151,6 +151,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   const isExpired = booking.status === 'EXPIRED' || (isPendingPayment && !isHoldValid);
   const isUpcoming = (booking.status === 'CONFIRMED' || (isPendingPayment && isHoldValid)) && !isExpired && !isLessonEnded;
+  // A confirmed lesson that has not actually started may still be cancelled
+  // by the student, even if its scheduled time passed without check-in/start.
+  const canStudentCancel = booking.status === 'CONFIRMED' && !booking.lessonStartedAt && !isExpired;
   const isCompleted = booking.status === 'COMPLETED';
   const isDisputed = booking.status === 'DISPUTED';
   const isPaymentNotCompleted = UNPAID_BOOKING_STATUSES.includes(booking.status);
@@ -320,7 +323,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
         {(isCompleted || isDisputed) && <BookingDisputePanel booking={booking} currentUserId={currentUserId} display="action" />}
 
-        {isUpcoming && (
+        {(isUpcoming || canStudentCancel) && (
           <Button
             type="button"
             variant="dangerSoft"
