@@ -7,7 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
 import { formatCentsToBRL } from '../../../domain/money';
 import { calculateLessonDurationMinutes, formatDateBR, formatTimeBR } from '../../../lib/date-format';
-import { isBookingEnded, UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
+import { UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 import { dbService } from '../../../lib/db-service';
 import { calculateCancellationPolicy } from '../../../domain/cancellation';
@@ -80,22 +80,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     if (!isOpen || !booking || !onRefreshBooking) return undefined;
 
     let refreshInFlight = false;
-    const refreshIfCheckInIsActive = () => {
-      const nowMs = Date.now();
-      const isInProgress = booking.status === 'IN_PROGRESS';
-      const checkInAvailability = getCheckInAvailability({
-        scheduledStartAt: booking.scheduledStartAt,
-        scheduledDate: booking.scheduledDate,
-        startTime: booking.startTime,
-        status: booking.status,
-        alreadyCheckedIn: Boolean(booking.studentCheckedIn),
-        now: new Date(nowMs),
-      });
-      const isInsideCheckInWindow = booking.status === 'CONFIRMED'
-        && checkInAvailability.canCheckIn
-        && !isBookingEnded(booking, nowMs);
-
-      if ((!isInProgress && !isInsideCheckInWindow) || refreshInFlight) return;
+    const refreshBooking = () => {
+      if (refreshInFlight || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
       refreshInFlight = true;
       void onRefreshBooking(booking.id)
         .catch(() => undefined)
@@ -104,21 +90,28 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         });
     };
 
-    // Refresh immediately when the student opens the detail inside the
-    // operational window, then use a lightweight ten-second safety poll.
-    refreshIfCheckInIsActive();
-    const timer = window.setInterval(refreshIfCheckInIsActive, 10_000);
-    return () => window.clearInterval(timer);
+    // The realtime subscription is the fast path, but it is not guaranteed to
+    // be available on every browser/session. Keep the opened detail modal
+    // authoritative with a lightweight fallback refresh so status, check-ins,
+    // payment and cancellation data do not stay stuck on the object used to
+    // open the modal.
+    refreshBooking();
+    const timer = window.setInterval(refreshBooking, 10_000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshBooking();
+    };
+    const handleWindowFocus = () => refreshBooking();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
   }, [
     isOpen,
     booking?.id,
-    booking?.status,
-    booking?.scheduledStartAt,
-    booking?.scheduledDate,
-    booking?.startTime,
-    booking?.scheduledEndAt,
-    booking?.endTime,
-    booking?.studentCheckedIn,
     onRefreshBooking,
   ]);
 

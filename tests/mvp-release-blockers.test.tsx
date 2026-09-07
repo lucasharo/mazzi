@@ -361,6 +361,31 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
         vi.useRealTimers();
       }
     });
+
+    it('H. mantém os detalhes sincronizados enquanto o modal permanece aberto', async () => {
+      vi.useFakeTimers();
+      try {
+        const onRefreshBooking = vi.fn().mockResolvedValue(null);
+        const { unmount } = render(
+          <BookingDetailsModal
+            isOpen={true}
+            onClose={vi.fn()}
+            booking={baseConfirmedBooking}
+            onRefreshBooking={onRefreshBooking}
+          />
+        );
+
+        await Promise.resolve();
+        expect(onRefreshBooking).toHaveBeenCalledWith(baseConfirmedBooking.id);
+        expect(onRefreshBooking).toHaveBeenCalledTimes(1);
+
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(onRefreshBooking).toHaveBeenCalledTimes(2);
+        unmount();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   // --- 7. CHECKOUT MODAL REAL SUCCESS FLOW TEST ---
