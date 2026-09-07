@@ -519,5 +519,40 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
       expect(screen.queryByText('Você chegou ao ponto de encontro!')).toBeNull();
       expect(screen.queryByText('O check-in foi liberado para você e para o aluno. Faça seu check-in para iniciar a aula.')).toBeNull();
     });
+
+    it('mantém os detalhes do PRO sincronizados enquanto o modal permanece aberto', async () => {
+      vi.useFakeTimers();
+      try {
+        const booking = {
+          id: 'bk_provider_refresh',
+          providerId: 'p_provider_refresh',
+          status: 'CONFIRMED',
+          studentName: 'Aluno Refresh',
+          scheduledDate: '20/08/2026',
+          startTime: '09:00',
+          endTime: '10:00',
+          scheduledStartAt: '2026-08-20T09:00:00-03:00',
+          category: 'B',
+        };
+        const onRefreshBooking = vi.fn().mockResolvedValue(null);
+        const { unmount } = render(
+          <ProviderBookingDetailsModal
+            {...defaultModalProps}
+            booking={booking}
+            onRefreshBooking={onRefreshBooking}
+          />
+        );
+
+        await Promise.resolve();
+        expect(onRefreshBooking).toHaveBeenCalledWith(booking.id);
+        expect(onRefreshBooking).toHaveBeenCalledTimes(1);
+
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(onRefreshBooking).toHaveBeenCalledTimes(2);
+        unmount();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 });

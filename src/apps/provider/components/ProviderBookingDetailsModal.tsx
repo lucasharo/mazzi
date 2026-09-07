@@ -43,6 +43,7 @@ export interface ProviderBookingDetailsModalProps {
   etaMinutes?: number | null;
   onOpenNavigation?: () => void;
   onSetOnTheWay?: (bookingId: string) => Promise<void>;
+  onRefreshBooking?: (bookingId: string) => Promise<Booking | null>;
   isLoading?: boolean;
 }
 
@@ -65,6 +66,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   etaMinutes,
   onOpenNavigation,
   onSetOnTheWay,
+  onRefreshBooking,
   isLoading = false,
 }) => {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
@@ -83,6 +85,38 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     const timer = window.setInterval(() => setCheckInNow(new Date()), 1_000);
     return () => window.clearInterval(timer);
   }, [isOpen, booking?.id, hasArrivedProp]);
+
+  useEffect(() => {
+    if (!isOpen || !booking || !onRefreshBooking) return undefined;
+
+    let refreshInFlight = false;
+    const refreshBooking = () => {
+      if (refreshInFlight || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
+      refreshInFlight = true;
+      void onRefreshBooking(booking.id)
+        .catch(() => undefined)
+        .finally(() => {
+          refreshInFlight = false;
+        });
+    };
+
+    // Realtime remains the fast path, while this scoped fallback keeps the
+    // open detail authoritative if the channel is delayed or unavailable.
+    refreshBooking();
+    const timer = window.setInterval(refreshBooking, 10_000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshBooking();
+    };
+    const handleWindowFocus = () => refreshBooking();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [isOpen, booking?.id, onRefreshBooking]);
 
   if (!booking) return null;
 

@@ -201,6 +201,20 @@ export const ProviderApp: React.FC = () => {
   const [isExternalNavModalOpen, setIsExternalNavModalOpen] = useState(false);
   const [isOnTheWayLoading, setIsOnTheWayLoading] = useState(false);
 
+  const refreshBookingForDetails = useCallback(async (bookingId: string): Promise<Booking | null> => {
+    if (!activeProviderId) return null;
+
+    const isInstructorUser = user?.role === 'INSTRUCTOR' || user?.roles?.includes('INSTRUCTOR');
+    const refreshedBookings = isInstructorUser
+      ? await dbService.getMyUnifiedInstructorBookings()
+      : await dbService.getMyProviderBookings(activeProviderId);
+    const refreshedBooking = refreshedBookings.find((booking) => booking.id === bookingId) || null;
+
+    setBookings(refreshedBookings);
+    setSelectedBooking((current) => current?.id === bookingId ? refreshedBooking : current);
+    return refreshedBooking;
+  }, [activeProviderId, user?.role, user?.roles]);
+
   const activeInstantBooking = useMemo(() => {
     return (
       bookings.find(
@@ -768,7 +782,7 @@ export const ProviderApp: React.FC = () => {
   // Keep the open details screen synchronized with the same realtime/polling
   // booking collection without closing it or showing a loading replacement.
   useEffect(() => {
-    if (!selectedBooking || selectedBooking.status === 'COMPLETED') return;
+    if (!selectedBooking) return;
     const refreshedBooking = bookings.find((booking) => booking.id === selectedBooking.id);
     if (!refreshedBooking || refreshedBooking === selectedBooking) return;
     setSelectedBooking((current) => current?.id === refreshedBooking.id ? refreshedBooking : current);
@@ -2283,6 +2297,7 @@ status: 'IN_REVIEW',
         isLoading={isOnTheWayLoading}
         distanceKm={navDestination?.distanceKm}
         etaMinutes={navDestination?.etaMinutes}
+        onRefreshBooking={refreshBookingForDetails}
       />
 
       {/* Provider Cancellation Modal (DEC-013) */}
