@@ -20,6 +20,15 @@ function storageKey(prefix: string, appContext: NotificationAppContext, userId?:
   return `${prefix}.${appContext}.${userId || 'anonymous'}`;
 }
 
+export function hasStoredPushDevice(appContext: NotificationAppContext, userId?: string): boolean {
+  if (!userId || typeof window === 'undefined') return false;
+  try {
+    return Boolean(window.localStorage.getItem(storageKey(DEVICE_ID_PREFIX, appContext, userId)));
+  } catch {
+    return false;
+  }
+}
+
 function getOrCreateDeviceFingerprint(appContext: NotificationAppContext): string {
   const key = storageKey(FINGERPRINT_PREFIX, appContext);
   try {

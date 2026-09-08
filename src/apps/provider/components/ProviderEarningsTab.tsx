@@ -12,6 +12,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { dbService } from '../../../lib/db-service';
+import { invalidateProviderEarningsQueries, serverState } from '../../../lib/server-state';
 import { formatCentsToBRL } from '../../../domain/money';
 import { formatDateBR } from '../../../lib/date-format';
 import { buildProviderEarningsInsights, PROVIDER_INSIGHTS_MINIMUM_STUDENTS } from '../../../domain/provider-earnings';
@@ -233,24 +234,27 @@ function EmptyEarningsState() {
   );
 }
 
-export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKey?: number }> = ({ refreshKey = 0, focusReviewsKey = 0 }) => {
+export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKey?: number; providerId?: string; userId?: string }> = ({ refreshKey = 0, focusReviewsKey = 0, providerId, userId }) => {
   const [period, setPeriod] = useState<ProviderEarningsPeriodPreset>(30);
   const [summary, setSummary] = useState<ProviderEarningsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     setIsLoading(true);
     setError(null);
     try {
-      setSummary(await dbService.getProviderEarningsSummary(period));
+      if (force && providerId && userId) await invalidateProviderEarningsQueries(providerId, userId);
+      setSummary(await (providerId && userId
+        ? serverState.getProviderEarnings({ providerId, userId, period })
+        : dbService.getProviderEarningsSummary(period)));
     } catch (err: any) {
       setSummary(null);
       setError(err?.message || 'Não foi possível carregar seus ganhos.');
     } finally {
       setIsLoading(false);
     }
-  }, [period]);
+  }, [period, providerId, userId]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
@@ -268,7 +272,7 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
         title="Ganhos"
         subtitle="Acompanhe seus ganhos e próximos repasses."
         action={(
-          <ButtonBase type="button" className="mazzi-icon-button" onClick={() => void load()} disabled={isLoading} aria-label="Atualizar ganhos" title="Atualizar ganhos">
+          <ButtonBase type="button" className="mazzi-icon-button" onClick={() => void load(true)} disabled={isLoading} aria-label="Atualizar ganhos" title="Atualizar ganhos">
             <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
           </ButtonBase>
         )}
@@ -285,7 +289,7 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
 
       {!isLoading && error && (
         <div role="alert" className="mazzi-compact-card rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
-          <div className="flex items-start gap-3"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /><div><p className="font-bold">Não foi possível carregar os ganhos.</p><p className="mt-1 text-xs font-medium">{error}</p><Button variant="dangerSoft" size="sm" className="mt-3" onClick={() => void load()} leftIcon={<RefreshCw className="h-4 w-4" aria-hidden="true" />}>Tentar novamente</Button></div></div>
+          <div className="flex items-start gap-3"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /><div><p className="font-bold">Não foi possível carregar os ganhos.</p><p className="mt-1 text-xs font-medium">{error}</p><Button variant="dangerSoft" size="sm" className="mt-3" onClick={() => void load(true)} leftIcon={<RefreshCw className="h-4 w-4" aria-hidden="true" />}>Tentar novamente</Button></div></div>
         </div>
       )}
 
@@ -322,16 +326,19 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
   );
 };
 
-export const ProviderEarningsDashboardCard: React.FC<{ onNavigate: () => void; refreshKey?: number }> = ({ onNavigate, refreshKey = 0 }) => {
+export const ProviderEarningsDashboardCard: React.FC<{ onNavigate: () => void; refreshKey?: number; providerId?: string; userId?: string }> = ({ onNavigate, refreshKey = 0, providerId, userId }) => {
   const [summary, setSummary] = useState<ProviderEarningsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     setIsLoading(true);
-    dbService.getProviderEarningsSummary(30).then((data) => { if (active) setSummary(data); }).catch(() => { if (active) setSummary(null); }).finally(() => { if (active) setIsLoading(false); });
+    (providerId && userId
+      ? serverState.getProviderEarnings({ providerId, userId, period: 30 })
+      : dbService.getProviderEarningsSummary(30)
+    ).then((data) => { if (active) setSummary(data); }).catch(() => { if (active) setSummary(null); }).finally(() => { if (active) setIsLoading(false); });
     return () => { active = false; };
-  }, [refreshKey]);
+  }, [providerId, refreshKey, userId]);
 
   return (
     <section className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50/70 p-5 shadow-2xs" aria-labelledby="provider-dashboard-earnings-title">

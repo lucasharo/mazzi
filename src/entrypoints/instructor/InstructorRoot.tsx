@@ -6,6 +6,7 @@ import { dismissInitialSplash, INITIAL_NAVIGATION_READY_EVENT } from '../../lib/
 import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget } from '../../lib/mobile-app-router';
 import { clearPendingNotificationTarget, readPendingNotificationTarget, storePendingNotificationTarget } from '../../lib/pending-navigation';
 import { registerServiceWorker } from '../../registerServiceWorker';
+import { MazziQueryProvider } from '../../components/query/MazziQueryProvider';
 
 function isStripeOnboardingReturn(): boolean {
   if (typeof window === 'undefined') return false;
@@ -73,7 +74,9 @@ const InstructorGate: React.FC = () => {
 };
 
 export const InstructorRoot: React.FC = () => (
-  <AuthProvider>
-    <InstructorGate />
-  </AuthProvider>
+  <MazziQueryProvider>
+    <AuthProvider>
+      <InstructorGate />
+    </AuthProvider>
+  </MazziQueryProvider>
 );

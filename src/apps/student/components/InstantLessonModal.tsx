@@ -41,7 +41,8 @@ interface InstantLessonModalProps {
 export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, onClose, onScheduleLesson, location, locationLabel, onRequestLocation, onLoadPriceOptions, onStart, activeRequest, tracking, bookingStatus, booking, currentUserId, onOpenChat, onBookingUpdated, onPayBooking, onCancelRequest, onCancelPendingSearch, isStarting, isLoading, isInitialLocationLoading, checkInWindowBeforeMinutes, instantLessonExpirationMinutes }) => {
   const [trackingOpen, setTrackingOpen] = useState(false);
   useEffect(() => { setTrackingOpen(false); }, [isOpen, booking?.id]);
-  const showTrackingMap = bookingStatus !== 'IN_PROGRESS'
+  const isLessonStarted = bookingStatus === 'IN_PROGRESS' || booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);
+  const showTrackingMap = !isLessonStarted
     && (Boolean(tracking) || Boolean(activeRequest?.request.bookingId && bookingStatus === 'CONFIRMED'));
   if (showTrackingMap && !booking) {
     return <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da aula" useHistory={false}><p role="status">Carregando informações da aula…</p></Modal>;

@@ -27,6 +27,17 @@ import { mapFriendlyErrorMessage } from '../src/lib/error-mapper';
 import { dbService } from '../src/lib/db-service';
 import { Booking, Provider, Vehicle, ServiceOffering } from '../src/types';
 
+function stubCheckInLocation() {
+  Object.defineProperty(navigator, 'geolocation', {
+    configurable: true,
+    value: {
+      getCurrentPosition: (success: PositionCallback) => success({
+        coords: { latitude: -23.56, longitude: -46.65 },
+      } as GeolocationPosition),
+    },
+  });
+}
+
 describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Deploy', () => {
   afterEach(() => {
     cleanup();
@@ -162,7 +173,7 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
         }),
       };
 
-      const result = await studentCheckInAndRehydrateBooking('bk_orch_100', mockService as any);
+      const result = await studentCheckInAndRehydrateBooking('bk_orch_100', { latitude: -23.56, longitude: -46.65 }, mockService as any);
 
       expect(callOrder).toEqual(['studentCheckInBooking', 'getBookings']);
       expect(result.updatedBooking.id).toBe('bk_orch_100');
@@ -177,7 +188,7 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
       };
 
       await expect(
-        studentCheckInAndRehydrateBooking('bk_missing', mockService as any)
+        studentCheckInAndRehydrateBooking('bk_missing', { latitude: -23.56, longitude: -46.65 }, mockService as any)
       ).rejects.toThrow(/BOOKING_NOT_FOUND_AFTER_CHECKIN/);
     });
 
@@ -273,6 +284,7 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
 
     it('D. RPC error renderiza erro amigável na UI', async () => {
       const onStudentCheckInMock = vi.fn().mockRejectedValue(new Error('CHECKIN_WINDOW_EXPIRED'));
+      stubCheckInLocation();
 
       render(
         <BookingDetailsModal
@@ -337,6 +349,7 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
         const onStudentCheckIn = vi.fn(() => new Promise<Booking>((resolve) => {
           resolveCheckIn = resolve;
         }));
+        stubCheckInLocation();
 
         render(
           <BookingDetailsModal
@@ -354,6 +367,7 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
 
         fireEvent.click(checkInButton);
         fireEvent.click(checkInButton);
+        await Promise.resolve();
         expect(onStudentCheckIn).toHaveBeenCalledTimes(1);
         resolveCheckIn(baseConfirmedBooking);
         await Promise.resolve();

@@ -23,6 +23,7 @@ export interface LeafletMapProps {
   showCoverageRadius?: boolean;
   showMeetingPointPopup?: boolean;
   meetingPoint?: { lat: number; lng: number; title: string };
+  mapCenter?: { lat: number; lng: number };
   userLocation?: { lat: number; lng: number };
   searchedLocation?: { lat: number; lng: number; label?: string };
   zoom?: number;
@@ -40,6 +41,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   showCoverageRadius = false,
   showMeetingPointPopup = true,
   meetingPoint: rawMeetingPoint,
+  mapCenter: rawMapCenter,
   userLocation: rawUserLocation,
   searchedLocation: rawSearchedLocation,
   zoom = 13,
@@ -48,6 +50,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   interactive = true,
 }) => {
   const meetingPoint = validCoordinates(rawMeetingPoint) ? rawMeetingPoint : undefined;
+  const mapCenter = validCoordinates(rawMapCenter) ? rawMapCenter : undefined;
   const userLocation = validCoordinates(rawUserLocation) ? rawUserLocation : undefined;
   const searchedLocation = validCoordinates(rawSearchedLocation) ? rawSearchedLocation : undefined;
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -64,7 +67,9 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       mapInstanceRef.current = null;
     }
 
-    const initialCenter = meetingPoint
+    const initialCenter = mapCenter
+      ? [mapCenter.lat, mapCenter.lng] as [number, number]
+      : meetingPoint
       ? [meetingPoint.lat, meetingPoint.lng] as [number, number]
       : selectedProvider && validCoordinates(PROVIDER_COORDINATES[selectedProvider.id])
       ? [PROVIDER_COORDINATES[selectedProvider.id].lat, PROVIDER_COORDINATES[selectedProvider.id].lng] as [number, number]
@@ -108,6 +113,16 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     }
     return dispose;
   }, []);
+
+  // Keep address-driven maps centered when the user changes the selected
+  // location without remounting the Leaflet instance.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || providers.length > 0) return;
+    const center = mapCenter || meetingPoint;
+    if (!center) return;
+    map.setView([center.lat, center.lng], Number.isFinite(zoom) ? zoom : 13, { animate: false });
+  }, [mapCenter?.lat, mapCenter?.lng, meetingPoint?.lat, meetingPoint?.lng, providers.length, zoom]);
 
   // Update markers and layers when providers or selection changes
   useEffect(() => {

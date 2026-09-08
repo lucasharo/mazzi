@@ -3,7 +3,6 @@ import { Car, Clock3, MapPin, Radio } from "lucide-react";
 import type {
   Booking,
   InstantLessonInstructorStatus,
-  InstantLessonOffer,
   InstantLessonPlatformConfig,
   InstantLessonSettings,
   Provider,
@@ -21,11 +20,9 @@ import { formatTransmissionLabel } from "../../../lib/date-format";
 import { parseBrlToCents } from "../../../domain/vehicles-offerings";
 import { isPendingPaymentHoldActive } from "../../../domain/booking";
 import {
-  getInstantOfferSecondsLeft,
   isInstantInstructorAvailabilityActive,
   validateInstantSettings,
 } from "../../../domain/instant-lesson";
-import { InstantLessonOfferCard } from "../../../components/instant/InstantLessonOfferCard";
 import { ComplianceStatusAlert } from "../../../components/ui/ComplianceStatusAlert";
 import {
   formatMeetingPoint,
@@ -53,14 +50,8 @@ interface ProviderInstantLessonPanelProps {
   }) => Promise<void>;
   onToggleOnline: (instructorId: string, online: boolean) => Promise<void>;
   isLoading?: boolean;
-  offers: InstantLessonOffer[];
   pendingPaymentInstantBookings: Booking[];
   instantOffersServerNow?: string | null;
-  onRespondOffer: (
-    offerId: string,
-    action: "ACCEPT" | "DECLINE",
-  ) => Promise<void>;
-  offerAction?: { offerId: string; action: "ACCEPT" | "DECLINE" } | null;
 }
 
 const distanceOptions = [1, 3, 5, 8, 10, 15, 20].map((value) => ({
@@ -85,11 +76,8 @@ export const ProviderInstantLessonPanel: React.FC<
   onSave,
   onToggleOnline,
   isLoading,
-  offers,
   pendingPaymentInstantBookings,
   instantOffersServerNow,
-  onRespondOffer,
-  offerAction,
 }) => {
   const configurations = useMemo(() => {
     const activeVehicles = vehicles.filter((vehicle) => vehicle.status === 'ACTIVE');
@@ -355,33 +343,6 @@ export const ProviderInstantLessonPanel: React.FC<
         >
           {error}
         </p>
-      )}
-      {offers.length > 0 && (
-        <section className="space-y-3" aria-labelledby="instant-offers-title">
-          <div className="flex items-center justify-between gap-3">
-            <h2
-              id="instant-offers-title"
-              className="text-base font-extrabold text-[var(--mazzi-dark)]"
-            >
-              Solicitações recebidas
-            </h2>
-            <Badge variant="warning">{offers.length}</Badge>
-          </div>
-          {offers.map((offer) => (
-            <InstantLessonOfferCard
-              key={offer.id}
-              offer={offer}
-              secondsLeft={getInstantOfferSecondsLeft(offer.expiresAt, now, serverClockOffsetMs)}
-              onAccept={() => void onRespondOffer(offer.id, "ACCEPT")}
-              onDecline={() => void onRespondOffer(offer.id, "DECLINE")}
-              isLoading={
-                offerAction?.offerId === offer.id
-                  ? (offerAction.action.toLowerCase() as "accept" | "decline")
-                  : null
-              }
-            />
-          ))}
-        </section>
       )}
       {visiblePendingPaymentInstantBookings.length > 0 && (
         <section className="space-y-3" aria-labelledby="instant-payment-title">

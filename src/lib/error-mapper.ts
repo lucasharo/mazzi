@@ -26,6 +26,10 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'A janela de check-in desta aula já terminou.';
   }
 
+  if (msg.includes('CHECKIN_LOCATION_')) {
+    return 'Permita o acesso à localização do dispositivo para registrar o check-in.';
+  }
+
   if (msg.includes('PROVIDER_ARRIVAL_REQUIRED')) {
     return 'Confirme que você chegou ao local antes de fazer o check-in.';
   }

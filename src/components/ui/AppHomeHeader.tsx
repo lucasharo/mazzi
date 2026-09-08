@@ -16,6 +16,8 @@ interface AppHomeHeaderProps {
   onOpenProfile?: () => void;
   isRefreshing?: boolean;
   appContext?: NonNullable<Notification['appContext']>;
+  userId?: string;
+  providerId?: string;
 }
 
 /** Canonical home header shared by the MAZZI mobile apps. */
@@ -30,6 +32,8 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
   onOpenProfile,
   isRefreshing = false,
   appContext = 'PRO',
+  userId,
+  providerId,
 }) => {
   const appLabel = appContext === 'STUDENT' ? 'Aluno' : 'Profissional';
 
@@ -53,7 +57,7 @@ export const AppHomeHeader: React.FC<AppHomeHeaderProps> = ({
             title="Notificações"
             aria-label="Abrir notificações"
           >
-            <NotificationIndicator appContext={appContext} className="h-full w-full items-center justify-center">
+            <NotificationIndicator appContext={appContext} userId={userId} providerId={providerId} className="h-full w-full items-center justify-center">
               <Bell className="h-5 w-5" aria-hidden="true" />
             </NotificationIndicator>
           </ButtonBase>

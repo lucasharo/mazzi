@@ -58,7 +58,10 @@ describe('provider offering and compliance reconciliation contracts', () => {
   });
 
   it('does not let the browser choose the persisted global user_id', () => {
-    expect(providerApp).not.toContain('userId: user.id');
+    const uploadStart = providerApp.indexOf('await dbService.saveComplianceDoc({');
+    const uploadEnd = providerApp.indexOf('setSelectedComplianceFile(null);', uploadStart);
+    const uploadSource = providerApp.slice(uploadStart, uploadEnd);
+    expect(uploadSource).not.toContain('userId:');
     expect(runtimeMigration).toContain('user_id, vehicle_id, membership_id, scope');
     expect(runtimeMigration).toContain('auth.uid()');
   });

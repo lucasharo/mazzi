@@ -35,7 +35,9 @@ import { SlotSelectorModal } from './components/SlotSelectorModal';
 import { StripeCheckoutReturnScreen, StripeCheckoutReturnStatus } from './components/StripeCheckoutReturnScreen';
 import { useAuth } from '../../components/auth/AuthContext';
 import { dbService } from '../../lib/db-service';
+import { invalidateStudentBookingQueries, invalidateStudentInstantQueries, serverState } from '../../lib/server-state';
 import { studentCheckInAndRehydrateBooking } from '../../lib/student-booking-actions';
+import type { CheckInLocation } from '../../lib/checkin-location';
 import { supabase } from '../../lib/supabase';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { SettingsPanel } from '../../components/settings/SettingsPanel';
@@ -295,7 +297,7 @@ export const StudentApp: React.FC = () => {
     let active = true;
     setPlatformConfiguration(null);
     setPlatformConfigurationError(false);
-    void dbService.getPublicPlatformConfiguration()
+    void serverState.getPublicPlatformConfiguration()
       .then((configuration) => {
         if (active) setPlatformConfiguration(configuration);
       })
@@ -378,24 +380,26 @@ export const StudentApp: React.FC = () => {
   };
 
   const requestBookingsRefresh = useCallback((source: 'realtime' | 'manual' = 'manual') => {
+    if (user?.id) void invalidateStudentBookingQueries(user.id);
     if (bookingsLoadInFlightRef.current) {
       if (source === 'realtime') bookingsRefreshQueuedRef.current = true;
       return;
     }
     setBookingsRefreshKey((current) => current + 1);
-  }, []);
+  }, [user?.id]);
 
   const loadBookingsData = useCallback((): Promise<Booking[]> => {
+    if (!user?.id) return Promise.resolve([]);
     if (bookingsDataLoadInFlightRef.current) return bookingsDataLoadInFlightRef.current;
 
-    const request = dbService.getBookings();
+    const request = serverState.getStudentBookings(user.id);
     bookingsDataLoadInFlightRef.current = request;
     void request.then(
       () => { if (bookingsDataLoadInFlightRef.current === request) bookingsDataLoadInFlightRef.current = null; },
       () => { if (bookingsDataLoadInFlightRef.current === request) bookingsDataLoadInFlightRef.current = null; },
     );
     return request;
-  }, []);
+  }, [user?.id]);
 
   const loadCheckoutPaymentStatus = useCallback((paymentId: string): Promise<any> => {
     const current = checkoutPaymentStatusInFlightRef.current;
@@ -515,7 +519,8 @@ export const StudentApp: React.FC = () => {
 
   const loadActiveInstantLesson = useCallback((): Promise<void> => {
     if (activeInstantRequestInFlightRef.current) return activeInstantRequestInFlightRef.current;
-    const request = dbService.getMyActiveInstantRequest()
+    if (!user?.id) return Promise.resolve();
+    const request = serverState.getStudentActiveInstantLesson(user.id)
       .then(async (active) => {
         // Do not let a transient refresh result replace the request while the
         // Aula Agora creation flow is still settling.
@@ -535,7 +540,7 @@ export const StudentApp: React.FC = () => {
           void openInstantBookingCheckout(active.request.bookingId);
         }
         try {
-          setInstantLessonTracking(await dbService.getInstantTracking(active.request.bookingId));
+          setInstantLessonTracking(await serverState.getStudentInstantTracking(user.id, active.request.bookingId));
         } catch {
           setInstantLessonTracking(null);
         }
@@ -548,7 +553,7 @@ export const StudentApp: React.FC = () => {
       .finally(() => { activeInstantRequestInFlightRef.current = null; });
     activeInstantRequestInFlightRef.current = request;
     return request;
-  }, [openInstantBookingCheckout]);
+  }, [openInstantBookingCheckout, user?.id]);
 
   const loadInstantPriceOptions = useCallback((params: { latitude: number; longitude: number; category: VehicleCategory; transmission: TransmissionType | 'ALL' }) => {
     if (isRealSupabase && !platformConfiguration) {
@@ -564,7 +569,8 @@ export const StudentApp: React.FC = () => {
     if (instantLessonStartRef.current) return Promise.resolve();
     if (instantRefreshInFlightRef.current) return instantRefreshInFlightRef.current;
     const request = (async () => {
-      const active = await dbService.getMyActiveInstantRequest().catch(() => null);
+      if (!user?.id) return;
+      const active = await serverState.getStudentActiveInstantLesson(user.id).catch(() => null);
       if (instantLessonStartRef.current) return;
       if (active?.request.status === 'SEARCHING') {
         await dbService.dispatchInstantLessonRequest(active.request.id).catch(() => undefined);
@@ -573,7 +579,7 @@ export const StudentApp: React.FC = () => {
     })().finally(() => { instantRefreshInFlightRef.current = null; });
     instantRefreshInFlightRef.current = request;
     return request;
-  }, [loadActiveInstantLesson]);
+  }, [loadActiveInstantLesson, user?.id]);
 
   const cancelInstantLessonStart = useCallback((startFlow: { cancelled: boolean; completed: boolean; requestId?: string; cancelPromise?: Promise<void> }) => {
     startFlow.cancelled = true;
@@ -583,6 +589,7 @@ export const StudentApp: React.FC = () => {
         .then(() => {
           instantRequestIdempotencyRef.current = null;
           setActiveInstantLesson(null);
+          if (user?.id) void invalidateStudentInstantQueries(user.id);
         })
         .catch(() => undefined);
     }
@@ -653,7 +660,9 @@ export const StudentApp: React.FC = () => {
       // request. Re-read it before surfacing an error so the UI does not jump
       // back to the wizard and then return to the search screen on polling.
       if (!startFlow.cancelled && startFlow.requestId) {
-        const activeAfterFailure = await dbService.getMyActiveInstantRequest().catch(() => null);
+        const activeAfterFailure = user?.id
+          ? await serverState.getStudentActiveInstantLesson(user.id).catch(() => null)
+          : null;
         if (activeAfterFailure?.request.id === startFlow.requestId
           && (activeAfterFailure.request.status === 'SEARCHING' || activeAfterFailure.request.status === 'MATCHED')) {
           await loadActiveInstantLesson();
@@ -676,6 +685,7 @@ export const StudentApp: React.FC = () => {
       instantRequestIdempotencyRef.current = null;
       setInstantLessonStarting(false);
       setActiveInstantLesson(null);
+      if (user?.id) await invalidateStudentInstantQueries(user.id);
     } finally {
       setInstantLessonLoading(false);
     }
@@ -743,7 +753,7 @@ export const StudentApp: React.FC = () => {
           filter: `student_id=eq.${user.id}`,
         },
         () => {
-          requestBookingsRefresh('realtime');
+          void invalidateStudentBookingQueries(user.id).finally(() => requestBookingsRefresh('realtime'));
         }
       )
       .subscribe();
@@ -1019,6 +1029,7 @@ export const StudentApp: React.FC = () => {
           const normalizedPaymentStatus = String(paymentStatus?.status || '').toUpperCase();
           const normalizedBookingStatus = String(paymentStatus?.booking_status || '').toUpperCase();
           if (normalizedPaymentStatus === 'PAID' && normalizedBookingStatus === 'CONFIRMED') {
+            if (user?.id && paymentStatus.booking_id) await invalidateStudentBookingQueries(user.id, paymentStatus.booking_id);
             const bookings = await loadBookingsData();
             await handleAuthoritativeCheckoutSuccess(bookings, paymentStatus.booking_id);
             return;
@@ -1043,6 +1054,7 @@ export const StudentApp: React.FC = () => {
             );
             if (!active || !stripeCheckoutFlowActiveRef.current || offlineDetected) return;
             if (verifiedSession?.confirmed) {
+              if (user?.id && verifiedSession.bookingId) await invalidateStudentBookingQueries(user.id, verifiedSession.bookingId);
               const bookings = await loadBookingsData();
               await handleAuthoritativeCheckoutSuccess(bookings, verifiedSession.bookingId);
               return;
@@ -1344,6 +1356,7 @@ function applyStrictProviderFilters(
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
 
   const refreshBookingForDetails = useCallback(async (bookingId: string): Promise<Booking | null> => {
+    if (user?.id) await invalidateStudentBookingQueries(user.id, bookingId);
     const bookings = await loadBookingsData();
     const refreshedBooking = bookings.find((candidate) => candidate.id === bookingId) || null;
     if (!refreshedBooking) return null;
@@ -1351,7 +1364,7 @@ function applyStrictProviderFilters(
     setConfirmedBookings(bookings);
     setSelectedBookingForDetails((current) => current?.id === bookingId ? refreshedBooking : current);
     return refreshedBooking;
-  }, [loadBookingsData]);
+  }, [loadBookingsData, user?.id]);
 
   // Checkout Flow Modal States
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -1809,6 +1822,7 @@ function applyStrictProviderFilters(
                 onRefresh={() => setBookingsRefreshKey((value) => value + 1)}
                 isRefreshing={bookingsLoading}
                 appContext="STUDENT"
+                userId={user?.id}
               />
 
               {bookingsLoading ? (
@@ -2138,9 +2152,6 @@ function applyStrictProviderFilters(
                     <EmptyState
                       title={bookingQuickFilter === 'all' ? 'Nenhuma aula confirmada' : 'Nenhuma aula neste filtro'}
                       description={bookingQuickFilter === 'all' ? 'Você não possui aulas confirmadas no momento.' : 'Tente selecionar outro filtro rápido.'}
-                      actionLabel="Buscar aulas"
-                      actionIcon={<Search className="h-4 w-4" aria-hidden="true" />}
-                      onAction={() => openBookingSearch()}
                     />
                   ) : (
                     filteredUpcomingBookings.map((b) => (
@@ -2471,6 +2482,7 @@ function applyStrictProviderFilters(
         onBookingUpdated={(updated) => {
           setConfirmedBookings((previous) => previous.map((booking) => booking.id === updated.id ? updated : booking));
           setBookingsRefreshKey((key) => key + 1);
+          if (user?.id) void invalidateStudentBookingQueries(user.id, updated.id);
           if (updated.status === 'CANCELLED_BY_STUDENT' || updated.status === 'CANCELLED_BY_PROVIDER') {
             setIsInstantLessonOpen(false);
             void loadActiveInstantLesson();
@@ -2495,6 +2507,7 @@ function applyStrictProviderFilters(
           setConfirmedBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
           setBookingsRefreshKey((k) => k + 1);
           setSelectedBookingForDetails(updated);
+          if (user?.id) void invalidateStudentBookingQueries(user.id, updated.id);
         }}
         onRefreshBooking={refreshBookingForDetails}
         onReview={reviewsEligibilityStatus === 'SUCCESS' && ['COMPLETED', 'DISPUTED'].includes(selectedBookingForDetails?.status || '') && !reviewedBookingIds.has(selectedBookingForDetails.id)
@@ -2510,10 +2523,11 @@ function applyStrictProviderFilters(
             setSelectedBookingForChat(target);
           }
         }}
-        onStudentCheckIn={async (bookingId) => {
-          const { bookings, updatedBooking } = await studentCheckInAndRehydrateBooking(bookingId);
+        onStudentCheckIn={async (bookingId, location: CheckInLocation) => {
+          const { bookings, updatedBooking } = await studentCheckInAndRehydrateBooking(bookingId, location);
           setConfirmedBookings(bookings);
           setSelectedBookingForDetails(updatedBooking);
+          if (user?.id) await invalidateStudentBookingQueries(user.id, bookingId);
           return updatedBooking;
         }}
         checkInWindowBeforeMinutes={isRealSupabase ? platformConfiguration?.checkInWindowBeforeMinutes ?? null : platformConfiguration?.checkInWindowBeforeMinutes}
@@ -2531,7 +2545,6 @@ function applyStrictProviderFilters(
         {selectedBookingForChat && (
           <BookingChatPanel
             booking={selectedBookingForChat}
-            onBack={() => setSelectedBookingForChat(null)}
           />
         )}
       </Modal>

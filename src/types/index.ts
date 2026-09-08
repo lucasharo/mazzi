@@ -466,7 +466,6 @@ export interface Quote {
 export interface BookingSnapshot {
   source?: string;
   provider_on_the_way_at?: string;
-  provider_arrived_at?: string;
   instructorAvatarUrl?: string;
   providerAvatarUrl?: string;
   providerId: string;
@@ -517,7 +516,6 @@ export interface Booking {
   meetingPoint: string;
   meetingPointLabel?: string;
   providerOnTheWayAt?: string;
-  providerArrivedAt?: string;
   fullMeetingPoint?: string;
   idempotencyKey?: string;
   priceInCents: number;
@@ -539,6 +537,10 @@ export interface Booking {
   expiredAt?: string;
   checkinStudentAt?: string;
   checkinInstructorAt?: string;
+  checkinStudentLatitude?: number;
+  checkinStudentLongitude?: number;
+  checkinInstructorLatitude?: number;
+  checkinInstructorLongitude?: number;
   lessonStartedAt?: string;
   lessonFinishedAt?: string;
 }
@@ -816,7 +818,6 @@ export interface InstantCancellationQuote {
   retainedAmountInCents: number;
   calculatedAt?: string;
   providerOnTheWayAt?: string;
-  providerArrivedAt?: string;
   settingsSnapshot?: Record<string, unknown>;
 }
 

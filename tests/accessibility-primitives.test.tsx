@@ -35,6 +35,17 @@ describe('accessible UI primitives', () => {
     expect(markup).not.toContain('overflow-hidden flex flex-col max-h-[90vh]');
   });
 
+  it('uses a back arrow for nested modal surfaces and X for root dialogs', () => {
+    const rootModal = renderToStaticMarkup(<Modal isOpen onClose={vi.fn()} title="Principal">Conteúdo</Modal>);
+    const nestedModal = renderToStaticMarkup(<Modal isOpen onClose={vi.fn()} title="Detalhes" layer="nested">Conteúdo</Modal>);
+
+    expect(rootModal).toContain('aria-label="Fechar diálogo"');
+    expect(rootModal).toContain('lucide-x');
+    expect(nestedModal).toContain('aria-label="Voltar"');
+    expect(nestedModal).toContain('lucide-arrow-left');
+    expect(nestedModal).not.toContain('aria-label="Fechar diálogo"');
+  });
+
   it('associates stable input labels and accessible error messages', () => {
     const markup = renderToStaticMarkup(
       <Input id="email" label="E-mail" error="Informe um e-mail válido" defaultValue="inválido" />,

@@ -17,6 +17,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
     showCoverageRadius = false,
     showMeetingPointPopup = true,
     meetingPoint,
+    mapCenter,
     userLocation,
     searchedLocation,
     zoom,
@@ -80,6 +81,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
           showCoverageRadius={showRadius}
           showMeetingPointPopup={showMeetingPointPopup}
           meetingPoint={meetingPoint}
+          mapCenter={mapCenter}
           userLocation={userLocation}
           searchedLocation={searchedLocation}
           zoom={zoom}

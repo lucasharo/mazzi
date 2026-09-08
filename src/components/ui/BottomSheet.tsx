@@ -1,4 +1,5 @@
 import React, { useId, useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { IconButton } from './IconButton';
 import { useAccessibleDialog } from './useAccessibleDialog';
@@ -71,10 +72,10 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     setDragY(0);
   };
 
-  return (
+  const content = (
     <div
       id={id || 'mazzi-bottom-sheet'}
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-[var(--mazzi-dark)]/40 backdrop-blur-xs animate-in fade-in duration-300 ease-out"
+      className="fixed inset-0 z-[120] flex items-end justify-center bg-[var(--mazzi-dark)]/40 backdrop-blur-xs animate-in fade-in duration-300 ease-out"
       onClick={(e) => {
         if (closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
@@ -128,4 +129,6 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
 };

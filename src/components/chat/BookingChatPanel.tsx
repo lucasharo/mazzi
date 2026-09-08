@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, RefreshCw, SendHorizontal, Calendar, Clock, Car, Radio, ArrowLeft } from 'lucide-react';
+import { AlertCircle, RefreshCw, SendHorizontal, Calendar, Clock, Car, Radio } from 'lucide-react';
 import { Booking, Conversation, Message } from '../../types';
 import { useAuth } from '../auth/AuthContext';
 import { Button, ButtonBase } from '../ui/Button';
@@ -12,10 +12,9 @@ import { Textarea } from '../ui/Textarea';
 
 interface BookingChatPanelProps {
   booking: Booking;
-  onBack?: () => void;
 }
 
-export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onBack }) => {
+export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking }) => {
   const { user } = useAuth();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,7 +39,10 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
   const chatBlockedForContestation = booking.status === 'DISPUTED';
   const chatBlockedForSending = chatBlockedForStudent || chatBlockedForContestation;
 
-  const title = useMemo(() => booking.instructorName || booking.providerName || 'Aula MAZZI', [booking.instructorName, booking.providerName]);
+  const title = useMemo(() => isStudent
+    ? booking.instructorName || booking.providerName || 'Aula MAZZI'
+    : booking.studentName || 'Aluno não informado',
+  [booking.instructorName, booking.providerName, booking.studentName, isStudent]);
   const provider = booking.providerName && booking.providerName !== booking.instructorName ? booking.providerName : '';
   const start = booking.scheduledStartAt || `${booking.scheduledDate}T${booking.startTime}:00`;
   const end = booking.scheduledEndAt || `${booking.scheduledDate}T${booking.endTime}:00`;
@@ -191,17 +193,6 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
   return (
     <div className="flex h-full min-h-0 flex-col space-y-3 text-left">
       <div className="mazzi-card border border-[var(--mazzi-border)] p-3">
-        {onBack && (
-          <ButtonBase
-            type="button"
-            onClick={onBack}
-            className="mb-2 inline-flex cursor-pointer items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-2xs transition-colors hover:bg-slate-200 hover:text-slate-950 active:scale-95"
-            aria-label="Voltar para os detalhes da aula"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Voltar aos detalhes</span>
-          </ButtonBase>
-        )}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-amber-600">Conversa da aula</p>

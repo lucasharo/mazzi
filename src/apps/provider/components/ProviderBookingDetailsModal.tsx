@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Navigation,
   Play,
-  UserCheck,
   XCircle,
 } from 'lucide-react';
 import { Booking } from '../../../types';
@@ -19,7 +18,7 @@ import { formatCentsToBRL } from '../../../domain/money';
 import { calculateLessonDurationMinutes, formatTransmissionLabel, formatTimeBR } from '../../../lib/date-format';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
-import { getBookingStartTimestamp, getEffectiveBookingHoldExpiresAt, UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
+import { getBookingStartTimestamp, getEffectiveBookingHoldExpiresAt } from '../../../domain/booking';
 import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
 import { ExternalNavigationModal } from '../../../components/instant/ExternalNavigationModal';
 import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices } from '../../../components/booking/BookingDetailsShared';
@@ -38,13 +37,10 @@ export interface ProviderBookingDetailsModalProps {
   currentUserId?: string;
   isWaitingPayment?: boolean;
   isOnTheWay?: boolean;
-  hasArrived?: boolean;
   distanceKm?: number | null;
   etaMinutes?: number | null;
   onOpenNavigation?: () => void;
   onSetOnTheWay?: (bookingId: string) => Promise<void>;
-  onMarkArrived?: (bookingId: string) => Promise<void>;
-  isMarkingArrived?: boolean;
   hasScheduleConflict?: boolean;
   checkInWindowBeforeMinutes?: number | null;
   instantLessonExpirationMinutes?: number;
@@ -66,13 +62,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   currentUserId,
   isWaitingPayment: isWaitingPaymentProp,
   isOnTheWay: isOnTheWayProp,
-  hasArrived: hasArrivedProp = false,
   distanceKm,
   etaMinutes,
   onOpenNavigation,
   onSetOnTheWay,
-  onMarkArrived,
-  isMarkingArrived = false,
   hasScheduleConflict = false,
   checkInWindowBeforeMinutes,
   instantLessonExpirationMinutes,
@@ -84,7 +77,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const startingLessonBookingIdRef = useRef<string | null>(null);
   const [submittingDisplacement, setSubmittingDisplacement] = useState(false);
   const [hasStartedDisplacement, setHasStartedDisplacement] = useState(false);
-  const [hasArrivedState, setHasArrivedState] = useState(hasArrivedProp);
+  const [hasArrivedState, setHasArrivedState] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
   const [checkInNow, setCheckInNow] = useState(() => new Date());
   const [navModalOpen, setNavModalOpen] = useState(false);
@@ -106,10 +99,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   useEffect(() => {
     if (!isOpen || !booking) return undefined;
     setCheckInNow(new Date());
-    setHasArrivedState(hasArrivedProp);
+    setHasArrivedState(false);
     const timer = window.setInterval(() => setCheckInNow(new Date()), 1_000);
     return () => window.clearInterval(timer);
-  }, [isOpen, booking?.id, hasArrivedProp]);
+  }, [isOpen, booking?.id]);
 
   useEffect(() => {
     if (!isOpen || !booking || !onRefreshBooking) return undefined;
@@ -145,15 +138,9 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
 
   if (!booking) return null;
 
-  const isInstant =
-    booking.snapshot?.source === 'AULA_AGORA' ||
-    (booking as any).snapshot_data?.source === 'AULA_AGORA';
-
   const isWaitingPayment = isWaitingPaymentProp || booking.status === 'PENDING_PAYMENT';
   const isOnTheWay = isOnTheWayProp || hasStartedDisplacement || Boolean(booking.providerOnTheWayAt || booking.snapshot?.provider_on_the_way_at);
-  const isArrived = hasArrivedProp || hasArrivedState || Boolean(
-    booking.instructorCheckedIn || booking.providerArrivedAt || booking.snapshot?.provider_arrived_at,
-  );
+  const isArrived = hasArrivedState || Boolean(booking.instructorCheckedIn);
 
   const snapshot = booking.snapshot || {
     providerName: booking.providerName,
@@ -193,6 +180,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
       : formatMeetingPoint(rawMeetingPoint) ||
         (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint) ? booking.fullMeetingPoint : '') ||
         'Ponto de encontro indicado no mapa';
+  const canShowMeetingPoint = !isWaitingPayment && (isOnTheWay || isProviderMeetingPoint);
+  const meetingPointNotice = !canShowMeetingPoint && !isWaitingPayment
+    ? 'Endereço estará disponível quando você clicar em “Estou a caminho”.'
+    : undefined;
 
   const latitude = (booking.meetingPoint as any)?.latitude ?? (snapshot?.meetingPoint as any)?.latitude;
   const longitude = (booking.meetingPoint as any)?.longitude ?? (snapshot?.meetingPoint as any)?.longitude;
@@ -216,7 +207,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
 
   const canCancel = canCancelBooking
     ? canCancelBooking(booking)
-    : isConfirmed && !booking.instructorCheckedIn && !isInstant;
+    : isConfirmed && !booking.instructorCheckedIn;
 
   const checkInAvailability = checkInWindowBeforeMinutes === null
     ? { canCheckIn: false, opensAt: null, reason: 'CONFIGURATION_UNAVAILABLE' as const }
@@ -289,28 +280,16 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   };
 
   const handleMarkArrived = async () => {
-    if (isMarkingArrived || isLoading) return;
-    try {
-      // provider_mark_arrived is only valid for Aula Agora. Scheduled lessons
-      // use the regular instructor check-in transition instead.
-      if (isInstant && onMarkArrived) {
-        await onMarkArrived(booking.id);
-      }
-      let checkInCompleted = true;
-      if (onCheckIn) {
-        checkInCompleted = await handleCheckIn();
-      }
-      if (checkInCompleted) {
-        setHasArrivedState(true);
-        setCheckInError(null);
-      }
-    } catch (error) {
-      setCheckInError(mapFriendlyErrorMessage(error, 'Não foi possível confirmar sua chegada. Tente novamente quando estiver no local.'));
+    if (isLoading) return;
+    const checkInCompleted = await handleCheckIn();
+    if (checkInCompleted) {
+      setHasArrivedState(true);
+      setCheckInError(null);
     }
   };
 
   const handleCopyAddress = async () => {
-    if (isWaitingPayment || !meetingPointText || meetingPointText === 'Ponto de encontro indicado no mapa') return;
+    if (isWaitingPayment || !isOnTheWay || !meetingPointText || meetingPointText === 'Ponto de encontro indicado no mapa') return;
     if (!navigator.clipboard?.writeText) return;
 
     try {
@@ -356,8 +335,8 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               type="button"
               variant="primary"
               className="w-full rounded-2xl font-extrabold"
-              disabled={isLoading || submittingDisplacement || isCheckingIn || isMarkingArrived || !checkInAvailability.canCheckIn}
-              isLoading={isMarkingArrived}
+              disabled={isLoading || submittingDisplacement || isCheckingIn || !checkInAvailability.canCheckIn}
+              isLoading={isCheckingIn}
               onClick={() => void handleMarkArrived()}
               leftIcon={<MapPin className="h-4 w-4 text-[var(--mazzi-dark)]" aria-hidden="true" />}
             >
@@ -444,8 +423,8 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             variant="primary"
             size="sm"
             className="w-full rounded-2xl font-bold"
-            disabled={isLoading || submittingDisplacement || isCheckingIn || isMarkingArrived || !checkInAvailability.canCheckIn}
-            isLoading={isMarkingArrived}
+            disabled={isLoading || submittingDisplacement || isCheckingIn || !checkInAvailability.canCheckIn}
+            isLoading={isCheckingIn}
             onClick={() => void handleMarkArrived()}
             leftIcon={<MapPin className="h-4 w-4 text-[var(--mazzi-dark)]" aria-hidden="true" />}
           >
@@ -480,6 +459,14 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           Finalizar aula
         </Button>
       )}
+      {isConfirmed && isArrived && !(booking.instructorCheckedIn && booking.studentCheckedIn) && (
+        <div
+          className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs font-bold text-amber-900"
+          role="status"
+        >
+          Aguardando o check-in do aluno para iniciar a aula.
+        </div>
+      )}
       <div className="flex w-full items-center gap-3">
         {canCancel && onCancelBooking && (
           <Button
@@ -511,11 +498,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     </div>
   );
 
-  const modalTitle = isInstant
-    ? isWaitingPayment
-      ? 'Aula Agora — Aguardando Pagamento'
-      : 'Aula Agora Confirmada'
-    : 'Detalhes da aula';
+  const modalTitle = 'Detalhes da aula';
 
   return (
     <>
@@ -525,61 +508,23 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         title={modalTitle}
         ariaLabel="Detalhes operacionais da aula"
         size="md"
-        footer={UNPAID_BOOKING_STATUSES.includes(booking.status) && !isInstant ? undefined : isInstant ? instantFooter : standardFooter}
+        footer={isWaitingPayment ? instantFooter : standardFooter}
       >
         <div className="space-y-4 text-left" data-component="provider-booking-details-modal">
-          {isInstant && !isCompleted && (
-            <>
-              {isWaitingPayment ? (
-                <div className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-900">
-                      <Clock3 className="h-5 w-5 animate-pulse" aria-hidden="true" />
-                    </span>
-                    <div>
-                      <h3 className="text-base font-extrabold text-slate-900">O aluno está finalizando o pagamento</h3>
-                      <p className="mt-1 text-xs font-medium text-slate-600">
-                        A aula foi aceita. Aguarde a confirmação de pagamento do aluno antes de se deslocar.
-                      </p>
-                    </div>
-                  </div>
+          {isWaitingPayment && !isCompleted && (
+            <div className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-900">
+                  <Clock3 className="h-5 w-5 animate-pulse" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">O aluno está finalizando o pagamento</h3>
+                  <p className="mt-1 text-xs font-medium text-slate-600">
+                    A aula foi aceita. Aguarde a confirmação de pagamento do aluno antes de se deslocar.
+                  </p>
                 </div>
-              ) : (
-                <div className="mazzi-compact-card rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white shadow-xs">
-                      {isArrived ? (
-                        <UserCheck className="h-5 w-5" aria-hidden="true" />
-                      ) : isOnTheWay ? (
-                        <Navigation className="h-5 w-5" aria-hidden="true" />
-                      ) : (
-                        <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
-                      )}
-                    </span>
-                    <div>
-                      <h3 className="text-base font-extrabold text-slate-900">
-                        {isInProgress
-                          ? 'Aula em andamento'
-                          : isArrived
-                          ? 'Você chegou ao ponto de encontro!'
-                          : isOnTheWay
-                          ? 'Você está a caminho!'
-                          : 'Pagamento Confirmado!'}
-                      </h3>
-                      <p className="mt-1 text-xs font-medium text-slate-600">
-                        {isInProgress
-                          ? 'A aula já foi iniciada. Acompanhe abaixo os detalhes e o status de presença.'
-                          : isArrived
-                          ? 'O check-in foi liberado para você e para o aluno. Faça seu check-in para iniciar a aula.'
-                          : isOnTheWay
-                          ? 'O aluno já foi avisado e está aguardando você no ponto de encontro.'
-                          : 'Sua aula foi confirmada pelo backend. Confira os detalhes e dirija-se ao ponto de encontro.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
+              </div>
+            </div>
           )}
 
           <BookingDetailsHeader
@@ -595,10 +540,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             booking={hasArrivedState && !booking.instructorCheckedIn ? { ...booking, instructorCheckedIn: true } : booking}
             visible={booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS' || isOnTheWay}
             checkInAvailability={checkInAvailability}
-            canCheckInAtLocation={!isInstant || isProviderMeetingPoint || isArrived}
+            canCheckInAtLocation
             checkInError={checkInError}
             isCheckingIn={isCheckingIn}
-            onCheckIn={!isInstant && hasArrivedState ? undefined : handleCheckIn}
+            onCheckIn={handleCheckIn}
             showCheckInAction={isProviderMeetingPoint}
           />
 
@@ -614,19 +559,26 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
               : `Horário: ${booking.startTime} às ${booking.endTime}`}
             durationLabel={durationLabel}
-            meetingPoint={isOnTheWay ? meetingPointText : ''}
+            meetingPoint={canShowMeetingPoint ? meetingPointText : ''}
+            meetingPointNotice={meetingPointNotice}
             isProviderAddress={isProviderMeetingPoint}
-            showCopyAddress={!isWaitingPayment && !isProviderMeetingPoint}
+            showCopyAddress={!isWaitingPayment && isOnTheWay && !isProviderMeetingPoint}
             addressCopied={addressCopied}
             onCopyAddress={handleCopyAddress}
-            hasExactMeetingPoint={hasExactMeetingPoint}
-            showNavigation={isOnTheWay && !isWaitingPayment}
+          />
+          {!isWaitingPayment && !canShowMeetingPoint && mapPoint && (
+            <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
+          )}
+          {mapPoint && canShowMeetingPoint && <BookingMapPreview
+            latitude={mapPoint.lat}
+            longitude={mapPoint.lng}
+            title={mapPoint.title}
+            showNavigation={!isInProgress && hasExactMeetingPoint && !isProviderMeetingPoint}
             onOpenNavigation={() => {
               if (onOpenNavigation) onOpenNavigation();
               setNavModalOpen(true);
             }}
-          />
-          {mapPoint && <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} />}
+          />}
 
           <BookingPaymentSummary
             items={[

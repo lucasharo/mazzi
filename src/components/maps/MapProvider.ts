@@ -21,6 +21,8 @@ export interface MapProviderProps {
   showCoverageRadius?: boolean;
   showMeetingPointPopup?: boolean;
   meetingPoint?: MapMeetingPoint;
+  /** Centers the map without rendering a meeting-point marker. */
+  mapCenter?: MapCoordinates;
   userLocation?: MapCoordinates;
   searchedLocation?: MapCoordinates & { label?: string };
   zoom?: number;

@@ -23,8 +23,8 @@ function presentationWithNonMandatoryExpiredDocument() {
 
 describe('PRO compliance presentation precedence', () => {
   it('shows verified only when ACTIVE is eligible', () => expect(presentation(['APPROVED'])).toMatchObject({ status: 'ACTIVE', verified: true, title: 'Credenciamento Ativo • Verificado pela MAZZI' }));
-  it('shows an expired alert even when the expired document is not a mandatory blocker', () => {
-    expect(presentationWithNonMandatoryExpiredDocument()).toBe('EXPIRED');
+  it('ignores an expired historical document when mandatory compliance is approved', () => {
+    expect(presentationWithNonMandatoryExpiredDocument()).toBe('APPROVED');
   });
   it('maps effective pending, rejected, expired and missing documents distinctly', () => {
     expect(presentation(['PENDING']).status).toBe('PENDING');

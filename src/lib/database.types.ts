@@ -160,6 +160,10 @@ export interface Database {
           cancellation_data: Json | null;
           checkin_student_at: string | null;
           checkin_instructor_at: string | null;
+          checkin_student_latitude: number | null;
+          checkin_student_longitude: number | null;
+          checkin_instructor_latitude: number | null;
+          checkin_instructor_longitude: number | null;
           lesson_started_at: string | null;
           lesson_finished_at: string | null;
           created_at: string;

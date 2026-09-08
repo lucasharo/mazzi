@@ -2,6 +2,8 @@ import React from 'react';
 import { Calendar as CalendarIcon, Car, CheckCircle2, ExternalLink, MapPin, Sparkles, UserRound, WifiOff, XCircle } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Button } from '../../../components/ui/Button';
+import { EnvironmentBadge } from '../../../components/ui/EnvironmentBadge';
+import { UniversalMap } from '../../../components/maps/UniversalMap';
 import { formatDateBR, formatTimeBR, formatTransmissionLabel } from '../../../lib/date-format';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 
@@ -56,6 +58,31 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
   const scheduleStart = booking?.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : booking?.startTime || '';
   const scheduleEnd = booking?.scheduledEndAt ? formatTimeBR(booking.scheduledEndAt) : booking?.endTime || '';
   const vehicleName = booking?.vehicleName || booking?.snapshot.vehicleName || 'Veículo não informado';
+  const scheduledStart = booking?.scheduledStartAt || (booking?.scheduledDate && booking?.startTime ? `${booking.scheduledDate}T${booking.startTime}:00` : '');
+  const scheduledStartMs = scheduledStart ? new Date(scheduledStart).getTime() : Number.NaN;
+  const isAddressReleaseWindowOpen = Number.isFinite(scheduledStartMs)
+    && Date.now() >= scheduledStartMs - (60 * 60 * 1_000);
+  const isProviderAddress = [booking?.meetingPoint, booking?.snapshot?.meetingPoint].some((value) => (
+    typeof value === 'object' && value !== null && (value as { type?: string }).type === 'PROVIDER_ADDRESS'
+  ));
+  const isLessonStarted = booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);
+  const isProviderOnTheWay = Boolean(booking?.providerOnTheWayAt || (booking?.snapshot as any)?.provider_on_the_way_at);
+  const shouldHideMeetingPoint = Boolean(booking)
+    && !isLessonStarted
+    && !isProviderOnTheWay
+    && isProviderAddress
+    && !isAddressReleaseWindowOpen;
+  const meetingPointNotice = shouldHideMeetingPoint
+    ? isProviderAddress && Number.isFinite(scheduledStartMs)
+      ? `Endereço estará disponível a partir de ${formatTimeBR(new Date(scheduledStartMs - (60 * 60 * 1_000)).toISOString())}.`
+      : 'Endereço estará disponível quando o instrutor estiver a caminho.'
+    : undefined;
+  const meetingPointCoordinates = [booking?.meetingPoint, booking?.snapshot?.meetingPoint]
+    .map((value) => value && typeof value === 'object' ? value as { latitude?: unknown; longitude?: unknown } : null)
+    .find((value) => value && Number.isFinite(Number(value.latitude)) && Number.isFinite(Number(value.longitude)));
+  const mapCenter = meetingPointCoordinates
+    ? { lat: Number(meetingPointCoordinates.latitude), lng: Number(meetingPointCoordinates.longitude) }
+    : undefined;
 
   return (
     <section
@@ -64,16 +91,10 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
       aria-label="Retorno do pagamento Stripe"
     >
       <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col px-4 py-4 sm:px-8 sm:py-6">
-        <div className="flex items-center justify-between border-b border-[var(--mazzi-border)] pb-3">
-          <div>
-            <p className="mazzi-field-label">MAZZI</p>
-            <h1 className="mt-1 text-lg font-black text-[var(--mazzi-dark)]">
-              {isSuccessPresentation ? 'Pagamento confirmado' : isOffline ? 'Sem conexão' : isCancelled ? 'Pagamento cancelado' : 'Pagamento não confirmado'}
-            </h1>
+        <div className="flex flex-1 flex-col items-center justify-start py-4 text-center sm:justify-center sm:py-7">
+          <div className="flex w-full justify-end">
+            <EnvironmentBadge />
           </div>
-        </div>
-
-        <div className="flex flex-1 flex-col items-center justify-start py-5 text-center sm:justify-center sm:py-7">
           {isSuccessPresentation && !successTransitionComplete ? (
             <div
               className="fixed inset-0 z-[130] flex flex-col items-center justify-center bg-emerald-500 px-6 text-center text-white"
@@ -150,11 +171,29 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
                     <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden="true" />
                     <div>
                       <p className="text-[11px] text-[var(--mazzi-muted)]">Ponto de encontro</p>
-                      <p className="mt-1 text-[13px] font-extrabold leading-snug text-[var(--mazzi-dark)]">{booking.fullMeetingPoint || formatMeetingPoint(booking.meetingPoint)}</p>
+                      {meetingPointNotice ? (
+                        <p className="mt-1 text-[13px] font-bold leading-snug text-amber-800" role="status">{meetingPointNotice}</p>
+                      ) : (
+                        <p className="mt-1 text-[13px] font-extrabold leading-snug text-[var(--mazzi-dark)]">{booking.fullMeetingPoint || formatMeetingPoint(booking.meetingPoint)}</p>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>}
+
+              {booking && mapCenter && (
+                <div className="mt-4 w-full max-w-xl">
+                  <p className="sr-only">Mapa da região da aula, sem marcador do endereço exato.</p>
+                  <UniversalMap
+                    providers={[]}
+                    mapCenter={mapCenter}
+                    height="200px"
+                    zoom={15}
+                    showMeetingPointPopup={false}
+                    interactive={false}
+                  />
+                </div>
+              )}
 
               <Button type="button" variant="secondary" size="md" className="mt-4 w-full max-w-md font-extrabold" onClick={() => {
                 if (isInstantBooking && booking && onViewBooking) {

@@ -17,7 +17,10 @@ export function resolveComplianceDocumentStatus(
   eligibility: ProviderEligibilityResult,
   documents: ComplianceDocument[] = [],
 ): DocumentStatus {
-  const hasExpiredDocument = eligibility.expiredDocuments.length > 0 || documents.some((document) => document.status === 'EXPIRED');
+  // Historical expired submissions must not override a newer approved
+  // submission for the same requirement. The eligibility engine already
+  // resolves that precedence and exposes only effective expired documents.
+  const hasExpiredDocument = eligibility.expiredDocuments.length > 0;
   if (hasExpiredDocument) return 'EXPIRED';
   if (eligibility.isEligible) return 'APPROVED';
   if (eligibility.rejectedDocuments.length > 0) return 'REJECTED';
@@ -31,7 +34,9 @@ export function resolveProviderCompliancePresentation(
   eligibility: ProviderEligibilityResult,
   documents: ComplianceDocument[] = [],
 ): ProviderCompliancePresentation {
-  const hasExpiredDocument = eligibility.expiredDocuments.length > 0 || documents.some((document) => document.status === 'EXPIRED');
+  // Do not surface stale EXPIRED rows when a newer approved document already
+  // satisfies the requirement (for example, an instructor's renewed credential).
+  const hasExpiredDocument = eligibility.expiredDocuments.length > 0;
   if (provider.status === 'BLOCKED') {
     return { status: 'BLOCKED', title: 'Cadastro bloqueado', description: 'O cadastro está bloqueado. Entre em contato com o suporte da MAZZI.', verified: false };
   }

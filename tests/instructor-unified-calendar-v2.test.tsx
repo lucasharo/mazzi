@@ -471,7 +471,7 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
       );
 
       expect(screen.queryByRole('button', { name: 'Iniciar aula' })).toBeNull();
-      expect(screen.getByRole('status').textContent).toContain('Aguardando o check-in do aluno');
+      expect(screen.getByText('Aguardando o check-in do aluno para iniciar a aula.')).toBeTruthy();
 
       rerender(
         <ProviderBookingDetailsModal
@@ -488,9 +488,39 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
       await waitFor(() => expect(onStartLesson).toHaveBeenCalledTimes(1));
     });
 
+    it('exibe o aviso para liberar o endereço também em aulas agendadas', () => {
+      const booking = {
+        id: 'bk_scheduled_address_gate',
+        providerId: 'p_scheduled',
+        status: 'CONFIRMED',
+        studentName: 'Aluno Aula Agendada',
+        scheduledDate: '20/08/2026',
+        startTime: '09:00',
+        endTime: '09:50',
+        scheduledStartAt: '2026-08-20T09:00:00-03:00',
+        category: 'B',
+        instructorCheckedIn: false,
+        studentCheckedIn: false,
+        meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' },
+        snapshot: { meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' } },
+      };
+
+      render(
+        <ProviderBookingDetailsModal
+          {...defaultModalProps}
+          booking={booking}
+          onSetOnTheWay={vi.fn().mockResolvedValue(undefined)}
+          canCancelBooking={() => false}
+        />
+      );
+
+      expect(screen.getByText('Endereço estará disponível quando você clicar em “Estou a caminho”.')).toBeTruthy();
+      expect(screen.queryByText('Rua da Aula, 10')).toBeNull();
+      expect(screen.queryByTestId('booking-map-preview')).toBeNull();
+    });
+
     it('não exibe check-in separado para endereço do aluno e conclui ao chegar', async () => {
       const onCheckIn = vi.fn().mockResolvedValue(undefined);
-      const onMarkArrived = vi.fn().mockResolvedValue(undefined);
       const booking = {
         id: 'bk_instant_arrival_gate',
         providerId: 'p_instant',
@@ -516,7 +546,6 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
           {...defaultModalProps}
           booking={booking}
           onCheckIn={onCheckIn}
-          onMarkArrived={onMarkArrived}
           onSetOnTheWay={vi.fn().mockResolvedValue(undefined)}
           canCancelBooking={() => false}
         />
@@ -527,7 +556,6 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
 
       fireEvent.click(screen.getByRole('button', { name: 'Cheguei ao local' }));
       await waitFor(() => {
-        expect(onMarkArrived).toHaveBeenCalledWith(booking.id);
         expect(onCheckIn).toHaveBeenCalledTimes(1);
       });
     });

@@ -3,6 +3,7 @@ import { Booking } from '../../types';
 import { calculateLessonDurationMinutes, formatDateBR, formatTimeBR, formatTimeRange } from '../../lib/date-format';
 import { formatMeetingPoint } from '../../lib/meeting-point';
 import { formatCentsToBRL } from '../../domain/money';
+import { getStudentBookingMeetingPointText } from '../../lib/booking-meeting-point-display';
 import { PrimaryButton } from './Button';
 import {
   Calendar,
@@ -62,7 +63,9 @@ export const BookingCard: React.FC<BookingCardProps> = ({
 
   const instructor = booking.instructorName || booking.instructor?.name || 'Instrutor';
   const student = booking.studentName || booking.student?.name || 'Aluno';
-  const point = formatMeetingPoint(booking.meetingPoint) || 'Ponto de encontro a combinar';
+  const point = isStudent
+    ? getStudentBookingMeetingPointText(booking)
+    : formatMeetingPoint(booking.meetingPoint) || 'Ponto de encontro a combinar';
   const transLabel = booking.snapshot?.transmission === 'AUTOMATIC' ? 'Automático' : 'Manual';
   const category = booking.snapshot?.category || 'B';
   const duration = calculateLessonDurationMinutes(booking) || 50;

@@ -109,7 +109,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   const lessonTime = booking?.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : booking ? `${booking.startTime}–${booking.endTime}` : '';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Avaliar aula concluída" size="md" footer={footer}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Avaliar aula concluída" size="md" layer="nested" footer={footer}>
       {!booking ? null : (
         <div className="space-y-5 text-sm">
           <section className="mazzi-compact-card overflow-hidden rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-5 text-center shadow-sm" aria-label="Resumo da aula">

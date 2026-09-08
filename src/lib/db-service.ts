@@ -53,6 +53,7 @@ import { normalizeComplianceStatus } from '../domain/compliance-status';
 import { formatDateBR, formatTimeBR, getBusinessDateOnly } from './date-format';
 import { formatFullMeetingPoint, formatMeetingPoint } from './meeting-point';
 import type { PublicPlatformConfiguration } from '../domain/platform-config';
+import type { CheckInLocation } from './checkin-location';
 import { getCheckoutGatewayProvider } from './payment-gateway-config';
 
 // Cast supabase to any to safely query dynamic tables
@@ -351,8 +352,11 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     snapshot: normalizedSnapshot,
     meetingPoint: meetingPointLabel,
     meetingPointLabel,
-    providerOnTheWayAt: snapshot.provider_on_the_way_at || undefined,
-    providerArrivedAt: snapshot.provider_arrived_at || undefined,
+    checkinStudentLatitude: row.checkin_student_latitude == null ? undefined : Number(row.checkin_student_latitude),
+    checkinStudentLongitude: row.checkin_student_longitude == null ? undefined : Number(row.checkin_student_longitude),
+    checkinInstructorLatitude: row.checkin_instructor_latitude == null ? undefined : Number(row.checkin_instructor_latitude),
+    checkinInstructorLongitude: row.checkin_instructor_longitude == null ? undefined : Number(row.checkin_instructor_longitude),
+    providerOnTheWayAt: row.provider_on_the_way_at || snapshot.provider_on_the_way_at || snapshot.providerOnTheWayAt || undefined,
     fullMeetingPoint,
     createdAt: row.created_at,
   };
@@ -569,8 +573,6 @@ export const dbService = {
    */
   async getProviderWorkspace(providerId: string): Promise<{
     provider: Provider | null;
-    vehicles: Vehicle[];
-    offerings: ServiceOffering[];
     bookings: Booking[];
     complianceDocuments: ComplianceDocument[];
     availabilityRules: any[];
@@ -578,16 +580,14 @@ export const dbService = {
   }> {
     const { error: expirationError } = await sp.rpc('refresh_expired_compliance_documents');
     if (expirationError) throw expirationError;
-    const [providerResult, vehiclesResult, offeringsResult, documentsResult, rulesResult, exceptionsResult] = await Promise.all([
+    const [providerResult, documentsResult, rulesResult, exceptionsResult] = await Promise.all([
       sp.from('providers').select('*').eq('id', providerId).maybeSingle(),
-      sp.from('vehicles').select('*').eq('provider_id', providerId).is('deleted_at', null),
-      sp.from('service_offerings').select('*').eq('provider_id', providerId),
       sp.from('compliance_documents').select('*').eq('provider_id', providerId),
       sp.from('availabilities').select('*').eq('provider_id', providerId),
       sp.from('availability_exceptions').select('*').eq('provider_id', providerId),
     ]);
 
-    for (const result of [providerResult, vehiclesResult, offeringsResult, documentsResult, rulesResult, exceptionsResult]) {
+    for (const result of [providerResult, documentsResult, rulesResult, exceptionsResult]) {
       if (result.error) throw result.error;
     }
 
@@ -595,15 +595,32 @@ export const dbService = {
 
     return {
       provider: providerResult.data ? mapProviderFromDb(providerResult.data) : null,
-      vehicles: (vehiclesResult.data || []).map(mapVehicleFromDb),
-      offerings: (offeringsResult.data || [])
-        .filter((row: any) => row.source !== 'AULA_AGORA')
-        .map(mapOfferingFromDb),
       bookings,
       complianceDocuments: (documentsResult.data || []).map(mapComplianceFromDb),
       availabilityRules: rulesResult.data || [],
       availabilityExceptions: exceptionsResult.data || [],
     };
+  },
+
+  async getProviderVehicles(providerId: string): Promise<Vehicle[]> {
+    const { data, error } = await sp
+      .from('vehicles')
+      .select('*')
+      .eq('provider_id', providerId)
+      .is('deleted_at', null);
+    if (error) throw error;
+    return (data || []).map(mapVehicleFromDb);
+  },
+
+  async getProviderOfferings(providerId: string): Promise<ServiceOffering[]> {
+    const { data, error } = await sp
+      .from('service_offerings')
+      .select('*')
+      .eq('provider_id', providerId);
+    if (error) throw error;
+    return (data || [])
+      .filter((row: any) => row.source !== 'AULA_AGORA')
+      .map(mapOfferingFromDb);
   },
 
   async saveAvailabilityRule(rule: Omit<any, 'id'> & { id?: string }): Promise<any> {
@@ -2225,7 +2242,6 @@ export const dbService = {
       retainedAmountInCents: Number(row.retained_amount_in_cents || 0),
       calculatedAt: row.calculated_at || undefined,
       providerOnTheWayAt: row.provider_on_the_way_at || undefined,
-      providerArrivedAt: row.provider_arrived_at || undefined,
       settingsSnapshot: row.settings_snapshot || undefined,
     };
   },
@@ -2499,25 +2515,21 @@ export const dbService = {
     return data;
   },
 
-  async studentCheckInBooking(bookingId: string): Promise<any> {
+  async studentCheckInBooking(bookingId: string, location: CheckInLocation): Promise<any> {
     const { data, error } = await sp.rpc('student_check_in_booking', {
       p_booking_id: bookingId,
+      p_latitude: location.latitude,
+      p_longitude: location.longitude,
     });
     if (error) throw error;
     return data;
   },
 
-  async providerCheckInBooking(bookingId: string): Promise<any> {
+  async providerCheckInBooking(bookingId: string, location: CheckInLocation): Promise<any> {
     const { data, error } = await sp.rpc('provider_check_in_booking', {
       p_booking_id: bookingId,
-    });
-    if (error) throw error;
-    return data;
-  },
-
-  async providerMarkArrived(bookingId: string): Promise<any> {
-    const { data, error } = await sp.rpc('provider_mark_arrived', {
-      p_booking_id: bookingId,
+      p_latitude: location.latitude,
+      p_longitude: location.longitude,
     });
     if (error) throw error;
     return data;

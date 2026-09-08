@@ -2,6 +2,7 @@ import React from 'react';
 import { ExternalLink, MapPin, X } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
+import { IconButton } from '../ui/IconButton';
 import {
   ExternalNavigationTarget,
   getAvailableNavigationApps,
@@ -134,16 +135,14 @@ export const ExternalNavigationModal: React.FC<ExternalNavigationModalProps> = (
           ))}
         </div>
 
-        <div className="pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
+        <div className="flex justify-center pt-2">
+          <IconButton
+            label="Cancelar navegação"
             onClick={onClose}
-            leftIcon={<X className="h-4 w-4" aria-hidden="true" />}
+            className="rounded-full bg-[var(--mazzi-dark)] text-white hover:bg-[#34353a]"
           >
-            Cancelar
-          </Button>
+            <X className="h-5 w-5" aria-hidden="true" />
+          </IconButton>
         </div>
       </div>
     </BottomSheet>

@@ -38,6 +38,7 @@ const PUSH_EVENTS = new Set<NotificationType>([
   'NEW_MESSAGE',
   'STUDENT_CHECKIN',
   'PROVIDER_CHECKIN',
+  'PROVIDER_ON_THE_WAY',
   'LESSON_STARTED',
   'LESSON_COMPLETED',
   'CONTESTATION_UPDATED',
@@ -45,8 +46,8 @@ const PUSH_EVENTS = new Set<NotificationType>([
   'PAYOUT_PAID',
   'PAYOUT_BLOCKED',
   'PAYOUT_FAILED',
+  'INSTANT_LESSON_OFFER',
   'REVIEW_AVAILABLE',
-  'REVIEW_RECEIVED',
 ]);
 
 function nonEmptyString(value: unknown): value is string {

@@ -15,7 +15,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { Booking } from '../../types';
-import { Button } from '../ui/Button';
+import { Button, ButtonBase } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { StatusBadge } from '../ui/StatusBadge';
 import { CountdownTimer } from '../ui/CountdownTimer';
@@ -171,13 +171,11 @@ interface BookingDetailsOverviewProps {
   timeLabel: string;
   durationLabel?: string;
   meetingPoint?: string;
+  meetingPointNotice?: string;
   isProviderAddress?: boolean;
   showCopyAddress?: boolean;
   addressCopied?: boolean;
   onCopyAddress?: () => void | Promise<void>;
-  hasExactMeetingPoint?: boolean;
-  showNavigation?: boolean;
-  onOpenNavigation?: () => void;
 }
 
 export const BookingDetailsOverview: React.FC<BookingDetailsOverviewProps> = ({
@@ -191,13 +189,11 @@ export const BookingDetailsOverview: React.FC<BookingDetailsOverviewProps> = ({
   timeLabel,
   durationLabel,
   meetingPoint,
+  meetingPointNotice,
   isProviderAddress = false,
   showCopyAddress = false,
   addressCopied = false,
   onCopyAddress,
-  hasExactMeetingPoint = false,
-  showNavigation = true,
-  onOpenNavigation,
 }) => (
   <div className="mazzi-compact-card space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 shadow-xs">
     <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">Detalhes da aula</h4>
@@ -220,13 +216,17 @@ export const BookingDetailsOverview: React.FC<BookingDetailsOverviewProps> = ({
         <span className="font-bold text-[var(--mazzi-dark)]">Cat. {category} · {transmission}</span>
       </div>
     </div>
-    {meetingPoint && (
+    {(meetingPoint || meetingPointNotice) && (
       <div className="space-y-3 border-t border-slate-100 pt-3">
         <div className="flex items-start gap-2.5">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--mazzi-muted)]">Endereço da aula</span>
-            <p className="mt-1 break-words text-xs font-extrabold text-[var(--mazzi-dark)]">{meetingPoint}</p>
+            {meetingPointNotice ? (
+              <p className="mt-1 break-words text-xs font-bold leading-5 text-amber-800" role="status">{meetingPointNotice}</p>
+            ) : (
+              <p className="mt-1 break-words text-xs font-extrabold text-[var(--mazzi-dark)]">{meetingPoint}</p>
+            )}
           </div>
           {showCopyAddress && onCopyAddress && (
             <IconButton
@@ -238,13 +238,6 @@ export const BookingDetailsOverview: React.FC<BookingDetailsOverviewProps> = ({
             </IconButton>
           )}
         </div>
-        {showNavigation && !hasExactMeetingPoint && !meetingPoint ? (
-          <p className="text-xs font-semibold text-amber-800" role="status">Não foi possível obter a localização exata do ponto de encontro.</p>
-        ) : showNavigation && hasExactMeetingPoint && onOpenNavigation ? (
-          <Button type="button" variant="secondary" className="w-full rounded-2xl font-bold text-xs" onClick={onOpenNavigation} leftIcon={<Compass className="h-4 w-4" aria-hidden="true" />}>
-            Abrir navegação
-          </Button>
-        ) : null}
       </div>
     )}
   </div>
@@ -264,18 +257,36 @@ interface BookingMapPreviewProps {
   latitude: number;
   longitude: number;
   title: string;
+  showMarker?: boolean;
+  showNavigation?: boolean;
+  onOpenNavigation?: () => void;
 }
 
-export const BookingMapPreview: React.FC<BookingMapPreviewProps> = ({ latitude, longitude, title }) => (
-  <div className="overflow-hidden rounded-2xl border border-[var(--mazzi-border)] shadow-xs">
+export const BookingMapPreview: React.FC<BookingMapPreviewProps> = ({ latitude, longitude, title, showMarker = true, showNavigation = false, onOpenNavigation }) => (
+  <div className="relative overflow-hidden rounded-2xl border border-[var(--mazzi-border)] shadow-xs">
+    {!showMarker && <p className="sr-only">Mapa da região da aula, sem marcador do endereço exato.</p>}
     <UniversalMap
       providers={[]}
-      meetingPoint={{ lat: latitude, lng: longitude, title }}
+      mapCenter={{ lat: latitude, lng: longitude }}
+      meetingPoint={showMarker ? { lat: latitude, lng: longitude, title } : undefined}
       height="180px"
-      zoom={16}
+      zoom={showMarker ? 16 : 15}
       showMeetingPointPopup={false}
       interactive={false}
     />
+    {showNavigation && onOpenNavigation && (
+      <ButtonBase
+        type="button"
+        onClick={onOpenNavigation}
+        aria-label="Abrir navegação"
+        className="absolute inset-x-0 bottom-0 z-[1000] flex items-end justify-center pb-3 focus-visible:outline-2 focus-visible:outline-amber-500"
+      >
+        <span className="inline-flex min-h-11 items-center gap-1.5 rounded-2xl bg-[var(--mazzi-dark)] px-3.5 py-2 text-xs font-bold text-white shadow-md">
+          <Compass className="h-3.5 w-3.5" aria-hidden="true" />
+          Abrir navegação
+        </span>
+      </ButtonBase>
+    )}
   </div>
 );
 

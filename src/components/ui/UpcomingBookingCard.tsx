@@ -5,6 +5,7 @@ import { calculateLessonDurationMinutes, formatDateBR } from '../../lib/date-for
 import { formatMeetingPoint, formatPendingPaymentMeetingPoint } from '../../lib/meeting-point';
 import { needsMeetingPointAddress } from '../../domain/maps/meeting-point-address';
 import { isBookingInProgress } from '../../domain/booking';
+import { getStudentBookingMeetingPointText } from '../../lib/booking-meeting-point-display';
 import { Button, ButtonBase } from './Button';
 
 interface UpcomingBookingCardProps {
@@ -21,12 +22,14 @@ export const UpcomingBookingCard: React.FC<UpcomingBookingCardProps> = ({ bookin
   const contextLabel = perspective === 'provider'
     ? booking.snapshot?.vehicleName || booking.vehicleName
     : undefined;
-  const meetingPointText = booking.status === 'PENDING_PAYMENT'
-    ? formatPendingPaymentMeetingPoint(booking.meetingPoint || booking.snapshot?.meetingPoint || booking.fullMeetingPoint)
-    : formatMeetingPoint(booking.meetingPoint) ||
-      formatMeetingPoint(booking.snapshot?.meetingPoint) ||
-      (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint) ? booking.fullMeetingPoint : '') ||
-      'Ponto de encontro indicado no mapa';
+  const meetingPointText = perspective === 'student'
+    ? getStudentBookingMeetingPointText(booking, 'Ponto de encontro indicado no mapa')
+    : booking.status === 'PENDING_PAYMENT'
+      ? formatPendingPaymentMeetingPoint(booking.meetingPoint || booking.snapshot?.meetingPoint || booking.fullMeetingPoint)
+      : formatMeetingPoint(booking.meetingPoint) ||
+        formatMeetingPoint(booking.snapshot?.meetingPoint) ||
+        (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint) ? booking.fullMeetingPoint : '') ||
+        'Ponto de encontro indicado no mapa';
   const duration = calculateLessonDurationMinutes(booking) || 50;
   const details = [participantName, contextLabel, `${duration} min`].filter(Boolean).join(' · ');
   const openDetails = () => onSelect(booking);

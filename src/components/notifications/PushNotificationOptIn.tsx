@@ -3,6 +3,7 @@ import { Bell, Check, ShieldAlert } from 'lucide-react';
 import type { NotificationAppContext } from '../../types';
 import {
   getPushCapability,
+  hasStoredPushDevice,
   registerPushDevice,
   requestPushPermission,
   type PushPermissionState,
@@ -10,7 +11,7 @@ import {
 import { isFirebaseMessagingConfigured } from '../../lib/firebase-messaging';
 import { Button } from '../ui/Button';
 
-type PushOptInStatus = 'idle' | 'loading' | 'success' | 'disabled' | 'unsupported' | 'error' | 'not-configured';
+type PushOptInStatus = 'idle' | 'loading' | 'active' | 'disabled' | 'unsupported' | 'error' | 'not-configured';
 
 interface PushNotificationOptInProps {
   appContext: Extract<NotificationAppContext, 'STUDENT' | 'PRO'>;
@@ -24,18 +25,26 @@ function statusFromPermission(permission: PushPermissionState): PushOptInStatus 
   return 'idle';
 }
 
-function getInitialStatus(): PushOptInStatus {
+function getInitialStatus(appContext: PushNotificationOptInProps['appContext'], userId?: string): PushOptInStatus {
   if (!isFirebaseMessagingConfigured()) return 'not-configured';
-  return statusFromPermission(getPushCapability().permission);
+  const capability = getPushCapability();
+  if (capability.permission === 'granted' && hasStoredPushDevice(appContext, userId)) return 'active';
+  return statusFromPermission(capability.permission);
 }
 
 export const PushNotificationOptIn: React.FC<PushNotificationOptInProps> = ({ appContext, userId, onRegistered }) => {
-  const [status, setStatus] = useState<PushOptInStatus>(getInitialStatus);
+  const [status, setStatus] = useState<PushOptInStatus>(() => getInitialStatus(appContext, userId));
 
   useEffect(() => {
     const capability = getPushCapability();
-    setStatus(isFirebaseMessagingConfigured() ? statusFromPermission(capability.permission) : 'not-configured');
-  }, []);
+    if (!isFirebaseMessagingConfigured()) {
+      setStatus('not-configured');
+      return;
+    }
+    setStatus(capability.permission === 'granted' && hasStoredPushDevice(appContext, userId)
+      ? 'active'
+      : statusFromPermission(capability.permission));
+  }, [appContext, userId]);
 
   const activate = async () => {
     if (!isFirebaseMessagingConfigured()) {
@@ -57,7 +66,7 @@ export const PushNotificationOptIn: React.FC<PushNotificationOptInProps> = ({ ap
         return;
       }
 
-      setStatus('success');
+      setStatus('active');
       onRegistered?.();
     } catch {
       setStatus('error');
@@ -76,7 +85,7 @@ export const PushNotificationOptIn: React.FC<PushNotificationOptInProps> = ({ ap
     return <p className="rounded-2xl bg-slate-50 p-3 text-xs font-semibold leading-relaxed text-slate-600">As notificações push ainda não estão disponíveis neste ambiente.</p>;
   }
 
-  if (status === 'success') {
+  if (status === 'active') {
     return <p role="status" className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800"><Check className="h-4 w-4" aria-hidden="true" />Notificações ativadas neste dispositivo.</p>;
   }
 

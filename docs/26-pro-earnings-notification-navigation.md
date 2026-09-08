@@ -25,10 +25,11 @@ Notificações acionáveis usam um contrato fechado versionado, validado em `src
 | `NEW_MESSAGE` | Aluno/PRO | `booking` | `chat` | Aulas |
 | Aula concluída elegível | Aluno | `booking` | `review` | Aulas |
 | Compliance | PRO | `compliance` | `compliance` | Gestão |
-| Payout pago/bloqueado/falho | PRO | `payout` | `details` | Ganhos |
-| `REVIEW_RECEIVED` | PRO | `earnings` | `reviews` | Ganhos |
+| `PAYOUT_PAID`, `PAYOUT_BLOCKED`, `PAYOUT_FAILED` | PRO | `payout` | `details` | Ganhos |
 
 O contrato aceita somente contexto, entidade, ação e UUID allowlisted. Não aceita URL arbitrária. O hash existente evolui com query controlada (`v`, `c`, `e`, `a`, `id`) e continua compatível com `#/<app>/<tab>`.
+
+O PRO recebe eventos operacionais, financeiros, compliance, contestação, mensagens, confirmação/cancelamento, check-in do aluno e ofertas de Aula Agora. Eventos de aula iniciada/concluída e avaliações permanecem no fluxo do Aluno e no sumário de ganhos, sem notificação para o PRO.
 
 O sino valida e marca a notificação como lida antes de fechar o modal e encaminhar. No cold start/refresh, o app lê o mesmo hash uma vez, valida a sessão e consulta a entidade usando as regras normais de RLS/RBAC. Um ID não concede acesso.
 

@@ -27,7 +27,7 @@ describe('Aula Agora platform configuration', () => {
     expect(admin).toContain('Validade da oferta (segundos)');
     expect(dbService).toContain("rpc('get_public_platform_configuration')");
     expect(dbService).toContain("rpc('update_admin_instant_lesson_config'");
-    expect(providerApp).toContain('dbService.getPublicPlatformConfiguration()');
+    expect(providerApp).toContain('serverState.getPublicPlatformConfiguration()');
     expect(providerApp).toContain('platformConfig={instantPlatformConfig}');
     expect(providerApp).not.toContain('<InstantConductPanel />');
   });

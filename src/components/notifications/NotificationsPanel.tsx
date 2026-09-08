@@ -4,6 +4,7 @@ import { Notification } from '../../types';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { dbService } from '../../lib/db-service';
+import { invalidateNotificationQueries, serverState } from '../../lib/server-state';
 import { formatDateTimeBR } from '../../lib/date-format';
 import { NOTIFICATIONS_CHANGED } from '../ui/NotificationIndicator';
 import { targetFromNotification, type NotificationNavigationTarget } from '../../lib/notification-navigation';
@@ -11,11 +12,12 @@ import { targetFromNotification, type NotificationNavigationTarget } from '../..
 interface NotificationsPanelProps {
   appContext: NonNullable<Notification['appContext']>;
   userId?: string;
+  providerId?: string;
   onNavigate?: (target: NotificationNavigationTarget) => void;
   showHeading?: boolean;
 }
 
-export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appContext, onNavigate, showHeading = true }) => {
+export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appContext, userId, providerId, onNavigate, showHeading = true }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,16 +32,22 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
   );
 
   const loadNotifications = useCallback(async ({ force = false }: { force?: boolean } = {}) => {
-    if (!force && loadedAppContextRef.current === appContext) return;
+    const cacheScope = `${appContext}:${userId || 'anonymous'}:${providerId || 'none'}`;
+    if (!force && loadedAppContextRef.current === cacheScope) return;
     if (notificationsLoadInFlightRef.current) return notificationsLoadInFlightRef.current;
 
     const request = (async () => {
       setLoading(true);
       setError(null);
       try {
-        const rows = await dbService.getMyNotifications(appContext);
+        if (force && userId) {
+          await invalidateNotificationQueries({ appContext, userId, providerId });
+        }
+        const rows = userId
+          ? await serverState.getNotifications({ appContext, userId, providerId })
+          : await dbService.getMyNotifications(appContext);
         setNotifications(rows);
-        loadedAppContextRef.current = appContext;
+        loadedAppContextRef.current = cacheScope;
       } catch (err: any) {
         if (process.env.NODE_ENV !== 'production') console.error('Failed to load notifications:', err);
         setError('Não foi possível carregar suas notificações.');
@@ -55,10 +63,13 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
     } finally {
       if (notificationsLoadInFlightRef.current === request) notificationsLoadInFlightRef.current = null;
     }
-  }, [appContext]);
+  }, [appContext, providerId, userId]);
 
   useEffect(() => {
     void loadNotifications();
+    const handleNotificationsChanged = () => { void loadNotifications({ force: true }); };
+    window.addEventListener(NOTIFICATIONS_CHANGED, handleNotificationsChanged);
+    return () => window.removeEventListener(NOTIFICATIONS_CHANGED, handleNotificationsChanged);
   }, [appContext, loadNotifications]);
 
   const markAsRead = async (notificationId: string): Promise<boolean> => {
@@ -74,6 +85,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
         )
       );
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+      if (userId) void invalidateNotificationQueries({ appContext, userId, providerId });
       return true;
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') console.error('Failed to mark notification as read:', err);
@@ -93,6 +105,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
       const readAt = new Date().toISOString();
       setNotifications((prev) => prev.map((notification) => ({ ...notification, isRead: true, readAt })));
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+      if (userId) void invalidateNotificationQueries({ appContext, userId, providerId });
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') console.error('Failed to mark all notifications as read:', err);
       setError('Não foi possível marcar as notificações como lidas.');

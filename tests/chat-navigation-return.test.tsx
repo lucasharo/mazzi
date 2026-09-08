@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { BookingChatPanel } from '../src/components/chat/BookingChatPanel';
 import { Booking } from '../src/types';
 
@@ -66,18 +66,14 @@ describe('BookingChatPanel Return Navigation & V3 Design', () => {
     vi.clearAllMocks();
   });
 
-  it('renders modern hero header and triggers onBack callback when clicked', async () => {
-    const handleBack = vi.fn();
-    render(<React.StrictMode><BookingChatPanel booking={mockBooking} onBack={handleBack} /></React.StrictMode>);
+  it('renders the modern hero header without an internal back button', async () => {
+    render(<React.StrictMode><BookingChatPanel booking={mockBooking} /></React.StrictMode>);
 
     expect(screen.getByText('Conversa da aula')).toBeTruthy();
     expect(screen.getByText('LUCAS SANTOS MIRANDA')).toBeTruthy();
-    expect(screen.getByText('Voltar aos detalhes')).toBeTruthy();
+    expect(screen.queryByText('Voltar aos detalhes')).toBeNull();
+    expect(screen.queryByRole('button', { name: /voltar para os detalhes da aula/i })).toBeNull();
 
-    const backButton = screen.getByRole('button', { name: /voltar para os detalhes da aula/i });
-    fireEvent.click(backButton);
-
-    expect(handleBack).toHaveBeenCalledTimes(1);
     await waitFor(() => {
       expect(getConversationForBooking).toHaveBeenCalledTimes(1);
       expect(getMessagesForConversation).toHaveBeenCalledTimes(1);

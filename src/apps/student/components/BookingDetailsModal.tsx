@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CreditCard, MessageSquare, AlertTriangle, XCircle, AlertCircle, ArrowLeft, Star, } from 'lucide-react';
+import { CreditCard, MessageSquare, AlertTriangle, XCircle, AlertCircle, ArrowLeft, Navigation, Star, } from 'lucide-react';
 import { Booking, InstantCancellationQuote, InstantLessonRequest, InstantLessonTracking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { ReasonChips } from '../../../components/ui/ReasonChips';
@@ -10,6 +10,8 @@ import { calculateLessonDurationMinutes, formatDateBR, formatTimeBR } from '../.
 import { getEffectiveBookingHoldExpiresAt, UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { formatMeetingPoint, formatPendingPaymentMeetingPoint } from '../../../lib/meeting-point';
 import { dbService } from '../../../lib/db-service';
+import { requestCheckInLocation } from '../../../lib/checkin-location';
+import type { CheckInLocation } from '../../../lib/checkin-location';
 import { calculateCancellationPolicy } from '../../../domain/cancellation';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
@@ -28,7 +30,7 @@ export interface BookingDetailsModalProps {
   onCancelBooking?: (params: { bookingId: string; reason?: string; reasonCode?: string }) => Promise<any>;
   onBookingUpdated?: (updatedBooking: Booking) => void;
   onRefreshBooking?: (bookingId: string) => Promise<Booking | null>;
-  onStudentCheckIn?: (bookingId: string) => Promise<Booking>;
+  onStudentCheckIn?: (bookingId: string, location: CheckInLocation) => Promise<Booking>;
   onReview?: (booking: Booking) => void;
   currentUserId?: string;
   checkInWindowBeforeMinutes?: number | null;
@@ -44,10 +46,12 @@ const CANCEL_REASON_CHIPS = [
   'Outro motivo',
 ];
 
-function buildInstantTrackingRequest(booking: Booking): InstantLessonRequest | null {
-  if (booking.snapshot?.source !== 'AULA_AGORA') return null;
+function buildTrackingRequest(booking: Booking): InstantLessonRequest | null {
+  const snapshot = booking.snapshot as Booking['snapshot'] & {
+    providerOnTheWayAt?: string;
+  };
 
-  const rawMeetingPoint = booking.snapshot.meetingPoint || (booking.snapshot as any).meeting_point;
+  const rawMeetingPoint = snapshot.meetingPoint || (snapshot as any).meeting_point;
   const meetingPointObject = rawMeetingPoint && typeof rawMeetingPoint === 'object'
     ? rawMeetingPoint as { latitude?: unknown; longitude?: unknown }
     : undefined;
@@ -64,8 +68,8 @@ function buildInstantTrackingRequest(booking: Booking): InstantLessonRequest | n
       longitude,
     },
     category: booking.category,
-    transmission: booking.snapshot.transmission || 'ALL',
-    maxPriceInCents: booking.snapshot.priceInCents ?? booking.priceInCents ?? null,
+    transmission: snapshot.transmission || 'ALL',
+    maxPriceInCents: snapshot.priceInCents ?? booking.priceInCents ?? null,
     status: 'MATCHED',
     expiresAt: booking.scheduledEndAt || booking.scheduledStartAt || booking.createdAt,
     matchedProviderId: booking.providerId,
@@ -107,6 +111,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [instantTracking, setInstantTracking] = useState<InstantLessonTracking | null>(null);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const instantCancellationKeyRef = useRef<string | null>(null);
+  const checkInRequestInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen || !booking) return undefined;
@@ -158,14 +163,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     onRefreshBooking,
   ]);
 
-  const instantTrackingBookingId = booking?.snapshot?.source === 'AULA_AGORA'
-    && booking.status === 'CONFIRMED'
-    && (booking.providerOnTheWayAt || booking.snapshot.provider_on_the_way_at)
+  const isInstantBooking = booking?.snapshot?.source === 'AULA_AGORA';
+  const providerOnTheWayAt = booking?.providerOnTheWayAt
+    || booking?.snapshot?.provider_on_the_way_at
+    || (booking?.snapshot as any)?.providerOnTheWayAt;
+  const isLessonStarted = booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);
+  const trackingBookingId = booking && ['CONFIRMED', 'IN_PROGRESS'].includes(booking.status)
+    && !isLessonStarted
+    && providerOnTheWayAt
     ? booking.id
     : null;
 
   useEffect(() => {
-    if (!isOpen || !instantTrackingBookingId) {
+    if (!isOpen || !trackingBookingId) {
       setInstantTracking(null);
       return undefined;
     }
@@ -175,7 +185,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const refreshTracking = () => {
       if (refreshInFlight || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
       refreshInFlight = true;
-      void dbService.getInstantTracking(instantTrackingBookingId)
+      void dbService.getInstantTracking(trackingBookingId)
         .then((tracking) => {
           if (!disposed) setInstantTracking(tracking);
         })
@@ -202,7 +212,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [isOpen, instantTrackingBookingId]);
+  }, [isOpen, trackingBookingId]);
 
   useEffect(() => {
     setIsTrackingOpen(false);
@@ -237,17 +247,20 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   if (!booking) return null;
 
   const handleStudentCheckInAction = async () => {
-    if (!onStudentCheckIn || !booking) return;
+    if (!onStudentCheckIn || !booking || checkInRequestInFlightRef.current) return;
+    checkInRequestInFlightRef.current = true;
     setIsCheckingIn(true);
     setCheckInError(null);
     try {
-      const updatedBooking = await onStudentCheckIn(booking.id);
+      const location = await requestCheckInLocation();
+      const updatedBooking = await onStudentCheckIn(booking.id, location);
       if (updatedBooking && onBookingUpdated) {
         onBookingUpdated(updatedBooking);
       }
     } catch (err: any) {
       setCheckInError(mapFriendlyErrorMessage(err, 'Não foi possível realizar o check-in. Tente novamente.'));
     } finally {
+      checkInRequestInFlightRef.current = false;
       setIsCheckingIn(false);
     }
   };
@@ -274,10 +287,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // A confirmed lesson that has not actually started may still be cancelled
   // by the student, even if its scheduled time passed without check-in/start.
   const canStudentCancel = booking.status === 'CONFIRMED' && !booking.lessonStartedAt && !isExpired;
-  const isInstantBooking = booking.snapshot?.source === 'AULA_AGORA';
-  const isProviderOnTheWay = Boolean(booking.providerOnTheWayAt || booking.snapshot.provider_on_the_way_at);
-  const instantTrackingRequest = instantTrackingBookingId && isProviderOnTheWay
-    ? buildInstantTrackingRequest(booking)
+  const isProviderOnTheWay = Boolean(providerOnTheWayAt);
+  const trackingRequest = trackingBookingId && !isLessonStarted && isProviderOnTheWay
+    ? buildTrackingRequest(booking)
     : null;
   const isCompleted = booking.status === 'COMPLETED';
   const isDisputed = booking.status === 'DISPUTED';
@@ -294,6 +306,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       now: checkInNow,
     });
 
+  const scheduledStart = booking.scheduledStartAt || (booking.scheduledDate && booking.startTime ? `${booking.scheduledDate}T${booking.startTime}:00` : '');
+  const scheduledStartMs = scheduledStart ? new Date(scheduledStart).getTime() : Number.NaN;
+  const isAddressReleaseWindowOpen = Number.isFinite(scheduledStartMs)
+    && checkInNow.getTime() >= scheduledStartMs - (60 * 60 * 1_000);
   const rawMeetingPoint = booking.meetingPoint || snapshot.meetingPoint;
   const isProviderAddress = [booking.meetingPoint, snapshot?.meetingPoint].some((value) => (
     typeof value === 'object' && value !== null && (value as { type?: string }).type === 'PROVIDER_ADDRESS'
@@ -308,8 +324,20 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const mapPoint = latitude != null && longitude != null
     ? { lat: latitude, lng: longitude, title: meetingPoint || 'Ponto de encontro' }
     : undefined;
+  const shouldHideProviderLocation = !isLessonStarted
+    && ['CONFIRMED', 'IN_PROGRESS'].includes(booking.status)
+    && !isProviderOnTheWay
+    && isProviderAddress
+    && !isAddressReleaseWindowOpen;
+  const visibleMeetingPoint = shouldHideProviderLocation ? '' : meetingPoint;
+  const visibleMapPoint = shouldHideProviderLocation ? undefined : mapPoint;
+  const meetingPointNotice = shouldHideProviderLocation
+    ? isProviderAddress && Number.isFinite(scheduledStartMs)
+      ? `Endereço estará disponível a partir de ${formatTimeBR(new Date(scheduledStartMs - (60 * 60 * 1_000)).toISOString())}.`
+      : 'Endereço estará disponível quando o instrutor estiver a caminho.'
+    : undefined;
   const handleCopyMeetingPoint = async () => {
-    if (!meetingPoint || !navigator.clipboard?.writeText) return;
+    if (!visibleMeetingPoint || !navigator.clipboard?.writeText) return;
     try {
       await navigator.clipboard.writeText(meetingPoint);
       setIsAddressCopied(true);
@@ -318,7 +346,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       setIsAddressCopied(false);
     }
   };
-  const scheduledStart = booking.scheduledStartAt || (booking.scheduledDate && booking.startTime ? `${booking.scheduledDate}T${booking.startTime}:00` : '');
   const scheduledEnd = booking.scheduledEndAt || (booking.scheduledDate && booking.endTime ? `${booking.scheduledDate}T${booking.endTime}:00` : '');
   const lessonStart = booking.lessonStartedAt || '';
   const lessonEnd = booking.lessonFinishedAt || '';
@@ -618,16 +645,16 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       ) : (
         /* STANDARD DETAILS VIEW */
         <div className="space-y-4 text-left">
-          {trackingPreview || (instantTrackingRequest ? (
+          {!isLessonStarted && !shouldHideProviderLocation && (trackingPreview || (trackingRequest ? (
             <InstantLessonTrackingCard
-              request={instantTrackingRequest}
+              request={trackingRequest}
               tracking={instantTracking}
               providerName={instructor || provider || 'Seu profissional'}
               priceInCents={snapshot.priceInCents || booking.priceInCents}
               paymentConfirmed={!isPendingPayment}
               onOpenTracking={() => setIsTrackingOpen(true)}
             />
-          ) : null)}
+          ) : null))}
           <BookingDetailsHeader
             status={booking.status}
             audience="student"
@@ -660,17 +687,24 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
               : `Horário: ${scheduledStart ? formatTimeBR(scheduledStart) : booking.startTime}${scheduledEnd ? ` às ${formatTimeBR(scheduledEnd)}` : ''}`}
             durationLabel={durationLabel}
-            meetingPoint={meetingPoint}
-            isProviderAddress={isProviderAddress}
-            showCopyAddress={isProviderAddress && !isPendingPayment}
+            meetingPoint={visibleMeetingPoint}
+            meetingPointNotice={meetingPointNotice}
+            isProviderAddress={isProviderAddress && !shouldHideProviderLocation}
+            showCopyAddress={isProviderAddress && !isPendingPayment && !shouldHideProviderLocation}
             addressCopied={isAddressCopied}
             onCopyAddress={handleCopyMeetingPoint}
-            hasExactMeetingPoint={!isPendingPayment && Boolean(mapPoint)}
-            showNavigation={isProviderAddress && !isPendingPayment}
-            onOpenNavigation={() => setIsNavigationOpen(true)}
           />
 
-          {!isPendingPayment && mapPoint && <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} />}
+          {!isLessonStarted && !isPendingPayment && shouldHideProviderLocation && mapPoint && (
+            <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
+          )}
+          {!isLessonStarted && !isPendingPayment && visibleMapPoint && <BookingMapPreview
+            latitude={visibleMapPoint.lat}
+            longitude={visibleMapPoint.lng}
+            title={visibleMapPoint.title}
+            showNavigation={isProviderAddress && !shouldHideProviderLocation && Boolean(mapPoint)}
+            onOpenNavigation={() => setIsNavigationOpen(true)}
+          />}
 
           <BookingPaymentSummary
             items={[{ label: 'Valor da aula prática', amount: formatCentsToBRL(snapshot.priceInCents) }]}
@@ -690,7 +724,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </div>
       )}
     </Modal>
-    {isTrackingOpen && instantTrackingRequest && (
+    {isTrackingOpen && trackingRequest && (
       <Modal
         isOpen={isTrackingOpen}
         onClose={() => setIsTrackingOpen(false)}
@@ -703,7 +737,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       >
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
           <InstantLessonTrackingCard
-            request={instantTrackingRequest}
+            request={trackingRequest}
             tracking={instantTracking}
             providerName={instructor || provider || 'Seu profissional'}
             priceInCents={snapshot.priceInCents || booking.priceInCents}

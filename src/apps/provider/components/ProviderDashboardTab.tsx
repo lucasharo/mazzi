@@ -194,7 +194,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
             <span className="flex items-center gap-1 text-xl font-black"><Star className="h-4 w-4 fill-[var(--mazzi-yellow)] text-[var(--mazzi-yellow)]" />{currentProvider.ratingAverage?.toFixed(1) || '5.0'}</span>
           </section>
 
-          <ProviderEarningsDashboardCard onNavigate={() => onNavigateTab('earnings')} refreshKey={isRefreshing ? 1 : 0} />
+          <ProviderEarningsDashboardCard onNavigate={() => onNavigateTab('earnings')} refreshKey={isRefreshing ? 1 : 0} providerId={currentProvider.id} userId={currentUserId} />
         </>
       )}
 

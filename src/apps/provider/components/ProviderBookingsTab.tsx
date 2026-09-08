@@ -14,7 +14,6 @@ interface ProviderBookingsTabProps {
   bookingQuickFilter: 'all' | 'confirmed' | 'in_progress' | 'completed' | 'disputed' | 'cancelled';
   onQuickFilterChange: (filter: ProviderBookingsTabProps['bookingQuickFilter']) => void;
   filteredBookings: Booking[];
-  actionSuccessMessage: string | null;
   actionErrorMessage: string | null;
   onSelectBooking: (booking: Booking) => void;
   onOpenChat: (booking: Booking) => void;
@@ -35,7 +34,6 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
   bookingQuickFilter,
   onQuickFilterChange,
   filteredBookings,
-  actionSuccessMessage,
   actionErrorMessage,
   onSelectBooking,
   onOpenChat,
@@ -60,11 +58,6 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
       />
 
       {/* Action Messages */}
-      {actionSuccessMessage && (
-        <div className="mazzi-compact-card flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-bold text-emerald-900">
-          <span>{actionSuccessMessage}</span>
-        </div>
-      )}
       {actionErrorMessage && (
         <div className="mazzi-compact-card flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-bold text-rose-900">
           <span>{actionErrorMessage}</span>

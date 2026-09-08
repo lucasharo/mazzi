@@ -9,6 +9,7 @@ const providerModal = fs.readFileSync(path.join(root, 'src/apps/provider/compone
 const studentModal = fs.readFileSync(path.join(root, 'src/apps/student/components/BookingDetailsModal.tsx'), 'utf8');
 const sharedBookingDetails = fs.readFileSync(path.join(root, 'src/components/booking/BookingDetailsShared.tsx'), 'utf8');
 const schedule = fs.readFileSync(path.join(root, 'src/apps/provider/components/ProviderScheduleTab.tsx'), 'utf8');
+const checkinLocationMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20260908200000_checkin_location_and_unify_checkin_flow.sql'), 'utf8');
 
 describe('TASK-090 check-in contract', () => {
   it('uses the LIVE migration version locally and has no old duplicate', () => {
@@ -32,8 +33,30 @@ describe('TASK-090 check-in contract', () => {
     expect(sharedBookingDetails).toContain('Aguardando abertura do check-in · disponível a partir de');
   });
 
+  it('explains that the address for scheduled and Aula Agora lessons is released after starting displacement', () => {
+    expect(providerModal).toContain('const canShowMeetingPoint = !isWaitingPayment && (isOnTheWay || isProviderMeetingPoint);');
+    expect(providerModal).toContain('const meetingPointNotice = !canShowMeetingPoint && !isWaitingPayment');
+    expect(providerModal).toContain('meetingPointNotice={meetingPointNotice}');
+    expect(providerModal).toContain('meetingPoint={canShowMeetingPoint ? meetingPointText : \'\'}');
+    expect(providerModal).toContain('showNavigation={!isInProgress && hasExactMeetingPoint && !isProviderMeetingPoint}');
+    expect(providerModal).toContain("const modalTitle = 'Detalhes da aula';");
+    expect(providerModal).not.toContain("'Aula Agora Confirmada'");
+    expect(providerModal).toContain('const isArrived = hasArrivedState || Boolean(booking.instructorCheckedIn);');
+    expect(providerModal).not.toContain('provider_arrived_at');
+  });
+
   it('presents date-only blocks as one semantic phrase', () => {
     expect(schedule).toContain('— {dayRange.label}');
     expect(schedule).not.toContain('<p className="text-xs font-semibold text-slate-600">{dayRange.label}</p>');
+  });
+
+  it('stores validated student and provider check-in coordinates and removes the separate arrival marker', () => {
+    expect(checkinLocationMigration).toContain('checkin_student_latitude DOUBLE PRECISION');
+    expect(checkinLocationMigration).toContain('checkin_instructor_longitude DOUBLE PRECISION');
+    expect(checkinLocationMigration).toContain('CHECKIN_LOCATION_REQUIRED');
+    expect(checkinLocationMigration).toContain('p_latitude DOUBLE PRECISION');
+    expect(checkinLocationMigration).toContain('p_longitude DOUBLE PRECISION');
+    expect(checkinLocationMigration).toContain("DROP FUNCTION IF EXISTS public.provider_mark_arrived(UUID)");
+    expect(checkinLocationMigration).toContain("snapshot_data = snapshot_data - 'provider_arrived_at'");
   });
 });

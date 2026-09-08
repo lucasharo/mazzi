@@ -26,11 +26,16 @@ const leafletMap = readFileSync('src/components/maps/LeafletMap.tsx', 'utf8');
 const searchMap = readFileSync('src/components/search/MapView.tsx', 'utf8');
 const studentApp = readFileSync('src/apps/student/StudentApp.tsx', 'utf8');
 const providerApp = readFileSync('src/apps/provider/ProviderApp.tsx', 'utf8');
+const providerModal = readFileSync('src/apps/provider/components/ProviderBookingDetailsModal.tsx', 'utf8');
 const providerInstantPanel = readFileSync('src/apps/provider/components/ProviderInstantLessonPanel.tsx', 'utf8');
 const instantOfferCard = readFileSync('src/components/instant/InstantLessonOfferCard.tsx', 'utf8');
 const countdownTimer = readFileSync('src/components/ui/CountdownTimer.tsx', 'utf8');
 const checkoutModal = readFileSync('src/apps/student/components/CheckoutModal.tsx', 'utf8');
+const studentBookingDetails = readFileSync('src/apps/student/components/BookingDetailsModal.tsx', 'utf8');
+const stripeCheckoutReturnScreen = readFileSync('src/apps/student/components/StripeCheckoutReturnScreen.tsx', 'utf8');
+const bookingChatPanel = readFileSync('src/components/chat/BookingChatPanel.tsx', 'utf8');
 const bookingDetailsShared = readFileSync('src/components/booking/BookingDetailsShared.tsx', 'utf8');
+const bottomSheet = readFileSync('src/components/ui/BottomSheet.tsx', 'utf8');
 const appLogin = readFileSync('src/components/auth/AppLogin.tsx', 'utf8');
 const stripeReturnScreen = readFileSync('src/apps/student/components/StripeCheckoutReturnScreen.tsx', 'utf8');
 
@@ -49,6 +54,79 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(leafletMap).toContain('interactive = true');
     expect(leafletMap).toContain('if (interactive && showMeetingPointPopup && !followSelectedProvider)');
     expect(leafletMap).toContain('if (interactive && providerMarker !== \'vehicle\') marker.bindPopup');
+    expect(leafletMap).toContain('Keep address-driven maps centered');
+    expect(leafletMap).toContain('without remounting the Leaflet instance');
+    expect(leafletMap).toContain('map.setView([center.lat, center.lng]');
+    expect(instantWizard).toContain('mapCenter={draft.location}');
+  });
+
+  it('shows the student tracking action after the PRO starts displacement', () => {
+    expect(studentBookingDetails).toContain("['CONFIRMED', 'IN_PROGRESS'].includes(booking.status)");
+    expect(studentBookingDetails).toContain('booking?.providerOnTheWayAt');
+    expect(studentBookingDetails).toContain('onOpenTracking={() => setIsTrackingOpen(true)}');
+  });
+
+  it('removes student maps after the lesson starts', () => {
+    expect(studentBookingDetails).toContain("const isLessonStarted = booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);");
+    expect(studentBookingDetails).toContain('!isLessonStarted && isProviderOnTheWay');
+    expect(studentBookingDetails).toContain('{!isLessonStarted && !isPendingPayment && visibleMapPoint');
+    expect(instantModal).toContain("const isLessonStarted = bookingStatus === 'IN_PROGRESS' || booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);");
+    expect(instantModal).toContain('const showTrackingMap = !isLessonStarted');
+  });
+
+  it('keeps the PRO booking detail underneath the nested chat modal', () => {
+    expect(providerApp).toContain('onOpenChat={(b) => {\n          setSelectedBookingForChat(b);\n        }}');
+    expect(providerApp).not.toContain('setSelectedBooking(null);\n          setSelectedBookingForChat(b);');
+    expect(providerApp).toContain('layer="nested"');
+  });
+
+  it('keeps chat navigation in the modal header without an internal back button', () => {
+    expect(bookingChatPanel).not.toContain('Voltar aos detalhes');
+    expect(bookingChatPanel).not.toContain('onBack?: () => void');
+  });
+
+  it('shows the student name in the PRO chat details', () => {
+    expect(bookingChatPanel).toContain('booking.studentName || \'Aluno não informado\'');
+    expect(bookingChatPanel).toContain('const isStudent =');
+  });
+
+  it('releases the PRO address one hour before class while keeping the student address protected', () => {
+    expect(studentBookingDetails).toContain("const shouldHideProviderLocation = !isLessonStarted");
+    expect(studentBookingDetails).toContain('const isAddressReleaseWindowOpen =');
+    expect(studentBookingDetails).toContain('scheduledStartMs - (60 * 60 * 1_000)');
+    expect(studentBookingDetails).toContain('&& isProviderAddress');
+    expect(studentBookingDetails).toContain('&& !isAddressReleaseWindowOpen;');
+    expect(studentBookingDetails).not.toContain('O endereço e o mapa serão liberados quando o instrutor clicar em');
+    expect(studentBookingDetails).toContain('meetingPoint={visibleMeetingPoint}');
+    expect(studentBookingDetails).toContain('meetingPointNotice={meetingPointNotice}');
+    expect(studentBookingDetails).toContain('visibleMapPoint');
+    expect(studentBookingDetails).toContain('showNavigation={isProviderAddress && !shouldHideProviderLocation && Boolean(mapPoint)}');
+    expect(bookingDetailsShared).toContain('showNavigation?: boolean;');
+    expect(bookingDetailsShared).toContain('Abrir navegação');
+  });
+
+  it('keeps the checkout return summary consistent with the booking detail address release rule', () => {
+    expect(stripeCheckoutReturnScreen).toContain('const isAddressReleaseWindowOpen =');
+    expect(stripeCheckoutReturnScreen).toContain('scheduledStartMs - (60 * 60 * 1_000)');
+    expect(stripeCheckoutReturnScreen).toContain('const shouldHideMeetingPoint = Boolean(booking)');
+    expect(stripeCheckoutReturnScreen).toContain('meetingPointNotice');
+    expect(stripeCheckoutReturnScreen).toContain('Endereço estará disponível a partir de');
+    expect(stripeCheckoutReturnScreen).toContain('Endereço estará disponível quando o instrutor estiver a caminho.');
+  });
+
+  it('shows only an unmarked approximate map in the checkout return summary', () => {
+    expect(stripeCheckoutReturnScreen).toContain('const meetingPointCoordinates =');
+    expect(stripeCheckoutReturnScreen).toContain('mapCenter={mapCenter}');
+    expect(stripeCheckoutReturnScreen).toContain('providers={[]}');
+    expect(stripeCheckoutReturnScreen).toContain('interactive={false}');
+    expect(stripeCheckoutReturnScreen).toContain('sem marcador do endereço exato');
+  });
+
+  it('shows the same unmarked regional map while booking details protect the address', () => {
+    expect(bookingDetailsShared).toContain('showMarker?: boolean;');
+    expect(bookingDetailsShared).toContain('meetingPoint={showMarker ? { lat: latitude, lng: longitude, title } : undefined}');
+    expect(studentBookingDetails).toContain('showMarker={false}');
+    expect(providerModal).toContain('showMarker={false}');
   });
   it('creates the four private matching entities with restrictive RLS', () => {
     for (const table of ['provider_instant_settings', 'instant_lesson_requests', 'instant_lesson_offers', 'instant_provider_locations']) {
@@ -141,7 +219,8 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(offerClockMigration).toContain("'server_now', v_server_now");
     expect(providerInstantPanel).toContain('serverClockOffsetMs');
     expect(providerInstantPanel).toContain('instantOffersServerNow');
-    expect(providerInstantPanel).toContain('getInstantOfferSecondsLeft(offer.expiresAt, now, serverClockOffsetMs)');
+    expect(providerInstantPanel).not.toContain('Solicitações recebidas');
+    expect(providerInstantPanel).not.toContain('offers: InstantLessonOffer[]');
     expect(providerInstantPanel).toContain("document.addEventListener('visibilitychange', syncNow);");
     expect(providerInstantPanel).toContain("window.addEventListener('focus', syncNow);");
   });
@@ -154,6 +233,23 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(getInstantOfferSecondsLeft(expiresAt, localNow, localClockIsThirtySecondsAhead)).toBe(60);
     expect(providerApp).toContain('instantOffersServerClockOffsetMs');
     expect(providerApp).toContain('getInstantOfferSecondsLeft(instantOfferSheetOffer.expiresAt, instantOffersClockMs, instantOffersServerClockOffsetMs)');
+  });
+
+  it('redirects the PRO from Aula Agora to the confirmed booking details after payment', () => {
+    expect(providerApp).toContain("setIsInstantSettingsOpen(false);");
+    expect(providerApp).toContain("setIsInstantOperationalModalOpen(false);");
+    expect(providerApp).toContain("setIsExternalNavModalOpen(false);");
+    expect(providerApp).toContain("setActiveTab('bookings');");
+    expect(providerApp).toContain("setSelectedBooking(activeInstantBooking);");
+  });
+
+  it('opens the offer bottom sheet when the instant settings screen is opened', () => {
+    expect(providerApp).toContain('instantSettingsSheetRequestRef');
+    expect(providerApp).toContain('if (!isInstantSettingsOpen)');
+    expect(providerApp).toContain("const pendingOffer = instantOffers.find((offer) => offer.status === 'PENDING');");
+    expect(providerApp).toContain('setInstantOfferSheetId(pendingOffer.id);');
+    expect(bottomSheet).toContain('z-[120]');
+    expect(bottomSheet).toContain('createPortal(content, document.body)');
   });
 
   it('prevents duplicate offer responses and clears stale cards after rejection', () => {

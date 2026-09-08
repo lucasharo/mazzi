@@ -8,6 +8,7 @@ import { dismissInitialSplash, INITIAL_NAVIGATION_READY_EVENT } from '../../lib/
 import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget } from '../../lib/mobile-app-router';
 import { clearPendingNotificationTarget, readPendingNotificationTarget, storePendingNotificationTarget } from '../../lib/pending-navigation';
 import { registerServiceWorker } from '../../registerServiceWorker';
+import { MazziQueryProvider } from '../../components/query/MazziQueryProvider';
 
 function isStripeCancellationReturn(): boolean {
   if (typeof window === 'undefined') return false;
@@ -89,7 +90,9 @@ const StudentGate: React.FC = () => {
 };
 
 export const StudentRoot: React.FC = () => (
-  <AuthProvider>
-    <StudentGate />
-  </AuthProvider>
+  <MazziQueryProvider>
+    <AuthProvider>
+      <StudentGate />
+    </AuthProvider>
+  </MazziQueryProvider>
 );

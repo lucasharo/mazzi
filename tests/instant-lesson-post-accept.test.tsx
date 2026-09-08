@@ -107,12 +107,15 @@ describe('Instant Lesson Post-Accept & Active Journey Flow', () => {
       );
 
       const modalContent = document.body.textContent || '';
-      expect(modalContent).toContain('Aula Agora Confirmada');
-      expect(modalContent).toContain('Ana Silva');
-      expect(modalContent).toContain('Cat. B');
-      expect(modalContent).toContain('150,00');
-      expect(modalContent).toContain('Estação Consolação');
-      expect(modalContent).not.toContain('Abrir navegação');
+      const detailContent = document.querySelector('[data-component="provider-booking-details-modal"]')?.textContent || '';
+      expect(detailContent).toContain('Detalhes da aula');
+      expect(detailContent).not.toContain('Aula Agora Confirmada');
+      expect(detailContent).toContain('Ana Silva');
+      expect(detailContent).toContain('Cat. B');
+      expect(detailContent).toContain('150,00');
+      expect(detailContent).toContain('Endereço estará disponível quando você clicar em “Estou a caminho”.');
+      expect(detailContent).not.toContain('Estação Consolação');
+      expect(detailContent).not.toContain('Abrir navegação');
       expect(modalContent).toContain('Estou a caminho');
     });
   });

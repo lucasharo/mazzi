@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, MapPin, Navigation } from 'lucide-react';
+import { CheckCircle2, Eye, MapPin, Navigation } from 'lucide-react';
 import type { InstantLessonOffer, InstantLessonRequest, InstantLessonTracking, Provider } from '../../types';
 import { UniversalMap } from '../maps/UniversalMap';
 import { formatCentsToBRL } from '../../domain/money';
@@ -50,8 +50,8 @@ export const InstantLessonTrackingCard: React.FC<InstantLessonTrackingCardProps>
         <div className="min-w-0"><h3 id="instant-tracking-title" className="font-extrabold text-[var(--mazzi-dark)]">{tracking ? 'Profissional a caminho' : 'Aguardando localização do profissional'}</h3><p className="mt-1 text-xs font-semibold text-slate-500">{tracking ? `Última atualização: ${new Date(tracking.recordedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'O mapa será atualizado quando o sinal de GPS retornar.'}</p></div>
       </div>
       <div className={`relative overflow-hidden ${onOpenTracking ? 'h-48' : 'min-h-0 flex-1'}`}>
-        <UniversalMap className="h-full !space-y-0" providers={provider ? [provider] : []} selectedProvider={provider} meetingPoint={meetingPoint} height="100%" zoom={17} providerMarker="vehicle" followSelectedProvider showCoverageRadius={false} interactive={!onOpenTracking} />
-        {onOpenTracking && <ButtonBase type="button" onClick={onOpenTracking} aria-label="Abrir acompanhamento do profissional" className="absolute inset-x-0 top-0 bottom-6 z-[1000] flex items-end justify-center pb-3 focus-visible:outline-2 focus-visible:outline-amber-500"><span className="rounded-full bg-[var(--mazzi-dark)] px-4 py-2 text-sm font-bold text-white shadow-md">Acompanhar profissional</span></ButtonBase>}
+        <UniversalMap className="h-full !space-y-0" providers={provider ? [provider] : []} selectedProvider={provider} meetingPoint={meetingPoint} height="100%" zoom={16} providerMarker="vehicle" followSelectedProvider showCoverageRadius={false} interactive={!onOpenTracking} />
+        {onOpenTracking && <ButtonBase type="button" onClick={onOpenTracking} aria-label="Acompanhar instrutor" className="absolute inset-x-0 top-0 bottom-0 z-[1000] flex items-end justify-center pb-3 focus-visible:outline-2 focus-visible:outline-amber-500"><span className="inline-flex min-h-11 items-center gap-1.5 rounded-2xl bg-[var(--mazzi-dark)] px-3.5 py-2 text-xs font-bold text-white shadow-md"><Eye className="h-3.5 w-3.5" aria-hidden="true" />Acompanhar instrutor</span></ButtonBase>}
       </div>
       {!onOpenTracking && <div className="relative z-10 shrink-0 rounded-t-2xl border-t border-slate-100 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]" aria-label="Informações da aula">
         <div className="flex items-start justify-between gap-3">

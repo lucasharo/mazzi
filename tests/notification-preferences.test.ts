@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { getNotificationPreferenceDefinitions } from '../src/lib/notification-preferences';
 
 const migration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260906000000_task_092_notification_preferences.sql'), 'utf8');
+const dispatchMigration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260908190000_notification_catalog_and_dispatch.sql'), 'utf8');
 const dbService = readFileSync(resolve(process.cwd(), 'src/lib/db-service.ts'), 'utf8');
 const component = readFileSync(resolve(process.cwd(), 'src/components/notifications/NotificationPreferences.tsx'), 'utf8');
 const notificationsPanel = readFileSync(resolve(process.cwd(), 'src/components/notifications/NotificationsPanel.tsx'), 'utf8');
@@ -18,11 +19,18 @@ describe('Notification preferences contract', () => {
 
     expect(studentTypes).toContain('PROVIDER_ON_THE_WAY');
     expect(studentTypes).toContain('REVIEW_AVAILABLE');
+    expect(studentTypes).toContain('LESSON_STARTED');
+    expect(studentTypes).toContain('LESSON_COMPLETED');
     expect(studentTypes).not.toContain('PAYOUT_PAID');
     expect(proTypes).toContain('INSTANT_LESSON_OFFER');
-    expect(proTypes).toContain('REVIEW_RECEIVED');
+    expect(proTypes).toContain('CONTESTATION_UPDATED');
+    expect(proTypes).toContain('COMPLIANCE_PENDING');
+    expect(proTypes).toContain('PAYOUT_FAILED');
+    expect(proTypes).not.toContain('LESSON_STARTED');
+    expect(proTypes).not.toContain('LESSON_COMPLETED');
+    expect(proTypes).not.toContain('REVIEW_RECEIVED');
     expect(proTypes).not.toContain('PROVIDER_ON_THE_WAY');
-    expect(new Set([...studentTypes, ...proTypes]).size).toBe(16);
+    expect(new Set([...studentTypes, ...proTypes]).size).toBe(15);
   });
 
   it('keeps the frontend persistence contract behind the db service', () => {
@@ -60,5 +68,15 @@ describe('Notification preferences contract', () => {
     expect(migration).toContain('CREATE TRIGGER filter_disabled_notifications_before_insert');
     expect(migration).toContain('RETURN NULL');
     expect(migration).not.toContain('DELETE FROM public.notifications');
+  });
+
+  it('keeps backend dispatch aligned with the visible catalog', () => {
+    expect(dispatchMigration).toContain('notify_booking_dispute_change');
+    expect(dispatchMigration).toContain('notify_booking_dispute_evidence');
+    expect(dispatchMigration).toContain('notify_provider_payout_change');
+    expect(dispatchMigration).toContain('notify_provider_compliance_pending');
+    expect(dispatchMigration).toContain("NEW.type = 'REVIEW_RECEIVED'");
+    expect(dispatchMigration).toContain("p_type NOT IN ('LESSON_STARTED', 'LESSON_COMPLETED')");
+    expect(dispatchMigration).toContain('NOT (app_context = \'PRO\' AND type = \'REVIEW_RECEIVED\')');
   });
 });

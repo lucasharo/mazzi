@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getPushCapability, requestPushPermission } from '../src/lib/push-device-registry';
+import { getPushCapability, hasStoredPushDevice, requestPushPermission } from '../src/lib/push-device-registry';
 
 describe('push capability', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -17,5 +17,13 @@ describe('push capability', () => {
     Object.defineProperty(window, 'Notification', { configurable: true, value: { permission: 'default', requestPermission: vi.fn().mockResolvedValue('denied') } });
     expect(getPushCapability().permission).toBe('prompt');
     await expect(requestPushPermission()).resolves.toBe('denied');
+  });
+
+  it('recognizes a device already registered for the current app context and user', () => {
+    window.localStorage.setItem('mazzi.push.device-id.PRO.user-1', 'device-1');
+
+    expect(hasStoredPushDevice('PRO', 'user-1')).toBe(true);
+    expect(hasStoredPushDevice('PRO', 'user-2')).toBe(false);
+    expect(hasStoredPushDevice('STUDENT', 'user-1')).toBe(false);
   });
 });

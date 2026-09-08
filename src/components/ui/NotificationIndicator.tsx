@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { dbService } from '../../lib/db-service';
+import { invalidateNotificationQueries, serverState } from '../../lib/server-state';
 import { Notification } from '../../types';
 
 const NOTIFICATIONS_CHANGED_EVENT = 'mazzi:notifications-changed';
@@ -8,10 +9,12 @@ export interface NotificationIndicatorProps {
   children: React.ReactNode;
   className?: string;
   appContext: NonNullable<Notification['appContext']>;
+  userId?: string;
+  providerId?: string;
 }
 
 /** Shared unread counter for notification buttons across the three PWAs. */
-export const NotificationIndicator: React.FC<NotificationIndicatorProps> = ({ children, className = '', appContext }) => {
+export const NotificationIndicator: React.FC<NotificationIndicatorProps> = ({ children, className = '', appContext, userId, providerId }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const unreadLoadInFlightRef = useRef<Promise<void> | null>(null);
   const hasLoadedRef = useRef(false);
@@ -23,7 +26,9 @@ export const NotificationIndicator: React.FC<NotificationIndicatorProps> = ({ ch
 
     const request = (async () => {
       try {
-        const count = await dbService.getMyUnreadNotificationCount(appContext);
+        const count = userId
+          ? await serverState.getUnreadNotificationCount({ appContext, userId, providerId })
+          : await dbService.getMyUnreadNotificationCount(appContext);
         if (activeRef.current) setUnreadCount(count);
         hasLoadedRef.current = true;
       } catch {
@@ -37,13 +42,19 @@ export const NotificationIndicator: React.FC<NotificationIndicatorProps> = ({ ch
     } finally {
       if (unreadLoadInFlightRef.current === request) unreadLoadInFlightRef.current = null;
     }
-  }, [appContext]);
+  }, [appContext, providerId, userId]);
 
   useEffect(() => {
     activeRef.current = true;
     hasLoadedRef.current = false;
 
-    const handleNotificationsChanged = () => { void loadUnreadCount(true); };
+    const handleNotificationsChanged = () => {
+      if (userId) {
+        void invalidateNotificationQueries({ appContext, userId, providerId }).finally(() => loadUnreadCount(true));
+        return;
+      }
+      void loadUnreadCount(true);
+    };
     void loadUnreadCount();
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, handleNotificationsChanged);
     return () => {

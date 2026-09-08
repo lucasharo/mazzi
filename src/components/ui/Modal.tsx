@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { IconButton } from './IconButton';
 import { useAccessibleDialog } from './useAccessibleDialog';
 import { ModalActionFooter } from './ModalActionFooter';
@@ -29,6 +29,8 @@ export interface ModalProps {
   footerVariant?: 'default' | 'wizard';
   /** Allows a screen inside the modal to fill the available viewport height. */
   fillContent?: boolean;
+  /** Uses a back arrow when this surface returns to the modal underneath it. */
+  showBackButton?: boolean;
 }
 
 export function useDialogHistory({
@@ -109,6 +111,7 @@ export const Modal: React.FC<ModalProps> = ({
   footerClassName = '',
   footerVariant = 'default',
   fillContent = false,
+  showBackButton = layer === 'nested',
 }) => {
   const generatedId = useId();
   const titleId = `${id || generatedId}-title`;
@@ -156,12 +159,14 @@ export const Modal: React.FC<ModalProps> = ({
             <div className="flex items-center gap-2">
               <EnvironmentBadge />
               <IconButton
-                label="Fechar diálogo"
+                label={showBackButton ? 'Voltar' : 'Fechar diálogo'}
                 onClick={onClose}
                 data-dialog-autofocus="true"
                 className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors"
               >
-                <X className="w-4 h-4" aria-hidden="true" />
+                {showBackButton
+                  ? <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                  : <X className="w-4 h-4" aria-hidden="true" />}
               </IconButton>
             </div>
           </div>

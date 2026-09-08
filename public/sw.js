@@ -13,10 +13,26 @@ const APP_SHELL = [
   basePath + 'brand/favicon/favicon-64x64.png'
 ];
 const PUSH_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-(?:4[0-9a-f]{3}|7[0-9a-f]{3})-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PUSH_EVENTS = new Set(['BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'NEW_MESSAGE', 'PAYOUT_PAID', 'PAYOUT_BLOCKED', 'PAYOUT_FAILED', 'REVIEW_RECEIVED', 'COMPLIANCE_PENDING']);
+const PUSH_EVENTS = new Set([
+  'BOOKING_CONFIRMED',
+  'BOOKING_CANCELLED',
+  'NEW_MESSAGE',
+  'STUDENT_CHECKIN',
+  'PROVIDER_CHECKIN',
+  'PROVIDER_ON_THE_WAY',
+  'LESSON_STARTED',
+  'LESSON_COMPLETED',
+  'CONTESTATION_UPDATED',
+  'COMPLIANCE_PENDING',
+  'PAYOUT_PAID',
+  'PAYOUT_BLOCKED',
+  'PAYOUT_FAILED',
+  'INSTANT_LESSON_OFFER',
+  'REVIEW_AVAILABLE',
+]);
 const PUSH_CONTEXTS = new Set(['STUDENT', 'PRO']);
-const PUSH_ENTITIES = new Set(['booking', 'payout', 'earnings', 'compliance']);
-const PUSH_ACTIONS = new Set(['details', 'chat', 'review', 'reviews', 'compliance']);
+const PUSH_ENTITIES = new Set(['booking', 'payout', 'earnings', 'compliance', 'instant_offer']);
+const PUSH_ACTIONS = new Set(['details', 'chat', 'review', 'reviews', 'compliance', 'instant_offer']);
 
 function isPrivateOrDynamicRequest(request) {
   const url = new URL(request.url);
@@ -84,13 +100,14 @@ function validatePushData(data) {
   if (target.entityType === 'earnings' && (target.entityId || target.action !== 'reviews' || normalized.appContext !== 'PRO')) return null;
   if (target.entityType === 'payout' && normalized.appContext !== 'PRO') return null;
   if (target.entityType === 'compliance' && (normalized.appContext !== 'PRO' || target.action !== 'compliance')) return null;
+  if (target.entityType === 'instant_offer' && (normalized.appContext !== 'PRO' || target.action !== 'instant_offer' || !target.entityId)) return null;
   if (typeof normalized.notificationId !== 'undefined' && normalized.notificationId !== null && typeof normalized.notificationId !== 'string') return null;
   return { eventType: normalized.eventType, appContext: normalized.appContext, target: { version: 1, entityType: target.entityType, entityId: target.entityId || null, action: target.action }, notificationId: normalized.notificationId || null };
 }
 
 function targetUrl(data) {
   const appKey = data.appContext === 'PRO' ? 'provider' : data.appContext.toLowerCase();
-  const route = data.target.entityType === 'booking' ? 'bookings' : data.target.entityType === 'compliance' ? 'management' : 'earnings';
+  const route = data.target.entityType === 'booking' ? 'bookings' : ['compliance', 'instant_offer'].includes(data.target.entityType) ? 'management' : 'earnings';
   const url = new URL(basePath, self.location.origin);
   url.hash = `/${appKey}/${route}?v=1&c=${encodeURIComponent(data.appContext)}&e=${encodeURIComponent(data.target.entityType)}&a=${encodeURIComponent(data.target.action)}${data.target.entityId ? `&id=${encodeURIComponent(data.target.entityId)}` : ''}`;
   return url.href;
@@ -109,8 +126,14 @@ function pushCopy(eventType) {
   if (eventType === 'NEW_MESSAGE') return { title: 'Nova mensagem', body: 'Você recebeu uma atualização em uma aula.' };
   if (eventType === 'PAYOUT_PAID') return { title: 'Repasse atualizado', body: 'Há uma atualização disponível em Ganhos.' };
   if (eventType === 'PAYOUT_BLOCKED' || eventType === 'PAYOUT_FAILED') return { title: 'Repasse requer atenção', body: 'Confira a situação em Ganhos.' };
-  if (eventType === 'REVIEW_RECEIVED') return { title: 'Nova avaliação', body: 'Confira seu desempenho no MAZZI.' };
+  if (eventType === 'INSTANT_LESSON_OFFER') return { title: 'Nova Aula Agora', body: 'Há uma solicitação de aula próxima para você avaliar.' };
+  if (eventType === 'CONTESTATION_UPDATED') return { title: 'Contestação atualizada', body: 'Há uma atualização em uma contestação.' };
   if (eventType === 'COMPLIANCE_PENDING') return { title: 'Pendência de cadastro', body: 'Há uma pendência para revisar em Gestão.' };
+  if (eventType === 'LESSON_STARTED') return { title: 'Aula iniciada', body: 'Sua aula foi iniciada.' };
+  if (eventType === 'LESSON_COMPLETED') return { title: 'Aula concluída', body: 'Sua aula foi concluída.' };
+  if (eventType === 'STUDENT_CHECKIN') return { title: 'Check-in do aluno', body: 'O aluno realizou o check-in da aula.' };
+  if (eventType === 'PROVIDER_CHECKIN') return { title: 'Check-in realizado', body: 'O profissional realizou o check-in da aula.' };
+  if (eventType === 'PROVIDER_ON_THE_WAY') return { title: 'PRO a caminho', body: 'Seu profissional informou que está a caminho.' };
   return { title: 'Atualização da aula', body: 'Confira os detalhes da sua aula no MAZZI.' };
 }
 

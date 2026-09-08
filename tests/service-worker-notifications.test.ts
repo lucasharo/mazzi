@@ -22,6 +22,11 @@ describe('service worker notification contract', () => {
     expect(worker).toContain("request.method !== 'GET'");
     expect(worker).not.toContain('data.url');
     expect(worker).toContain("const PUSH_CONTEXTS = new Set(['STUDENT', 'PRO']);");
+    expect(worker).toContain("'INSTANT_LESSON_OFFER'");
+    expect(worker).toContain("'CONTESTATION_UPDATED'");
+    expect(worker).toContain("'STUDENT_CHECKIN'");
+    expect(worker).toContain("'LESSON_COMPLETED'");
+    expect(worker).not.toContain("'REVIEW_RECEIVED'");
     expect(worker).not.toContain("new Set(['STUDENT', 'PRO', 'ADMIN'])");
   });
 });
