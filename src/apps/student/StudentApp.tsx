@@ -354,6 +354,7 @@ export const StudentApp: React.FC = () => {
   const shouldAutoSelectTodayRef = useRef(true);
   const stripeCheckoutFlowActiveRef = useRef(false);
   const pendingNotificationTargetRef = useRef<NotificationNavigationTarget | null>(null);
+  const notificationNavigationTimeoutRef = useRef<number | null>(null);
   const bookingsLoadInFlightRef = useRef<Promise<void> | null>(null);
   const bookingsDataLoadInFlightRef = useRef<Promise<Booking[]> | null>(null);
   const bookingsRefreshQueuedRef = useRef(false);
@@ -1776,9 +1777,25 @@ function applyStrictProviderFilters(
   const openNotificationTarget = (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'STUDENT') return;
-    void handleNotificationTarget(target);
     clearNotificationNavigationTargetFromHash('student', 'bookings');
+
+    // Modal closing uses history.back(). Defer the destination until that
+    // transition has completed, otherwise the back operation can immediately
+    // close the detail modal that was opened in the same render cycle.
+    if (notificationNavigationTimeoutRef.current !== null) {
+      window.clearTimeout(notificationNavigationTimeoutRef.current);
+    }
+    notificationNavigationTimeoutRef.current = window.setTimeout(() => {
+      notificationNavigationTimeoutRef.current = null;
+      void handleNotificationTarget(target);
+    }, 0);
   };
+
+  useEffect(() => () => {
+    if (notificationNavigationTimeoutRef.current !== null) {
+      window.clearTimeout(notificationNavigationTimeoutRef.current);
+    }
+  }, []);
 
   const showNotificationFeedback = (description: string) => {
     const id = `notification-${Date.now()}`;
