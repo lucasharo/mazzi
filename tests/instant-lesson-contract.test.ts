@@ -97,7 +97,7 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(studentBookingDetails).toContain('&& isProviderAddress');
     expect(studentBookingDetails).toContain('&& !isAddressReleaseWindowOpen;');
     expect(studentBookingDetails).not.toContain('O endereço e o mapa serão liberados quando o instrutor clicar em');
-    expect(studentBookingDetails).toContain("meetingPoint={completedMapOnly ? '' : visibleMeetingPoint}");
+    expect(studentBookingDetails).toContain('meetingPoint={visibleMeetingPoint}');
     expect(studentBookingDetails).toContain('meetingPointNotice={meetingPointNotice}');
     expect(studentBookingDetails).toContain('visibleMapPoint');
     expect(studentBookingDetails).toContain('showNavigation={isProviderAddress && !shouldHideProviderLocation && Boolean(mapPoint)}');

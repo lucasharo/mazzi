@@ -696,9 +696,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
               : `Horário: ${scheduledStart ? formatTimeBR(scheduledStart) : booking.startTime}${scheduledEnd ? ` às ${formatTimeBR(scheduledEnd)}` : ''}`}
             durationLabel={durationLabel}
-            meetingPoint={completedMapOnly ? '' : visibleMeetingPoint}
+            meetingPoint={visibleMeetingPoint}
             meetingPointNotice={meetingPointNotice}
-            isProviderAddress={isProviderAddress && !shouldHideProviderLocation && !completedMapOnly}
+            isProviderAddress={isProviderAddress && !shouldHideProviderLocation}
             showCopyAddress={isProviderAddress && !isPendingPayment && !shouldHideProviderLocation && !isCompleted}
             addressCopied={isAddressCopied}
             onCopyAddress={handleCopyMeetingPoint}

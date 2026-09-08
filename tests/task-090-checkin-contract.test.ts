@@ -38,13 +38,13 @@ describe('TASK-090 check-in contract', () => {
     expect(providerModal).toContain('const completedMapOnly = isCompleted && Boolean(mapPoint);');
     expect(providerModal).toContain('const meetingPointNotice = !canShowMeetingPoint && !isWaitingPayment');
     expect(providerModal).toContain('meetingPointNotice={meetingPointNotice}');
-    expect(providerModal).toContain("meetingPoint={completedMapOnly ? '' : canShowMeetingPoint ? meetingPointText : ''}");
+    expect(providerModal).toContain("meetingPoint={canShowMeetingPoint ? meetingPointText : ''}");
     expect(providerModal).toContain('showCopyAddress={!isWaitingPayment && isOnTheWay && !isProviderMeetingPoint && !isCompleted}');
     expect(providerModal).toContain('showMarker />');
     expect(providerModal).toContain('showNavigation={!isInProgress && hasExactMeetingPoint && !isProviderMeetingPoint}');
     expect(providerModal).toContain('{latitude != null && longitude != null && !isCompleted && (');
     expect(studentModal).toContain('const completedMapOnly = isCompleted && Boolean(mapPoint);');
-    expect(studentModal).toContain("meetingPoint={completedMapOnly ? '' : visibleMeetingPoint}");
+    expect(studentModal).toContain('meetingPoint={visibleMeetingPoint}');
     expect(studentModal).toContain('showCopyAddress={isProviderAddress && !isPendingPayment && !shouldHideProviderLocation && !isCompleted}');
     expect(studentModal).toContain('{completedMapOnly && !isPendingPayment && mapPoint && (');
     expect(studentModal).toContain('showMarker />');
