@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard,
-  Clock,
+  Calendar,
   Wallet,
   SlidersHorizontal,
   UserRound,
@@ -32,7 +32,7 @@ export const ProviderBottomNav: React.FC<ProviderBottomNavProps> = ({
     {
       id: 'bookings',
       label: 'Aulas',
-      icon: <Clock className="w-5 h-5" />,
+      icon: <Calendar className="w-5 h-5" />,
       showBadge: bookingUpdatesCount > 0,
     },
     {

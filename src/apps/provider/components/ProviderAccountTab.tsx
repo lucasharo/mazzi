@@ -55,7 +55,7 @@ export const ProviderAccountTab: React.FC<ProviderAccountTabProps> = ({
           </div>
         </div>
         <div className="mazzi-compact-card mt-4 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-sm font-semibold text-[var(--mazzi-text)]">
                 <CheckCircle2 className={`h-4 w-4 ${isReady ? 'text-emerald-600' : 'text-[var(--mazzi-muted)]'}`} aria-hidden="true" />
@@ -65,8 +65,8 @@ export const ProviderAccountTab: React.FC<ProviderAccountTabProps> = ({
                 Seus dados bancários são informados com segurança no cadastro de recebimentos e não ficam armazenados no MAZZI.
               </p>
             </div>
-            <div className="flex shrink-0 flex-wrap justify-end gap-2">
-              <Button type="button" variant="primary" size="sm" onClick={onOpenPayoutOnboarding} isLoading={isOpeningPayoutOnboarding} leftIcon={<ExternalLink className="h-4 w-4" aria-hidden="true" />}>
+            <div className="w-full">
+              <Button type="button" variant="primary" size="sm" className="w-full" onClick={onOpenPayoutOnboarding} isLoading={isOpeningPayoutOnboarding} leftIcon={<ExternalLink className="h-4 w-4" aria-hidden="true" />}>
                 {isReady ? 'Atualizar dados' : 'Configurar recebimentos'}
               </Button>
             </div>

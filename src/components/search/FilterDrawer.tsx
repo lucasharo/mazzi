@@ -15,6 +15,8 @@ export interface FilterDrawerProps {
   maxPriceLimitInCents?: number;
   onApplyFilters: (filters: Partial<SearchRequest>) => void;
   onResetFilters?: () => void;
+  /** null means the platform configuration has not been loaded yet. */
+  defaultRadiusMeters?: number | null;
 }
 
 export const FilterDrawer: React.FC<FilterDrawerProps> = ({
@@ -25,7 +27,11 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   maxPriceLimitInCents,
   onApplyFilters,
   onResetFilters,
+  defaultRadiusMeters,
 }) => {
+  const resolvedDefaultRadiusMeters = defaultRadiusMeters === undefined
+    ? DEFAULT_SEARCH_RADIUS_METERS
+    : defaultRadiusMeters;
   // Staged filter state (draft) so user can configure choices and hit "Aplicar Filtros"
   const activeInputFilters = filters || searchRequest || {};
   const [draft, setDraft] = useState<Partial<SearchRequest>>(activeInputFilters);
@@ -46,7 +52,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
       date: undefined,
       category: undefined,
       transmission: undefined,
-      radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
+      radiusMeters: resolvedDefaultRadiusMeters ?? undefined,
       providerType: undefined,
       minimumRating: undefined,
       maxPriceInCents: undefined,
@@ -88,7 +94,9 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   const isSelectedDate = (dateVal?: string) => currentDraft.date === dateVal;
   const isSelectedProvider = (type?: string) => (currentDraft.providerType || 'ALL') === type;
   const isSelectedTransmission = (trans?: string) => (currentDraft.transmission || 'ALL') === trans;
-  const radiusKm = Math.round((currentDraft.radiusMeters || DEFAULT_SEARCH_RADIUS_METERS) / 1000);
+  const radiusKm = resolvedDefaultRadiusMeters === null
+    ? 0
+    : Math.round((currentDraft.radiusMeters || resolvedDefaultRadiusMeters) / 1000);
   const ratingValue = currentDraft.minimumRating ?? 0;
   const priceValueInCents = currentDraft.maxPriceInCents ?? 0;
   const priceSliderMaxInCents = Math.max(maxPriceLimitInCents ?? 15000, 100);
@@ -117,7 +125,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                   type="button"
                   onClick={() => updateDraft({ date: dateOption.value })}
                   aria-pressed={active}
-                  className={`min-h-11 rounded-xl border px-3 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-11 rounded-2xl border px-3 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     active
                       ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                       : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
@@ -152,7 +160,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                   type="button"
                   onClick={() => updateDraft({ sortBy: opt.id as any })}
                   aria-pressed={active}
-                  className={`min-h-11 px-3.5 py-2.5 rounded-xl border text-xs text-left flex items-center justify-between transition cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-11 px-3.5 py-2.5 rounded-2xl border text-xs text-left flex items-center justify-between transition cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     active
                       ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                       : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
@@ -185,7 +193,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                   type="button"
                   onClick={() => updateDraft({ providerType: pType.id as any })}
                   aria-pressed={active}
-                  className={`min-h-11 rounded-xl border px-2.5 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-11 rounded-2xl border px-2.5 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     active
                       ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                       : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
@@ -219,7 +227,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                     type="button"
                     onClick={() => updateDraft({ transmission: trans.id as any })}
                     aria-pressed={active}
-                    className={`min-h-11 rounded-xl border px-3 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                    className={`min-h-11 rounded-2xl border px-3 py-2 text-center text-xs transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                       active
                         ? 'border-amber-400 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                         : 'border-[var(--mazzi-border)] bg-white text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50'
@@ -241,8 +249,8 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
               <MapPin className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
               Raio Máximo de Busca
             </label>
-            <span className="rounded-md border border-amber-200 bg-[var(--mazzi-yellow-soft)] px-2 py-0.5 text-xs font-bold text-[var(--mazzi-dark)]">
-              {radiusKm} km
+            <span className="rounded-2xl border border-amber-200 bg-[var(--mazzi-yellow-soft)] px-2 py-0.5 text-xs font-bold text-[var(--mazzi-dark)]">
+              {radiusKm > 0 ? `${radiusKm} km` : '—'}
             </span>
           </div>
           <input
@@ -250,12 +258,13 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             min="2"
             max="50"
             step="1"
-            value={radiusKm}
+            value={radiusKm || 2}
             onChange={(event) => updateDraft({ radiusMeters: Number(event.target.value) * 1000 })}
+            disabled={resolvedDefaultRadiusMeters === null}
             className={rangeClassName}
             style={{ accentColor: 'var(--mazzi-yellow)' }}
             aria-label="Raio máximo de busca"
-            aria-valuetext={`${radiusKm} quilômetros`}
+            aria-valuetext={radiusKm > 0 ? `${radiusKm} quilômetros` : 'Configuração carregando'}
           />
           <div className="mt-1 flex justify-between text-[11px] font-semibold text-[var(--mazzi-muted)]">
             <span>2 km</span>
@@ -270,7 +279,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
               <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" aria-hidden="true" />
               Avaliação Mínima
             </label>
-            <span className="rounded-md border border-amber-200 bg-[var(--mazzi-yellow-soft)] px-2 py-0.5 text-xs font-bold text-[var(--mazzi-dark)]">
+            <span className="rounded-2xl border border-amber-200 bg-[var(--mazzi-yellow-soft)] px-2 py-0.5 text-xs font-bold text-[var(--mazzi-dark)]">
               {ratingValue === 0 ? 'Todas' : `${ratingValue.toFixed(1)}★`}
             </span>
           </div>
@@ -302,7 +311,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
               <DollarSign className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
               Faixa de Preço Máxima por Aula
             </label>
-            <span className="rounded-md border border-amber-200 bg-[var(--mazzi-yellow-soft)] px-2 py-0.5 text-xs font-bold text-[var(--mazzi-dark)]">
+            <span className="rounded-2xl border border-amber-200 bg-[var(--mazzi-yellow-soft)] px-2 py-0.5 text-xs font-bold text-[var(--mazzi-dark)]">
               {priceSliderValueInCents === 0 ? 'Qualquer preço' : `Até ${formatCentsToBRL(priceSliderValueInCents)}`}
             </span>
           </div>

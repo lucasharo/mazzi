@@ -8,6 +8,7 @@ import { MaskedInput } from '../ui/MaskedInput';
 import { Button, PrimaryButton, SecondaryButton, ButtonBase } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { OtpInput } from '../ui/OtpInput';
+import { CountdownTimer } from '../ui/CountdownTimer';
 import { AUTH_OTP_LENGTH, AUTH_OTP_RESEND_COOLDOWN_SECONDS } from '../../lib/auth-constants';
 import { dbService } from '../../lib/db-service';
 import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
@@ -1019,15 +1020,19 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
           </PrimaryButton>
 
           <div className="pt-2 flex flex-col gap-3 items-center">
-            <ButtonBase
-              type="button"
-              onClick={handleResendSignupOtp}
-              disabled={resendCooldown > 0 || isLoading}
-              className="inline-flex items-center gap-1.5 py-1 text-xs font-bold text-amber-700 transition hover:text-amber-800 disabled:cursor-not-allowed disabled:text-slate-400 cursor-pointer"
-            >
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-              {resendCooldown > 0 ? `Reenviar código em ${resendCooldown}s` : 'Reenviar código por e-mail'}
-            </ButtonBase>
+            {resendCooldown > 0 ? (
+              <CountdownTimer secondsRemaining={resendCooldown} label="Reenviar código em" />
+            ) : (
+              <ButtonBase
+                type="button"
+                onClick={handleResendSignupOtp}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1.5 py-1 text-xs font-bold text-amber-700 transition hover:text-amber-800 disabled:cursor-not-allowed disabled:text-slate-400 cursor-pointer"
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                Reenviar código por e-mail
+              </ButtonBase>
+            )}
 
             <ButtonBase
               type="button"
@@ -1224,7 +1229,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
         <ButtonBase
           type="button"
           onClick={() => goTo('login')}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[var(--mazzi-dark)] transition cursor-pointer rounded-lg p-1 -ml-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[var(--mazzi-dark)] transition cursor-pointer rounded-2xl p-1 -ml-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           <span>Voltar para o login</span>
@@ -1308,7 +1313,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
         <ButtonBase
           type="button"
           onClick={() => goTo('login')}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[var(--mazzi-dark)] transition cursor-pointer rounded-lg p-1 -ml-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[var(--mazzi-dark)] transition cursor-pointer rounded-2xl p-1 -ml-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           <span>Voltar para o login</span>
@@ -1341,7 +1346,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
         <form noValidate onSubmit={submitSignup} className="space-y-4">
           {kind === 'instructor' && professionalPath === 'school' && (
             <div className="flex items-start gap-3 rounded-2xl border border-amber-200/70 bg-[var(--mazzi-yellow-soft)] p-3 text-xs leading-relaxed text-slate-700">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
                 <Building2 className="h-4 w-4" aria-hidden="true" />
               </span>
               <p><strong className="text-[var(--mazzi-text)]">Você será a pessoa responsável pela autoescola.</strong> Depois de criar sua conta, informe CNPJ, razão social e endereço operacional da empresa.</p>

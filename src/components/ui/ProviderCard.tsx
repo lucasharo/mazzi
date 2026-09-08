@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, MapPin, Clock, Building2, User, ChevronRight } from 'lucide-react';
 import { Provider } from '../../types';
-import { Avatar } from './Avatar';
+import { ProfileAvatar } from '../profile/ProfileAvatar';
 import { Rating } from './Rating';
 import { Price } from './Price';
 import { Badge } from './Badge';
@@ -27,7 +27,7 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
         {/* Header with Avatar & Verified */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3.5">
-            <Avatar name={provider.name} imageUrl={provider.avatarUrl} size="lg" />
+            <ProfileAvatar name={provider.name} imageUrl={provider.avatarUrl} size="lg" />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
                 <h3 className="font-extrabold text-[var(--mazzi-dark)] text-base leading-snug truncate">
@@ -90,7 +90,7 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
 
         {/* Next slot */}
         {provider.nextAvailableSlot && (
-          <div className="mt-3.5 px-3 py-2 rounded-xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] flex items-center gap-2 text-xs text-[var(--mazzi-text)] font-medium">
+          <div className="mt-3.5 px-3 py-2 rounded-2xl bg-[var(--mazzi-surface-soft)] border border-[var(--mazzi-border)] flex items-center gap-2 text-xs text-[var(--mazzi-text)] font-medium">
             <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
             <span>Próximo horário: <strong className="font-extrabold">{provider.nextAvailableSlot}</strong></span>
           </div>

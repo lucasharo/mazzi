@@ -27,6 +27,7 @@ import { ProviderResultCard } from '../../components/search/ProviderResultCard';
 import { MapView } from '../../components/search/MapView';
 import { ProviderPublicProfileModal } from '../../components/search/ProviderPublicProfileModal';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
+import { ProfileAvatar } from '../../components/profile/ProfileAvatar';
 import { BookingDetailsModal } from '../student/components/BookingDetailsModal';
 import { SlotSelectorModal, addDays, type PublicSlot } from '../student/components/SlotSelectorModal';
 import type { PublicSearchProviderResult, SearchRequest } from '../../types';
@@ -236,7 +237,7 @@ export const DesignSystemShowcase: React.FC = () => {
           </div>
 
           {/* Viewport Preview Toolbar */}
-          <div className="flex w-full max-w-full items-center gap-1 overflow-x-auto bg-slate-800 p-1 rounded-xl border border-slate-700 sm:w-auto">
+          <div className="flex w-full max-w-full items-center gap-1 overflow-x-auto bg-[var(--mazzi-dark)] p-1 rounded-xl border border-[var(--mazzi-dark)] sm:w-auto">
             <ButtonBase
               type="button"
               onClick={() => setViewportWidth('full')}
@@ -984,7 +985,7 @@ export const DesignSystemShowcase: React.FC = () => {
                     <h4 className="text-xs font-bold text-[#202126]">Padrão Visual do Checkout (Confirmar Aula & Confirmar Pagamento)</h4>
                     <ul className="list-disc pl-5 text-xs text-slate-700 space-y-1 font-medium">
                       <li>Banner de ambiente de testes: Nota secundária em fundo âmbar suave.</li>
-                      <li>Contador de garantia de preço/hold: Badge âmbar suave discreto ("Este valor fica reservado por mais MM:SS").</li>
+                      <li>Contador de garantia de preço/hold: faixa escura compartilhada com relógio e tempo no formato MM:SS.</li>
                       <li>Resumo financeiro: Hierarquia com destaque no Total.</li>
                       <li>CTA Principal: <code className="font-mono text-amber-800">PrimaryButton</code> min-height 48px, full-width no mobile.</li>
                     </ul>
@@ -1272,9 +1273,7 @@ export const DesignSystemShowcase: React.FC = () => {
                             action={<IconButton label="Editar perfil" className="mazzi-icon-button"><Pencil className="h-5 w-5" aria-hidden="true" /></IconButton>}
                           />
                           <div className="pt-2 text-center">
-                            <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold">
-                              {studentProfilePhoto ? <img src={studentProfilePhoto} alt="Foto do perfil" className="h-full w-full object-cover" /> : 'AS'}
-                            </div>
+                            <ProfileAvatar name="Ana Beatriz Souza" imageUrl={studentProfilePhoto} size="xl" className="mx-auto h-24 w-24 text-2xl" />
                             <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">Ana Beatriz Souza</h3>
                             <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">ana.aluno@mazzi.com.br</p>
                           </div>

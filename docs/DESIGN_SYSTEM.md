@@ -81,7 +81,7 @@ Todos usam tipografia, cores e espaçamentos globais. Não replique o markup em 
 
 ## 7. Agendamento
 
-- O fluxo Aluno usa `SlotSelectorModal`, com horizonte configurável no Admin e carregamento progressivo em lotes de até 30 dias; 60 dias é apenas o fallback seguro do frontend.
+- O fluxo Aluno usa `SlotSelectorModal`, com horizonte configurável no Admin e carregamento progressivo em lotes técnicos de até 30 dias; em ambiente real, configuração ausente ou inválida bloqueia a consulta em vez de inventar um limite.
 - O seletor contém navegação mensal, dias disponíveis, horários agrupados por manhã/tarde/noite, resumo e confirmação.
 - O catálogo executável demonstra o próprio `SlotSelectorModal` com `previewSlots` isolados. Essa propriedade é opcional e não altera o carregamento real do backend quando omitida.
 - Dias do calendário são identificados pelo número; ícones de calendário não são repetidos em cada dia.

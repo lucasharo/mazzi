@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CheckCircle2,
   Clock3,
@@ -19,7 +19,7 @@ import { formatCentsToBRL } from '../../../domain/money';
 import { calculateLessonDurationMinutes, formatTransmissionLabel, formatTimeBR } from '../../../lib/date-format';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
-import { UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
+import { getBookingStartTimestamp, getEffectiveBookingHoldExpiresAt, UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
 import { ExternalNavigationModal } from '../../../components/instant/ExternalNavigationModal';
 import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices } from '../../../components/booking/BookingDetailsShared';
@@ -30,7 +30,7 @@ export interface ProviderBookingDetailsModalProps {
   booking: Booking | null;
   onOpenChat?: (booking: Booking) => void;
   onCheckIn?: (booking: Booking) => void | Promise<string | void>;
-  onStartLesson?: (booking: Booking) => void | Promise<void>;
+  onStartLesson?: (booking: Booking) => void | Promise<boolean | void>;
   onCompleteLesson?: (booking: Booking) => void | Promise<void>;
   onCancelBooking?: (booking: Booking) => void;
   isCompleting?: boolean;
@@ -43,6 +43,11 @@ export interface ProviderBookingDetailsModalProps {
   etaMinutes?: number | null;
   onOpenNavigation?: () => void;
   onSetOnTheWay?: (bookingId: string) => Promise<void>;
+  onMarkArrived?: (bookingId: string) => Promise<void>;
+  isMarkingArrived?: boolean;
+  hasScheduleConflict?: boolean;
+  checkInWindowBeforeMinutes?: number | null;
+  instantLessonExpirationMinutes?: number;
   onRefreshBooking?: (bookingId: string) => Promise<Booking | null>;
   isLoading?: boolean;
 }
@@ -66,17 +71,37 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   etaMinutes,
   onOpenNavigation,
   onSetOnTheWay,
+  onMarkArrived,
+  isMarkingArrived = false,
+  hasScheduleConflict = false,
+  checkInWindowBeforeMinutes,
+  instantLessonExpirationMinutes,
   onRefreshBooking,
   isLoading = false,
 }) => {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const startingLessonBookingIdRef = useRef<string | null>(null);
   const [submittingDisplacement, setSubmittingDisplacement] = useState(false);
+  const [hasStartedDisplacement, setHasStartedDisplacement] = useState(false);
   const [hasArrivedState, setHasArrivedState] = useState(hasArrivedProp);
   const [checkInError, setCheckInError] = useState<string | null>(null);
   const [checkInNow, setCheckInNow] = useState(() => new Date());
   const [navModalOpen, setNavModalOpen] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
+
+  useEffect(() => {
+    // Keep the start action locked until the authoritative booking state
+    // changes. The RPC may resolve before React receives the IN_PROGRESS update.
+    if (!isOpen || !booking || booking.status === 'IN_PROGRESS') {
+      startingLessonBookingIdRef.current = null;
+      setIsStarting(false);
+    }
+  }, [isOpen, booking?.id, booking?.status]);
+
+  useEffect(() => {
+    setHasStartedDisplacement(false);
+  }, [isOpen, booking?.id]);
 
   useEffect(() => {
     if (!isOpen || !booking) return undefined;
@@ -125,8 +150,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     (booking as any).snapshot_data?.source === 'AULA_AGORA';
 
   const isWaitingPayment = isWaitingPaymentProp || booking.status === 'PENDING_PAYMENT';
-  const isOnTheWay = isOnTheWayProp || Boolean(booking.providerOnTheWayAt || booking.snapshot?.provider_on_the_way_at);
-  const isArrived = hasArrivedProp || hasArrivedState || Boolean(booking.instructorCheckedIn);
+  const isOnTheWay = isOnTheWayProp || hasStartedDisplacement || Boolean(booking.providerOnTheWayAt || booking.snapshot?.provider_on_the_way_at);
+  const isArrived = hasArrivedProp || hasArrivedState || Boolean(
+    booking.instructorCheckedIn || booking.providerArrivedAt || booking.snapshot?.provider_arrived_at,
+  );
 
   const snapshot = booking.snapshot || {
     providerName: booking.providerName,
@@ -137,9 +164,14 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     transmission: undefined,
   } as Booking['snapshot'];
 
-  const isProviderMeetingPoint = [booking.meetingPoint, snapshot.meetingPoint].some((value) => (
-    typeof value === 'object' && value !== null && (value as { type?: string }).type === 'PROVIDER_ADDRESS'
-  ));
+  // The persisted booking is authoritative. A snapshot can contain the
+  // original/default meeting point and must not override the current booking.
+  // The UI string is only a formatted label. Keep the structured snapshot as
+  // the source for the meeting-point type (STUDENT_ADDRESS/PROVIDER_ADDRESS).
+  const effectiveMeetingPoint = snapshot.meetingPoint ?? booking.meetingPoint ?? booking.fullMeetingPoint;
+  const isProviderMeetingPoint = typeof effectiveMeetingPoint === 'object'
+    && effectiveMeetingPoint !== null
+    && (effectiveMeetingPoint as { type?: string }).type === 'PROVIDER_ADDRESS';
   const shouldWaitForStudentAtProviderLocation = isProviderMeetingPoint;
 
   const isConfirmed = booking.status === 'CONFIRMED';
@@ -153,10 +185,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const category = booking.offering?.category || snapshot.category || 'B';
   const transmission = formatTransmissionLabel(booking.offering?.transmission || snapshot.transmission || 'MANUAL');
 
-  const rawMeetingPoint = booking.meetingPoint || snapshot.meetingPoint || booking.fullMeetingPoint;
+  const rawMeetingPoint = effectiveMeetingPoint;
   const meetingPointText = isWaitingPayment
     ? formatPendingPaymentMeetingPoint(rawMeetingPoint)
-    : isProviderMeetingPoint && booking.fullMeetingPoint
+    : booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint)
       ? booking.fullMeetingPoint
       : formatMeetingPoint(rawMeetingPoint) ||
         (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint) ? booking.fullMeetingPoint : '') ||
@@ -180,40 +212,67 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const platformFeeInCents = snapshot.platformFeeInCents ?? booking.platformFeeInCents ?? 0;
   const bookingTotalInCents = snapshot.totalInCents ?? booking.totalInCents ?? lessonPriceInCents;
   const netAmountInCents = Math.max(0, bookingTotalInCents - platformFeeInCents);
+  const effectiveHoldExpiresAt = getEffectiveBookingHoldExpiresAt(booking, instantLessonExpirationMinutes);
 
   const canCancel = canCancelBooking
     ? canCancelBooking(booking)
     : isConfirmed && !booking.instructorCheckedIn && !isInstant;
 
-  const checkInAvailability = getCheckInAvailability({
-    scheduledStartAt: booking.scheduledStartAt,
-    scheduledDate: booking.scheduledDate,
-    startTime: booking.startTime,
-    status: booking.status,
-    alreadyCheckedIn: Boolean(booking.instructorCheckedIn),
-    now: checkInNow,
-  });
+  const checkInAvailability = checkInWindowBeforeMinutes === null
+    ? { canCheckIn: false, opensAt: null, reason: 'CONFIGURATION_UNAVAILABLE' as const }
+    : getCheckInAvailability({
+      scheduledStartAt: booking.scheduledStartAt,
+      scheduledDate: booking.scheduledDate,
+      startTime: booking.startTime,
+      status: booking.status,
+      alreadyCheckedIn: Boolean(booking.instructorCheckedIn),
+      checkInWindowBeforeMinutes,
+      now: checkInNow,
+    });
+  const lessonStartTimestamp = getBookingStartTimestamp(booking);
+  const arrivalWindowOpen = checkInWindowBeforeMinutes !== null && lessonStartTimestamp > 0
+    && (checkInAvailability.opensAt === null || checkInNow.getTime() >= checkInAvailability.opensAt.getTime());
+  const canShowTravelActions = arrivalWindowOpen && !hasScheduleConflict;
 
-  const handleCheckIn = async () => {
-    if (!onCheckIn || isCheckingIn) return;
+  const handleCheckIn = async (): Promise<boolean> => {
+    if (!onCheckIn || isCheckingIn) return false;
     setIsCheckingIn(true);
     setCheckInError(null);
     try {
       const result = await onCheckIn(booking);
-      if (typeof result === 'string') setCheckInError(result);
+      if (typeof result === 'string') {
+        setCheckInError(result);
+        return false;
+      }
+      return true;
     } catch (error) {
       setCheckInError(mapFriendlyErrorMessage(error, 'Não foi possível realizar o check-in. Tente novamente.'));
+      return false;
     } finally {
       setIsCheckingIn(false);
     }
   };
 
   const handleStartLesson = async () => {
-    if (!onStartLesson || isStarting || !booking.instructorCheckedIn || !booking.studentCheckedIn) return;
+    if (
+      !onStartLesson ||
+      isStarting ||
+      startingLessonBookingIdRef.current === booking.id ||
+      !booking.instructorCheckedIn ||
+      !booking.studentCheckedIn
+    ) return;
+
+    startingLessonBookingIdRef.current = booking.id;
     setIsStarting(true);
     try {
-      await onStartLesson(booking);
-    } finally {
+      const result = await onStartLesson(booking);
+      if (result === false) {
+        startingLessonBookingIdRef.current = null;
+        setIsStarting(false);
+      }
+    } catch {
+      // Keep the button available when a caller fails before changing status.
+      startingLessonBookingIdRef.current = null;
       setIsStarting(false);
     }
   };
@@ -223,8 +282,30 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     setSubmittingDisplacement(true);
     try {
       await onSetOnTheWay(booking.id);
+      setHasStartedDisplacement(true);
     } finally {
       setSubmittingDisplacement(false);
+    }
+  };
+
+  const handleMarkArrived = async () => {
+    if (isMarkingArrived || isLoading) return;
+    try {
+      // provider_mark_arrived is only valid for Aula Agora. Scheduled lessons
+      // use the regular instructor check-in transition instead.
+      if (isInstant && onMarkArrived) {
+        await onMarkArrived(booking.id);
+      }
+      let checkInCompleted = true;
+      if (onCheckIn) {
+        checkInCompleted = await handleCheckIn();
+      }
+      if (checkInCompleted) {
+        setHasArrivedState(true);
+        setCheckInError(null);
+      }
+    } catch (error) {
+      setCheckInError(mapFriendlyErrorMessage(error, 'Não foi possível confirmar sua chegada. Tente novamente quando estiver no local.'));
     }
   };
 
@@ -250,16 +331,16 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               <Button
                 type="button"
                 variant="primary"
-                className="w-full rounded-2xl font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+                className="w-full rounded-2xl border-[var(--mazzi-yellow)] bg-[var(--mazzi-yellow)] font-extrabold text-[var(--mazzi-dark)] hover:brightness-95"
                 isLoading={isCompleting}
                 disabled={isCompleting}
                 onClick={() => void onCompleteLesson(booking)}
-                leftIcon={<CheckCircle2 className="h-4 w-4 text-white" aria-hidden="true" />}
+                leftIcon={<CheckCircle2 className="h-4 w-4 text-[var(--mazzi-dark)]" aria-hidden="true" />}
               >
                 Finalizar aula
               </Button>
             )
-          ) : !isOnTheWay && !isArrived && !shouldWaitForStudentAtProviderLocation ? (
+          ) : !isOnTheWay && !isArrived && !shouldWaitForStudentAtProviderLocation && canShowTravelActions ? (
             <Button
               type="button"
               variant="primary"
@@ -270,19 +351,14 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             >
               Estou a caminho
             </Button>
-          ) : !isArrived && !shouldWaitForStudentAtProviderLocation ? (
+          ) : !isArrived && !shouldWaitForStudentAtProviderLocation && canShowTravelActions ? (
             <Button
               type="button"
               variant="primary"
               className="w-full rounded-2xl font-extrabold"
-              disabled={isLoading || submittingDisplacement || isCheckingIn}
-              isLoading={isCheckingIn}
-              onClick={async () => {
-                setHasArrivedState(true);
-                if (onCheckIn) {
-                  await handleCheckIn();
-                }
-              }}
+              disabled={isLoading || submittingDisplacement || isCheckingIn || isMarkingArrived || !checkInAvailability.canCheckIn}
+              isLoading={isMarkingArrived}
+              onClick={() => void handleMarkArrived()}
               leftIcon={<MapPin className="h-4 w-4 text-[var(--mazzi-dark)]" aria-hidden="true" />}
             >
               Cheguei ao local
@@ -291,12 +367,16 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             <div className="mazzi-compact-card rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs font-bold text-slate-700" role="status">
               Ponto de encontro no local do PRO. Aguarde o aluno chegar.
             </div>
+          ) : !isArrived && !canShowTravelActions ? (
+            <div className="mazzi-compact-card rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs font-bold text-slate-700" role="status">
+              {hasScheduleConflict ? 'Ações temporariamente indisponíveis por conflito com outra aula.' : checkInAvailability.opensAt ? `As ações ficarão disponíveis ${checkInWindowBeforeMinutes} minutos antes da aula.` : 'Ações indisponíveis até a configuração ser carregada.'}
+            </div>
           ) : (
             booking.instructorCheckedIn && booking.studentCheckedIn ? (
               <Button
                 type="button"
                 variant="primary"
-                className="w-full rounded-2xl font-extrabold"
+                className="w-full rounded-2xl border-emerald-600 bg-emerald-600 font-extrabold text-white hover:bg-emerald-700"
                 isLoading={isStarting}
                 disabled={isStarting}
                 onClick={() => void handleStartLesson()}
@@ -345,12 +425,40 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
 
   const standardFooter = (
     <div className="flex w-full flex-col gap-2.5">
+      {!isCompleted && !isInProgress && !isProviderMeetingPoint && canShowTravelActions && !isArrived && (
+        !isOnTheWay ? (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className="w-full rounded-2xl font-bold"
+            isLoading={submittingDisplacement || isLoading}
+            onClick={() => void handleStartDisplacement()}
+            leftIcon={<Navigation className="h-4 w-4" aria-hidden="true" />}
+          >
+            Estou a caminho
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className="w-full rounded-2xl font-bold"
+            disabled={isLoading || submittingDisplacement || isCheckingIn || isMarkingArrived || !checkInAvailability.canCheckIn}
+            isLoading={isMarkingArrived}
+            onClick={() => void handleMarkArrived()}
+            leftIcon={<MapPin className="h-4 w-4 text-[var(--mazzi-dark)]" aria-hidden="true" />}
+          >
+            Cheguei ao local
+          </Button>
+        )
+      )}
       {isConfirmed && booking.instructorCheckedIn && booking.studentCheckedIn && (
         <Button
           type="button"
           variant="primary"
           size="sm"
-          className="w-full rounded-2xl font-bold shadow-md transition-all hover:shadow-lg"
+          className="w-full rounded-2xl border-emerald-600 bg-emerald-600 font-bold text-white shadow-md transition-all hover:bg-emerald-700 hover:shadow-lg"
           onClick={() => void handleStartLesson()}
           disabled={isStarting}
           isLoading={isStarting}
@@ -364,10 +472,10 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           type="button"
           variant="primary"
           size="sm"
-          className="w-full rounded-2xl font-bold shadow-md transition-all hover:shadow-lg"
+          className="w-full rounded-2xl border-[var(--mazzi-yellow)] bg-[var(--mazzi-yellow)] font-bold text-[var(--mazzi-dark)] shadow-md transition-all hover:brightness-95 hover:shadow-lg"
           onClick={() => onCompleteLesson(booking)}
           isLoading={isCompleting}
-          leftIcon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+          leftIcon={<CheckCircle2 className="h-4 w-4 text-[var(--mazzi-dark)]" aria-hidden="true" />}
         >
           Finalizar aula
         </Button>
@@ -479,17 +587,19 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             audience="provider"
             title={studentName}
             subtitle={`Aula #${booking.id.slice(0, 8)}`}
-            instructorCheckedIn={Boolean(booking.instructorCheckedIn || isArrived)}
+            instructorCheckedIn={Boolean(booking.instructorCheckedIn)}
           />
 
           <BookingPresenceCard
             audience="provider"
-            booking={booking}
+            booking={hasArrivedState && !booking.instructorCheckedIn ? { ...booking, instructorCheckedIn: true } : booking}
             visible={booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS' || isOnTheWay}
             checkInAvailability={checkInAvailability}
+            canCheckInAtLocation={!isInstant || isProviderMeetingPoint || isArrived}
             checkInError={checkInError}
             isCheckingIn={isCheckingIn}
-            onCheckIn={handleCheckIn}
+            onCheckIn={!isInstant && hasArrivedState ? undefined : handleCheckIn}
+            showCheckInAction={isProviderMeetingPoint}
           />
 
           <BookingDetailsOverview
@@ -504,13 +614,13 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
               : `Horário: ${booking.startTime} às ${booking.endTime}`}
             durationLabel={durationLabel}
-            meetingPoint={meetingPointText}
+            meetingPoint={isOnTheWay ? meetingPointText : ''}
             isProviderAddress={isProviderMeetingPoint}
             showCopyAddress={!isWaitingPayment && !isProviderMeetingPoint}
             addressCopied={addressCopied}
             onCopyAddress={handleCopyAddress}
             hasExactMeetingPoint={hasExactMeetingPoint}
-            showNavigation={!isWaitingPayment && !isProviderMeetingPoint}
+            showNavigation={isOnTheWay && !isWaitingPayment}
             onOpenNavigation={() => {
               if (onOpenNavigation) onOpenNavigation();
               setNavModalOpen(true);
@@ -529,9 +639,9 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           <BookingCancellationNotice booking={booking} />
           <BookingPaymentStateNotices
             isPendingPayment={isWaitingPayment}
-            isHoldValid={booking.holdExpiresAt ? new Date(booking.holdExpiresAt).getTime() > Date.now() : true}
-            minutesLeft={booking.holdExpiresAt ? Math.max(1, Math.ceil((new Date(booking.holdExpiresAt).getTime() - Date.now()) / (1000 * 60))) : null}
-            isExpired={booking.status === 'EXPIRED' || (isWaitingPayment && Boolean(booking.holdExpiresAt) && new Date(booking.holdExpiresAt).getTime() <= Date.now())}
+            isHoldValid={effectiveHoldExpiresAt ? new Date(effectiveHoldExpiresAt).getTime() > Date.now() : true}
+            secondsLeft={effectiveHoldExpiresAt ? Math.max(0, Math.ceil((new Date(effectiveHoldExpiresAt).getTime() - Date.now()) / 1000)) : null}
+            isExpired={booking.status === 'EXPIRED' || (isWaitingPayment && Boolean(effectiveHoldExpiresAt) && new Date(effectiveHoldExpiresAt).getTime() <= Date.now())}
           />
 
           <BookingDisputePanel booking={booking} currentUserId={currentUserId} />

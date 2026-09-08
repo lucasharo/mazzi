@@ -10,9 +10,9 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   variant = 'rectangular',
 }) => {
   const variantStyles = {
-    text: 'h-4 w-full rounded-md',
+    text: 'h-4 w-full rounded-2xl',
     circular: 'rounded-full',
-    rectangular: 'rounded-xl',
+    rectangular: 'rounded-2xl',
     card: 'h-40 w-full rounded-2xl',
   };
 

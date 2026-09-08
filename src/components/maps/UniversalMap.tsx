@@ -32,7 +32,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
       <div className={`space-y-2 ${className}`}>
         <div
           style={{ height }}
-          className="w-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-semibold rounded-xl"
+          className="w-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-semibold rounded-2xl"
         >
           Mapa de localização
         </div>
@@ -71,7 +71,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
       </div>
 
       {/* Render map abstraction */}
-      <Suspense fallback={<div style={{ height }} className="w-full bg-slate-100 animate-pulse rounded-xl" />}>
+      <Suspense fallback={<div style={{ height }} className="w-full bg-slate-100 animate-pulse rounded-2xl" />}>
         <LazyLeafletMap
           providers={providers}
           selectedProvider={selectedProvider}

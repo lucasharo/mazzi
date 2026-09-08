@@ -45,6 +45,7 @@ import {
 } from './AdminComponents';
 import { AdminAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
+import { ProfileAvatar } from '../../components/profile/ProfileAvatar';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { ContentSkeleton, ContentSkeletonMode } from '../../components/ui/ContentSkeleton';
 import { Modal } from '../../components/ui/Modal';
@@ -177,6 +178,13 @@ export const AdminApp: React.FC = () => {
             if (item.key === 'instant_lesson_settings') {
               if (item.value?.max_eta_minutes !== null && item.value?.max_eta_minutes !== undefined) mappedConfig.instantMaxEtaMinutes = Number(item.value.max_eta_minutes);
               if (item.value?.offer_expiration_seconds !== null && item.value?.offer_expiration_seconds !== undefined) mappedConfig.instantOfferExpirationSeconds = Number(item.value.offer_expiration_seconds);
+              if (item.value?.payment_expiration_minutes !== null && item.value?.payment_expiration_minutes !== undefined) mappedConfig.instantLessonExpirationMinutes = Number(item.value.payment_expiration_minutes);
+              if (item.value?.instant_refund_on_way_initial_percent !== null && item.value?.instant_refund_on_way_initial_percent !== undefined) mappedConfig.instantRefundOnWayInitialPercent = Number(item.value.instant_refund_on_way_initial_percent);
+              if (item.value?.instant_refund_on_way_middle_percent !== null && item.value?.instant_refund_on_way_middle_percent !== undefined) mappedConfig.instantRefundOnWayMiddlePercent = Number(item.value.instant_refund_on_way_middle_percent);
+              if (item.value?.instant_refund_on_way_late_percent !== null && item.value?.instant_refund_on_way_late_percent !== undefined) mappedConfig.instantRefundOnWayLatePercent = Number(item.value.instant_refund_on_way_late_percent);
+              if (item.value?.instant_refund_after_arrival_percent !== null && item.value?.instant_refund_after_arrival_percent !== undefined) mappedConfig.instantRefundAfterArrivalPercent = Number(item.value.instant_refund_after_arrival_percent);
+              if (item.value?.instant_refund_initial_window_minutes !== null && item.value?.instant_refund_initial_window_minutes !== undefined) mappedConfig.instantRefundInitialWindowMinutes = Number(item.value.instant_refund_initial_window_minutes);
+              if (item.value?.instant_refund_middle_window_minutes !== null && item.value?.instant_refund_middle_window_minutes !== undefined) mappedConfig.instantRefundMiddleWindowMinutes = Number(item.value.instant_refund_middle_window_minutes);
             }
           }
           setPlatformConfig(mappedConfig);
@@ -395,13 +403,24 @@ export const AdminApp: React.FC = () => {
       const persistedUpdates = Object.fromEntries(
         Object.entries(updates).filter(([, value]) => typeof value === 'number'),
       ) as Record<string, number>;
-      const { contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds, ...standardUpdates } = persistedUpdates;
+      const { contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds, instantLessonExpirationMinutes, instantRefundOnWayInitialPercent, instantRefundOnWayMiddlePercent, instantRefundOnWayLatePercent, instantRefundAfterArrivalPercent, instantRefundInitialWindowMinutes, instantRefundMiddleWindowMinutes, ...standardUpdates } = persistedUpdates;
       if (Object.keys(standardUpdates).length > 0) await dbService.updatePlatformConfigs(standardUpdates);
       if (contestationResponseHours !== undefined) await dbService.updateContestationResponseHours(contestationResponseHours);
-      if (instantMaxEtaMinutes !== undefined || instantOfferExpirationSeconds !== undefined) {
+      if (instantMaxEtaMinutes !== undefined || instantOfferExpirationSeconds !== undefined || instantLessonExpirationMinutes !== undefined) {
         await dbService.updateAdminInstantLessonConfig({
           maxEtaMinutes: instantMaxEtaMinutes ?? platformConfig.instantMaxEtaMinutes,
           offerExpirationSeconds: instantOfferExpirationSeconds ?? platformConfig.instantOfferExpirationSeconds,
+          paymentExpirationMinutes: instantLessonExpirationMinutes ?? platformConfig.instantLessonExpirationMinutes,
+        });
+      }
+      if (instantRefundOnWayInitialPercent !== undefined || instantRefundOnWayMiddlePercent !== undefined || instantRefundOnWayLatePercent !== undefined || instantRefundAfterArrivalPercent !== undefined || instantRefundInitialWindowMinutes !== undefined || instantRefundMiddleWindowMinutes !== undefined) {
+        await dbService.updateAdminInstantCancellationConfig({
+          initialPercent: instantRefundOnWayInitialPercent ?? platformConfig.instantRefundOnWayInitialPercent,
+          middlePercent: instantRefundOnWayMiddlePercent ?? platformConfig.instantRefundOnWayMiddlePercent,
+          latePercent: instantRefundOnWayLatePercent ?? platformConfig.instantRefundOnWayLatePercent,
+          arrivedPercent: instantRefundAfterArrivalPercent ?? platformConfig.instantRefundAfterArrivalPercent,
+          initialWindowMinutes: instantRefundInitialWindowMinutes ?? platformConfig.instantRefundInitialWindowMinutes,
+          middleWindowMinutes: instantRefundMiddleWindowMinutes ?? platformConfig.instantRefundMiddleWindowMinutes,
         });
       }
       setPlatformConfig((current) => ({
@@ -483,7 +502,7 @@ export const AdminApp: React.FC = () => {
             <ButtonBase
               key={tab.id}
               onClick={() => navigateAdminTab(tab.id)}
-              className={`min-h-11 snap-start px-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 sm:px-4 ${
+              className={`min-h-11 snap-start px-3 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 sm:px-4 ${
                 isActive
                   ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]'
                   : 'text-[var(--mazzi-muted)] hover:bg-[var(--mazzi-surface-muted)] hover:text-[var(--mazzi-dark)]'
@@ -642,7 +661,7 @@ export const AdminApp: React.FC = () => {
 
             <div className="rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
               <div className="flex flex-col items-center gap-4 border-b border-[var(--mazzi-border)] pb-6 text-center">
-                {isEditingProfile ? <ProfilePhotoPicker value={profileAvatar} name={user?.name} onChange={setProfileAvatar} /> : <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-[var(--mazzi-border)] bg-[var(--mazzi-yellow)] text-2xl font-bold text-[var(--mazzi-dark)]">{profileAvatar ? <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" /> : (user?.name || 'Admin').split(/\s+/).map((n) => n[0]).slice(0, 2).join('').toUpperCase()}</div>}
+                {isEditingProfile ? <ProfilePhotoPicker value={profileAvatar} name={user?.name} onChange={setProfileAvatar} /> : <ProfileAvatar name={user?.name || 'Admin'} imageUrl={profileAvatar} size="xl" className="h-24 w-24 text-2xl" />}
                 <div className="space-y-1">
                   <h3 className="text-2xl font-bold tracking-[-0.02em] text-[var(--mazzi-dark)]">{user?.name || 'Nome não informado'}</h3>
                   <p className="text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p>

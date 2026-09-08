@@ -29,9 +29,8 @@ export const InstantLessonOfferBottomSheet: React.FC<InstantLessonOfferBottomShe
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      title="Nova solicitação de Aula Agora"
-      showHeader
-      ariaLabel="Nova solicitação de Aula Agora"
+      showHeader={false}
+      ariaLabel="Oferta de Aula Agora"
     >
       <div className="space-y-3" data-component="instant-lesson-offer-bottom-sheet">
         <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3.5" role="status" aria-live="polite">

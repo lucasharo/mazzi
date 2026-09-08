@@ -4,24 +4,13 @@ import { PublicSearchProviderResult, TransmissionType } from '../../types';
 import { formatCentsToBRL } from '../../domain/money';
 import { Modal } from '../ui/Modal';
 import { Button, PrimaryButton } from '../ui/Button';
+import { ProfileAvatar } from '../profile/ProfileAvatar';
 
 export interface ProviderPublicProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   result: PublicSearchProviderResult | null;
   onSelectSlotToBook?: (providerId: string, date?: string, slot?: any) => void;
-}
-
-function getInitials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((part) => part[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || 'M'
-  );
 }
 
 function transmissionLabel(trans?: TransmissionType): string {
@@ -65,22 +54,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
         {/* Header / Identity */}
         <section className="text-center" aria-label="Identificação do prestador">
           <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
-            <div className="mazzi-avatar h-full w-full text-xl sm:text-2xl font-bold ring-1 ring-black/5">
-              {result.avatarUrl ? (
-                <img
-                  src={result.avatarUrl}
-                  alt={`Foto de ${result.displayName}`}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span
-                  className="flex h-full w-full items-center justify-center bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)]"
-                  aria-hidden="true"
-                >
-                  {getInitials(result.displayName)}
-                </span>
-              )}
-            </div>
+            <ProfileAvatar name={result.displayName} imageUrl={result.avatarUrl} size="xl" className="h-full w-full text-xl sm:text-2xl" />
             {result.isVerified && (
               <span
                 className="absolute -bottom-1 -right-1 inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200/60 p-1 text-emerald-700"
@@ -107,7 +81,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
                   <span className="text-slate-400 font-normal">({result.ratingCount} avaliações)</span>
                 </span>
               ) : (
-                <span className="font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">Novo na MAZZI</span>
+                <span className="font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-2xl">Novo na MAZZI</span>
               )}
               <span className="inline-flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5 text-amber-600 shrink-0" aria-hidden="true" />
@@ -145,7 +119,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
               <div className="flex items-center gap-1.5 font-semibold text-[var(--mazzi-text)]">
                 <span className="text-[var(--mazzi-muted)] font-medium">Categorias:</span>
                 {availableCategories.map((cat) => (
-                  <span key={cat} className="bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] text-[10px] font-bold uppercase px-2 py-0.5 rounded-md">
+                  <span key={cat} className="bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)] text-[10px] font-bold uppercase px-2 py-0.5 rounded-2xl">
                     Cat. {cat}
                   </span>
                 ))}
@@ -199,7 +173,7 @@ export const ProviderPublicProfileModal: React.FC<ProviderPublicProfileModalProp
                             })()}
                           </p>
                           {offering.category && (
-                            <span className="shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-text)] border border-[var(--mazzi-border)] px-2 py-0.5 rounded-md">
+                            <span className="shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-text)] border border-[var(--mazzi-border)] px-2 py-0.5 rounded-2xl">
                               Cat. {offering.category}
                             </span>
                           )}

@@ -157,7 +157,7 @@ export const SchoolMembershipPanel: React.FC<SchoolMembershipPanelProps> = ({ pr
             <div className="space-y-5 text-left">
               <div className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4">
                 <div className="flex items-start gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
                     <Mail className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <div>

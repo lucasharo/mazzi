@@ -23,7 +23,7 @@ import { requiresComplianceDocumentExpiration } from '../../domain/compliance';
 import { isVehicleAwaitingAdminReview } from '../../domain/vehicles-offerings';
 import { getAuditActionLabel, getComplianceDocumentTypeLabel, getFriendlyAdminError, getStatusPresentation, getUserRoleLabel } from '../../domain/status-presentation';
 import { maskBrazilianPhone, maskCpf, maskCnpj, maskVehiclePlate } from '../../lib/input-masks';
-import { formatDateBR, formatTimeBR } from '../../lib/date-format';
+import { formatDateBR, formatTimeBR, formatTransmissionLabel } from '../../lib/date-format';
 import { dbService } from '../../lib/db-service';
 
 // Utility for masking plates
@@ -164,7 +164,7 @@ const expiringDocsCount = complianceDocs.filter((d) => d.expiresAt && new Date(d
 
       {/* Grid de Métricas Principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-slate-950 text-white border border-slate-900 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-[var(--mazzi-dark)] text-white border border-[var(--mazzi-dark)] flex flex-col justify-between">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 block">SAÚDE DA PLATAFORMA</span>
             <h4 className="text-xs font-bold text-slate-300 mt-0.5">Liquidez e Crescimento</h4>
@@ -237,7 +237,7 @@ const expiringDocsCount = complianceDocs.filter((d) => d.expiresAt && new Date(d
             {alerts.map((a) => (
               <div
                 key={a.id}
-                className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
                   a.type === 'error'
                     ? 'bg-rose-50 border-rose-200 text-rose-900'
                     : a.type === 'warning'
@@ -417,7 +417,7 @@ export const ProvidersTab: React.FC<{
                   }}
                   className={`p-3.5 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
                     isSelected
-                      ? 'bg-slate-950 text-white border-slate-900 shadow-md'
+                      ? 'bg-[var(--mazzi-dark)] text-white border-[var(--mazzi-dark)] shadow-md'
                       : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -532,13 +532,13 @@ export const ProvidersTab: React.FC<{
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Documentos Enviados ({selectedProvDocs.length})</h4>
               {selectedProvDocs.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-500 border border-dashed rounded-xl bg-slate-50">
+                <div className="p-4 text-center text-xs text-slate-500 border border-dashed rounded-2xl bg-slate-50">
                   Nenhum documento cadastrado na conta.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {selectedProvDocs.map((doc) => (
-                    <div key={doc.id} className="p-3 border rounded-xl bg-white flex flex-col justify-between">
+                    <div key={doc.id} className="p-3 border rounded-2xl bg-white flex flex-col justify-between">
                       <div className="flex items-start justify-between gap-1">
                         <span className="font-bold text-xs truncate" title={getComplianceDocumentTypeLabel(doc.type)}>{getComplianceDocumentTypeLabel(doc.type)}</span>
                         <StatusBadge status={doc.status} domain="compliance" />
@@ -559,13 +559,13 @@ export const ProvidersTab: React.FC<{
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Veículos Cadastrados ({selectedProvVehicles.length})</h4>
               {selectedProvVehicles.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-500 border border-dashed rounded-xl bg-slate-50">
+                <div className="p-4 text-center text-xs text-slate-500 border border-dashed rounded-2xl bg-slate-50">
                   Nenhum veículo vinculado a este prestador.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {selectedProvVehicles.map((v) => (
-                    <div key={v.id} className="p-3 border rounded-xl bg-white flex flex-col justify-between">
+                    <div key={v.id} className="p-3 border rounded-2xl bg-white flex flex-col justify-between">
                       <div className="flex items-start justify-between gap-1">
                         <span className="font-bold text-xs">{v.brand} {v.model} ({v.year})</span>
                         <StatusBadge status={v.status} domain="vehicle" />
@@ -653,7 +653,7 @@ export const ProvidersTab: React.FC<{
               {selectedProvLogs.length === 0 ? (
                 <p className="text-[11px] text-slate-400">Nenhum evento registrado especificamente para este parceiro.</p>
               ) : (
-                <div className="max-h-[160px] overflow-y-auto space-y-1.5 border border-slate-100 rounded-xl p-2 bg-slate-50">
+                <div className="max-h-[160px] overflow-y-auto space-y-1.5 border border-slate-100 rounded-2xl p-2 bg-slate-50">
                   {selectedProvLogs.map((log) => (
                     <div key={log.id} className="text-[11px] p-2 bg-white rounded border border-slate-200 flex items-start justify-between gap-2">
                       <div>
@@ -686,7 +686,7 @@ export const ProvidersTab: React.FC<{
               <Button
                 variant="primary"
                 size="sm"
-                className={actionType === 'BLOCK' ? 'bg-slate-950 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'}
+                className={actionType === 'BLOCK' ? 'bg-[var(--mazzi-dark)] text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'}
                 onClick={handleConfirmAction}
                 disabled={!reasonText.trim()}
               >
@@ -855,7 +855,7 @@ export const ComplianceTab: React.FC<{
                   key={doc.id}
                   onClick={() => setSelectedDocId(doc.id)}
                   className={`p-3 rounded-2xl border transition cursor-pointer text-xs ${
-                    isSelected ? 'bg-slate-950 text-white border-slate-900 shadow-md' : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
+                    isSelected ? 'bg-[var(--mazzi-dark)] text-white border-[var(--mazzi-dark)] shadow-md' : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-1">
@@ -1110,7 +1110,7 @@ const [filterStatus, setFilterStatus] = useState<string>('AWAITING_REVIEW');
                     setShowFullPlate(false);
                   }}
                   className={`p-3.5 rounded-2xl border transition cursor-pointer text-xs ${
-                    isSelected ? 'bg-slate-950 text-white border-slate-900 shadow-md' : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
+                    isSelected ? 'bg-[var(--mazzi-dark)] text-white border-[var(--mazzi-dark)] shadow-md' : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-1">
@@ -1157,7 +1157,7 @@ const [filterStatus, setFilterStatus] = useState<string>('AWAITING_REVIEW');
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-mono font-black text-xs bg-slate-200 text-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-300">
+                <span className="font-mono font-black text-xs bg-slate-200 text-slate-950 px-2.5 py-1.5 rounded-2xl border border-slate-300">
                   {formatMaskedPlate(selectedVeh.licensePlate, showFullPlate)}
                 </span>
                 <Button
@@ -1171,7 +1171,7 @@ const [filterStatus, setFilterStatus] = useState<string>('AWAITING_REVIEW');
             </div>
 
             {selectedVeh.description && (
-              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border font-medium">
+              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border font-medium">
                 <strong>Notas / Logs veiculares:</strong> {selectedVeh.description}
               </p>
             )}
@@ -1360,7 +1360,7 @@ export const BookingsTab: React.FC<{
                   key={b.id}
                   onClick={() => setSelectedBookId(b.id)}
                   className={`p-3.5 rounded-2xl border transition cursor-pointer text-xs ${
-                    isSelected ? 'bg-slate-950 text-white border-slate-900 shadow-md' : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
+                    isSelected ? 'bg-[var(--mazzi-dark)] text-white border-[var(--mazzi-dark)] shadow-md' : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -1395,7 +1395,7 @@ export const BookingsTab: React.FC<{
                 <p>Instrutor: <strong>{selectedBook.instructorName || 'Autônomo'}</strong></p>
                 <p>Veículo: <strong className="text-slate-900">{selectedBook.vehicleName || 'Não especificado'}</strong></p>
                 <p>Ponto de Encontro: <strong className="text-slate-900">{selectedBook.meetingPoint}</strong></p>
-                <p>Transmissão: <strong>{selectedBook.snapshot?.transmission || 'N/A'}</strong></p>
+                <p>Transmissão: <strong>{selectedBook.snapshot?.transmission ? formatTransmissionLabel(selectedBook.snapshot.transmission) : 'N/A'}</strong></p>
                 <p>Duração da Aula: <strong>{selectedBook.snapshot?.durationMinutes || 50} minutos</strong></p>
               </div>
             </div>
@@ -1434,7 +1434,7 @@ export const BookingsTab: React.FC<{
 
               {/* Políticas Pendentes */}
               <div className="space-y-2">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-amber-950 text-xs">
                     <ArrowRightLeft className="w-4 h-4 text-amber-600" />
                     Reatribuição de recursos
@@ -1445,7 +1445,7 @@ export const BookingsTab: React.FC<{
                 </div>
 
                 {selectedBook.status === 'DISPUTED' && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl space-y-1">
                     <div className="flex items-center gap-1.5 font-bold text-rose-950 text-xs">
                       <ShieldAlert className="w-4 h-4 text-rose-600" />
                       Disputa em aberto
@@ -1643,17 +1643,17 @@ export const FinancialTab: React.FC<{
         </div>
         
         {/* Toggle interno */}
-        <div className="flex bg-slate-100 p-1 rounded-xl self-start sm:self-auto text-xs font-bold border border-slate-200">
+        <div className="flex bg-slate-100 p-1 rounded-2xl self-start sm:self-auto text-xs font-bold border border-slate-200">
           <ButtonBase
             onClick={() => setActiveSubTab('ledger')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${activeSubTab === 'ledger' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl transition ${activeSubTab === 'ledger' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
           >
             <History className="h-4 w-4" aria-hidden="true" />
             Movimentações
           </ButtonBase>
           <ButtonBase
             onClick={() => setActiveSubTab('payouts')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${activeSubTab === 'payouts' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl transition ${activeSubTab === 'payouts' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
           >
             <DollarSign className="h-4 w-4" aria-hidden="true" />
             Repasses
@@ -1872,7 +1872,7 @@ export const FinancialTab: React.FC<{
                                 placeholder="Referência Pix"
                                 value={transferReferences[payout.id] || ''}
                                 onChange={(event) => setTransferReferences((current) => ({ ...current, [payout.id]: event.target.value }))}
-                                className="min-h-9 rounded-xl px-2.5 py-1.5 text-[11px]"
+                                className="min-h-9 rounded-2xl px-2.5 py-1.5 text-[11px]"
                               />
                               <Button
                                 type="button"
@@ -1968,7 +1968,7 @@ export const UsersTab: React.FC<{
                 key={u.id}
                 onClick={() => setSelectedUser(u)}
                 className={`p-3.5 rounded-2xl border transition cursor-pointer text-xs flex justify-between items-center gap-3 ${
-                  isSelected ? 'bg-slate-950 text-white border-slate-900 shadow-md' : 'bg-white text-[var(--mazzi-text)] border-slate-200 hover:border-amber-300 hover:shadow-xs'
+                  isSelected ? 'bg-[var(--mazzi-dark)] text-white border-[var(--mazzi-dark)] shadow-md' : 'bg-white text-[var(--mazzi-text)] border-slate-200 hover:border-amber-300 hover:shadow-xs'
                 }`}
               >
                 <div className="min-w-0">
@@ -2191,6 +2191,13 @@ export const SettingsTab: React.FC<{
   const [contestationResponseHours, setContestationResponseHours] = useState<number | ''>(config.contestationResponseHours);
   const [instantMaxEtaMinutes, setInstantMaxEtaMinutes] = useState<number | ''>(config.instantMaxEtaMinutes);
   const [instantOfferExpirationSeconds, setInstantOfferExpirationSeconds] = useState<number | ''>(config.instantOfferExpirationSeconds);
+  const [instantLessonExpirationMinutes, setInstantLessonExpirationMinutes] = useState<number | ''>(config.instantLessonExpirationMinutes);
+  const [instantRefundOnWayInitialPercent, setInstantRefundOnWayInitialPercent] = useState<number | ''>(config.instantRefundOnWayInitialPercent);
+  const [instantRefundOnWayMiddlePercent, setInstantRefundOnWayMiddlePercent] = useState<number | ''>(config.instantRefundOnWayMiddlePercent);
+  const [instantRefundOnWayLatePercent, setInstantRefundOnWayLatePercent] = useState<number | ''>(config.instantRefundOnWayLatePercent);
+  const [instantRefundAfterArrivalPercent, setInstantRefundAfterArrivalPercent] = useState<number | ''>(config.instantRefundAfterArrivalPercent);
+  const [instantRefundInitialWindowMinutes, setInstantRefundInitialWindowMinutes] = useState<number | ''>(config.instantRefundInitialWindowMinutes);
+  const [instantRefundMiddleWindowMinutes, setInstantRefundMiddleWindowMinutes] = useState<number | ''>(config.instantRefundMiddleWindowMinutes);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -2206,11 +2213,18 @@ export const SettingsTab: React.FC<{
     setContestationResponseHours(config.contestationResponseHours);
     setInstantMaxEtaMinutes(config.instantMaxEtaMinutes);
     setInstantOfferExpirationSeconds(config.instantOfferExpirationSeconds);
+    setInstantLessonExpirationMinutes(config.instantLessonExpirationMinutes);
+    setInstantRefundOnWayInitialPercent(config.instantRefundOnWayInitialPercent);
+    setInstantRefundOnWayMiddlePercent(config.instantRefundOnWayMiddlePercent);
+    setInstantRefundOnWayLatePercent(config.instantRefundOnWayLatePercent);
+    setInstantRefundAfterArrivalPercent(config.instantRefundAfterArrivalPercent);
+    setInstantRefundInitialWindowMinutes(config.instantRefundInitialWindowMinutes);
+    setInstantRefundMiddleWindowMinutes(config.instantRefundMiddleWindowMinutes);
   }, [config]);
 
   const handleSave = async () => {
     if (!isAuthorized) return;
-    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius, checkInWindowBefore, contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds].some((value) => value === '')) return;
+    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius, checkInWindowBefore, contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds, instantLessonExpirationMinutes, instantRefundOnWayInitialPercent, instantRefundOnWayMiddlePercent, instantRefundOnWayLatePercent, instantRefundAfterArrivalPercent, instantRefundInitialWindowMinutes, instantRefundMiddleWindowMinutes].some((value) => value === '')) return;
     try {
       setIsSaving(true);
       await onUpdateConfig({
@@ -2226,6 +2240,13 @@ export const SettingsTab: React.FC<{
         contestationResponseHours,
         instantMaxEtaMinutes,
         instantOfferExpirationSeconds,
+        instantLessonExpirationMinutes,
+        instantRefundOnWayInitialPercent,
+        instantRefundOnWayMiddlePercent,
+        instantRefundOnWayLatePercent,
+        instantRefundAfterArrivalPercent,
+        instantRefundInitialWindowMinutes,
+        instantRefundMiddleWindowMinutes,
       });
     } finally {
       setIsSaving(false);
@@ -2296,30 +2317,34 @@ export const SettingsTab: React.FC<{
             <label className="mazzi-field-label block">Horizonte de Disponibilidade (Dias)</label>
             <Input
               type="number"
+              min={1}
+              max={365}
               value={horizon}
               onChange={(e) => setHorizon(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
               className="text-xs"
             />
-            <span className="text-[10px] text-slate-400 block">Prazo máximo para oferta de agenda comercial (Ex: 30 dias).</span>
+            <span className="text-[10px] text-slate-400 block">Prazo máximo da agenda comercial, definido nesta configuração.</span>
           </div>
 
           <div className="space-y-1">
-            <label className="mazzi-field-label block">Expiração de Cotação de Aula (Minutos)</label>
+            <label className="mazzi-field-label block">Expiração da cotação da Agenda (minutos)</label>
             <Input
               type="number"
+              min={1}
               value={quoteExp}
               onChange={(e) => setQuoteExp(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
               className="text-xs"
             />
-            <span className="text-[10px] text-slate-400 block">Tempo limite para realizar o PIX/cartão antes do bloqueio expirar.</span>
+              <span className="text-[10px] text-slate-400 block">Tempo limite do PIX/cartão para reservas feitas pela Agenda.</span>
           </div>
 
           <div className="space-y-1">
             <label className="mazzi-field-label block">Aviso Prévio Mínimo de Aula (Horas)</label>
             <Input
               type="number"
+              min={0}
               value={minNotice}
               onChange={(e) => setMinNotice(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
@@ -2332,6 +2357,7 @@ export const SettingsTab: React.FC<{
             <label className="mazzi-field-label block">Prazo para repasse automático (horas)</label>
             <Input
               type="number"
+              min={0}
               value={safetyPeriod}
               onChange={(e) => setSafetyPeriod(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
@@ -2342,7 +2368,7 @@ export const SettingsTab: React.FC<{
 
           <div className="space-y-1">
             <label className="mazzi-field-label block">Prazo para responder uma contestação (horas)</label>
-            <Input type="number" min={1} value={contestationResponseHours} onChange={(e) => setContestationResponseHours(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+            <Input type="number" min={1} max={720} value={contestationResponseHours} onChange={(e) => setContestationResponseHours(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
             <span className="text-[10px] text-slate-400 block">Após esse prazo, a contestação poderá ser finalizada pela operação.</span>
           </div>
 
@@ -2350,6 +2376,9 @@ export const SettingsTab: React.FC<{
             <label className="mazzi-field-label block">Raio Padrão de Busca Próxima (Km)</label>
             <Input
               type="number"
+              min={0.1}
+              max={50}
+              step={0.1}
               value={radius}
               onChange={(e) => setRadius(e.target.value === '' ? '' : Number(e.target.value))}
               disabled={!isAuthorized}
@@ -2391,6 +2420,49 @@ export const SettingsTab: React.FC<{
               <label className="mazzi-field-label block">Validade da oferta (segundos)</label>
               <Input type="number" min={5} max={120} value={instantOfferExpirationSeconds} onChange={(e) => setInstantOfferExpirationSeconds(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
               <span className="block text-[10px] text-slate-500">Tempo para o instrutor aceitar ou recusar a oferta recebida.</span>
+            </div>
+            <div className="space-y-1">
+              <label className="mazzi-field-label block">Expiração da Aula Agora (minutos)</label>
+              <Input type="number" min={1} max={60} value={instantLessonExpirationMinutes} onChange={(e) => setInstantLessonExpirationMinutes(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+              <span className="block text-[10px] text-slate-500">Tempo para o aluno concluir a busca e o pagamento da Aula Agora.</span>
+            </div>
+          </div>
+          <div className="mt-4 border-t border-amber-200/70 pt-4">
+            <div className="mb-3">
+              <h4 className="text-xs font-extrabold text-amber-950">Cancelamento e reembolso</h4>
+              <p className="mt-0.5 text-[10px] leading-relaxed text-slate-600">A política é calculada pelo backend com os eventos oficiais da aula. A Agenda não usa estes parâmetros.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="mazzi-field-label block">Antes de {instantRefundInitialWindowMinutes === '' ? '—' : instantRefundInitialWindowMinutes} min a caminho (%)</label>
+                <Input type="number" min={0} max={100} value={instantRefundOnWayInitialPercent} onChange={(e) => setInstantRefundOnWayInitialPercent(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+                <span className="block text-[10px] text-slate-500">Percentual entre a saída e o primeiro limite.</span>
+              </div>
+              <div className="space-y-1">
+                <label className="mazzi-field-label block">De {instantRefundInitialWindowMinutes === '' ? '—' : instantRefundInitialWindowMinutes} a {instantRefundMiddleWindowMinutes === '' ? '—' : instantRefundMiddleWindowMinutes} min a caminho (%)</label>
+                <Input type="number" min={0} max={100} value={instantRefundOnWayMiddlePercent} onChange={(e) => setInstantRefundOnWayMiddlePercent(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+                <span className="block text-[10px] text-slate-500">Percentual entre o primeiro e o segundo limite.</span>
+              </div>
+              <div className="space-y-1">
+                <label className="mazzi-field-label block">Após {instantRefundMiddleWindowMinutes === '' ? '—' : instantRefundMiddleWindowMinutes} min a caminho (%)</label>
+                <Input type="number" min={0} max={100} value={instantRefundOnWayLatePercent} onChange={(e) => setInstantRefundOnWayLatePercent(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+                <span className="block text-[10px] text-slate-500">Percentual quando o PRO ainda não chegou ao local.</span>
+              </div>
+              <div className="space-y-1">
+                <label className="mazzi-field-label block">Após chegada (%)</label>
+                <Input type="number" min={0} max={100} value={instantRefundAfterArrivalPercent} onChange={(e) => setInstantRefundAfterArrivalPercent(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+                <span className="block text-[10px] text-slate-500">Aplicado após o check-in de chegada do PRO.</span>
+              </div>
+              <div className="space-y-1">
+                <label className="mazzi-field-label block">Primeiro limite (minutos)</label>
+                <Input type="number" min={1} value={instantRefundInitialWindowMinutes} onChange={(e) => setInstantRefundInitialWindowMinutes(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+                <span className="block text-[10px] text-slate-500">Limite definido pelo Admin após “Estou a caminho”.</span>
+              </div>
+              <div className="space-y-1">
+                <label className="mazzi-field-label block">Segundo limite (minutos)</label>
+                <Input type="number" min={2} value={instantRefundMiddleWindowMinutes} onChange={(e) => setInstantRefundMiddleWindowMinutes(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+                <span className="block text-[10px] text-slate-500">Limite definido pelo Admin; deve ser maior que o primeiro.</span>
+              </div>
             </div>
           </div>
         </div>

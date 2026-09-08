@@ -57,12 +57,12 @@ export const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
     <section className="space-y-2">
       <div className="mb-2 flex items-center justify-between">
         <ButtonBase type="button" aria-label="Mês anterior" disabled={!canPrevious} onClick={onPreviousMonth}
-          className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]">
+          className="grid h-9 w-9 place-items-center rounded-[0.8rem] bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]">
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </ButtonBase>
         <h4 className="text-[13px] font-bold text-[var(--mazzi-dark)]">{formatMonth(month)}</h4>
         <ButtonBase type="button" aria-label="Mês seguinte" disabled={!canNext || nextMonthLoading} onClick={onNextMonth}
-          className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]">
+          className="grid h-9 w-9 place-items-center rounded-[0.8rem] bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]">
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </ButtonBase>
       </div>
@@ -78,7 +78,7 @@ export const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
           return (
             <ButtonBase key={date} type="button" disabled={!available} onClick={() => onSelectDate(date)}
               aria-label={`${formatDate(date, { dateStyle: 'full' })}${available ? ', disponível' : ', indisponível'}`} aria-pressed={isSelected}
-              className={`h-9 min-h-0 rounded-lg p-1 text-center transition flex flex-col items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--mazzi-dark)] ${
+              className={`h-9 min-h-0 rounded-md p-1 text-center transition flex flex-col items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--mazzi-dark)] ${
                 isSelected ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs' : available ? 'bg-white text-[var(--mazzi-dark)] font-bold hover:bg-slate-100 border border-[var(--mazzi-border)]' : 'text-slate-300 cursor-not-allowed bg-slate-50/50'
               }`}>
               <span className="text-xs font-bold leading-none">{String(index + 1).padStart(2, '0')}</span>

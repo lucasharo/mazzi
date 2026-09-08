@@ -195,7 +195,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
           <ButtonBase
             type="button"
             onClick={onBack}
-            className="mb-2 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-2xs transition-colors hover:bg-slate-200 hover:text-slate-950 active:scale-95"
+            className="mb-2 inline-flex cursor-pointer items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-2xs transition-colors hover:bg-slate-200 hover:text-slate-950 active:scale-95"
             aria-label="Voltar para os detalhes da aula"
           >
             <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
@@ -242,7 +242,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
       )}
 
       {error && (
-        <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-start gap-2">
+        <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-start gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p>{error}</p>
@@ -305,21 +305,21 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
 
       {/* Read-Only Notice for Cancelled Bookings */}
       {(booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER') && (
-        <div role="status" className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-2">
+        <div role="status" className="p-3 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-slate-500 shrink-0" />
           <span>Esta aula foi cancelada. O histórico de mensagens permanece preservado para consulta.</span>
         </div>
       )}
 
       {chatBlockedForStudent && (
-        <div role="status" className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+        <div role="status" className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
           <span>Pagamento não realizado. A conversa fica indisponível para esta reserva.</span>
         </div>
       )}
 
       {chatBlockedForContestation && (
-        <div role="status" className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+        <div role="status" className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
           <span>O chat está bloqueado enquanto a contestação estiver em análise. Use a tela da contestação para responder.</span>
         </div>
@@ -346,7 +346,7 @@ export const BookingChatPanel: React.FC<BookingChatPanelProps> = ({ booking, onB
             disabled={!conversation || loading || sending || chatBlockedForSending || !draft.trim() || booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'}
             aria-label="Enviar mensagem"
             title="Enviar mensagem"
-            className="mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
+            className="mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs transition hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
           >
             {sending ? (
               <RefreshCw className="h-4 w-4 animate-spin text-current" aria-hidden="true" />

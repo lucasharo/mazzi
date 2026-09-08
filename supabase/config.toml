@@ -1,0 +1,2 @@
+[functions.cancel-instant-booking]
+verify_jwt = false

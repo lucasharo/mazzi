@@ -29,7 +29,7 @@ O ambiente DEV pode executar chamadas com credenciais de teste. Não há autoriz
 
 - O gateway é selecionado por `VITE_PAYMENT_GATEWAY_PROVIDER=fake|stripe`; `fake` continua sendo o padrão seguro.
 - A criação do Pix é online, mas a confirmação é posterior: o aluno permanece em `Aguardando pagamento` até o webhook assinado ou a atualização manual consultar o status autoritativo.
-- A cotação continua encerrando novas tentativas no prazo configurado (10 minutos no DEV). Se o pagamento for iniciado antes desse limite, o backend estende atomicamente o bloqueio do horário por cinco minutos para absorver atraso do gateway; `payment_started_at` e `payment_processing_until` registram essa janela.
+- A cotação continua encerrando novas tentativas no prazo configurado pelo Admin. Se o pagamento for iniciado antes desse limite, o backend estende atomicamente o bloqueio do horário por uma janela técnica de processamento; `payment_started_at` e `payment_processing_until` registram essa janela.
 - Se a confirmação chegar depois da janela de processamento, a reserva não é reativada. O webhook registra o pagamento tardio e solicita o reembolso integral com chave de idempotência; a transação local só é marcada como reembolsada depois da confirmação do gateway.
 - O webhook Stripe configurado para esta integração recebe eventos de `checkout.session.*`, `payment_intent.*`, reembolsos e disputas. A assinatura é validada antes de qualquer alteração local.
 - Repasses usam Stripe Connect com cobrança e transferência separadas. A transferência é criada somente após a aula concluída, vencimento da retenção configurável (72h por padrão) e ausência de disputa ativa.

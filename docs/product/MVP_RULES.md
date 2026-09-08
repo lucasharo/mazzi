@@ -26,7 +26,7 @@
 - **Transmissões**: Manual e Automática;
 - **Veículo do Profissional**: Toda aula é ministrada obrigatoriamente no veículo fornecido e homologado pelo instrutor/CFC;
 - **Busca com Filtros Estritos**: Busca geoespacial e por disponibilidade com matching integral de filtros;
-- **Agendamento com Horizonte Canônico de 60 Dias**: Visualização progressiva de 30 + 30 dias;
+- **Agendamento com Horizonte Configurável**: O horizonte é definido pelo Admin; a visualização carrega progressivamente em lotes técnicos de até 30 dias;
 - **Pagamentos Integrados**: Pagamento por cartão de crédito e Pix via Stripe Checkout hospedado externamente. *Nota: o checkout fake continua disponível para testes locais; o checkout Stripe aguarda confirmação server-side posterior por webhook assinado.*
 - **Chat Contextual**: Mensageria interna associada à reserva confirmada;
 - **Avaliações**: Sistema de 1 a 5 estrelas e depoimento após a conclusão da aula.
@@ -68,8 +68,8 @@
 
 1. **Contrato de Busca Estrita**: Nenhum prestador (instrutor ou autoescola) pode aparecer nos resultados da busca se não atender a **100% dos filtros ativos selecionados pelo aluno** (categoria, transmissão, tipo de prestador, raio geográfico, data e faixa de horário).
 2. **Horizonte de Agendamento**:
-   - `STUDENT_BOOKING_HORIZON_DAYS = 60` é a única constante canônica em `src/domain/availability.ts`.
-   - Carregamento inicial de 30 dias com extensão sob demanda para 60 dias.
+   - `availabilityHorizonDays` é a configuração canônica do Admin, compartilhada pelos apps Aluno e PRO.
+   - O carregamento inicial e as extensões usam lotes técnicos de até 30 dias, sem impor um limite comercial fixo.
 3. **Sem Double Booking**:
    - Um mesmo instrutor OU um mesmo veículo **jamais pode possuir duas aulas sobrepostas no mesmo intervalo de tempo**.
    - Trava atômica garantida por restrições de exclusão temporal no banco de dados.

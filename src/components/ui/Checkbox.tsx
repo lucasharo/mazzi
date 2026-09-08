@@ -80,7 +80,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
             <label
               key={opt.value}
               htmlFor={id}
-              className={`flex items-start p-3 rounded-xl border transition cursor-pointer ${
+              className={`flex items-start p-3 rounded-2xl border transition cursor-pointer ${
                 isSelected
                   ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500'
                   : 'border-slate-200 hover:border-slate-300 bg-white'

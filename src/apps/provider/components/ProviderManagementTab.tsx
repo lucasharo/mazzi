@@ -24,6 +24,7 @@ import { VehicleCatalogPicker } from '../../../components/vehicles/VehicleCatalo
 import { getStatusPresentation } from '../../../domain/status-presentation';
 import { ProviderAccountTab } from './ProviderAccountTab';
 import { isProviderPaymentAccountReady } from '../../../domain/payments/provider-payment-readiness';
+import { Switch } from '../../../components/ui/Switch';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
@@ -278,22 +279,27 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                         </Button>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={() => onOpenEditVehicle(vehicle.id)} leftIcon={<Pencil className="w-3.5 h-3.5" />}>Editar</Button>
-                          <Button
-                            variant={vehicle.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
-                            size="sm"
-                            onClick={() => void runAsyncAction(`vehicle-${vehicle.id}`, () => onToggleVehicleStatus(vehicle.id))}
-                            disabled={pendingAction !== null || vehicle.status === 'PENDING' || vehicle.status === 'IN_REVIEW'}
-                            isLoading={pendingAction === `vehicle-${vehicle.id}`}
-                            leftIcon={vehicle.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                          <ButtonBase
+                            type="button"
+                            onClick={() => onOpenEditVehicle(vehicle.id)}
+                            className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--mazzi-dark)] text-white shadow-xs transition duration-200 ease-out hover:brightness-95 focus-visible:ring-2 focus-visible:ring-[var(--mazzi-focus-glow)] focus-visible:ring-offset-2"
+                            aria-label={`Editar veículo ${vehicle.brand} ${vehicle.model}`}
+                            title="Editar veículo"
                           >
-                            {vehicle.status === 'ACTIVE' ? 'Desativar Veículo' : vehicle.status === 'IN_REVIEW' ? 'Em reanálise' : vehicle.status === 'PENDING' ? 'Aguardando aprovação' : 'Ativar Veículo'}
-                          </Button>
+                            <Pencil className="h-4 w-4" aria-hidden="true" />
+                          </ButtonBase>
+                          <Switch
+                            checked={vehicle.status === 'ACTIVE'}
+                            onCheckedChange={() => void runAsyncAction(`vehicle-${vehicle.id}`, () => onToggleVehicleStatus(vehicle.id))}
+                            label={`${vehicle.status === 'ACTIVE' ? 'Desativar' : 'Ativar'} veículo ${vehicle.brand} ${vehicle.model}`}
+                            disabled={pendingAction !== null || vehicle.status === 'PENDING' || vehicle.status === 'IN_REVIEW'}
+                            loading={pendingAction === `vehicle-${vehicle.id}`}
+                          />
                         </div>
                       )}
                     </div>
                     {vehicle.status === 'BLOCKED' && blockedVehicleId === vehicle.id && (
-                      <p className="mt-2 rounded-xl border border-rose-200 bg-rose-50 p-2 text-[11px] font-medium text-rose-800">
+                      <p className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 p-2 text-[11px] font-medium text-rose-800">
                         {vehicle.blockedReason || vehicle.description || 'Este veículo foi bloqueado administrativamente. Cadastre um novo veículo ou entre em contato com o suporte.'}
                       </p>
                     )}
@@ -352,7 +358,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-[#202126] text-white">
+                          <span className="text-xs font-black px-2.5 py-0.5 rounded-2xl bg-[#202126] text-white">
                             Cat. {o.category}
                           </span>
                       <h4 className="text-base font-bold text-slate-900">
@@ -389,11 +395,9 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                       <span className="text-[11px] font-bold text-slate-400">
                         R$ {(o.priceInCents / 100).toFixed(2)}
                       </span>
-                      <Button
-                        variant={o.status === 'ACTIVE' ? 'dangerSoft' : 'primary'}
-                        size="sm"
-                        title={o.status !== 'ACTIVE' && !canActivateOffering ? 'A oferta só pode ser ativada quando todos os requisitos forem atendidos.' : undefined}
-                          onClick={() => {
+                      <Switch
+                        checked={o.status === 'ACTIVE'}
+                        onCheckedChange={() => {
                           if (pendingAction) return;
                           if (activeEquivalent) {
                             setPendingOfferingSwap({ target: o, current: activeEquivalent });
@@ -401,12 +405,11 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                           }
                           void runAsyncAction(`offering-${o.id}`, () => onToggleOfferingStatus(o.id));
                         }}
-                        leftIcon={o.status === 'ACTIVE' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                         disabled={pendingAction !== null || (o.status !== 'ACTIVE' && !canActivateOffering)}
-                        isLoading={pendingAction === `offering-${o.id}`}
-                      >
-                        {o.status === 'ACTIVE' ? 'Desativar Oferta' : 'Ativar Oferta'}
-                      </Button>
+                        loading={pendingAction === `offering-${o.id}`}
+                        label={`${o.status === 'ACTIVE' ? 'Desativar' : 'Ativar'} oferta`}
+                        title={o.status !== 'ACTIVE' && !canActivateOffering ? 'A oferta só pode ser ativada quando todos os requisitos forem atendidos.' : undefined}
+                      />
                     </div>
                   </div>
                 );
@@ -420,7 +423,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       {!isRefreshing && managementSubTab === 'compliance' && (
         <div className="space-y-4">
           {complianceTermsError && (
-            <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
+            <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
               {complianceTermsError}
             </div>
           )}
@@ -513,7 +516,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       <Modal isOpen={isAddVehicleModalOpen} onClose={onCloseAddVehicleModal} title={vehicleForm.brand ? 'Editar Veículo' : 'Cadastrar Veículo'}>
         <div className="space-y-4 text-left">
           {vehicleError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{vehicleError}</span>
             </div>
@@ -565,7 +568,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                 onChange={(e) => onVehicleFormChange({ ...vehicleForm, transmission: e.target.value as TransmissionType })}
                 options={[
                   { value: 'MANUAL', label: 'Manual' },
-                  { value: 'AUTOMATIC', label: 'Automática' },
+                  { value: 'AUTOMATIC', label: 'Automático' },
                 ]}
               />
             </div>
@@ -594,7 +597,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
       <Modal isOpen={isAddOfferingModalOpen} onClose={onCloseAddOfferingModal} title="Cadastrar Oferta de Aula">
         <div className="space-y-4 text-left">
           {offeringError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{offeringError}</span>
             </div>

@@ -15,7 +15,7 @@
   -> [Card de Fornecedor / Oferta] 
   -> [Perfil Completo & Veículos] 
   -> [Seleção de Data e Slot de Horário] 
-  -> [Geração de Quote com 10 min de validade] 
+  -> [Geração de Quote com validade configurada pelo Admin]
   -> [Checkout Transparente com discriminação de taxas] 
   -> [Pagamento PIX/Cartão] 
   -> [Confirmação & Dados do Ponto de Encontro] 

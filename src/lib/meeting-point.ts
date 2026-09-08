@@ -33,7 +33,7 @@ export function formatFullMeetingPoint(value: MeetingPointValue): string {
  * Hides street names, house numbers, and exact coordinates until payment is confirmed.
  */
 export function formatPendingPaymentMeetingPoint(value: MeetingPointValue): string {
-  if (!value) return 'Região liberada após confirmação do pagamento';
+  if (!value) return 'Endereço liberado após confirmação do pagamento';
 
   if (typeof value === 'object' && value !== null) {
     const neighborhood = (value as any).neighborhood || (value as any).suburb || (value as any).district;
@@ -50,7 +50,7 @@ export function formatPendingPaymentMeetingPoint(value: MeetingPointValue): stri
   }
 
   const fullText = typeof value === 'string' ? value.trim() : formatMeetingPoint(value);
-  if (!fullText) return 'Região liberada após confirmação do pagamento';
+  if (!fullText) return 'Endereço liberado após confirmação do pagamento';
 
   const parts = fullText.split(',').map((p) => p.trim());
   if (parts.length >= 2) {
@@ -68,5 +68,5 @@ export function formatPendingPaymentMeetingPoint(value: MeetingPointValue): stri
     }
   }
 
-  return 'Região liberada após confirmação do pagamento';
+  return 'Endereço liberado após confirmação do pagamento';
 }

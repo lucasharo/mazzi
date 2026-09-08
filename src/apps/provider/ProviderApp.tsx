@@ -39,6 +39,7 @@ import { ProviderAnalyticsPanel } from '../../components/analytics/AnalyticsPane
 import {
   DEFAULT_COMPLIANCE_REQUIREMENTS,
   USER_GLOBAL_COMPLIANCE_DOCUMENT_TYPES,
+  evaluateProviderEligibility,
 } from '../../domain/compliance';
 import {
   createVehicleDraft,
@@ -60,9 +61,9 @@ import {
   LessonSession,
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
-import { getBookingStartTimestamp, getStudentBookingSection, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
-import { INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS, isInstantInstructorAvailabilityActive } from '../../domain/instant-lesson';
-import { DEFAULT_PLATFORM_CONFIGURATION } from '../../domain/platform-config';
+import { BLOCKING_BOOKING_STATUSES, getBookingStartTimestamp, getStudentBookingSection, hasTimeIntervalOverlap, isPendingPaymentHoldActive, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { getInstantOfferSecondsLeft, INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS, isInstantInstructorAvailabilityActive } from '../../domain/instant-lesson';
+import { DEFAULT_PLATFORM_CONFIGURATION, toPublicPlatformConfiguration, type PublicPlatformConfiguration } from '../../domain/platform-config';
 import { buildFullDayBlockRange, formatDateBR, formatTimeBR, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
@@ -75,7 +76,7 @@ import type { NotificationNavigationTarget } from '../../lib/notification-naviga
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
 import { disableStoredPushDevice } from '../../lib/push-device-registry';
-import { signalInitialNavigationReady } from '../../lib/initial-splash';
+import { dismissInitialSplash, signalInitialNavigationReady } from '../../lib/initial-splash';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
 import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
 import { isProviderPaymentAccountReady } from '../../domain/payments/provider-payment-readiness';
@@ -127,12 +128,16 @@ export function canProviderCommerciallyCancelBooking(
 export const ProviderApp: React.FC = () => {
   const { user, logout, isLoading: isAuthLoading, hasPerm } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
+  const [platformConfiguration, setPlatformConfiguration] = useState<PublicPlatformConfiguration | null>(
+    () => isRealSupabase ? null : toPublicPlatformConfiguration(DEFAULT_PLATFORM_CONFIGURATION),
+  );
   const [currentRole, setCurrentRole] = useState<UserRole>('INSTRUCTOR');
   const [activeTab, setActiveTab] = useMobileAppRoute<ProviderTabId>('provider', 'dashboard', ['dashboard', 'bookings', 'earnings', 'management', 'profile']);
   const [isRefreshingCurrentTab, setIsRefreshingCurrentTab] = useState(false);
   const [bookingUpdatesCount, setBookingUpdatesCount] = useState(0);
   const shouldAutoSelectTodayRef = useRef(true);
   const bookingSnapshotRef = useRef<string | null>(null);
+  const startingLessonBookingIdRef = useRef<string | null>(null);
   const [managementSubTab, setManagementSubTab] = useState<'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account'>('schedule_rules');
   const [bookingFilterTab, setBookingFilterTab] = useState<'upcoming' | 'today' | 'history'>('upcoming');
   const [bookingQuickFilter, setBookingQuickFilter] = useState<'all' | 'confirmed' | 'in_progress' | 'completed' | 'disputed' | 'cancelled'>('all');
@@ -154,22 +159,73 @@ export const ProviderApp: React.FC = () => {
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>([]);
   const [availabilityExceptions, setAvailabilityExceptions] = useState<AvailabilityException[]>([]);
   const [instantSettings, setInstantSettings] = useState<InstantLessonSettings[]>([]);
-  const [instantPlatformConfig, setInstantPlatformConfig] = useState<InstantLessonPlatformConfig>({
-    maxEtaMinutes: DEFAULT_PLATFORM_CONFIGURATION.instantMaxEtaMinutes,
-    offerExpirationSeconds: DEFAULT_PLATFORM_CONFIGURATION.instantOfferExpirationSeconds,
-  });
+  const [instantPlatformConfig, setInstantPlatformConfig] = useState<InstantLessonPlatformConfig | null>(
+    () => isRealSupabase ? null : {
+      maxEtaMinutes: DEFAULT_PLATFORM_CONFIGURATION.instantMaxEtaMinutes,
+      offerExpirationSeconds: DEFAULT_PLATFORM_CONFIGURATION.instantOfferExpirationSeconds,
+    },
+  );
+
+  useEffect(() => {
+    if (!isRealSupabase) return;
+    let active = true;
+    void dbService.getPublicPlatformConfiguration()
+      .then((configuration) => {
+        if (active) setPlatformConfiguration(configuration);
+      })
+      .catch((error) => {
+        console.error('Failed to load public platform configuration for PRO:', error);
+        if (active) setPlatformConfiguration(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isRealSupabase]);
+
+  useEffect(() => {
+    if (!platformConfiguration) {
+      setInstantPlatformConfig(null);
+      return;
+    }
+    setInstantPlatformConfig({
+      maxEtaMinutes: platformConfiguration.instantMaxEtaMinutes,
+      offerExpirationSeconds: platformConfiguration.instantOfferExpirationSeconds,
+    });
+  }, [platformConfiguration]);
   const [instantInstructorStatuses, setInstantInstructorStatuses] = useState<InstantLessonInstructorStatus[]>([]);
   const [instantOffers, setInstantOffers] = useState<InstantLessonOffer[]>([]);
   const [instantOfferSheetId, setInstantOfferSheetId] = useState<string | null>(null);
   const [instantOffersServerNow, setInstantOffersServerNow] = useState<string | null>(null);
+  const [instantOffersClockMs, setInstantOffersClockMs] = useState(() => Date.now());
+  const [instantOffersServerClockOffsetMs, setInstantOffersServerClockOffsetMs] = useState(0);
   const [instantLocationStatus, setInstantLocationStatus] = useState<'IDLE' | 'UPDATING' | 'READY' | 'ERROR'>('IDLE');
   const [instantActionLoading, setInstantActionLoading] = useState(false);
   const [instantOfferAction, setInstantOfferAction] = useState<{ offerId: string; action: 'ACCEPT' | 'DECLINE' } | null>(null);
   const instantOffersInFlightRef = useRef<Promise<void> | null>(null);
   const instantOfferRespondingRef = useRef(new Set<string>());
+  const acceptedInstantBookingIdRef = useRef<string | null>(null);
   const notifiedInstantOfferIdsRef = useRef(new Set<string>());
   const instantLocationRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const [lessonSessions, setLessonSessions] = useState<Record<string, LessonSession>>({});
+
+  useEffect(() => {
+    const syncNow = () => setInstantOffersClockMs(Date.now());
+    const timer = window.setInterval(syncNow, 1000);
+    document.addEventListener('visibilitychange', syncNow);
+    window.addEventListener('focus', syncNow);
+    syncNow();
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', syncNow);
+      window.removeEventListener('focus', syncNow);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!instantOffersServerNow) return;
+    setInstantOffersServerClockOffsetMs(new Date(instantOffersServerNow).getTime() - Date.now());
+    setInstantOffersClockMs(Date.now());
+  }, [instantOffersServerNow]);
 
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
@@ -200,6 +256,8 @@ export const ProviderApp: React.FC = () => {
   const [isInstantSettingsOpen, setIsInstantSettingsOpen] = useState(false);
   const [isExternalNavModalOpen, setIsExternalNavModalOpen] = useState(false);
   const [isOnTheWayLoading, setIsOnTheWayLoading] = useState(false);
+  const [isMarkingArrived, setIsMarkingArrived] = useState(false);
+  const checkInWindowBeforeMinutes = platformConfiguration?.checkInWindowBeforeMinutes ?? null;
 
   const refreshBookingForDetails = useCallback(async (bookingId: string): Promise<Booking | null> => {
     if (!activeProviderId) return null;
@@ -221,10 +279,11 @@ export const ProviderApp: React.FC = () => {
         (b) =>
           b.providerId === activeProviderId &&
           (b.snapshot?.source === 'AULA_AGORA' || (b as any).snapshot_data?.source === 'AULA_AGORA') &&
-          ['PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS'].includes(b.status)
+          ['PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS'].includes(b.status) &&
+          (b.status !== 'PENDING_PAYMENT' || isPendingPaymentHoldActive(b, bookingClockMs, platformConfiguration?.instantLessonExpirationMinutes))
       ) || null
     );
-  }, [bookings, activeProviderId]);
+  }, [bookings, activeProviderId, bookingClockMs, platformConfiguration?.instantLessonExpirationMinutes]);
 
   const navDestination = useMemo(() => {
     if (!activeInstantBooking) return null;
@@ -338,6 +397,15 @@ export const ProviderApp: React.FC = () => {
   }, [user?.id]);
 
   const handleLogout = async () => {
+    // Nunca deixe a disponibilidade do instrutor persistir depois do logout.
+    // O RPC é idempotente e a regra de autorização impede desligar outro usuário.
+    if (currentProvider?.type === 'INSTRUCTOR' && currentProvider.userId === user?.id) {
+      try {
+        await dbService.setMyInstantInstructorOnline(currentProvider.id, user.id, false);
+      } catch {
+        // O logout continua disponível mesmo se a rede estiver indisponível.
+      }
+    }
     try {
       await disableStoredPushDevice('PRO', user?.id);
     } catch {
@@ -510,19 +578,17 @@ export const ProviderApp: React.FC = () => {
       setVehicles(workspace.vehicles);
       setOfferings(workspace.offerings);
       try {
-        const [loadedInstantSettings, loadedInstructorStatuses, loadedInstantPlatformConfig] = await Promise.all([
+        const [loadedInstantSettings, loadedInstructorStatuses] = await Promise.all([
           dbService.getMyInstantSettings(workspace.provider.id, workspace.offerings),
           dbService.getMyInstantInstructorStatuses(workspace.provider.id),
-          dbService.getInstantLessonPlatformConfig(),
         ]);
         setInstantSettings(loadedInstantSettings);
         setInstantInstructorStatuses(loadedInstructorStatuses);
-        setInstantPlatformConfig(loadedInstantPlatformConfig);
       } catch (instantError) {
         console.warn('Instant lesson settings load failed:', instantError);
         setInstantSettings([]);
         setInstantInstructorStatuses([]);
-        setInstantPlatformConfig({
+        setInstantPlatformConfig(isRealSupabase ? null : {
           maxEtaMinutes: DEFAULT_PLATFORM_CONFIGURATION.instantMaxEtaMinutes,
           offerExpirationSeconds: DEFAULT_PLATFORM_CONFIGURATION.instantOfferExpirationSeconds,
         });
@@ -788,6 +854,17 @@ export const ProviderApp: React.FC = () => {
     setSelectedBooking((current) => current?.id === refreshedBooking.id ? refreshedBooking : current);
   }, [bookings, selectedBooking?.id, selectedBooking?.status]);
 
+  useEffect(() => {
+    const acceptedBookingId = acceptedInstantBookingIdRef.current;
+    if (!acceptedBookingId) return;
+    const acceptedBooking = bookings.find((booking) => booking.id === acceptedBookingId);
+    if (!acceptedBooking) return;
+
+    acceptedInstantBookingIdRef.current = null;
+    setActiveTab('bookings');
+    setSelectedBooking(acceptedBooking);
+  }, [bookings]);
+
   const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
   const instantOffersPollingEnabled = useMemo(() => (
     Boolean(currentProvider?.id) && instantInstructorStatuses.some((status) => (
@@ -814,6 +891,22 @@ export const ProviderApp: React.FC = () => {
       .filter((instructor) => instructor.membershipStatus === 'ACTIVE' && instructor.isActive)
       .map((instructor) => ({ id: instructor.userId, name: instructor.name }));
   }, [currentProvider, schoolInstructors]);
+  const instantMarketplacePendingByInstructor = useMemo(() => {
+    if (!currentProvider) return [];
+    const instructors = currentProvider.type === 'DRIVING_SCHOOL' ? schoolInstantInstructorOptions : instantInstructorOptions;
+    return instructors.map((instructor) => {
+      const membership = schoolInstructors.find((item) => item.userId === instructor.id);
+      const hasCompliance = currentProvider.type === 'DRIVING_SCHOOL'
+        ? schoolInstructorSummary.find((summary) => summary.membershipId === membership?.id)?.eligible === true
+        : evaluateProviderEligibility(currentProvider, complianceDocs).isEligible;
+      const pending: string[] = [];
+      if (!hasCompliance) pending.push('Compliance aprovado pendente');
+      if (!isProviderPaymentAccountReady(paymentAccount)) pending.push('Conta bancária não cadastrada');
+      if (!vehicles.some((vehicle) => vehicle.status === 'ACTIVE')) pending.push('Veículo ativo não cadastrado');
+      if (!instantSettings.some((setting) => setting.instructorId === instructor.id && setting.instantEnabled)) pending.push('Configuração da Aula Agora pendente');
+      return { instructorId: instructor.id, instructorName: instructor.name, pending };
+    }).filter((item) => item.pending.length > 0);
+  }, [complianceDocs, currentProvider, instantInstructorOptions, instantSettings, paymentAccount, schoolInstructorSummary, schoolInstructors, schoolInstantInstructorOptions, vehicles]);
   const canManageInstantInstructorAvailability = currentProvider?.type === 'DRIVING_SCHOOL'
     && hasPerm('school.schedule.manage');
   const cancellationUserRole = currentProvider?.type === 'INSTRUCTOR'
@@ -941,10 +1034,34 @@ export const ProviderApp: React.FC = () => {
     setInstantSettings((current) => [...current.filter((item) => !(item.instructorId === saved.instructorId && item.vehicleId === saved.vehicleId)), saved]);
   };
 
+  const handleMarkArrived = async (bookingId: string) => {
+    setIsMarkingArrived(true);
+    try {
+      await dbService.providerMarkArrived(bookingId);
+      await loadWorkspace(activeProviderId, { silent: true });
+    } catch (err) {
+      showProviderFeedback('error', 'Não foi possível confirmar a chegada', mapFriendlyErrorMessage(err, 'Tente novamente quando estiver no local.'));
+      throw err;
+    } finally {
+      setIsMarkingArrived(false);
+    }
+  };
+
   const handleToggleInstantOnline = async (instructorId: string, online: boolean) => {
     if (!currentProvider) return;
     setInstantActionLoading(true);
     try {
+      if (online) {
+        const instructorMembership = schoolInstructors.find((instructor) => instructor.userId === instructorId);
+        const hasCompliance = currentProvider.type === 'DRIVING_SCHOOL'
+          ? schoolInstructorSummary.find((summary) => summary.membershipId === instructorMembership?.id)?.eligible === true
+          : evaluateProviderEligibility(currentProvider, complianceDocs).isEligible;
+        const ready = hasCompliance
+          && isProviderPaymentAccountReady(paymentAccount)
+          && vehicles.some((vehicle) => vehicle.status === 'ACTIVE')
+          && instantSettings.some((setting) => setting.instructorId === instructorId && setting.instantEnabled);
+        if (!ready) throw new Error('INSTANT_INSTRUCTOR_NOT_MARKETPLACE_READY');
+      }
       if (online && !instantSettings.some((setting) => setting.instructorId === instructorId && setting.instantEnabled)) throw new Error('INSTANT_VEHICLE_NOT_ENABLED');
       // A school administrator changes only the instructor's canonical
       // availability. Only the instructor can publish the instructor's GPS.
@@ -987,6 +1104,7 @@ export const ProviderApp: React.FC = () => {
       await loadInstantOffers();
       if (action === 'ACCEPT' && result.bookingId) showProviderFeedback('success', 'Solicitação aceita', 'A nova aula foi adicionada à sua agenda.');
       if (action === 'DECLINE') showProviderFeedback('info', 'Solicitação recusada', 'Você continuará disponível para novas solicitações.');
+      if (action === 'ACCEPT' && result.bookingId) acceptedInstantBookingIdRef.current = result.bookingId;
       if (result.bookingId) await loadWorkspace(activeProviderId, { silent: true });
     } catch (error) {
       // A rejected accept can mean the card expired while it was visible.
@@ -1073,37 +1191,51 @@ export const ProviderApp: React.FC = () => {
     const onboardingState = params.get('stripe_onboarding');
     if (onboardingState !== 'return' && onboardingState !== 'refresh') return;
 
-    params.delete('stripe_onboarding');
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.search = params.toString();
-    window.history.replaceState(window.history.state, '', cleanUrl.toString());
-
     if (onboardingState === 'refresh') {
+      params.delete('stripe_onboarding');
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.search = params.toString();
+      window.history.replaceState(window.history.state, '', cleanUrl.toString());
       void handleConnectStripe();
       return;
     }
 
     setActiveTab('management');
     setManagementSubTab('account');
-    void dbService.syncMyStripePaymentAccount()
-      .then((account) => {
-        if (account) {
-          setPaymentAccount(account);
-          showProviderFeedback(
-            account.payoutsEnabled ? 'success' : 'warning',
-            account.payoutsEnabled ? 'Recebimentos habilitados' : 'Cadastro ainda pendente',
-            account.payoutsEnabled
-              ? 'Sua conta está pronta para receber repasses.'
-              : 'Ainda existem informações pendentes para liberar os repasses.',
-          );
-        }
-      })
-      .catch(() => {
+    let active = true;
+    const waitForAccountRender = () => new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+    });
+    const syncReturnedAccount = async () => {
+      try {
+        const account = await dbService.syncMyStripePaymentAccount();
+        if (!active || !account) return;
+
+        setPaymentAccount(account);
+        showProviderFeedback(
+          account.payoutsEnabled ? 'success' : 'warning',
+          account.payoutsEnabled ? 'Recebimentos habilitados' : 'Cadastro ainda pendente',
+          account.payoutsEnabled
+            ? 'Sua conta está pronta para receber repasses.'
+            : 'Ainda existem informações pendentes para liberar os repasses.',
+        );
+
+        // O splash só é liberado depois que o estado atualizado foi aplicado
+        // e a tela de conta bancária teve tempo de renderizar os dados.
+        await waitForAccountRender();
+        if (!active) return;
+        params.delete('stripe_onboarding');
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.search = params.toString();
+        window.history.replaceState(window.history.state, '', cleanUrl.toString());
+        signalInitialNavigationReady();
+        window.requestAnimationFrame(() => dismissInitialSplash());
+      } catch {
         showProviderFeedback('warning', 'Não foi possível atualizar o status', 'Tente novamente em alguns instantes.');
-      })
-      .finally(() => {
-        window.requestAnimationFrame(() => signalInitialNavigationReady());
-      });
+      }
+    };
+    void syncReturnedAccount();
+    return () => { active = false; };
   }, [user?.id, workspaceLoading]);
 
   const openNotificationTarget = (target: NotificationNavigationTarget) => {
@@ -1130,7 +1262,7 @@ export const ProviderApp: React.FC = () => {
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <div className="h-3 w-28 animate-pulse rounded bg-slate-200" />
-              <div className="h-8 w-52 animate-pulse rounded-xl bg-slate-200" />
+              <div className="h-8 w-52 animate-pulse rounded-2xl bg-slate-200" />
               <div className="h-3 w-64 animate-pulse rounded bg-slate-200" />
             </div>
             <div className="h-12 w-12 animate-pulse rounded-2xl bg-slate-200" />
@@ -1186,7 +1318,7 @@ export const ProviderApp: React.FC = () => {
   const todayBookings = sortBookingsForToday(bookings.filter((b) => TODAY_BOOKING_STATUSES.includes(b.status) && !UNPAID_BOOKING_STATUSES.includes(b.status) && isBookingTodayInSaoPaulo(b)), bookingClockMs);
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS');
   const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
-  const pendingPaymentInstantBookings = bookings.filter((b) => b.status === 'PENDING_PAYMENT' && b.snapshot?.source === 'AULA_AGORA');
+  const pendingPaymentInstantBookings = bookings.filter((b) => b.snapshot?.source === 'AULA_AGORA' && isPendingPaymentHoldActive(b, bookingClockMs, platformConfiguration?.instantLessonExpirationMinutes));
 
   const nextBooking = sortBookingsForNext(bookings.filter((b) => {
     if (b.status !== 'CONFIRMED' && b.status !== 'IN_PROGRESS') return false;
@@ -1259,7 +1391,9 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
-  const handleStartLesson = async (b: Booking) => {
+  const handleStartLesson = async (b: Booking): Promise<boolean> => {
+    if (startingLessonBookingIdRef.current === b.id) return false;
+    startingLessonBookingIdRef.current = b.id;
     setBookingActionError(null);
     setBookingActionSuccess(null);
     try {
@@ -1275,8 +1409,14 @@ export const ProviderApp: React.FC = () => {
       setBookings((prev) => prev.map((item) => (item.id === b.id ? updatedBooking : item)));
       if (selectedBooking?.id === b.id) setSelectedBooking(updatedBooking);
       setBookingActionSuccess('✓ Aula iniciada! Acompanhe a execução e finalize ao término.');
+      return true;
     } catch (err: any) {
       setBookingActionError(mapFriendlyErrorMessage(err, 'Não foi possível iniciar a aula.'));
+      return false;
+    } finally {
+      if (startingLessonBookingIdRef.current === b.id) {
+        startingLessonBookingIdRef.current = null;
+      }
     }
   };
 
@@ -1322,17 +1462,27 @@ export const ProviderApp: React.FC = () => {
         ? `${providerCancelReasonCode}: ${providerCustomReason.trim()}`
         : providerCancelReasonCode;
 
-      const res = await dbService.cancelBooking({
-        bookingId: selectedBookingForCancel.id,
-        reasonCode: providerCancelReasonCode,
-        reason: finalReason,
-      });
+      const isInstantBooking = selectedBookingForCancel.snapshot?.source === 'AULA_AGORA';
+      const res = isInstantBooking
+        ? await dbService.cancelInstantBooking({
+            bookingId: selectedBookingForCancel.id,
+            reasonCode: providerCancelReasonCode,
+            reason: finalReason,
+            idempotencyKey: `instant_provider_cancel:${selectedBookingForCancel.id}`,
+          })
+        : await dbService.cancelBooking({
+            bookingId: selectedBookingForCancel.id,
+            reasonCode: providerCancelReasonCode,
+            reason: finalReason,
+          });
 
       const updatedBooking: Booking = {
         ...selectedBookingForCancel,
         status: (res.status as any) || 'CANCELLED_BY_PROVIDER',
         cancelledAt: new Date().toISOString(),
         cancellationReason: finalReason,
+        refundAmountInCents: res.refund_amount_in_cents ?? selectedBookingForCancel.refundAmountInCents,
+        cancellationData: res.cancellation_data || selectedBookingForCancel.cancellationData,
       };
 
       setBookings((prev) => prev.map((item) => item.id === selectedBookingForCancel.id ? updatedBooking : item));
@@ -1972,7 +2122,7 @@ status: 'IN_REVIEW',
 
   const instantOfferSheetOffer = instantOffers.find((offer) => offer.id === instantOfferSheetId) || null;
   const instantOfferSheetSecondsLeft = instantOfferSheetOffer
-    ? Math.max(0, Math.ceil((new Date(instantOfferSheetOffer.expiresAt).getTime() - Date.now()) / 1000))
+    ? getInstantOfferSecondsLeft(instantOfferSheetOffer.expiresAt, instantOffersClockMs, instantOffersServerClockOffsetMs)
     : undefined;
 
   return (
@@ -2033,6 +2183,11 @@ status: 'IN_REVIEW',
             nowMs={bookingClockMs}
             providerDocs={complianceDocs}
             providerVehicles={vehicles}
+            offerings={offerings}
+            availabilityRules={availabilityRules}
+            paymentAccount={paymentAccount}
+            schoolInstructors={schoolInstructors}
+            schoolInstructorSummary={schoolInstructorSummary}
             onSelectBooking={setSelectedBooking}
             onNavigateTab={setActiveTab}
             instantSettings={instantSettings}
@@ -2108,6 +2263,8 @@ status: 'IN_REVIEW',
             instructorGlobalBlocks={instructorGlobalBlocks}
             bookings={bookings}
             calendarLoadError={unifiedCalendarError}
+            availabilityHorizonDays={isRealSupabase ? platformConfiguration?.availabilityHorizonDays ?? null : platformConfiguration?.availabilityHorizonDays}
+            minimumBookingNoticeHours={isRealSupabase ? platformConfiguration?.minimumBookingNoticeHours ?? null : platformConfiguration?.minimumBookingNoticeHours}
             onSaveEmergencyBlock={async (startAt, endAt, reason, blockId) => {
               if (blockId) {
                 await dbService.saveInstructorGlobalBlock(startAt, endAt, reason, blockId);
@@ -2220,6 +2377,11 @@ status: 'IN_REVIEW',
             userEmail={user?.email}
             userPhone={user?.phone}
             userBirthDate={user?.birthDate ? formatDateMask(user.birthDate) : undefined}
+            currentUserId={user?.id}
+            providerVehicles={vehicles}
+            paymentAccount={paymentAccount}
+            schoolInstructors={schoolInstructors}
+            schoolInstructorSummary={schoolInstructorSummary}
             profileAvatar={profileAvatar}
             onAvatarChange={(newUrl) => {
               setProfileAvatar(newUrl);
@@ -2293,11 +2455,27 @@ status: 'IN_REVIEW',
         isCompleting={isCompleting}
         canCancelBooking={(b) => canProviderCommerciallyCancelBooking(b, cancellationUserRole, currentProvider)}
         onSetOnTheWay={handleSetOnTheWay}
+        onMarkArrived={handleMarkArrived}
+        isMarkingArrived={isMarkingArrived}
         onOpenNavigation={() => setIsExternalNavModalOpen(true)}
         isLoading={isOnTheWayLoading}
+        checkInWindowBeforeMinutes={checkInWindowBeforeMinutes}
+        instantLessonExpirationMinutes={platformConfiguration?.instantLessonExpirationMinutes}
         distanceKm={navDestination?.distanceKm}
         etaMinutes={navDestination?.etaMinutes}
         onRefreshBooking={refreshBookingForDetails}
+        hasScheduleConflict={Boolean(selectedBooking && bookings.some((otherBooking) =>
+          otherBooking.id !== selectedBooking.id
+          && BLOCKING_BOOKING_STATUSES.includes(otherBooking.status)
+          && (otherBooking.status !== 'PENDING_PAYMENT' || isPendingPaymentHoldActive(otherBooking, bookingClockMs, platformConfiguration?.instantLessonExpirationMinutes))
+          && (otherBooking.instructorId === selectedBooking.instructorId || otherBooking.vehicleId === selectedBooking.vehicleId)
+          && hasTimeIntervalOverlap(
+            selectedBooking.scheduledStartAt,
+            selectedBooking.scheduledEndAt,
+            otherBooking.scheduledStartAt,
+            otherBooking.scheduledEndAt,
+          )
+        ))}
       />
 
       {/* Provider Cancellation Modal (DEC-013) */}
@@ -2354,7 +2532,7 @@ status: 'IN_REVIEW',
       {selectedPayoutDetail && (
         <Modal isOpen={true} onClose={() => setSelectedPayoutDetail(null)} title="Detalhes do repasse" size="sm">
           <div className="mx-auto w-full max-w-xl space-y-5 py-2 text-center sm:py-4">
-            <div className={`relative mx-auto flex h-20 w-20 items-center justify-center rounded-[1.5rem] border-2 ${payoutDetailPresentation?.isPaid ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : payoutDetailPresentation?.isFailed || payoutDetailPresentation?.isBlocked ? 'border-rose-100 bg-rose-50 text-rose-600' : 'border-amber-100 bg-amber-50 text-amber-600'}`}>
+            <div className={`relative mx-auto flex h-20 w-20 items-center justify-center rounded-2xl border-2 ${payoutDetailPresentation?.isPaid ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : payoutDetailPresentation?.isFailed || payoutDetailPresentation?.isBlocked ? 'border-rose-100 bg-rose-50 text-rose-600' : 'border-amber-100 bg-amber-50 text-amber-600'}`}>
               {payoutDetailPresentation?.isPaid ? <CheckCircle2 className="h-11 w-11" strokeWidth={2.5} aria-hidden="true" /> : payoutDetailPresentation?.isFailed || payoutDetailPresentation?.isBlocked ? <XCircle className="h-11 w-11" strokeWidth={2.25} aria-hidden="true" /> : <WalletCards className="h-10 w-10" strokeWidth={2.25} aria-hidden="true" />}
               {payoutDetailPresentation?.isPaid && <Sparkles className="absolute -right-2 -top-2 h-4 w-4 fill-emerald-300 text-emerald-50" aria-hidden="true" />}
             </div>
@@ -2380,7 +2558,7 @@ status: 'IN_REVIEW',
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
                   <div><p className="text-xs text-[var(--mazzi-muted)]">Processado em</p><p className="font-bold text-[var(--mazzi-text)]">{formatDateBR(selectedPayoutDetail.processed_at)} às {formatTimeBR(selectedPayoutDetail.processed_at)}</p></div>
                 </div>}
-                {selectedPayoutDetail.failure_reason && <div className="rounded-xl bg-rose-50 p-3 text-xs font-semibold text-rose-800"><p className="mb-1 text-[10px] font-black uppercase tracking-wide text-rose-600">Motivo</p>{selectedPayoutDetail.failure_reason}</div>}
+                {selectedPayoutDetail.failure_reason && <div className="rounded-2xl bg-rose-50 p-3 text-xs font-semibold text-rose-800"><p className="mb-1 text-[10px] font-black uppercase tracking-wide text-rose-600">Motivo</p>{selectedPayoutDetail.failure_reason}</div>}
               </div>
             </div>
           </div>
@@ -2402,7 +2580,7 @@ status: 'IN_REVIEW',
         >
           <div className="space-y-4 text-left">
             {complianceUploadError && (
-              <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
+              <div role="alert" className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>{complianceUploadError}</span>
               </div>
@@ -2433,7 +2611,7 @@ status: 'IN_REVIEW',
               />
               <label
                 htmlFor="compliance-document-file"
-                className="mx-auto inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-slate-900"
+                className="mx-auto inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-slate-900"
               >
                 <Upload className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />
                 Selecionar arquivo
@@ -2482,6 +2660,7 @@ status: 'IN_REVIEW',
             vehicles={vehicles}
             instructorOptions={instantInstructorOptions}
             availabilityInstructorOptions={currentProvider?.type === 'DRIVING_SCHOOL' ? schoolInstantInstructorOptions : instantInstructorOptions}
+            marketplacePendingByInstructor={instantMarketplacePendingByInstructor}
             settings={instantSettings}
             platformConfig={instantPlatformConfig}
             instructorStatuses={instantInstructorStatuses}
@@ -2524,7 +2703,12 @@ status: 'IN_REVIEW',
           onClose={() => setIsInstantOperationalModalOpen(false)}
           onOpenNavigation={() => setIsExternalNavModalOpen(true)}
           onSetOnTheWay={handleSetOnTheWay}
+          onMarkArrived={handleMarkArrived}
+          isMarkingArrived={isMarkingArrived}
+          onCheckIn={handleCheckIn}
           isLoading={isOnTheWayLoading}
+          checkInWindowBeforeMinutes={checkInWindowBeforeMinutes}
+          instantLessonExpirationMinutes={platformConfiguration?.instantLessonExpirationMinutes}
         />
       )}
 

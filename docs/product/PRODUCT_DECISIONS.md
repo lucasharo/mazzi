@@ -46,13 +46,14 @@
 
 ---
 
-## DEC-003: Consolidação do Horizonte Canônico de Agendamento em 60 Dias
+## DEC-003: Horizonte de Agendamento Configurável pelo Admin
 - **Data**: 2026-08-17
-- **Status**: `APROVADA & IMPLEMENTADA`
+- **Status**: `SUPERADA PELA CONFIGURAÇÃO ADMINISTRATIVA`
 - **Tema**: Agendamento e Disponibilidade
-- **Decisão**: Fixar a constante canônica `STUDENT_BOOKING_HORIZON_DAYS = 60` em `src/domain/availability.ts` como fonte única de verdade para toda a plataforma.
-- **Motivo**: Eliminar inconsistências entre modal de agendamento, busca e regras de disponibilidade.
-- **Impacto**: Busca e modal de slots carregam progressivamente 30 + 30 dias com teto estrito em 60 dias.
+- **Decisão anterior**: Fixar a constante canônica `STUDENT_BOOKING_HORIZON_DAYS = 60` em `src/domain/availability.ts` como fonte única de verdade para toda a plataforma.
+- **Decisão vigente**: O horizonte é `availabilityHorizonDays`, configurado pelo Admin, validado no backend entre 1 e 365 dias e consumido pelos apps Aluno e PRO. Em ambiente real, a ausência ou invalidez da configuração bloqueia a operação; valores locais/mock servem somente ao desenvolvimento.
+- **Motivo**: Eliminar inconsistências sem transformar uma regra operacional em valor fixo no frontend.
+- **Impacto**: Busca e modal de slots carregam progressivamente em lotes técnicos de até 30 dias, sempre limitados pelo horizonte vigente do Admin.
 - **Relacionado a**: `availability.ts`, `search.ts`, `SlotSelectorModal.tsx`.
 
 ---

@@ -53,7 +53,7 @@ export const InstantLessonTrackingCard: React.FC<InstantLessonTrackingCardProps>
         <UniversalMap className="h-full !space-y-0" providers={provider ? [provider] : []} selectedProvider={provider} meetingPoint={meetingPoint} height="100%" zoom={17} providerMarker="vehicle" followSelectedProvider showCoverageRadius={false} interactive={!onOpenTracking} />
         {onOpenTracking && <ButtonBase type="button" onClick={onOpenTracking} aria-label="Abrir acompanhamento do profissional" className="absolute inset-x-0 top-0 bottom-6 z-[1000] flex items-end justify-center pb-3 focus-visible:outline-2 focus-visible:outline-amber-500"><span className="rounded-full bg-[var(--mazzi-dark)] px-4 py-2 text-sm font-bold text-white shadow-md">Acompanhar profissional</span></ButtonBase>}
       </div>
-      {!onOpenTracking && <div className="relative z-10 shrink-0 rounded-t-3xl border-t border-slate-100 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]" aria-label="Informações da aula">
+      {!onOpenTracking && <div className="relative z-10 shrink-0 rounded-t-2xl border-t border-slate-100 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]" aria-label="Informações da aula">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-slate-500">Sua aula • Categoria {request.category}</p>

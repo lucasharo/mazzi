@@ -91,7 +91,7 @@ export const InstantLessonActiveBanner: React.FC<InstantLessonActiveBannerProps>
             e.stopPropagation();
             onOpenDetails();
           }}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 cursor-pointer"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200 cursor-pointer"
           aria-label={isWaitingPayment ? 'Ver detalhes' : 'Ir para a aula'}
         >
           <ChevronRight className="h-5 w-5" aria-hidden="true" />

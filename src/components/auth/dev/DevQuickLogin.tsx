@@ -83,7 +83,7 @@ export const DevQuickLogin: React.FC<{
           key={account.email}
           disabled={Boolean(selected) || isLoading}
           onClick={() => login(account)}
-          className="flex min-h-11 items-center gap-1.5 rounded-xl border border-[var(--mazzi-border)] bg-white px-2.5 py-2 text-left text-xs font-bold text-[var(--mazzi-dark)] hover:border-amber-400 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)] shadow-2xs"
+          className="flex min-h-11 items-center gap-1.5 rounded-2xl border border-[var(--mazzi-border)] bg-white px-2.5 py-2 text-left text-xs font-bold text-[var(--mazzi-dark)] hover:border-amber-400 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)] shadow-2xs"
         >
           {selected === account.email ? (
             <span className="flex items-center gap-1.5 text-amber-600">
@@ -130,7 +130,7 @@ export const DevQuickLogin: React.FC<{
         <ButtonBase
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className="mt-2.5 flex min-h-11 items-center gap-1 text-xs font-bold text-slate-600 hover:text-[var(--mazzi-dark)] transition cursor-pointer rounded-lg px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
+          className="mt-2.5 flex min-h-11 items-center gap-1 text-xs font-bold text-slate-600 hover:text-[var(--mazzi-dark)] transition cursor-pointer rounded-2xl px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
         >
           <span>{expanded ? 'Ver menos contas' : 'Ver mais contas de teste'}</span>
           <ChevronDown

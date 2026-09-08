@@ -10,8 +10,8 @@ O fundo dos mapas usa temporariamente OpenStreetMap Standard com Leaflet, sem CA
 
 A plataforma MAZZI separa rigidamente a fase de **Cotação Comercial (`Quote`)** da fase de **Reserva Transacional de Calendário (`Booking Hold`)**.
 
-- **`Quote` (Cotação Comercial)**: Concongela preços, taxas e dados operacionais de uma aula por 10 minutos. **NÃO reserva horário na agenda**.
-- **`Booking Hold` (Reserva Transacional)**: Valida a proposta, executa a limpeza de holds expirados e insere uma reserva temporária no status `PENDING_PAYMENT` com trava atômica `TSTZRANGE` e restrições de exclusão no PostgreSQL (`EXCLUDE USING gist`). A cotação e a retenção inicial do horário usam o mesmo vencimento configurado no Admin (10 minutos por padrão), inclusive para Pix e cartão. Quando o pagamento é iniciado antes desse vencimento, o horário permanece protegido por uma janela técnica adicional de processamento.
+- **`Quote` (Cotação Comercial)**: Congela preços, taxas e dados operacionais de uma aula pelo prazo configurado no Admin. **NÃO reserva horário na agenda**.
+- **`Booking Hold` (Reserva Transacional)**: Valida a proposta, executa a limpeza de holds expirados e insere uma reserva temporária no status `PENDING_PAYMENT` com trava atômica `TSTZRANGE` e restrições de exclusão no PostgreSQL (`EXCLUDE USING gist`). A cotação e a retenção inicial do horário usam o mesmo vencimento configurado no Admin, inclusive para Pix e cartão. Quando o pagamento é iniciado antes desse vencimento, o horário permanece protegido por uma janela técnica adicional de processamento.
 
 ---
 
@@ -19,7 +19,7 @@ A plataforma MAZZI separa rigidamente a fase de **Cotação Comercial (`Quote`)*
 
 ### Máquina de Estados do Quote (`quote_status`)
 ```
-[ACTIVE] ------ (Passaram 10 min) ------> [EXPIRED]
+[ACTIVE] ------ (Passou o prazo configurado) ------> [EXPIRED]
    |
 (Consumido via Booking Hold)
    v

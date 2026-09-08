@@ -13,7 +13,10 @@ import { MonthlyCalendar } from '../../../components/ui/MonthlyCalendar';
 // Re-export and derive horizon constants from canonical domain source of truth
 export { STUDENT_BOOKING_HORIZON_DAYS };
 export const MAX_HORIZON_DAYS = STUDENT_BOOKING_HORIZON_DAYS;
-export const INITIAL_WINDOW_DAYS = 30; // Progressive initial window (batch 1)
+// Load the complete 90-day booking horizon on first open. The RPC calls are
+// split into provider-safe ranges and run in parallel, so later months are
+// already available when the user navigates to them.
+export const INITIAL_WINDOW_DAYS = MAX_HORIZON_DAYS;
 export const LOAD_MORE_DAYS = 30;      // Progressive load more batch
 export const MAX_RPC_DATE_RANGE_DAYS = 31;
 
@@ -124,6 +127,10 @@ export interface SlotSelectorModalProps {
   existingBookings?: Booking[];
   /** Static slots for isolated visual previews. Production omits this and loads from the backend. */
   previewSlots?: PublicSlot[];
+  /** Loaded from the Admin configuration by the Student app. */
+  bookingHorizonDays?: number;
+  /** Minimum notice loaded from the Admin configuration by the Student app. */
+  minimumBookingNoticeHours?: number;
 }
 
 export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
@@ -141,14 +148,16 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
   transmission,
   existingBookings = EMPTY_BOOKINGS,
   previewSlots,
+  bookingHorizonDays,
+  minimumBookingNoticeHours,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, PublicSlot[]>>({});
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<PublicSlot | null>(null);
-  const [windowDays, setWindowDays] = useState(INITIAL_WINDOW_DAYS);
-  const [maxHorizonDays, setMaxHorizonDays] = useState(MAX_HORIZON_DAYS);
+  const [windowDays, setWindowDays] = useState(bookingHorizonDays ?? INITIAL_WINDOW_DAYS);
+  const [maxHorizonDays, setMaxHorizonDays] = useState(bookingHorizonDays ?? MAX_HORIZON_DAYS);
   const [visibleMonth, setVisibleMonth] = useState<string>('');
   const slotsLoadInFlightRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
   const horizonLoadInFlightRef = useRef<Promise<number> | null>(null);
@@ -181,8 +190,14 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           return (data as PublicSlot[]) || [];
         }));
 
+        const noticeLimitMs = minimumBookingNoticeHours !== undefined
+          ? Date.now() + Math.max(0, minimumBookingNoticeHours) * 60 * 60 * 1000
+          : null;
+        const noticeFilteredSlots = noticeLimitMs === null
+          ? batches.flat()
+          : batches.flat().filter((slot) => new Date(slot.slot_start_at).getTime() >= noticeLimitMs);
         const grouped = groupSlots(filterSlotsForExistingBookings(
-          batches.flat(),
+          noticeFilteredSlots,
           durationMinutes || 50,
           existingBookings,
         ));
@@ -215,9 +230,14 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
     } finally {
       if (slotsLoadInFlightRef.current?.promise === request) slotsLoadInFlightRef.current = null;
     }
-  }, [durationMinutes, existingBookings, fromDate, offeringId]);
+  }, [durationMinutes, existingBookings, fromDate, minimumBookingNoticeHours, offeringId]);
 
   const fetchConfiguredHorizon = useCallback(async (): Promise<number> => {
+    if (bookingHorizonDays !== undefined) {
+      const configuredHorizon = normalizeBookingHorizonDays(bookingHorizonDays);
+      setMaxHorizonDays(configuredHorizon);
+      return configuredHorizon;
+    }
     if (horizonLoadInFlightRef.current) return horizonLoadInFlightRef.current;
 
     const request = (async () => {
@@ -238,11 +258,11 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
     } finally {
       if (horizonLoadInFlightRef.current === request) horizonLoadInFlightRef.current = null;
     }
-  }, []);
+  }, [bookingHorizonDays]);
 
   useEffect(() => {
     const bookingKey = existingBookings.map((booking) => `${booking.id}:${booking.status}:${booking.scheduledStartAt}:${booking.scheduledEndAt}`).join(',');
-    const initialLoadKey = `${isOpen}:${offeringId}:${fromDate}:${durationMinutes || 50}:${previewSlots ? 'preview' : 'remote'}:${bookingKey}`;
+    const initialLoadKey = `${isOpen}:${offeringId}:${fromDate}:${durationMinutes || 50}:${previewSlots ? 'preview' : 'remote'}:${bookingHorizonDays ?? 'horizon-rpc'}:${minimumBookingNoticeHours ?? 'notice-unset'}:${bookingKey}`;
     if (initialLoadKeyRef.current === initialLoadKey) return;
     initialLoadKeyRef.current = initialLoadKey;
 
@@ -253,8 +273,8 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
         existingBookings,
       ));
       const firstAvailable = Object.keys(grouped).sort()[0] || null;
-      setWindowDays(INITIAL_WINDOW_DAYS);
-      setMaxHorizonDays(MAX_HORIZON_DAYS);
+      setWindowDays(Math.min(INITIAL_WINDOW_DAYS, bookingHorizonDays ?? INITIAL_WINDOW_DAYS));
+      setMaxHorizonDays(bookingHorizonDays ?? MAX_HORIZON_DAYS);
       setSlotsByDate(grouped);
       setSelectedDate(firstAvailable);
       setSelectedSlot(null);
@@ -264,7 +284,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
       return;
     }
     if (isOpen && offeringId) {
-      setMaxHorizonDays(MAX_HORIZON_DAYS);
+      setMaxHorizonDays(bookingHorizonDays ?? MAX_HORIZON_DAYS);
       setVisibleMonth(fromDate.slice(0, 7));
       const loadConfiguredSlots = async () => {
         const configuredHorizon = await fetchConfiguredHorizon();
@@ -274,7 +294,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
       };
       void loadConfiguredSlots();
     }
-  }, [isOpen, offeringId, fromDate, fetchConfiguredHorizon, fetchSlots, previewSlots]);
+  }, [bookingHorizonDays, fromDate, fetchConfiguredHorizon, fetchSlots, isOpen, minimumBookingNoticeHours, offeringId, previewSlots]);
 
   const dates = useMemo(() => Array.from({ length: windowDays }, (_, index) => addDays(fromDate, index)), [fromDate, windowDays]);
   const datesByMonth = useMemo(() => dates.reduce<Record<string, string[]>>((groups, date) => {
@@ -326,7 +346,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
         {/* Scrollable Body Content */}
         <div className="space-y-4">
           {error && (
-            <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-3">
+            <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-3">
               <span>{error}</span>
               <ButtonBase type="button" onClick={() => void fetchSlots(windowDays, true)} className="underline flex items-center gap-1 cursor-pointer font-bold">
                 <RefreshCw className="w-3.5 h-3.5" /> Tentar novamente
@@ -393,7 +413,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
                                 aria-pressed={isSelected}
                                 aria-label={`Selecionar aula das ${slot.local_start_time.substring(0, 5)} até ${slot.local_end_time.substring(0, 5)}`}
                                 onClick={() => setSelectedSlot(slot)}
-                                className={`min-h-11 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                                className={`min-h-11 rounded-2xl border px-2 py-1.5 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                                   isSelected
                                     ? 'border-amber-400/80 bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] font-bold shadow-xs'
                                     : 'border-[var(--mazzi-border)] bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
@@ -416,7 +436,7 @@ export const SlotSelectorModal: React.FC<SlotSelectorModalProps> = ({
           )}
 
           {/* Selection Summary (Clearly grounded within the content, never covered) */}
-          <div className="rounded-xl border border-amber-300 border-l-4 border-l-[var(--mazzi-yellow)] bg-amber-50/80 p-3 text-xs text-slate-700 shadow-sm">
+          <div className="rounded-2xl border border-amber-300 border-l-4 border-l-[var(--mazzi-yellow)] bg-amber-50/80 p-3 text-xs text-slate-700 shadow-sm">
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             {instructorName && (
               <p className="col-span-2 min-w-0 break-words">

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), 'utf8');
 const migration = read('supabase/migrations/20260906002000_task_093_instant_platform_config.sql');
 const dispatchFix = read('supabase/migrations/20260906003000_task_093_fix_instant_request_dispatch_alias.sql');
+const expirationSplit = read('supabase/migrations/20260907173000_separate_agenda_and_instant_expiration.sql');
 const providerPanel = read('src/apps/provider/components/ProviderInstantLessonPanel.tsx');
 const providerApp = read('src/apps/provider/ProviderApp.tsx');
 const admin = read('src/apps/admin/AdminComponents.tsx');
@@ -24,9 +25,9 @@ describe('Aula Agora platform configuration', () => {
   it('exposes the values in Admin and loads them into the PRO panel', () => {
     expect(admin).toContain('Tempo máximo de deslocamento (minutos)');
     expect(admin).toContain('Validade da oferta (segundos)');
-    expect(dbService).toContain("rpc('get_instant_lesson_platform_config')");
+    expect(dbService).toContain("rpc('get_public_platform_configuration')");
     expect(dbService).toContain("rpc('update_admin_instant_lesson_config'");
-    expect(providerApp).toContain('dbService.getInstantLessonPlatformConfig()');
+    expect(providerApp).toContain('dbService.getPublicPlatformConfiguration()');
     expect(providerApp).toContain('platformConfig={instantPlatformConfig}');
     expect(providerApp).not.toContain('<InstantConductPanel />');
   });
@@ -48,5 +49,16 @@ describe('Aula Agora platform configuration', () => {
     expect(dispatchFix).not.toContain('FOR c IN');
     expect(dispatchFix).not.toContain('SELECT c.*');
     expect(dispatchFix).toContain('MAKE_INTERVAL(secs=>v_offer_expiration_seconds)');
+  });
+
+  it('separates the Aula Agora payment/search deadline from the Agenda quote deadline', () => {
+    expect(expirationSplit).toContain("'quote_settings'");
+    expect(expirationSplit).toContain("'expiration_minutes', COALESCE(public.platform_configurations.value->'expiration_minutes', '10'::jsonb)");
+    expect(expirationSplit).toContain("'payment_expiration_minutes', COALESCE(public.platform_configurations.value->'payment_expiration_minutes', '5'::jsonb)");
+    expect(expirationSplit).toContain('p_payment_expiration_minutes integer');
+    expect(expirationSplit).toContain('v_now + make_interval(mins => v_expiration_minutes)');
+    expect(expirationSplit).toContain('v_now + make_interval(mins => v_payment_expiration_minutes)');
+    expect(expirationSplit).toContain('v_payment_expiration_minutes\n  );');
+    expect(expirationSplit).toContain('GRANT EXECUTE ON FUNCTION public.update_admin_instant_lesson_config(integer, integer, integer) TO authenticated');
   });
 });

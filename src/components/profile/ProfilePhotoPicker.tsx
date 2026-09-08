@@ -285,7 +285,7 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
           </>
         )}
       >
-        <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-2xl bg-slate-950 object-cover" />
+        <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-2xl bg-[var(--mazzi-dark)] object-cover" />
       </Modal>
     </div>
   );

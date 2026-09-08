@@ -74,7 +74,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   return (
     <div
       id={id || 'mazzi-bottom-sheet'}
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/40 backdrop-blur-xs animate-in fade-in duration-300 ease-out"
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-[var(--mazzi-dark)]/40 backdrop-blur-xs animate-in fade-in duration-300 ease-out"
       onClick={(e) => {
         if (closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
@@ -106,25 +106,23 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           <div className="w-12 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full transition-colors" />
         </div>
 
-        {title && (
-          showHeader ? (
-            <div className="px-6 py-2 border-b border-[var(--mazzi-border)] flex items-center justify-between">
-              <h3 id={titleId} className="font-extrabold text-[var(--mazzi-dark)] text-base">{title}</h3>
-              <IconButton
-                label="Fechar painel"
-                onClick={onClose}
-                className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors"
-              >
-                <X className="w-4 h-4" aria-hidden="true" />
-              </IconButton>
-            </div>
-          ) : (
+        {showHeader ? (
+          <div className="px-6 py-2 border-b border-[var(--mazzi-border)] flex items-center justify-between">
+            {title ? <h3 id={titleId} className="font-extrabold text-[var(--mazzi-dark)] text-base">{title}</h3> : <span aria-hidden="true" />}
+            <IconButton
+              label="Fechar painel"
+              onClick={onClose}
+              className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+            </IconButton>
+          </div>
+        ) : title ? (
             <div className="sr-only">
               <h3 id={titleId}>{title}</h3>
               <IconButton label="Fechar painel" onClick={onClose} className="sr-only" />
             </div>
-          )
-        )}
+        ) : null}
 
         <div className="p-6 pt-1 overflow-y-auto flex-1">{children}</div>
       </div>

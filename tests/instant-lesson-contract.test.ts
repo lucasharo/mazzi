@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { targetFromNotification } from '../src/lib/notification-navigation';
+import { isPendingPaymentHoldActive } from '../src/domain/booking';
+import { getInstantOfferSecondsLeft } from '../src/domain/instant-lesson';
 
 const migration = readFileSync('supabase/migrations/20260904011639_task_089_instant_lesson.sql', 'utf8');
 const dynamicScheduleMigration = readFileSync('supabase/migrations/20260904032658_task_089_dynamic_schedule_window.sql', 'utf8');
@@ -26,6 +28,10 @@ const studentApp = readFileSync('src/apps/student/StudentApp.tsx', 'utf8');
 const providerApp = readFileSync('src/apps/provider/ProviderApp.tsx', 'utf8');
 const providerInstantPanel = readFileSync('src/apps/provider/components/ProviderInstantLessonPanel.tsx', 'utf8');
 const instantOfferCard = readFileSync('src/components/instant/InstantLessonOfferCard.tsx', 'utf8');
+const countdownTimer = readFileSync('src/components/ui/CountdownTimer.tsx', 'utf8');
+const checkoutModal = readFileSync('src/apps/student/components/CheckoutModal.tsx', 'utf8');
+const bookingDetailsShared = readFileSync('src/components/booking/BookingDetailsShared.tsx', 'utf8');
+const appLogin = readFileSync('src/components/auth/AppLogin.tsx', 'utf8');
 const stripeReturnScreen = readFileSync('src/apps/student/components/StripeCheckoutReturnScreen.tsx', 'utf8');
 
 describe('TASK-089 Aula Agora persistence contract', () => {
@@ -135,9 +141,19 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(offerClockMigration).toContain("'server_now', v_server_now");
     expect(providerInstantPanel).toContain('serverClockOffsetMs');
     expect(providerInstantPanel).toContain('instantOffersServerNow');
-    expect(providerInstantPanel).toContain('new Date(offer.expiresAt).getTime() - (now + serverClockOffsetMs)');
+    expect(providerInstantPanel).toContain('getInstantOfferSecondsLeft(offer.expiresAt, now, serverClockOffsetMs)');
     expect(providerInstantPanel).toContain("document.addEventListener('visibilitychange', syncNow);");
     expect(providerInstantPanel).toContain("window.addEventListener('focus', syncNow);");
+  });
+
+  it('uses the backend clock in the PRO offer modal too', () => {
+    const expiresAt = '2026-09-07T16:01:00.000Z';
+    const localNow = Date.parse('2026-09-07T16:00:30.000Z');
+    const localClockIsThirtySecondsAhead = -30_000;
+
+    expect(getInstantOfferSecondsLeft(expiresAt, localNow, localClockIsThirtySecondsAhead)).toBe(60);
+    expect(providerApp).toContain('instantOffersServerClockOffsetMs');
+    expect(providerApp).toContain('getInstantOfferSecondsLeft(instantOfferSheetOffer.expiresAt, instantOffersClockMs, instantOffersServerClockOffsetMs)');
   });
 
   it('prevents duplicate offer responses and clears stale cards after rejection', () => {
@@ -154,6 +170,33 @@ describe('TASK-089 Aula Agora persistence contract', () => {
   it('keeps the offer action server-authoritative when a tab timer is stale', () => {
     expect(instantOfferCard).toContain("const actionable = offer.status === 'PENDING';");
     expect(instantOfferCard).not.toContain("offer.status === 'PENDING' && (secondsLeft == null || secondsLeft > 0)");
+  });
+
+  it('routes the empty Aula Agora alternative into the existing agenda wizard', () => {
+    expect(instantWizard).toContain('onScheduleLesson?: (location?: { address: string; coordinates: { lat: number; lng: number } }) => void;');
+    expect(instantWizard).toContain('if (onScheduleLesson) {');
+    expect(instantWizard).toContain('onClose();');
+    expect(instantModal).toContain('onScheduleLesson?: (location?: { address: string; coordinates: { lat: number; lng: number } }) => void;');
+    expect(instantWizard).toContain('onScheduleLesson(addressValid && draft.location ? { address: draft.address.trim(), coordinates: draft.location } : undefined)');
+    expect(studentApp).toContain('setSearchLocation(instantLocation.address);');
+    expect(studentApp).toContain('latitude: instantLocation.coordinates.lat');
+    expect(studentApp).toContain('onScheduleLesson={openBookingSearch}');
+    expect(studentApp).toContain('onClick={() => openBookingSearch()}');
+    expect(studentApp).not.toContain('onClick={openBookingSearch}');
+    expect(studentApp).not.toContain('onAction={openBookingSearch}');
+    expect(studentApp).toContain('resolveMeetingPointAddress(location.lat, location.lng)');
+    expect(studentApp).toContain('setSearchLocation((current) => needsMeetingPointAddress(current) ? address : current);');
+  });
+
+  it('uses one shared MM:SS timer presentation across countdown surfaces', () => {
+    expect(countdownTimer).toContain('rounded-2xl');
+    expect(countdownTimer).toContain('font-mono');
+    expect(countdownTimer).toContain('Este valor fica reservado por mais');
+    expect(instantOfferCard).toContain('<CountdownTimer secondsRemaining={secondsLeft}');
+    expect(checkoutModal).toContain('<CountdownTimer secondsRemaining={quoteTimeRemainingSec} />');
+    expect(checkoutModal).toContain('<CountdownTimer secondsRemaining={holdTimeRemainingSec}');
+    expect(bookingDetailsShared).toContain('<CountdownTimer secondsRemaining={secondsLeft} />');
+    expect(appLogin).toContain('<CountdownTimer secondsRemaining={resendCooldown}');
   });
 
   it('releases Aula Agora after its payment hold is cancelled', () => {
@@ -174,6 +217,23 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(instantPaymentStatusMigration).toContain("'BOOKING_CONFIRMED'");
     expect(instantPaymentStatusMigration).toContain('public.notify_booking_participants');
     expect(instantModal).toContain('confirme o pagamento para iniciar');
+  });
+
+  it('does not keep an expired payment handoff visible to the provider', () => {
+    const now = Date.parse('2026-09-07T16:00:00Z');
+    const pendingBooking = {
+      status: 'PENDING_PAYMENT',
+      holdExpiresAt: '2026-09-07T15:59:59Z',
+    } as any;
+    const activeBooking = {
+      ...pendingBooking,
+      holdExpiresAt: '2026-09-07T16:00:01Z',
+    };
+
+    expect(isPendingPaymentHoldActive(pendingBooking, now)).toBe(false);
+    expect(isPendingPaymentHoldActive(activeBooking, now)).toBe(true);
+    expect(providerApp).toContain('isPendingPaymentHoldActive(b, bookingClockMs, platformConfiguration?.instantLessonExpirationMinutes)');
+    expect(providerInstantPanel).toContain('visiblePendingPaymentInstantBookings');
   });
 
   it('opens the existing payment confirmation and returns to the Aula Agora map after payment', () => {

@@ -52,7 +52,7 @@ function PeriodSelector({ period, onChange, disabled = false }: { period: Provid
           disabled={disabled}
           aria-pressed={period === item}
           onClick={() => onChange(item)}
-          className={`flex-1 rounded-xl px-3 py-2 text-xs font-bold transition sm:flex-none ${period === item ? 'bg-[var(--mazzi-dark)] text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900'}`}
+          className={`flex-1 rounded-2xl px-3 py-2 text-xs font-bold transition sm:flex-none ${period === item ? 'bg-[var(--mazzi-dark)] text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900'}`}
         >
           {formatPeriod(item)}
         </ButtonBase>
@@ -190,7 +190,7 @@ function ReviewsCard({ summary }: { summary: ProviderEarningsSummary }) {
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
           {Object.entries(summary.reviews.dimensions).map(([key, value]) => (
-            <div key={key} className="rounded-xl bg-slate-50 p-3 text-center">
+            <div key={key} className="rounded-2xl bg-slate-50 p-3 text-center">
               <p className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-500">{key === 'didactics' ? 'Didática' : key === 'punctuality' ? 'Pontualidade' : key === 'safety' ? 'Segurança' : key === 'vehicle' ? 'Veículo' : 'Cordialidade'}</p>
               <p className="mt-1 font-black text-slate-900">{value == null ? '—' : value.toFixed(1)}</p>
             </div>

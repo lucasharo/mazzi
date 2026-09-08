@@ -67,6 +67,10 @@ interface ProviderScheduleTabProps {
   isInstructorUser?: boolean;
   bookings?: any[];
   calendarLoadError?: string | null;
+  /** Platform-configured booking horizon. null means the Admin config is unavailable. */
+  availabilityHorizonDays?: number | null;
+  /** Platform-configured notice window. null means the Admin config is unavailable. */
+  minimumBookingNoticeHours?: number | null;
 }
 
 const DAY_OPTIONS: { value: DayOfWeek; label: string }[] = [
@@ -196,6 +200,8 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   isInstructorUser,
   bookings = [],
   calendarLoadError,
+  availabilityHorizonDays,
+  minimumBookingNoticeHours,
 }) => {
   // Dedicated state for Global Personal Blocks
   const [isAddGlobalBlockModalOpen, setIsAddGlobalBlockModalOpen] = React.useState(false);
@@ -301,17 +307,18 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
 
   const [emergencyReason, setEmergencyReason] = React.useState('');
   const emergencySlotsByDate = React.useMemo(() => {
-    if (calendarLoadError) return {};
+    if (calendarLoadError || availabilityHorizonDays === null || minimumBookingNoticeHours === null) return {};
     const result: Record<string, EmergencyBlockableSlot[]> = {};
     const base = new Date(`${getTodayInSaoPaulo()}T12:00:00-03:00`);
-    for (let index = 0; index < 30; index += 1) {
+    const horizonDays = Math.max(1, Math.floor(availabilityHorizonDays ?? 90));
+    for (let index = 0; index < horizonDays; index += 1) {
       const date = new Date(base); date.setDate(base.getDate() + index);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const scheduleOffering = offerings.find((offering) => offering.instructorId) || offerings[0];
       result[key] = generateEmergencyBlockableSlots({ date: key, rules: availabilityRules, bookings, globalBlocks: instructorGlobalBlocks || [], exceptions: availabilityExceptions, providerId: scheduleOffering?.providerId, instructorId: scheduleOffering?.instructorId });
     }
     return result;
-  }, [availabilityRules, bookings, instructorGlobalBlocks, availabilityExceptions, offerings, calendarLoadError]);
+  }, [availabilityRules, bookings, instructorGlobalBlocks, availabilityExceptions, offerings, calendarLoadError, availabilityHorizonDays, minimumBookingNoticeHours]);
 
   const handleOpenCreateGlobalBlock = () => {
     setEditingGlobalBlockId(null);
@@ -421,6 +428,8 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
     exceptions: availabilityExceptions,
     existingBookings: [],
     instructorGlobalBlocks,
+    minimumNoticeMinutes: minimumBookingNoticeHours === null ? Number.POSITIVE_INFINITY : minimumBookingNoticeHours === undefined ? undefined : Math.max(0, minimumBookingNoticeHours * 60),
+    maxAdvanceDays: availabilityHorizonDays === null ? 0 : availabilityHorizonDays === undefined ? undefined : Math.max(1, availabilityHorizonDays),
   }) : [];
 
   const recurringRuleFooter = (
@@ -677,7 +686,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               </h4>
 
               {simulatedSlots.length === 0 ? (
-                <p className="text-xs text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200">
+                <p className="text-xs text-amber-800 bg-amber-50 p-3 rounded-2xl border border-amber-200">
                   Nenhuma vaga gerada para esta data. Verifique se existe regra semanal para o dia da semana ou se há bloqueio ativo.
                 </p>
               ) : (
@@ -685,7 +694,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                   {simulatedSlots.map((slot, idx) => (
                     <span
                       key={idx}
-                      className="px-3 py-1.5 rounded-xl bg-slate-900 text-white font-mono text-xs font-bold shadow-xs"
+                      className="px-3 py-1.5 rounded-2xl bg-[var(--mazzi-dark)] text-white font-mono text-xs font-bold shadow-xs"
                     >
                       {slot.startTime} - {slot.endTime}
                     </span>
@@ -701,7 +710,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       <Modal isOpen={isAddRuleModalOpen} onClose={onCloseAddRuleModal} title={editingRuleId ? 'Editar Regra Semanal' : 'Cadastrar Regra Semanal'} footer={recurringRuleFooter}>
         <div className="space-y-4 text-left">
           {ruleError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{ruleError}</span>
             </div>
@@ -734,7 +743,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
               />
             </div>
           </div>
-          <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs font-medium text-sky-800">
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-xs font-medium text-sky-800">
             Para manter a agenda organizada, escolha horários em hora cheia, como 08:00, 09:00 ou 10:00. Horários como 08:30 não são permitidos.
           </div>
 
@@ -744,9 +753,9 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       <Modal isOpen={isEmergencyModalOpen} onClose={() => !isSavingEmergencyBlock && setIsEmergencyModalOpen(false)} title={emergencyEditingBlockId ? 'Editar bloqueio rápido' : 'Bloqueio rápido'} footer={emergencyBlockFooter}>
         <div className="space-y-4 text-left">
           <p className="text-xs leading-relaxed text-slate-600">Escolha uma data e um horário realmente livre na sua agenda.</p>
-          {emergencyBlockError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">{emergencyBlockError}</div>}
-          <DateTimeSlotPicker slotsByDate={emergencyEditingSlotsByDate || emergencySlotsByDate} selectedDate={emergencySelectedDate} selectionMode="hour-range" selectedSlots={emergencySelectedSlots} onDateChange={(date) => { setEmergencySelectedDate(date); setEmergencySelectedSlots([]); }} onSlotsChange={setEmergencySelectedSlots} />
-          {emergencySelectedSlots.length > 0 && <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-700"><span>Bloqueando do horário {emergencySelectedSlots[0].startTime} até {emergencySelectedSlots[emergencySelectedSlots.length - 1].endTime} · {emergencySelectedSlots.length} {emergencySelectedSlots.length === 1 ? 'hora selecionada' : 'horas selecionadas'}</span><Button type="button" variant="ghost" size="sm" className="shrink-0 text-slate-600" onClick={() => setEmergencySelectedSlots([])}>Limpar</Button></div>}
+          {emergencyBlockError && <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800">{emergencyBlockError}</div>}
+          <DateTimeSlotPicker maxHorizonDays={availabilityHorizonDays === null ? 0 : availabilityHorizonDays} slotsByDate={emergencyEditingSlotsByDate || emergencySlotsByDate} selectedDate={emergencySelectedDate} selectionMode="hour-range" selectedSlots={emergencySelectedSlots} onDateChange={(date) => { setEmergencySelectedDate(date); setEmergencySelectedSlots([]); }} onSlotsChange={setEmergencySelectedSlots} />
+          {emergencySelectedSlots.length > 0 && <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3 text-xs font-semibold text-slate-700"><span>Bloqueando do horário {emergencySelectedSlots[0].startTime} até {emergencySelectedSlots[emergencySelectedSlots.length - 1].endTime} · {emergencySelectedSlots.length} {emergencySelectedSlots.length === 1 ? 'hora selecionada' : 'horas selecionadas'}</span><Button type="button" variant="ghost" size="sm" className="shrink-0 text-slate-600" onClick={() => setEmergencySelectedSlots([])}>Limpar</Button></div>}
           <div className="space-y-2">
             <p className="text-xs font-extrabold uppercase tracking-wide text-slate-600">Motivo (opcional)</p>
             <ReasonChips
@@ -767,7 +776,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       <Modal isOpen={isAddExceptionModalOpen} onClose={onCloseAddExceptionModal} title="Cadastrar Bloqueio / Exceção" footer={exceptionFooter}>
         <div className="space-y-4 text-left">
           {exceptionError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{exceptionError}</span>
             </div>
@@ -824,7 +833,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
       >
         <div className="space-y-4 text-left">
           {globalBlockError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{globalBlockError}</span>
             </div>

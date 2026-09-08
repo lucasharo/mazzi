@@ -14,20 +14,9 @@ import {
 } from 'lucide-react';
 
 import { StatusBadge } from './StatusBadge';
+import { ProfileAvatar } from '../profile/ProfileAvatar';
 
 export type BookingPerspective = 'STUDENT' | 'INSTRUCTOR';
-
-function getInitials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((part) => part[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || 'M'
-  );
-}
 
 function formatVehicleLabel(vehicle: {
   brand?: string;
@@ -85,6 +74,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
 
   // Single name display: show instructor name (or student name if in instructor perspective) exactly once
   const mainDisplayName = isInstructorPerspective ? student : instructor;
+  const mainDisplayAvatar = isInstructorPerspective ? undefined : booking.snapshot.instructorAvatarUrl || booking.snapshot.providerAvatarUrl;
   const scheduledStartTime = booking.startTime || (booking.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : '');
   const scheduledEndTime = booking.endTime || (booking.scheduledEndAt ? formatTimeBR(booking.scheduledEndAt) : '');
   const lessonStartTime = booking.lessonStartedAt ? formatTimeBR(booking.lessonStartedAt) : '';
@@ -129,14 +119,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       {/* 2. Provider / Person Info (Render name ONLY ONCE) */}
       <div className="flex items-center gap-3">
         {/* Avatar */}
-        <div className="mazzi-avatar h-12 w-12 shrink-0 text-sm font-bold ring-1 ring-black/5">
-          <span
-            className="flex h-full w-full items-center justify-center bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-text)]"
-            aria-hidden="true"
-          >
-            {getInitials(mainDisplayName)}
-          </span>
-        </div>
+        <ProfileAvatar name={mainDisplayName} imageUrl={mainDisplayAvatar} size="md" className="h-12 w-12 text-sm" />
 
         {/* Info: Name once + optional Autoescola tag + Location */}
         <div className="min-w-0 flex-1">
@@ -158,7 +141,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         <Car className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
         <span className="truncate">{vehicle}</span>
         <span className="shrink-0 text-[var(--mazzi-muted)] font-medium">· {transLabel}</span>
-        <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-text)] px-2 py-0.5 rounded-md">
+        <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-text)] px-2 py-0.5 rounded-2xl">
           Cat. {category}
         </span>
       </div>

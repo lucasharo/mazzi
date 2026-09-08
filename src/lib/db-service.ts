@@ -47,11 +47,13 @@ import {
   InstantLessonRequest,
   InstantLessonOffer,
   InstantLessonTracking,
+  InstantCancellationQuote,
 } from '../types';
 import { normalizeComplianceStatus } from '../domain/compliance-status';
 import { formatDateBR, formatTimeBR, getBusinessDateOnly } from './date-format';
 import { formatFullMeetingPoint, formatMeetingPoint } from './meeting-point';
-import { PAYMENT_HOLD_EXPIRATION_MINUTES } from '../domain/booking';
+import type { PublicPlatformConfiguration } from '../domain/platform-config';
+import { getCheckoutGatewayProvider } from './payment-gateway-config';
 
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
@@ -269,6 +271,8 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     : (row.snapshot_data || {});
   const instructorName = snapshot.instructorName || snapshot.instructor_name || row.instructor_name || '';
   const providerName = snapshot.providerName || snapshot.provider_name || row.provider_name || '';
+  const instructorAvatarUrl = snapshot.instructorAvatarUrl || snapshot.instructor_avatar_url || row.instructor_avatar_url || undefined;
+  const providerAvatarUrl = snapshot.providerAvatarUrl || snapshot.provider_avatar_url || row.provider_avatar_url || undefined;
   const vehicleName = snapshot.vehicleName || snapshot.vehicle_name || row.vehicle_name || '';
   const structuredMeetingPoint = row.meeting_point ?? snapshot.meetingPoint ?? snapshot.meeting_point ?? '';
   const meetingPointLabel = formatMeetingPoint(structuredMeetingPoint);
@@ -277,6 +281,8 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     ...snapshot,
     instructorName,
     providerName,
+    ...(instructorAvatarUrl ? { instructorAvatarUrl } : {}),
+    ...(providerAvatarUrl ? { providerAvatarUrl } : {}),
     vehicleName,
     meetingPoint: structuredMeetingPoint,
     meetingPointLabel,
@@ -334,6 +340,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     cancelledBy: row.cancelled_by || undefined,
     cancellationReason: row.cancellation_reason || undefined,
     refundAmountInCents: row.refund_amount_in_cents != null ? Number(row.refund_amount_in_cents) : undefined,
+    cancellationData: row.cancellation_data || undefined,
     expiredAt: row.expired_at || undefined,
     priceInCents: row.price_in_cents,
     platformFeeInCents: row.platform_fee_in_cents,
@@ -345,6 +352,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     meetingPoint: meetingPointLabel,
     meetingPointLabel,
     providerOnTheWayAt: snapshot.provider_on_the_way_at || undefined,
+    providerArrivedAt: snapshot.provider_arrived_at || undefined,
     fullMeetingPoint,
     createdAt: row.created_at,
   };
@@ -1126,6 +1134,18 @@ export const dbService = {
     });
     if (namesError) throw namesError;
     const namesByBooking = new Map<string, any>((names || []).map((item: any) => [item.booking_id, item]));
+    let avatarsByBooking = new Map<string, any>();
+    try {
+      const { data: avatars, error: avatarsError } = await sp.rpc('get_my_booking_avatars', {
+        p_booking_ids: rows.map((row: any) => row.id),
+      });
+      if (avatarsError) throw avatarsError;
+      avatarsByBooking = new Map<string, any>((avatars || []).map((item: any) => [item.booking_id, item]));
+    } catch (avatarError) {
+      // Avatar hydration is supplementary. A stale PostgREST schema cache or a
+      // temporary network error must never hide the student's bookings.
+      console.warn('Could not hydrate booking avatars:', avatarError);
+    }
 
     const bookingIds = rows.map((row: any) => row.id).filter(Boolean);
     let bookingCategoryMap = new Map<string, string>();
@@ -1140,7 +1160,7 @@ export const dbService = {
 
     return rows
       .map((row: any) => mapBookingFromDb(
-        { ...row, ...(namesByBooking.get(row.id) || {}) },
+        { ...row, ...(namesByBooking.get(row.id) || {}), ...(avatarsByBooking.get(row.id) || {}) },
         bookingCategoryMap.get(row.id)
       ))
       .sort((a: Booking, b: Booking) => {
@@ -1217,7 +1237,6 @@ export const dbService = {
       p_quote_id: quoteId,
       p_student_id: studentId,
       p_idempotency_key: `hold_${crypto.randomUUID()}`,
-      p_hold_duration_minutes: PAYMENT_HOLD_EXPIRATION_MINUTES,
     });
     if (error) throw error;
     return data;
@@ -2056,20 +2075,59 @@ export const dbService = {
     return data || [];
   },
 
-  async getInstantLessonPlatformConfig(): Promise<{ maxEtaMinutes: number; offerExpirationSeconds: number }> {
-    const { data, error } = await sp.rpc('get_instant_lesson_platform_config');
+  async getPublicPlatformConfiguration(): Promise<PublicPlatformConfiguration> {
+    const { data, error } = await sp.rpc('get_public_platform_configuration');
     if (error) throw error;
+
     const row = Array.isArray(data) ? data[0] : data;
+    const values: Array<[keyof PublicPlatformConfiguration, unknown]> = [
+      ['quoteExpirationMinutes', row?.quote_expiration_minutes],
+      ['availabilityHorizonDays', row?.availability_horizon_days],
+      ['minimumBookingNoticeHours', row?.minimum_booking_notice_hours],
+      ['searchRadiusDefaultsKm', row?.search_radius_defaults_km],
+      ['checkInWindowBeforeMinutes', row?.checkin_window_before_minutes],
+      ['instantMaxEtaMinutes', row?.instant_max_eta_minutes],
+      ['instantOfferExpirationSeconds', row?.instant_offer_expiration_seconds],
+      ['instantLessonExpirationMinutes', row?.instant_lesson_expiration_minutes],
+    ];
+    const configuration: PublicPlatformConfiguration = {
+      quoteExpirationMinutes: Number(row?.quote_expiration_minutes),
+      availabilityHorizonDays: Number(row?.availability_horizon_days),
+      minimumBookingNoticeHours: Number(row?.minimum_booking_notice_hours),
+      searchRadiusDefaultsKm: Number(row?.search_radius_defaults_km),
+      checkInWindowBeforeMinutes: Number(row?.checkin_window_before_minutes),
+      instantMaxEtaMinutes: Number(row?.instant_max_eta_minutes),
+      instantOfferExpirationSeconds: Number(row?.instant_offer_expiration_seconds),
+      instantLessonExpirationMinutes: Number(row?.instant_lesson_expiration_minutes),
+    };
+    const invalidConfiguration = values.some(([key]) => {
+      const value = configuration[key];
+      return !Number.isFinite(value) || value < 0 || (key !== 'minimumBookingNoticeHours' && value <= 0);
+    });
+    if (invalidConfiguration) {
+      throw new Error('PUBLIC_PLATFORM_CONFIGURATION_INVALID');
+    }
+    return configuration;
+  },
+
+  async getInstantLessonPlatformConfig(): Promise<{ maxEtaMinutes: number; offerExpirationSeconds: number }> {
+    const configuration = await this.getPublicPlatformConfiguration();
     return {
-      maxEtaMinutes: Number(row?.max_eta_minutes || 30),
-      offerExpirationSeconds: Number(row?.offer_expiration_seconds || 15),
+      maxEtaMinutes: configuration.instantMaxEtaMinutes,
+      offerExpirationSeconds: configuration.instantOfferExpirationSeconds,
     };
   },
 
-  async updateAdminInstantLessonConfig(params: { maxEtaMinutes: number; offerExpirationSeconds: number }): Promise<void> {
+  async getCheckInWindowBeforeMinutes(): Promise<number> {
+    const configuration = await this.getPublicPlatformConfiguration();
+    return configuration.checkInWindowBeforeMinutes;
+  },
+
+  async updateAdminInstantLessonConfig(params: { maxEtaMinutes: number; offerExpirationSeconds: number; paymentExpirationMinutes: number }): Promise<void> {
     const { error } = await sp.rpc('update_admin_instant_lesson_config', {
       p_max_eta_minutes: params.maxEtaMinutes,
       p_offer_expiration_seconds: params.offerExpirationSeconds,
+      p_payment_expiration_minutes: params.paymentExpirationMinutes,
     });
     if (error) throw error;
   },
@@ -2149,6 +2207,74 @@ export const dbService = {
     });
     if (error) throw error;
     return data;
+  },
+
+  async getInstantCancellationQuote(bookingId: string): Promise<InstantCancellationQuote> {
+    const { data, error } = await sp.rpc('get_instant_cancellation_quote', {
+      p_booking_id: bookingId,
+    });
+    if (error) throw error;
+    const row = data || {};
+    return {
+      eligible: row.eligible === true,
+      bookingId: row.booking_id || bookingId,
+      cancellationStage: row.cancellation_stage,
+      reasonCode: row.reason_code,
+      refundPercentage: Number(row.refund_percentage || 0),
+      refundAmountInCents: Number(row.refund_amount_in_cents || 0),
+      retainedAmountInCents: Number(row.retained_amount_in_cents || 0),
+      calculatedAt: row.calculated_at || undefined,
+      providerOnTheWayAt: row.provider_on_the_way_at || undefined,
+      providerArrivedAt: row.provider_arrived_at || undefined,
+      settingsSnapshot: row.settings_snapshot || undefined,
+    };
+  },
+
+  async cancelInstantBooking(params: {
+    bookingId: string;
+    reason?: string;
+    reasonCode?: string;
+    idempotencyKey?: string;
+  }): Promise<any> {
+    if (getCheckoutGatewayProvider() === 'stripe') {
+      const { data, error } = await sp.functions.invoke('cancel-instant-booking', {
+        body: {
+          bookingId: params.bookingId,
+          reason: params.reason || null,
+          reasonCode: params.reasonCode || null,
+          idempotencyKey: params.idempotencyKey || null,
+        },
+      });
+      if (error) throw error;
+      return data;
+    }
+    const { data, error } = await sp.rpc('cancel_instant_booking', {
+      p_booking_id: params.bookingId,
+      p_reason: params.reason || null,
+      p_reason_code: params.reasonCode || null,
+      p_idempotency_key: params.idempotencyKey || null,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async updateAdminInstantCancellationConfig(params: {
+    initialPercent: number;
+    middlePercent: number;
+    latePercent: number;
+    arrivedPercent: number;
+    initialWindowMinutes: number;
+    middleWindowMinutes: number;
+  }): Promise<void> {
+    const { error } = await sp.rpc('update_admin_instant_cancellation_config', {
+      p_initial_percent: params.initialPercent,
+      p_middle_percent: params.middlePercent,
+      p_late_percent: params.latePercent,
+      p_arrived_percent: params.arrivedPercent,
+      p_initial_window_minutes: params.initialWindowMinutes,
+      p_middle_window_minutes: params.middleWindowMinutes,
+    });
+    if (error) throw error;
   },
 
   async updateContestationResponseHours(hours: number): Promise<void> {
@@ -2383,6 +2509,14 @@ export const dbService = {
 
   async providerCheckInBooking(bookingId: string): Promise<any> {
     const { data, error } = await sp.rpc('provider_check_in_booking', {
+      p_booking_id: bookingId,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async providerMarkArrived(bookingId: string): Promise<any> {
+    const { data, error } = await sp.rpc('provider_mark_arrived', {
       p_booking_id: bookingId,
     });
     if (error) throw error;

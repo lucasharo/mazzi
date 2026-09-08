@@ -4,6 +4,7 @@ export type CheckInAvailabilityReason =
   | 'ALREADY_CHECKED_IN'
   | 'NOT_OPEN_YET'
   | 'AVAILABLE'
+  | 'CONFIGURATION_UNAVAILABLE'
   | 'STATUS_NOT_OPERATIONAL';
 
 export interface CheckInAvailabilityInput {
@@ -12,6 +13,7 @@ export interface CheckInAvailabilityInput {
   startTime?: string | null;
   status: string;
   alreadyCheckedIn: boolean;
+  checkInWindowBeforeMinutes?: number;
   now?: Date;
 }
 
@@ -28,6 +30,7 @@ export function getCheckInAvailability({
   startTime,
   status,
   alreadyCheckedIn,
+  checkInWindowBeforeMinutes = 15,
   now = new Date(),
 }: CheckInAvailabilityInput): CheckInAvailability {
   const normalizedStatus = String(status || '').toUpperCase();
@@ -41,7 +44,10 @@ export function getCheckInAvailability({
     return { canCheckIn: false, opensAt: null, reason: 'NOT_OPEN_YET' };
   }
 
-  const opensAt = new Date(startTimestamp - 15 * 60 * 1000);
+  const safeWindowMinutes = Number.isFinite(checkInWindowBeforeMinutes) && checkInWindowBeforeMinutes > 0
+    ? checkInWindowBeforeMinutes
+    : 15;
+  const opensAt = new Date(startTimestamp - safeWindowMinutes * 60 * 1000);
   return now.getTime() >= opensAt.getTime()
     ? { canCheckIn: true, opensAt, reason: 'AVAILABLE' }
     : { canCheckIn: false, opensAt, reason: 'NOT_OPEN_YET' };

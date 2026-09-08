@@ -116,7 +116,7 @@ Toda funcionalidade deve ser classificada exclusivamente por um dos seguintes st
 | Filtros | Filtros de Categoria, Transmissão, Data e Horário | `IMPLEMENTADO` | [`src/components/search/FilterDrawer.tsx`](../src/components/search/FilterDrawer.tsx) | Matching estrito de prestadores que atendam 100% dos filtros |
 | Visualização | Lista e Mapa Interativo | `IMPLEMENTADO` | [`src/components/search/MapView.tsx`](../src/components/search/MapView.tsx) | Alternância fluida entre visualização em lista e mapa |
 | Prestador | Perfil Público do Prestador | `IMPLEMENTADO` | [`src/components/search/ProviderPublicProfileModal.tsx`](../src/components/search/ProviderPublicProfileModal.tsx) | Exibe detalhes, foto, avaliações e frota do profissional |
-| Agenda | Seleção de Horários (Horizonte configurável) | `IMPLEMENTADO` | [`src/domain/availability.ts`](../src/domain/availability.ts), [`src/apps/student/components/SlotSelectorModal.tsx`](../src/apps/student/components/SlotSelectorModal.tsx), `supabase/migrations/20260902010000_public_booking_horizon.sql` | O Aluno consulta o horizonte público configurado no Admin e carrega progressivamente em lotes de até 30 dias; 60 dias permanece apenas como fallback seguro quando a configuração não pode ser carregada. |
+| Agenda | Seleção de Horários (Horizonte configurável) | `IMPLEMENTADO` | [`src/domain/platform-config.ts`](../src/domain/platform-config.ts), [`src/apps/student/components/SlotSelectorModal.tsx`](../src/apps/student/components/SlotSelectorModal.tsx), [`src/apps/provider/components/ProviderScheduleTab.tsx`](../src/apps/provider/components/ProviderScheduleTab.tsx), `supabase/migrations/20260908120000_public_platform_configuration.sql` | Aluno e PRO consultam o horizonte público configurado no Admin e carregam progressivamente em lotes técnicos de até 30 dias; no ambiente real, configuração ausente ou inválida bloqueia a consulta. |
 | Pagamentos | Gateway Fake | `PADRÃO/DEV` | [`src/domain/payments/fake-adapter.ts`](../src/domain/payments/fake-adapter.ts), [`src/apps/student/components/CheckoutModal.tsx`](../src/apps/student/components/CheckoutModal.tsx) | Simulação de PIX e Cartão, sem movimentação financeira (`DEC-010`) |
 | Pagamentos | Stripe | `IMPLEMENTADO / HOMOLOGAÇÃO` | [`src/apps/student/components/StripeHostedCheckout.tsx`](../src/apps/student/components/StripeHostedCheckout.tsx), Edge Functions `create-stripe-checkout-session`, `stripe-webhook` e `process-stripe-refund` | Cartão e Pix usam Checkout hospedado externo; valores vêm do banco, metadata vincula sessão/pagamento/reserva, o webhook assinado confirma a reserva e o Admin solicita estornos idempotentes. Connect/split e payout automático permanecem desabilitados. |
 | Minhas Aulas | Gestão de Aulas Agendadas e Histórico | `IMPLEMENTADO` | [`src/apps/student/components/BookingDetailsModal.tsx`](../src/apps/student/StudentApp.tsx) | Exibe aulas ativas, concluídas e detalhes da reserva |
@@ -171,6 +171,13 @@ O histórico detalhado das alterações realizadas nos dois últimos dias está 
 - padronização visual dos headers, labels, sombras, cores, telas de sucesso e estados de checkout;
 - atualização da suíte de segurança para validar a retomada de pagamento pela prévia compartilhada.
 
+## 7. Atualização de implementação — 2026-09-07 — Aula Agora
+
+- Política específica de cancelamento e reembolso implementada no DEV pela migration `20260907211534_instant_aula_agora_cancellation_refund_policy`.
+- Prévia e cancelamento final usam RPCs server-side com lock da reserva, fonte `AULA_AGORA`, pagamento fake/mock, idempotência, auditoria e snapshot de timestamps/configuração.
+- Faixas padrão: 100% antes da saída, 90% até 3 minutos a caminho, 80% entre 3 e 7 minutos, 70% após 7 minutos sem chegada, 60% após chegada; aula iniciada segue o lifecycle normal e não aceita este cancelamento.
+- A Agenda permanece em `cancel_booking_v2`/DEC-013. Ativação comercial da política exige `REQUIRES_REGULATORY_VALIDATION`.
+
 ## 6. Atualização de implementação — 2026-09-01
 
 O histórico consolidado desta frente está em [`docs/24-chat-history-2026-09-01.md`](./24-chat-history-2026-09-01.md). Foram concluídos:
@@ -180,6 +187,6 @@ O histórico consolidado desta frente está em [`docs/24-chat-history-2026-09-01
 - prazo configurável de resposta da contestação e bloqueio de envio no chat regular durante a análise;
 - painel dedicado de contestação no Admin, separado do Financeiro, com dados amigáveis da reserva;
 - analytics com atualização global, rótulos em português e checkouts cancelados;
-- calendário do Aluno conectado ao horizonte configurado no Admin, com fallback seguro e carregamento progressivo;
+- calendário do Aluno conectado ao horizonte configurado no Admin, com carregamento progressivo e bloqueio seguro quando a configuração real não está disponível;
 - compactação visual do calendário, horários e resumo da seleção para reduzir o scroll em telas móveis.
 > TASK-086 local: o contrato de ganhos, navegação profunda e service worker foi implementado localmente. O registry/push E2E permanece pendente da configuração aprovada de FCM/Web Push no DEV; nenhuma mutação remota foi feita.

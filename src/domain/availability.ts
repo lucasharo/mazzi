@@ -31,7 +31,7 @@ export class AvailabilityDomainError extends Error {
 }
 
 /** Safe fallback for the student booking horizon when the public configuration cannot be loaded. */
-export const STUDENT_BOOKING_HORIZON_DAYS = 60;
+export const STUDENT_BOOKING_HORIZON_DAYS = 90;
 export const AVAILABILITY_SEARCH_HORIZON_DAYS = STUDENT_BOOKING_HORIZON_DAYS;
 
 /**

@@ -424,6 +424,7 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
         endTime: '10:00',
         scheduledStartAt: '2026-08-20T09:00:00-03:00',
         category: 'B',
+        meetingPoint: { type: 'PROVIDER_ADDRESS', address: 'Autoescola / Local' },
       };
 
       render(
@@ -485,6 +486,50 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
 
       fireEvent.click(screen.getByRole('button', { name: 'Iniciar aula' }));
       await waitFor(() => expect(onStartLesson).toHaveBeenCalledTimes(1));
+    });
+
+    it('não exibe check-in separado para endereço do aluno e conclui ao chegar', async () => {
+      const onCheckIn = vi.fn().mockResolvedValue(undefined);
+      const onMarkArrived = vi.fn().mockResolvedValue(undefined);
+      const booking = {
+        id: 'bk_instant_arrival_gate',
+        providerId: 'p_instant',
+        status: 'CONFIRMED',
+        studentName: 'Aluno Aula Agora',
+        scheduledDate: '20/08/2026',
+        startTime: '09:00',
+        endTime: '09:50',
+        scheduledStartAt: '2026-08-20T09:00:00-03:00',
+        category: 'B',
+        instructorCheckedIn: false,
+        studentCheckedIn: false,
+        meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' },
+        snapshot: {
+          source: 'AULA_AGORA',
+          provider_on_the_way_at: '2026-08-20T08:40:00-03:00',
+          meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' },
+        },
+      };
+
+      render(
+        <ProviderBookingDetailsModal
+          {...defaultModalProps}
+          booking={booking}
+          onCheckIn={onCheckIn}
+          onMarkArrived={onMarkArrived}
+          onSetOnTheWay={vi.fn().mockResolvedValue(undefined)}
+          canCancelBooking={() => false}
+        />
+      );
+
+      expect(screen.queryByRole('button', { name: 'Fazer check-in na aula' })).toBeNull();
+      expect(onCheckIn).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cheguei ao local' }));
+      await waitFor(() => {
+        expect(onMarkArrived).toHaveBeenCalledWith(booking.id);
+        expect(onCheckIn).toHaveBeenCalledTimes(1);
+      });
     });
 
     it('não exibe a mensagem de chegada quando a Aula Agora já foi concluída', () => {

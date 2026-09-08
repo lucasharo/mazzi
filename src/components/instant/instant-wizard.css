@@ -13,3 +13,16 @@
   background-color: #fff;
 }
 .instant-light [data-component="instant-lesson-wizard"] { max-width: 480px; width: 100%; margin-inline: auto; }
+
+/* Aula Agora search is an intentional full-screen interruption. Keep the
+   pulse and cancellation action on the dark surface while the request is
+   being created or remains in SEARCHING. */
+.instant-searching,
+.instant-searching > [role="dialog"],
+.instant-searching .mazzi-modal-content {
+  background-color: #17181c;
+}
+
+.instant-searching .mazzi-modal-content {
+  padding: 0;
+}

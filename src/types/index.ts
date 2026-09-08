@@ -466,6 +466,9 @@ export interface Quote {
 export interface BookingSnapshot {
   source?: string;
   provider_on_the_way_at?: string;
+  provider_arrived_at?: string;
+  instructorAvatarUrl?: string;
+  providerAvatarUrl?: string;
   providerId: string;
   providerName: string;
   providerType: ProviderType;
@@ -514,6 +517,7 @@ export interface Booking {
   meetingPoint: string;
   meetingPointLabel?: string;
   providerOnTheWayAt?: string;
+  providerArrivedAt?: string;
   fullMeetingPoint?: string;
   idempotencyKey?: string;
   priceInCents: number;
@@ -530,6 +534,7 @@ export interface Booking {
   cancelledBy?: string;
   cancellationReason?: string;
   refundAmountInCents?: number;
+  cancellationData?: Record<string, unknown>;
   lessonDateTime?: string;
   expiredAt?: string;
   checkinStudentAt?: string;
@@ -789,6 +794,30 @@ export interface BookingDispute {
   resolvedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type InstantCancellationStage =
+  | 'BEFORE_PROVIDER_DEPARTURE'
+  | 'ON_THE_WAY_INITIAL'
+  | 'ON_THE_WAY_MIDDLE'
+  | 'ON_THE_WAY_LATE'
+  | 'AFTER_ARRIVAL'
+  | 'PROVIDER_OR_PLATFORM_FAILURE'
+  | 'LESSON_STARTED'
+  | 'PAYMENT_NOT_CONFIRMED';
+
+export interface InstantCancellationQuote {
+  eligible: boolean;
+  bookingId: string;
+  cancellationStage?: InstantCancellationStage;
+  reasonCode?: string;
+  refundPercentage: number;
+  refundAmountInCents: number;
+  retainedAmountInCents: number;
+  calculatedAt?: string;
+  providerOnTheWayAt?: string;
+  providerArrivedAt?: string;
+  settingsSnapshot?: Record<string, unknown>;
 }
 
 export interface BookingDisputeEvidence {

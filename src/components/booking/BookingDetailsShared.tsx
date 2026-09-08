@@ -18,6 +18,7 @@ import { Booking } from '../../types';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { StatusBadge } from '../ui/StatusBadge';
+import { CountdownTimer } from '../ui/CountdownTimer';
 import { UniversalMap } from '../maps/UniversalMap';
 import { CheckInAvailability } from '../../domain/checkin';
 import { formatTimeBR } from '../../lib/date-format';
@@ -54,9 +55,11 @@ interface BookingPresenceCardProps {
   booking: Booking;
   visible: boolean;
   checkInAvailability: CheckInAvailability;
+  canCheckInAtLocation?: boolean;
   checkInError?: string | null;
   isCheckingIn?: boolean;
   onCheckIn?: () => void | Promise<void>;
+  showCheckInAction?: boolean;
 }
 
 export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
@@ -64,27 +67,30 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
   booking,
   visible,
   checkInAvailability,
+  canCheckInAtLocation = true,
   checkInError,
   isCheckingIn = false,
   onCheckIn,
+  showCheckInAction = true,
 }) => {
   if (!visible) return null;
 
   const studentCheckedIn = Boolean(booking.studentCheckedIn);
   const instructorCheckedIn = Boolean(booking.instructorCheckedIn);
   const selfCheckedIn = audience === 'student' ? studentCheckedIn : instructorCheckedIn;
+  const checkInUnlocked = checkInAvailability.canCheckIn && (audience !== 'provider' || canCheckInAtLocation);
   const checkInAction = (
     <Button
       type="button"
       variant="primary"
       size="sm"
       isLoading={isCheckingIn}
-      disabled={isCheckingIn || !onCheckIn || !checkInAvailability.canCheckIn}
+      disabled={isCheckingIn || !onCheckIn || !checkInUnlocked}
       onClick={() => void onCheckIn?.()}
       leftIcon={<UserCheck className="h-3.5 w-3.5" aria-hidden="true" />}
       aria-label="Fazer check-in na aula"
     >
-      {checkInAvailability.canCheckIn ? 'Fazer check-in' : 'Check-in em breve'}
+      {checkInUnlocked ? 'Fazer check-in' : audience === 'provider' && !canCheckInAtLocation ? 'Realizar check-in' : 'Check-in em breve'}
     </Button>
   );
 
@@ -100,7 +106,7 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
         description={studentCheckedIn ? 'Presença confirmada no ponto de encontro' : 'Aguardando check-in do aluno'}
         checked={studentCheckedIn}
         checkedAt={booking.checkinStudentAt}
-        statusText="Aguardando"
+        statusText="Aguardando check-in"
         action={audience === 'student' ? checkInAction : undefined}
       />
 
@@ -110,12 +116,12 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
         checked={instructorCheckedIn}
         checkedAt={booking.checkinInstructorAt}
         statusText="Aguardando check-in"
-        action={audience === 'provider' ? checkInAction : undefined}
+        action={audience === 'provider' && showCheckInAction ? checkInAction : undefined}
       />
 
       {checkInError && (
-        <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-800">
-          <span aria-hidden="true">!</span>
+        <div role="alert" className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-bold text-rose-800">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
           <span>{checkInError}</span>
         </div>
       )}
@@ -226,21 +232,19 @@ export const BookingDetailsOverview: React.FC<BookingDetailsOverviewProps> = ({
             <IconButton
               label={addressCopied ? 'Endereço copiado' : 'Copiar endereço'}
               onClick={() => void onCopyAddress()}
-              className="shrink-0 rounded-xl bg-[var(--mazzi-surface-soft)] text-slate-600 hover:bg-slate-200"
+              className="shrink-0 rounded-2xl bg-[var(--mazzi-surface-soft)] text-slate-600 hover:bg-slate-200"
             >
               {addressCopied ? <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
             </IconButton>
           )}
         </div>
-        {showNavigation && (
-          hasExactMeetingPoint && onOpenNavigation ? (
-            <Button type="button" variant="secondary" className="w-full rounded-2xl font-bold text-xs" onClick={onOpenNavigation} leftIcon={<Compass className="h-4 w-4" aria-hidden="true" />}>
-              Abrir navegação
-            </Button>
-          ) : (
-            <p className="text-xs font-semibold text-amber-800" role="status">Não foi possível obter a localização exata do ponto de encontro.</p>
-          )
-        )}
+        {showNavigation && !hasExactMeetingPoint && !meetingPoint ? (
+          <p className="text-xs font-semibold text-amber-800" role="status">Não foi possível obter a localização exata do ponto de encontro.</p>
+        ) : showNavigation && hasExactMeetingPoint && onOpenNavigation ? (
+          <Button type="button" variant="secondary" className="w-full rounded-2xl font-bold text-xs" onClick={onOpenNavigation} leftIcon={<Compass className="h-4 w-4" aria-hidden="true" />}>
+            Abrir navegação
+          </Button>
+        ) : null}
       </div>
     )}
   </div>
@@ -321,24 +325,24 @@ export const BookingCancellationNotice: React.FC<BookingCancellationNoticeProps>
 interface BookingPaymentStateNoticesProps {
   isPendingPayment: boolean;
   isHoldValid: boolean;
-  minutesLeft: number | null;
+  secondsLeft: number | null;
   isExpired: boolean;
 }
 
 export const BookingPaymentStateNotices: React.FC<BookingPaymentStateNoticesProps> = ({
   isPendingPayment,
   isHoldValid,
-  minutesLeft,
+  secondsLeft,
   isExpired,
 }) => (
   <>
-    {isPendingPayment && isHoldValid && (
-      <div role="status" className="mazzi-compact-card flex items-center justify-between gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-xs font-semibold text-amber-900">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-          <span>Aguardando confirmação do pagamento. Horário retido temporariamente.</span>
-        </div>
-        {minutesLeft !== null && <span className="shrink-0 rounded-md bg-amber-200/80 px-2 py-0.5 text-[11px] font-extrabold text-amber-950">{minutesLeft} min</span>}
+    {isPendingPayment && isHoldValid && secondsLeft !== null && (
+      <CountdownTimer secondsRemaining={secondsLeft} />
+    )}
+    {isPendingPayment && isHoldValid && secondsLeft === null && (
+      <div role="status" className="mazzi-compact-card flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-xs font-semibold text-amber-900">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+        <span>Aguardando confirmação do pagamento. Horário retido temporariamente.</span>
       </div>
     )}
     {isExpired && (

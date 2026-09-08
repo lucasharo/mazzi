@@ -46,7 +46,7 @@ O pagamento continua `FakePaymentGateway` de desenvolvimento. O Geoapify é o pr
 - o perfil público usa somente `PublicSearchProviderResult` e `publicOfferings`;
 - avatar real é exibido quando existe, com iniciais como fallback;
 - instrutor e Autoescola/CFC recebem labels distintos; ofertas da superfície do aluno ficam em Categoria B;
-- calendário mantém janelas progressivas de 30, 60 e 90 dias;
+- calendário respeita o horizonte configurado no Admin e carrega progressivamente em lotes técnicos de até 30 dias;
 - `get_available_slots_public` continua sendo a única autoridade de disponibilidade;
 - datas indisponíveis permanecem visíveis e desabilitadas; horários são agrupados em manhã, tarde e noite;
 - quote/checkout só é inicializado com `selectedSlot.slot_start_at` real;
@@ -100,7 +100,7 @@ O pagamento continua `FakePaymentGateway` de desenvolvimento. O Geoapify é o pr
 | Área | Resultado |
 | --- | --- |
 | Search | PASS — filtros Hoje/Amanhã enviam `p_date` seguro |
-| Scheduling | PASS — slot real e horizonte 30/60/90 preservados |
+| Scheduling | PASS — slot real e horizonte configurado no Admin preservado |
 | Checkout | PASS — quote, hold, meeting point e pagamento DEV preservados |
 | Bookings | PASS — próximas, histórico, detalhes e estados de erro/loading |
 | Chat | PASS — dedupe, Realtime/polling, cleanup e auto-scroll inicial |

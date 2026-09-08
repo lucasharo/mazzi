@@ -31,7 +31,7 @@ export const Badge: React.FC<BadgeProps> = ({
   return (
     <span
       id={id}
-      className={`inline-flex items-center rounded-lg tracking-tight select-none ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
+      className={`inline-flex items-center rounded-2xl tracking-tight select-none ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
       {...props}
     >
       {children}

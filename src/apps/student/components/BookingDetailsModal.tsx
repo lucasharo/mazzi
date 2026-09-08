@@ -1,21 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CreditCard, MessageSquare, AlertTriangle, XCircle, AlertCircle, ArrowLeft, Star, } from 'lucide-react';
-import { Booking } from '../../../types';
+import { Booking, InstantCancellationQuote, InstantLessonRequest, InstantLessonTracking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { ReasonChips } from '../../../components/ui/ReasonChips';
 import { Button } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
 import { formatCentsToBRL } from '../../../domain/money';
 import { calculateLessonDurationMinutes, formatDateBR, formatTimeBR } from '../../../lib/date-format';
-import { UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
-import { formatMeetingPoint } from '../../../lib/meeting-point';
+import { getEffectiveBookingHoldExpiresAt, UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
+import { formatMeetingPoint, formatPendingPaymentMeetingPoint } from '../../../lib/meeting-point';
 import { dbService } from '../../../lib/db-service';
 import { calculateCancellationPolicy } from '../../../domain/cancellation';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
 import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
 import { ExternalNavigationModal } from '../../../components/instant/ExternalNavigationModal';
+import { InstantLessonTrackingCard } from '../../../components/instant/InstantLessonTrackingCard';
 import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices } from '../../../components/booking/BookingDetailsShared';
+import { INSTANT_STUDENT_TRACKING_INTERVAL_SECONDS } from '../../../domain/instant-lesson';
 
 export interface BookingDetailsModalProps {
   isOpen: boolean;
@@ -29,6 +31,8 @@ export interface BookingDetailsModalProps {
   onStudentCheckIn?: (bookingId: string) => Promise<Booking>;
   onReview?: (booking: Booking) => void;
   currentUserId?: string;
+  checkInWindowBeforeMinutes?: number | null;
+  instantLessonExpirationMinutes?: number;
   trackingPreview?: React.ReactNode;
   useHistory?: boolean;
 }
@@ -39,6 +43,37 @@ const CANCEL_REASON_CHIPS = [
   'Problema de saúde',
   'Outro motivo',
 ];
+
+function buildInstantTrackingRequest(booking: Booking): InstantLessonRequest | null {
+  if (booking.snapshot?.source !== 'AULA_AGORA') return null;
+
+  const rawMeetingPoint = booking.snapshot.meetingPoint || (booking.snapshot as any).meeting_point;
+  const meetingPointObject = rawMeetingPoint && typeof rawMeetingPoint === 'object'
+    ? rawMeetingPoint as { latitude?: unknown; longitude?: unknown }
+    : undefined;
+  const latitude = Number(meetingPointObject?.latitude ?? (booking.snapshot as any).latitude);
+  const longitude = Number(meetingPointObject?.longitude ?? (booking.snapshot as any).longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+  return {
+    id: booking.id,
+    studentId: booking.studentId,
+    meetingPoint: {
+      formattedAddress: booking.fullMeetingPoint || booking.meetingPoint || formatMeetingPoint(rawMeetingPoint) || 'Ponto de encontro',
+      latitude,
+      longitude,
+    },
+    category: booking.category,
+    transmission: booking.snapshot.transmission || 'ALL',
+    maxPriceInCents: booking.snapshot.priceInCents ?? booking.priceInCents ?? null,
+    status: 'MATCHED',
+    expiresAt: booking.scheduledEndAt || booking.scheduledStartAt || booking.createdAt,
+    matchedProviderId: booking.providerId,
+    matchedOfferingId: booking.offeringId,
+    bookingId: booking.id,
+    createdAt: booking.createdAt,
+  };
+}
 
 export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   isOpen,
@@ -51,6 +86,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onStudentCheckIn,
   onReview,
   currentUserId,
+  checkInWindowBeforeMinutes,
+  instantLessonExpirationMinutes,
   trackingPreview,
   useHistory = true,
 }) => {
@@ -64,6 +101,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [checkInNow, setCheckInNow] = useState(() => new Date());
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const [isAddressCopied, setIsAddressCopied] = useState(false);
+  const [instantCancellationQuote, setInstantCancellationQuote] = useState<InstantCancellationQuote | null>(null);
+  const [isLoadingInstantQuote, setIsLoadingInstantQuote] = useState(false);
+  const [instantQuoteError, setInstantQuoteError] = useState<string | null>(null);
+  const [instantTracking, setInstantTracking] = useState<InstantLessonTracking | null>(null);
+  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
+  const instantCancellationKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !booking) return undefined;
@@ -115,6 +158,82 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     onRefreshBooking,
   ]);
 
+  const instantTrackingBookingId = booking?.snapshot?.source === 'AULA_AGORA'
+    && booking.status === 'CONFIRMED'
+    && (booking.providerOnTheWayAt || booking.snapshot.provider_on_the_way_at)
+    ? booking.id
+    : null;
+
+  useEffect(() => {
+    if (!isOpen || !instantTrackingBookingId) {
+      setInstantTracking(null);
+      return undefined;
+    }
+
+    let disposed = false;
+    let refreshInFlight = false;
+    const refreshTracking = () => {
+      if (refreshInFlight || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
+      refreshInFlight = true;
+      void dbService.getInstantTracking(instantTrackingBookingId)
+        .then((tracking) => {
+          if (!disposed) setInstantTracking(tracking);
+        })
+        .catch(() => {
+          if (!disposed) setInstantTracking(null);
+        })
+        .finally(() => {
+          refreshInFlight = false;
+        });
+    };
+
+    refreshTracking();
+    const timer = window.setInterval(refreshTracking, INSTANT_STUDENT_TRACKING_INTERVAL_SECONDS * 1_000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshTracking();
+    };
+    const handleWindowFocus = () => refreshTracking();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [isOpen, instantTrackingBookingId]);
+
+  useEffect(() => {
+    setIsTrackingOpen(false);
+  }, [isOpen, booking?.id]);
+
+  useEffect(() => {
+    const isInstantBooking = booking?.snapshot?.source === 'AULA_AGORA';
+    if (!isOpen || !isConfirmingCancel || !booking || !isInstantBooking || booking.status === 'PENDING_PAYMENT') {
+      return undefined;
+    }
+
+    let isCurrent = true;
+    setInstantCancellationQuote(null);
+    setInstantQuoteError(null);
+    setIsLoadingInstantQuote(true);
+    void dbService.getInstantCancellationQuote(booking.id)
+      .then((quote) => {
+        if (isCurrent) setInstantCancellationQuote(quote);
+      })
+      .catch((error: any) => {
+        if (isCurrent) setInstantQuoteError(mapFriendlyErrorMessage(error, 'Não foi possível calcular o reembolso agora.'));
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingInstantQuote(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isOpen, isConfirmingCancel, booking?.id, booking?.status, booking?.snapshot?.source]);
+
   if (!booking) return null;
 
   const handleStudentCheckInAction = async () => {
@@ -135,13 +254,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   const snapshot = booking.snapshot;
   const isPendingPayment = booking.status === 'PENDING_PAYMENT';
+  const effectiveHoldExpiresAt = getEffectiveBookingHoldExpiresAt(booking, instantLessonExpirationMinutes);
   const isHoldValid = isPendingPayment
-    ? booking.holdExpiresAt
-      ? new Date(booking.holdExpiresAt).getTime() > Date.now()
+    ? effectiveHoldExpiresAt
+      ? new Date(effectiveHoldExpiresAt).getTime() > Date.now()
       : true
     : false;
-  const minutesLeft = isHoldValid && booking.holdExpiresAt
-    ? Math.max(1, Math.ceil((new Date(booking.holdExpiresAt).getTime() - Date.now()) / (1000 * 60)))
+  const secondsLeft = isHoldValid && effectiveHoldExpiresAt
+    ? Math.max(0, Math.ceil((new Date(effectiveHoldExpiresAt).getTime() - Date.now()) / 1000))
     : null;
 
   const isLessonEnded =
@@ -154,23 +274,33 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // A confirmed lesson that has not actually started may still be cancelled
   // by the student, even if its scheduled time passed without check-in/start.
   const canStudentCancel = booking.status === 'CONFIRMED' && !booking.lessonStartedAt && !isExpired;
+  const isInstantBooking = booking.snapshot?.source === 'AULA_AGORA';
+  const isProviderOnTheWay = Boolean(booking.providerOnTheWayAt || booking.snapshot.provider_on_the_way_at);
+  const instantTrackingRequest = instantTrackingBookingId && isProviderOnTheWay
+    ? buildInstantTrackingRequest(booking)
+    : null;
   const isCompleted = booking.status === 'COMPLETED';
   const isDisputed = booking.status === 'DISPUTED';
   const isPaymentNotCompleted = UNPAID_BOOKING_STATUSES.includes(booking.status);
   const canOpenChat = !isPaymentNotCompleted;
   const shouldShowFooter = !isPaymentNotCompleted || (isPendingPayment && isHoldValid);
-  const checkInAvailability = getCheckInAvailability({
-    scheduledStartAt: booking.scheduledStartAt,
-    status: booking.status,
-    alreadyCheckedIn: Boolean(booking.studentCheckedIn),
-    now: checkInNow,
-  });
+  const checkInAvailability = checkInWindowBeforeMinutes === null
+    ? { canCheckIn: false, opensAt: null, reason: 'CONFIGURATION_UNAVAILABLE' as const }
+    : getCheckInAvailability({
+      scheduledStartAt: booking.scheduledStartAt,
+      status: booking.status,
+      alreadyCheckedIn: Boolean(booking.studentCheckedIn),
+      checkInWindowBeforeMinutes,
+      now: checkInNow,
+    });
 
   const rawMeetingPoint = booking.meetingPoint || snapshot.meetingPoint;
   const isProviderAddress = [booking.meetingPoint, snapshot?.meetingPoint].some((value) => (
     typeof value === 'object' && value !== null && (value as { type?: string }).type === 'PROVIDER_ADDRESS'
   ));
-  const meetingPoint = isProviderAddress && booking.fullMeetingPoint
+  const meetingPoint = isPendingPayment
+    ? formatPendingPaymentMeetingPoint(rawMeetingPoint || booking.fullMeetingPoint)
+    : isProviderAddress && booking.fullMeetingPoint
     ? booking.fullMeetingPoint
     : formatMeetingPoint(rawMeetingPoint);
   const latitude = (booking.meetingPoint as any)?.latitude ?? (snapshot?.meetingPoint as any)?.latitude;
@@ -220,8 +350,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const finalReason = [selectedReasonChip, customReason.trim()].filter(Boolean).join(': ') || undefined;
 
     try {
+      if (isInstantBooking && !isPendingPayment && (!instantCancellationQuote?.eligible || isLoadingInstantQuote)) {
+        throw new Error('A cotação de reembolso ainda não está disponível. Aguarde um instante e tente novamente.');
+      }
       const res = isPendingPayment
         ? await dbService.cancelPendingBooking(booking.id)
+        : isInstantBooking
+        ? await dbService.cancelInstantBooking({
+            bookingId: booking.id,
+            reason: finalReason,
+            reasonCode: 'STUDENT_REQUEST',
+            idempotencyKey: instantCancellationKeyRef.current || (instantCancellationKeyRef.current = `instant_cancel:${booking.id}:${Date.now()}`),
+          })
         : await dbService.cancelBooking({
             bookingId: booking.id,
             reason: finalReason,
@@ -233,6 +373,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         cancelledAt: res.cancelled_at || new Date().toISOString(),
         cancellationReason: res.cancellation_reason || finalReason,
         refundAmountInCents: res.refund_amount_in_cents ?? booking.refundAmountInCents,
+        cancellationData: res.cancellation_data || booking.cancellationData,
       };
 
       if (onBookingUpdated) {
@@ -243,7 +384,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       onClose();
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') console.error('Error cancelling booking:', err);
-      setCancelError(err?.message || 'Não foi possível cancelar este agendamento.');
+      setCancelError(mapFriendlyErrorMessage(err, 'Não foi possível cancelar este agendamento.'));
     } finally {
       setIsCancelling(false);
     }
@@ -269,6 +410,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         leftIcon={<XCircle className="w-4 h-4 text-white shrink-0" aria-hidden="true" />}
         className="min-w-0 flex-1 !whitespace-normal !px-2 text-center leading-tight"
         isLoading={isCancelling}
+        disabled={isCancelling || (isInstantBooking && !isPendingPayment && (isLoadingInstantQuote || !instantCancellationQuote?.eligible))}
         onClick={handleConfirmCancel}
       >
         Cancelar aula
@@ -346,11 +488,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       useHistory={useHistory}
       isOpen={isOpen}
       onClose={() => {
+        if (isConfirmingCancel) {
+          setIsConfirmingCancel(false);
+          setCancelError(null);
+          return;
+        }
         setIsConfirmingCancel(false);
         setCancelError(null);
+        setIsTrackingOpen(false);
         onClose();
       }}
-      title={isConfirmingCancel ? 'Cancelar aula' : 'Detalhes da aula'}
+      title={isConfirmingCancel ? (isInstantBooking ? 'Cancelar Aula Agora' : 'Cancelar aula') : 'Detalhes da aula'}
       size="md"
       footer={shouldShowFooter ? (isConfirmingCancel ? cancellationFooter : footerContent) : undefined}
     >
@@ -363,7 +511,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <span>Deseja cancelar esta aula?</span>
             </div>
             <p className="text-xs text-amber-800 leading-relaxed font-medium">
-              Confira os detalhes e o reembolso aplicável antes de prosseguir. O agendamento permanecerá em seu histórico como cancelado.
+              {isPendingPayment
+                ? 'Revise os detalhes antes de prosseguir. O agendamento permanecerá em seu histórico como cancelado.'
+                : 'Confira os detalhes e o reembolso aplicável antes de prosseguir. O agendamento permanecerá em seu histórico como cancelado.'}
             </p>
           </div>
 
@@ -377,41 +527,64 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <span className="text-slate-500">Instrutor:</span>
               <span className="font-bold text-slate-900">{instructor}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500">Valor pago:</span>
-              <span className="font-bold text-slate-900">{formatCentsToBRL(snapshot.totalInCents || booking.totalInCents)}</span>
-            </div>
-          </div>
-
-          {/* Financial Policy Result Banner */}
-          <div className={`mazzi-compact-card p-4 rounded-2xl border space-y-1 ${
-            policyCalc.refundPercentage === 100
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-              : policyCalc.refundPercentage === 50
-              ? 'bg-amber-50 border-amber-200 text-amber-900'
-              : 'bg-rose-50 border-rose-200 text-rose-900'
-          }`}>
-            <div className="flex items-center justify-between gap-2 font-extrabold text-xs">
-              <span className="uppercase tracking-wider font-extrabold text-[11px] sm:text-xs">Política de Reembolso (DEC-013)</span>
-              <span className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 whitespace-nowrap ${
-                policyCalc.refundPercentage === 100
-                  ? 'bg-emerald-200 text-emerald-900'
-                  : policyCalc.refundPercentage === 50
-                  ? 'bg-amber-200 text-amber-900'
-                  : 'bg-rose-200 text-rose-900'
-              }`}>
-                {policyCalc.refundPercentage}% REEMBOLSO
-              </span>
-            </div>
-            <p className="text-xs font-semibold leading-relaxed pt-1">
-              {policyCalc.policyDescription}
-            </p>
-            {policyCalc.refundPercentage > 0 && (
-              <p className="text-xs font-black pt-1">
-                Valor estimado do reembolso: {formatCentsToBRL(policyCalc.refundAmountInCents)}
-              </p>
+            {!isPendingPayment && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Valor pago:</span>
+                <span className="font-bold text-slate-900">{formatCentsToBRL(snapshot.totalInCents || booking.totalInCents)}</span>
+              </div>
             )}
           </div>
+
+          {!isPendingPayment && (isInstantBooking ? (
+            <div className={`mazzi-compact-card rounded-2xl border p-4 space-y-1 ${
+              instantQuoteError || (instantCancellationQuote && !instantCancellationQuote.eligible)
+                ? 'bg-rose-50 border-rose-200 text-rose-900'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+            }`}>
+              <div className="flex items-center justify-between gap-2 font-extrabold text-xs">
+                <span className="uppercase tracking-wider font-extrabold text-[11px] sm:text-xs">Aula Agora · reembolso</span>
+                {instantCancellationQuote && (
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-200 text-emerald-900 text-[10px] sm:text-[11px] font-black shrink-0 whitespace-nowrap">
+                    {instantCancellationQuote.refundPercentage}% REEMBOLSO
+                  </span>
+                )}
+              </div>
+              {isLoadingInstantQuote && <p className="text-xs font-semibold leading-relaxed pt-1">Calculando o reembolso com os dados oficiais da aula...</p>}
+              {instantQuoteError && <p className="text-xs font-semibold leading-relaxed pt-1">{instantQuoteError}</p>}
+              {!isLoadingInstantQuote && !instantQuoteError && instantCancellationQuote?.eligible && (
+                <>
+                  <p className="text-xs font-semibold leading-relaxed pt-1">O valor é calculado pelo momento atual da Aula Agora e será confirmado pelo servidor no cancelamento.</p>
+                  <p className="text-xs font-black pt-1">Reembolso: {formatCentsToBRL(instantCancellationQuote.refundAmountInCents)} · Retido/taxa: {formatCentsToBRL(instantCancellationQuote.retainedAmountInCents)}</p>
+                </>
+              )}
+            </div>
+          ) : (
+            /* Financial Policy Result Banner — Agenda / DEC-013 */
+            <div className={`mazzi-compact-card p-4 rounded-2xl border space-y-1 ${
+              policyCalc.refundPercentage === 100
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : policyCalc.refundPercentage === 50
+                ? 'bg-amber-50 border-amber-200 text-amber-900'
+                : 'bg-rose-50 border-rose-200 text-rose-900'
+            }`}>
+              <div className="flex items-center justify-between gap-2 font-extrabold text-xs">
+                <span className="uppercase tracking-wider font-extrabold text-[11px] sm:text-xs">Política de Reembolso (DEC-013)</span>
+                <span className={`px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-black shrink-0 whitespace-nowrap ${
+                  policyCalc.refundPercentage === 100
+                    ? 'bg-emerald-200 text-emerald-900'
+                    : policyCalc.refundPercentage === 50
+                    ? 'bg-amber-200 text-amber-900'
+                    : 'bg-rose-200 text-rose-900'
+                }`}>
+                  {policyCalc.refundPercentage}% REEMBOLSO
+                </span>
+              </div>
+              <p className="text-xs font-semibold leading-relaxed pt-1">{policyCalc.policyDescription}</p>
+              {policyCalc.refundPercentage > 0 && (
+                <p className="text-xs font-black pt-1">Valor estimado do reembolso: {formatCentsToBRL(policyCalc.refundAmountInCents)}</p>
+              )}
+            </div>
+          ))}
 
           {/* Optional reason selector */}
           <div className="space-y-2 pt-1">
@@ -435,7 +608,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </div>
 
           {cancelError && (
-            <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+            <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{cancelError}</span>
             </div>
@@ -445,7 +618,16 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       ) : (
         /* STANDARD DETAILS VIEW */
         <div className="space-y-4 text-left">
-          {trackingPreview}
+          {trackingPreview || (instantTrackingRequest ? (
+            <InstantLessonTrackingCard
+              request={instantTrackingRequest}
+              tracking={instantTracking}
+              providerName={instructor || provider || 'Seu profissional'}
+              priceInCents={snapshot.priceInCents || booking.priceInCents}
+              paymentConfirmed={!isPendingPayment}
+              onOpenTracking={() => setIsTrackingOpen(true)}
+            />
+          ) : null)}
           <BookingDetailsHeader
             status={booking.status}
             audience="student"
@@ -480,15 +662,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             durationLabel={durationLabel}
             meetingPoint={meetingPoint}
             isProviderAddress={isProviderAddress}
-            showCopyAddress={isProviderAddress}
+            showCopyAddress={isProviderAddress && !isPendingPayment}
             addressCopied={isAddressCopied}
             onCopyAddress={handleCopyMeetingPoint}
-            hasExactMeetingPoint={Boolean(mapPoint)}
-            showNavigation={isProviderAddress}
+            hasExactMeetingPoint={!isPendingPayment && Boolean(mapPoint)}
+            showNavigation={isProviderAddress && !isPendingPayment}
             onOpenNavigation={() => setIsNavigationOpen(true)}
           />
 
-          {mapPoint && <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} />}
+          {!isPendingPayment && mapPoint && <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} />}
 
           <BookingPaymentSummary
             items={[{ label: 'Valor da aula prática', amount: formatCentsToBRL(snapshot.priceInCents) }]}
@@ -499,7 +681,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           <BookingPaymentStateNotices
             isPendingPayment={isPendingPayment}
             isHoldValid={isHoldValid}
-            minutesLeft={minutesLeft}
+            secondsLeft={secondsLeft}
             isExpired={isExpired}
           />
 
@@ -508,6 +690,28 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </div>
       )}
     </Modal>
+    {isTrackingOpen && instantTrackingRequest && (
+      <Modal
+        isOpen={isTrackingOpen}
+        onClose={() => setIsTrackingOpen(false)}
+        title="Acompanhamento da aula"
+        ariaLabel="Acompanhamento do profissional"
+        size="md"
+        layer="nested"
+        useHistory={false}
+        fillContent
+      >
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+          <InstantLessonTrackingCard
+            request={instantTrackingRequest}
+            tracking={instantTracking}
+            providerName={instructor || provider || 'Seu profissional'}
+            priceInCents={snapshot.priceInCents || booking.priceInCents}
+            paymentConfirmed={!isPendingPayment}
+          />
+        </div>
+      </Modal>
+    )}
     {isProviderAddress && mapPoint && (
       <ExternalNavigationModal
         isOpen={isNavigationOpen}

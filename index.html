@@ -99,8 +99,10 @@
       (() => {
         const params = new URLSearchParams(window.location.search);
         const checkoutState = params.get('stripe_checkout');
+        const onboardingState = params.get('stripe_onboarding');
         const isStripeReturn = (checkoutState === 'success' || checkoutState === 'cancelled') && params.has('payment_id');
-        if (!isStripeReturn) return;
+        const isBankAccountReturn = onboardingState === 'return';
+        if (!isStripeReturn && !isBankAccountReturn) return;
 
         const splash = document.getElementById('mazzi-initial-splash');
         const defaultSplash = document.getElementById('mazzi-default-splash');
@@ -110,6 +112,12 @@
         splash.classList.add('checkout-return');
         defaultSplash.hidden = true;
         paymentSplash.hidden = false;
+        if (isBankAccountReturn) {
+          paymentSplash.querySelector('h1').textContent = 'Atualizando conta bancária';
+          paymentSplash.querySelector('p').textContent = 'Aguarde enquanto confirmamos os dados da sua conta.';
+          splash.setAttribute('aria-label', 'Atualizando conta bancária');
+          return;
+        }
         splash.setAttribute('aria-label', 'Carregando pagamento');
       })();
     </script>

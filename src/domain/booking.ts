@@ -43,6 +43,43 @@ export const UNPAID_BOOKING_STATUSES: BookingStatus[] = [
   'EXPIRED',
 ];
 
+/** A pending payment remains actionable only while its backend hold is valid. */
+export function isPendingPaymentHoldActive(
+  booking: Booking,
+  nowMs = Date.now(),
+  instantLessonExpirationMinutes?: number,
+): boolean {
+  if (booking.status !== 'PENDING_PAYMENT') return false;
+  const expiresAt = getEffectiveBookingHoldExpiresAt(booking, instantLessonExpirationMinutes);
+  if (!expiresAt) return true;
+
+  const expiresAtMs = new Date(expiresAt).getTime();
+  return Number.isFinite(expiresAtMs) && expiresAtMs > nowMs;
+}
+
+/**
+ * Optionally applies the configured Aula Agora deadline while the backend data
+ * is being refreshed. Without configuration, the persisted backend expiry is
+ * used as-is instead of inventing a client-side business value.
+ */
+export function getEffectiveBookingHoldExpiresAt(
+  booking: Booking,
+  instantLessonExpirationMinutes?: number,
+): string | undefined {
+  if (!booking.holdExpiresAt) return undefined;
+  const source = booking.snapshot?.source || (booking as any).snapshot_data?.source;
+  if (source !== 'AULA_AGORA' || !booking.createdAt || instantLessonExpirationMinutes === undefined) return booking.holdExpiresAt;
+
+  const createdAtMs = new Date(booking.createdAt).getTime();
+  const holdExpiresAtMs = new Date(booking.holdExpiresAt).getTime();
+  if (!Number.isFinite(createdAtMs) || !Number.isFinite(holdExpiresAtMs)) return booking.holdExpiresAt;
+
+  return new Date(Math.min(
+    holdExpiresAtMs,
+    createdAtMs + Math.max(1, instantLessonExpirationMinutes) * 60 * 1000,
+  )).toISOString();
+}
+
 /** Mantém a próxima aula no topo e envia aulas já encerradas para o final do dia. */
 export function sortBookingsForToday(bookings: Booking[], nowMs = Date.now()): Booking[] {
   return [...bookings].sort((a, b) => {

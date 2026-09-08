@@ -112,7 +112,7 @@ describe('Instant Lesson Post-Accept & Active Journey Flow', () => {
       expect(modalContent).toContain('Cat. B');
       expect(modalContent).toContain('150,00');
       expect(modalContent).toContain('Estação Consolação');
-      expect(modalContent).toContain('Abrir navegação');
+      expect(modalContent).not.toContain('Abrir navegação');
       expect(modalContent).toContain('Estou a caminho');
     });
   });

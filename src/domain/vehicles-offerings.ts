@@ -333,7 +333,7 @@ export function validateVehicleData(data: Partial<Vehicle>): void {
   if (data.vehicleType === 'CAR' || data.category === 'B') {
     if (!data.transmission || !['MANUAL', 'AUTOMATIC'].includes(data.transmission)) {
       throw new VehicleDomainError(
-        'Veículos da Categoria B / CAR devem possuir transmissão MANUAL ou AUTOMATIC.',
+        'Veículos da Categoria B / CAR devem possuir transmissão Manual ou Automático.',
         'INVALID_TRANSMISSION',
         400
       );

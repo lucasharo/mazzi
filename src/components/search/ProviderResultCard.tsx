@@ -4,16 +4,13 @@ import { PublicSearchProviderResult } from '../../types';
 import { formatCentsToBRL } from '../../domain/money';
 import { trackSearchAnalytics } from './SearchAnalytics';
 import { Button, PrimaryButton, SecondaryButton } from '../ui/Button';
+import { ProfileAvatar } from '../profile/ProfileAvatar';
 
 export interface ProviderResultCardProps {
   result: PublicSearchProviderResult;
   onSelect: (providerId: string) => void;
   onViewProfile?: (providerId: string) => void;
   isSelected?: boolean;
-}
-
-function getInitials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'M';
 }
 
 export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
@@ -65,26 +62,15 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
     <article
       id={`provider-card-${result.providerId}`}
       aria-label={`Prestador ${result.displayName}, ${providerTypeLabel}`}
-      className={`mazzi-card relative p-4 sm:p-5 transition-all duration-200 text-left space-y-3.5 hover:shadow-md ${
-        isSelected ? 'ring-2 ring-[var(--mazzi-yellow)] shadow-md' : ''
+      className={`mazzi-card relative p-4 sm:p-5 transition-all duration-200 text-left space-y-3.5 ${
+        isSelected ? 'ring-2 ring-[var(--mazzi-yellow)]' : ''
       }`}
     >
       {/* 1. Top Section: Avatar + Identity + Rating */}
       <div className="flex items-start gap-3 sm:gap-3.5 pr-1">
         {/* Avatar */}
-        <div className="mazzi-avatar !overflow-visible h-14 w-14 sm:h-16 sm:w-16 shrink-0 text-base sm:text-lg font-bold ring-1 ring-black/5 relative">
-          {result.avatarUrl ? (
-            <img
-              src={result.avatarUrl}
-              alt={`Foto de ${result.displayName}`}
-              className="h-full w-full rounded-[inherit] object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center rounded-[inherit] bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)]" aria-hidden="true">
-              {getInitials(result.displayName)}
-            </span>
-          )}
+        <div className="relative shrink-0">
+          <ProfileAvatar name={result.displayName} imageUrl={result.avatarUrl} size="lg" loading="lazy" className="h-14 w-14 text-base sm:h-16 sm:w-16 sm:text-lg" />
           {result.isVerified && (
             <span
               className="absolute bottom-0 right-0 z-20 inline-flex h-6 w-6 translate-x-1/4 translate-y-1/4 items-center justify-center rounded-full border-2 border-white bg-emerald-50 text-emerald-700"
@@ -118,7 +104,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
         <div className="absolute right-4 top-4 shrink-0 text-right sm:right-5 sm:top-5">
           {result.ratingCount > 0 ? (
             <div
-              className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[var(--mazzi-text)] bg-[var(--mazzi-surface-soft)] px-2.5 py-1 rounded-xl border border-[var(--mazzi-border)]"
+              className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[var(--mazzi-text)] bg-[var(--mazzi-surface-soft)] px-2.5 py-1 rounded-2xl border border-[var(--mazzi-border)]"
               aria-label={`Avaliação ${result.ratingAverage.toFixed(1)} com ${result.ratingCount} avaliações`}
             >
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" aria-hidden="true" />
@@ -126,7 +112,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
               <span className="text-[10px] font-normal text-slate-400">({result.ratingCount})</span>
             </div>
           ) : (
-            <span className="inline-block text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded-lg">
+            <span className="inline-block text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded-2xl">
               Novo na MAZZI
             </span>
           )}
@@ -140,7 +126,7 @@ export const ProviderResultCard: React.FC<ProviderResultCardProps> = ({
           <span className="truncate">{cleanVehicleTitle}</span>
           {transmission && <span className="shrink-0 text-[var(--mazzi-muted)] font-medium">· {transmission}</span>}
           {categoryLabel && (
-            <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-text)] px-2 py-0.5 rounded-md">
+            <span className="ml-auto shrink-0 text-[10px] font-bold uppercase bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-text)] px-2 py-0.5 rounded-2xl">
               {categoryLabel}
             </span>
           )}

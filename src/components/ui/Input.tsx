@@ -42,7 +42,7 @@ export const Input: React.FC<InputProps> = ({
           {label}
         </label>
       )}
-      <div className="relative rounded-xl shadow-xs">
+      <div className="relative rounded-2xl shadow-xs">
         {leftIcon && (
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             {leftIcon}
@@ -54,7 +54,7 @@ export const Input: React.FC<InputProps> = ({
           disabled={disabled}
           aria-invalid={error ? true : Boolean(ariaInvalid)}
           aria-describedby={describedBy}
-          className={`w-full min-h-11 rounded-xl border bg-white px-3.5 py-2.5 text-sm text-[var(--mazzi-text)] placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2 read-only:bg-slate-50 read-only:text-slate-500 read-only:cursor-not-allowed read-only:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
+          className={`w-full min-h-11 rounded-2xl border bg-white px-3.5 py-2.5 text-sm text-[var(--mazzi-text)] placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2 read-only:bg-slate-50 read-only:text-slate-500 read-only:cursor-not-allowed read-only:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
             leftIcon ? 'pl-10' : ''
           } ${rightAction ? 'pr-11' : rightIcon || error ? 'pr-10' : ''} ${
             error
@@ -112,7 +112,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
             disabled={disabled}
             onClick={() => setShowPassword((prev) => !prev)}
             aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer disabled:opacity-50"
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-2xl hover:bg-slate-100 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)] cursor-pointer disabled:opacity-50"
           >
             {showPassword ? (
               <EyeOff className="w-4 h-4" aria-hidden="true" />

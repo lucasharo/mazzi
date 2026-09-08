@@ -32,7 +32,7 @@ src/
 │   ├── admin/          # Painel Administrativo (Credenciamento, Moderação, Auditoria)
 │   └── design-system/  # Playground visual do Design System V2
 ├── domain/             # Lógica de negócio pura e agnóstica de UI
-│   ├── availability.ts # Slots, sobreposição e fallback do horizonte de agenda
+│   ├── availability.ts # Slots, sobreposição e suporte ao horizonte configurado
 │   ├── search.ts       # Matching estrito de busca com geo-raio
 │   ├── rbac.ts         # Resolução de permissões por perfil
 │   ├── quote.ts        # Cálculo de preços e taxas em centavos

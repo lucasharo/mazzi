@@ -45,6 +45,7 @@
   --mazzi-focus-glow: rgba(246, 201, 69, 0.40);
   --mazzi-shadow: 0 12px 32px rgba(32, 33, 38, 0.08);
   --mazzi-shadow-float: 0 18px 48px rgba(32, 33, 38, 0.13);
+  --radius-2xl: 1rem;
 
   /* Typography primitives shared by Student, PRO, Admin and the catalog. */
   --mazzi-font-family-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -148,32 +149,32 @@ body {
 .mazzi-brand-lockup > span { display: grid; gap: 1px; }
 .mazzi-brand-lockup strong { color: var(--mazzi-dark); font-size: 15px; font-weight: var(--mazzi-type-weight-black); letter-spacing: -.025em; line-height: 1.1; }
 .mazzi-brand-lockup small { color: var(--mazzi-muted); font-size: var(--mazzi-type-size-overline); font-weight: 650; line-height: 1.2; }
-.mazzi-heading-icon { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border-radius: 16px; background: var(--mazzi-yellow); color: var(--mazzi-dark); }
+.mazzi-heading-icon { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border-radius: var(--radius-2xl); background: var(--mazzi-yellow); color: var(--mazzi-dark); }
 .mazzi-heading-icon > svg { width: 21px; height: 21px; }
-.mazzi-segmented { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--mazzi-border); border-radius: 16px; background: var(--mazzi-surface-soft); }
-.mazzi-segmented > button { min-height: 44px; flex: 1 1 0%; border-radius: 12px; padding: 10px 12px; color: var(--mazzi-muted); font-size: 12px; font-weight: 700; transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease; }
+.mazzi-segmented { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--mazzi-border); border-radius: var(--radius-2xl); background: var(--mazzi-surface-soft); }
+.mazzi-segmented > button { min-height: 44px; flex: 1 1 0%; border-radius: var(--radius-2xl); padding: 10px 12px; color: var(--mazzi-muted); font-size: 12px; font-weight: 700; transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease; }
 .mazzi-segmented > button:hover { color: var(--mazzi-dark); background: rgba(255,255,255,.55); }
 .mazzi-segmented > button[aria-selected="true"], .mazzi-segmented > button[data-active="true"] { background: var(--mazzi-yellow); color: var(--mazzi-dark); box-shadow: 0 2px 8px rgba(32,33,38,.08); }
 /* Compact card rhythm shared by Student, PRO and reusable card surfaces. */
-.mazzi-card { padding: .600rem; border-radius: 22px; background: var(--mazzi-surface); border: 1px solid var(--mazzi-border); box-shadow: var(--mazzi-shadow); }
+.mazzi-card { padding: .600rem; border-radius: var(--radius-2xl); background: var(--mazzi-surface); border: 1px solid var(--mazzi-border); box-shadow: none; }
 .mazzi-compact-card { padding: .600rem; }
-.mazzi-soft-card { border-radius: 18px; background: var(--mazzi-surface-soft); border: 1px solid var(--mazzi-border); }
-.mazzi-hero { display: grid; grid-template-columns: 1.08fr .92fr; overflow: hidden; border-radius: 28px; box-shadow: var(--mazzi-shadow); }
+.mazzi-soft-card { border-radius: var(--radius-2xl); background: var(--mazzi-surface-soft); border: 1px solid var(--mazzi-border); }
+.mazzi-hero { display: grid; grid-template-columns: 1.08fr .92fr; overflow: hidden; border-radius: var(--radius-2xl); box-shadow: var(--mazzi-shadow); }
 .mazzi-hero > :first-child { background: linear-gradient(135deg, var(--mazzi-yellow-soft), var(--mazzi-yellow)); color: var(--mazzi-dark); }
 .mazzi-hero > :last-child { background: linear-gradient(145deg, #303138, var(--mazzi-dark)); color: white; }
-.mazzi-bottom-nav { position: fixed; z-index: 50; left: 16px; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom)); display: grid; align-items: center; border-radius: 24px; background: rgba(255,255,255,.96); border: 1px solid var(--mazzi-border); padding: 8px 10px; box-shadow: var(--mazzi-shadow-float); backdrop-filter: blur(18px); }
-.mazzi-avatar { overflow: hidden; border-radius: 18px; background: var(--mazzi-yellow); color: var(--mazzi-dark); }
-.mazzi-icon-button { position: relative; display: grid; min-height: 48px; min-width: 48px; place-items: center; border: 1px solid var(--mazzi-border); border-radius: 16px; background: white; color: var(--mazzi-dark); transition: color 150ms ease, transform 150ms ease; }
+.mazzi-bottom-nav { position: fixed; z-index: 50; left: 16px; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom)); display: grid; align-items: center; border-radius: var(--radius-2xl); background: rgba(255,255,255,.96); border: 1px solid var(--mazzi-border); padding: 8px 10px; box-shadow: var(--mazzi-shadow-float); backdrop-filter: blur(18px); }
+.mazzi-avatar { overflow: hidden; border-radius: var(--radius-2xl); background: var(--mazzi-yellow); color: var(--mazzi-dark); }
+.mazzi-icon-button { position: relative; display: grid; min-height: 48px; min-width: 48px; place-items: center; border: 1px solid var(--mazzi-border); border-radius: var(--radius-2xl); background: white; color: var(--mazzi-dark); transition: color 150ms ease, transform 150ms ease; }
 .mazzi-icon-button:hover { color: #111216; }
 .mazzi-icon-button:active { transform: scale(.95); }
 .mazzi-icon-button:focus-visible { outline: 2px solid var(--mazzi-dark); outline-offset: 2px; box-shadow: 0 0 0 4px var(--mazzi-focus-glow); }
-.mazzi-status { border-radius: 9px; padding: 5px 8px; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
-.mazzi-input { width: 100%; border: 0; border-radius: 16px; background: white; padding: 14px 16px; box-shadow: inset 0 0 0 1px var(--mazzi-border); outline: none; }
+.mazzi-status { border-radius: var(--radius-2xl); padding: 5px 8px; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+.mazzi-input { width: 100%; border: 0; border-radius: var(--radius-2xl); background: white; padding: 14px 16px; box-shadow: inset 0 0 0 1px var(--mazzi-border); outline: none; }
 .mazzi-input:focus, .mazzi-input:focus-visible { box-shadow: inset 0 0 0 1.5px var(--mazzi-yellow), 0 0 0 4px var(--mazzi-focus-glow); outline: none; }
 .mazzi-focus-ring:focus-visible { outline: 2px solid var(--mazzi-dark); outline-offset: 2px; box-shadow: 0 0 0 4px var(--mazzi-focus-glow); }
-.mazzi-primary { border-radius: 16px; background: var(--mazzi-dark); color: white; min-height: 50px; font-weight: 800; }
+.mazzi-primary { border-radius: var(--radius-2xl); background: var(--mazzi-dark); color: white; min-height: 50px; font-weight: 800; }
 .mazzi-primary:hover { background: #34353a; }
-.mazzi-yellow-button { border-radius: 14px; background: var(--mazzi-yellow); color: var(--mazzi-dark); font-weight: 800; box-shadow: 0 10px 24px rgba(246,201,69,.38); }
+.mazzi-yellow-button { border-radius: var(--radius-2xl); background: var(--mazzi-yellow); color: var(--mazzi-dark); font-weight: 800; box-shadow: 0 10px 24px rgba(246,201,69,.38); }
 @keyframes mazzi-success-final {
   0% { opacity: 0; transform: scale(.72) rotate(-4deg); }
   60% { opacity: 1; transform: scale(1.04) rotate(1deg); }
@@ -188,8 +189,8 @@ body {
 .mazzi-success-overlay-icon-exit { animation: mazzi-success-overlay-exit 700ms cubic-bezier(.22, 1, .36, 1) both; }
 .mazzi-checkout-return-success-icon { animation: mazzi-success-final 1600ms cubic-bezier(.22, 1, .36, 1) both; }
 @keyframes mazzi-address-modal-morph {
-  0% { opacity: 0; transform: scale(.08); border-radius: 1rem; }
-  55% { opacity: 1; transform: scale(1.015); border-radius: .5rem; }
+  0% { opacity: 0; transform: scale(.08); border-radius: var(--radius-2xl); }
+  55% { opacity: 1; transform: scale(1.015); border-radius: var(--radius-2xl); }
   100% { opacity: 1; transform: scale(1); border-radius: 0; }
 }
 .mazzi-address-modal-panel {
@@ -225,9 +226,22 @@ body {
   }
 }
 
+/* Location feedback is an explicit user action and must remain visible even
+   when the global reduced-motion rule is enabled. */
+@keyframes mazzi-location-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.mazzi-location-spinner {
+  animation: mazzi-location-spin 1s linear infinite !important;
+  animation-duration: 1s !important;
+  animation-iteration-count: infinite !important;
+}
+
 /* Leaflet custom popup styling with 99 theme */
 .leaflet-popup-content-wrapper {
-  border-radius: 1rem;
+  border-radius: var(--radius-2xl);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   padding: 4px;
   font-family: inherit;

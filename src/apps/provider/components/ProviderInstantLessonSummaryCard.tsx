@@ -3,8 +3,9 @@ import { Clock3 } from 'lucide-react';
 import type { InstantLessonInstructorStatus, InstantLessonSettings } from '../../../types';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { CountdownTimer } from '../../../components/ui/CountdownTimer';
 import { InstantLessonAvailabilityNotice } from '../../../components/instant/InstantLessonAvailabilityNotice';
-import { formatInstantInstructorAvailability, isInstantInstructorAvailabilityActive } from '../../../domain/instant-lesson';
+import { isInstantInstructorAvailabilityActive } from '../../../domain/instant-lesson';
 import type { InstantLessonAvailabilityNotice as InstantLessonAvailabilityNoticeData } from '../../../domain/instant-lesson';
 
 interface ProviderInstantLessonSummaryCardProps {
@@ -30,12 +31,14 @@ export const ProviderInstantLessonSummaryCard: React.FC<ProviderInstantLessonSum
   const instructorStatus = currentUserId ? instructorStatuses.find((status) => status.providerId === providerId && status.instructorId === currentUserId) : undefined;
   const isAvailable = instructorStatus ? isInstantInstructorAvailabilityActive(instructorStatus, now) : false;
   const isConfigured = enabledSettings.length > 0;
-  const availabilityLabel = instructorStatus ? formatInstantInstructorAvailability(instructorStatus, now) : null;
+  const availabilitySecondsLeft = isAvailable && instructorStatus?.onlineExpiresAt
+    ? Math.max(0, Math.ceil((new Date(instructorStatus.onlineExpiresAt).getTime() - now) / 1000))
+    : null;
 
   const status = !currentUserId || !instructorStatus
     ? { label: 'Por instrutor', variant: 'neutral' as const, description: 'A disponibilidade é controlada individualmente por cada instrutor.' }
     : isAvailable
-      ? { label: 'Disponível', variant: 'success' as const, description: `${availabilityLabel || 'Você está disponível'} para receber solicitações imediatas.` }
+      ? { label: 'Disponível', variant: 'success' as const, description: 'Pronto para receber solicitações imediatas.' }
       : instructorStatus.instantOnline && instructorStatus.onlineExpiresAt
         ? { label: 'Expirada', variant: 'danger' as const, description: 'Sua disponibilidade da Aula Agora expirou. Ative novamente para receber novas solicitações.' }
         : isConfigured
@@ -58,6 +61,10 @@ export const ProviderInstantLessonSummaryCard: React.FC<ProviderInstantLessonSum
           <Badge variant={status.variant} className={`shrink-0 rounded-full ${statusBadgeClassName}`}>{status.label}</Badge>
         </div>
       </div>
+
+      {availabilitySecondsLeft !== null && (
+        <CountdownTimer secondsRemaining={availabilitySecondsLeft} label="Disponível por mais" className="mt-4" />
+      )}
 
       <div className="mt-4 border-t border-white/15 pt-3">
         <Button

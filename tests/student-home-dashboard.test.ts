@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const studentApp = fs.readFileSync(path.join(process.cwd(), 'src/apps/student/StudentApp.tsx'), 'utf8');
 const checkoutModal = fs.readFileSync(path.join(process.cwd(), 'src/apps/student/components/CheckoutModal.tsx'), 'utf8');
+const confirmableAddressAutocomplete = fs.readFileSync(path.join(process.cwd(), 'src/components/search/ConfirmableAddressAutocomplete.tsx'), 'utf8');
 const instantLessonModal = fs.readFileSync(path.join(process.cwd(), 'src/apps/student/components/InstantLessonModal.tsx'), 'utf8');
 const mainStart = studentApp.indexOf('<main className="mazzi-mobile text-left">');
 const homeStart = studentApp.indexOf("{activeTab === 'home' && (");
@@ -35,17 +36,18 @@ describe('Student Home dashboard', () => {
   });
 
   it('uses the three-item Início navigation and keeps the traditional search flow reachable', () => {
-    expect(studentApp).toContain("{ id: 'home', label: 'Início', icon: <LayoutGrid");
+    expect(studentApp).toContain("{ id: 'home', label: 'Início', icon: <LayoutDashboard");
     expect(studentApp).toContain("{ id: 'bookings', label: 'Aulas'");
     expect(studentApp).toContain("{ id: 'profile', label: 'Perfil'");
-    expect(homeSource).toContain('onClick={openBookingSearch}');
-    expect(studentApp).toContain('data-component="agenda-wizard-entry"');
-    expect(studentApp).toContain('Buscar profissionais para agendar uma aula');
-    expect(studentApp).toContain('onClick={openBookingSearch}');
+    expect(homeSource).toContain('onClick={() => openBookingSearch()}');
+    expect(studentApp).not.toContain('data-component="agenda-wizard-entry"');
+    expect(studentApp).not.toContain('Buscar profissionais para agendar uma aula');
+    expect(studentApp).not.toContain('onClick={openBookingSearch}');
     expect(studentApp).toContain("setBookingFlowStep('search')");
     expect(studentApp).toContain("const bookingWizardStepsWithSearch = ['Profissional', ...bookingWizardSteps]");
     expect(studentApp).toContain('current="Profissional"');
     expect(studentApp).toContain('title="Buscar profissionais"');
+    expect(studentApp).toContain('const backToBookingSearch = () =>');
   });
 
   it('keeps Sua Jornada disabled as a future feature', () => {
@@ -66,7 +68,14 @@ describe('Student Home dashboard', () => {
     expect(studentApp).toContain('onClose={closeStudentWizard}');
     expect(studentApp).toContain('onExit={closeStudentWizard}');
     expect(checkoutModal).toContain('onExit?: () => void;');
-    expect(checkoutModal).toContain('onClose={onExit || onClose}');
+    expect(checkoutModal).toContain('onClose={isInstantLesson ? onClose : onExit || onClose}');
+    expect(checkoutModal).toContain('onReturnToInstantWizard?: () => void;');
+    expect(checkoutModal).toContain('Cancelar aula');
     expect(instantLessonModal).toContain('onClose={onClose}');
+  });
+
+  it('keeps address selection inside the parent wizard', () => {
+    expect(confirmableAddressAutocomplete).toContain('useHistory={false}');
+    expect(confirmableAddressAutocomplete).toContain('onConfirm(suggestion, nextValue);');
   });
 });

@@ -51,6 +51,20 @@ export function isInstantInstructorAvailabilityActive(
   return Number.isFinite(expiresAtMs) && nowMs < expiresAtMs;
 }
 
+/**
+ * Calculates the display countdown using the backend clock when available.
+ * The backend remains authoritative when the professional accepts or declines.
+ */
+export function getInstantOfferSecondsLeft(
+  expiresAt: string,
+  nowMs = Date.now(),
+  serverClockOffsetMs = 0,
+): number {
+  const expiresAtMs = new Date(expiresAt).getTime();
+  if (!Number.isFinite(expiresAtMs)) return 0;
+  return Math.max(0, Math.ceil((expiresAtMs - (nowMs + serverClockOffsetMs)) / 1000));
+}
+
 export function formatInstantInstructorAvailability(
   status: { instantOnline: boolean; onlineExpiresAt?: string | null },
   nowMs = Date.now(),

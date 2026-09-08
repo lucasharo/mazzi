@@ -22,7 +22,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ appContext, userId
       </div>
     </header>
 
-    <section aria-labelledby="settings-notifications-title" className="overflow-hidden rounded-3xl border border-[var(--mazzi-border)] bg-white shadow-sm">
+    <section aria-labelledby="settings-notifications-title" className="overflow-hidden rounded-2xl border border-[var(--mazzi-border)] bg-white shadow-sm">
       <div className="flex items-start gap-3 border-b border-slate-100 p-4 sm:p-5">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700" aria-hidden="true">
           <Bell className="h-5 w-5" />

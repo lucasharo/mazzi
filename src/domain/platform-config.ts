@@ -20,7 +20,7 @@ export class PlatformConfigDomainError extends Error {
 export interface PlatformConfiguration {
   id: string;
   quoteExpirationMinutes: number; // Default: 10
-  availabilityHorizonDays: number; // Default: 30
+  availabilityHorizonDays: number; // Default: 90
   minimumBookingNoticeHours: number; // Default: 2
   platformFeeDefaultPercentage: number; // Default: 1
   mercadoPagoFeePercentage: number; // Default: 5, used only by Admin payout calculations
@@ -28,18 +28,52 @@ export interface PlatformConfiguration {
   payoutSafetyPeriodHours: number; // Default: 72
   searchRadiusDefaultsKm: number; // Default: 15
   checkInWindowBeforeMinutes: number; // Default: 15
-  checkInWindowAfterMinutes: number; // Default: 60
   contestationResponseHours: number; // Default: 72
   instantMaxEtaMinutes: number; // Default: 30
   instantOfferExpirationSeconds: number; // Default: 15
+  instantLessonExpirationMinutes: number; // Default: 5, payment/search deadline for Aula Agora
+  instantRefundOnWayInitialPercent: number; // Default: 90
+  instantRefundOnWayMiddlePercent: number; // Default: 80
+  instantRefundOnWayLatePercent: number; // Default: 70
+  instantRefundAfterArrivalPercent: number; // Default: 60
+  instantRefundInitialWindowMinutes: number; // Default: 3
+  instantRefundMiddleWindowMinutes: number; // Default: 7
   updatedAt: string;
   updatedBy?: string;
+}
+
+/**
+ * Configuration that can be consumed by authenticated Student/PRO clients.
+ * Financial, payout and dispute settings intentionally stay server-side.
+ */
+export interface PublicPlatformConfiguration {
+  quoteExpirationMinutes: number;
+  availabilityHorizonDays: number;
+  minimumBookingNoticeHours: number;
+  searchRadiusDefaultsKm: number;
+  checkInWindowBeforeMinutes: number;
+  instantMaxEtaMinutes: number;
+  instantOfferExpirationSeconds: number;
+  instantLessonExpirationMinutes: number;
+}
+
+export function toPublicPlatformConfiguration(config: PlatformConfiguration): PublicPlatformConfiguration {
+  return {
+    quoteExpirationMinutes: config.quoteExpirationMinutes,
+    availabilityHorizonDays: config.availabilityHorizonDays,
+    minimumBookingNoticeHours: config.minimumBookingNoticeHours,
+    searchRadiusDefaultsKm: config.searchRadiusDefaultsKm,
+    checkInWindowBeforeMinutes: config.checkInWindowBeforeMinutes,
+    instantMaxEtaMinutes: config.instantMaxEtaMinutes,
+    instantOfferExpirationSeconds: config.instantOfferExpirationSeconds,
+    instantLessonExpirationMinutes: config.instantLessonExpirationMinutes,
+  };
 }
 
 export const DEFAULT_PLATFORM_CONFIGURATION: PlatformConfiguration = {
   id: 'cfg_global_default',
   quoteExpirationMinutes: 10,
-  availabilityHorizonDays: 30,
+  availabilityHorizonDays: 90,
   minimumBookingNoticeHours: 2,
   platformFeeDefaultPercentage: 1,
   mercadoPagoFeePercentage: 5,
@@ -47,10 +81,16 @@ export const DEFAULT_PLATFORM_CONFIGURATION: PlatformConfiguration = {
   payoutSafetyPeriodHours: 72,
   searchRadiusDefaultsKm: 15,
   checkInWindowBeforeMinutes: 15,
-  checkInWindowAfterMinutes: 60,
   contestationResponseHours: 72,
   instantMaxEtaMinutes: 30,
   instantOfferExpirationSeconds: 15,
+  instantLessonExpirationMinutes: 5,
+  instantRefundOnWayInitialPercent: 90,
+  instantRefundOnWayMiddlePercent: 80,
+  instantRefundOnWayLatePercent: 70,
+  instantRefundAfterArrivalPercent: 60,
+  instantRefundInitialWindowMinutes: 3,
+  instantRefundMiddleWindowMinutes: 7,
   updatedAt: '2026-08-15T00:00:00.000Z',
   updatedBy: 'system_initializer',
 };
@@ -107,7 +147,7 @@ export function updatePlatformConfiguration(params: UpdatePlatformConfigParams):
 
   if (
     updates.quoteExpirationMinutes !== undefined &&
-    updates.quoteExpirationMinutes <= 0
+    (!Number.isInteger(updates.quoteExpirationMinutes) || updates.quoteExpirationMinutes <= 0)
   ) {
     throw new PlatformConfigDomainError(
       'INVALID_QUOTE_EXPIRATION',
@@ -118,7 +158,7 @@ export function updatePlatformConfiguration(params: UpdatePlatformConfigParams):
 
   if (
     updates.availabilityHorizonDays !== undefined &&
-    (updates.availabilityHorizonDays < 1 || updates.availabilityHorizonDays > 365)
+    (!Number.isInteger(updates.availabilityHorizonDays) || updates.availabilityHorizonDays < 1 || updates.availabilityHorizonDays > 365)
   ) {
     throw new PlatformConfigDomainError(
       'INVALID_AVAILABILITY_HORIZON',
@@ -139,8 +179,19 @@ export function updatePlatformConfiguration(params: UpdatePlatformConfigParams):
   }
 
   if (
+    updates.searchRadiusDefaultsKm !== undefined &&
+    (updates.searchRadiusDefaultsKm <= 0 || updates.searchRadiusDefaultsKm > 50)
+  ) {
+    throw new PlatformConfigDomainError(
+      'INVALID_SEARCH_RADIUS',
+      'O raio padrão de busca deve estar entre 0 e 50 km.',
+      400
+    );
+  }
+
+  if (
     updates.checkInWindowBeforeMinutes !== undefined &&
-    (updates.checkInWindowBeforeMinutes < 1 || updates.checkInWindowBeforeMinutes > 60)
+    (!Number.isInteger(updates.checkInWindowBeforeMinutes) || updates.checkInWindowBeforeMinutes < 1 || updates.checkInWindowBeforeMinutes > 60)
   ) {
     throw new PlatformConfigDomainError(
       'INVALID_CHECKIN_WINDOW',
@@ -149,12 +200,16 @@ export function updatePlatformConfiguration(params: UpdatePlatformConfigParams):
     );
   }
 
-  if (updates.instantMaxEtaMinutes !== undefined && (updates.instantMaxEtaMinutes < 1 || updates.instantMaxEtaMinutes > 120)) {
+  if (updates.instantMaxEtaMinutes !== undefined && (!Number.isInteger(updates.instantMaxEtaMinutes) || updates.instantMaxEtaMinutes < 1 || updates.instantMaxEtaMinutes > 120)) {
     throw new PlatformConfigDomainError('INVALID_INSTANT_MAX_ETA', 'O tempo máximo de deslocamento da Aula Agora deve estar entre 1 e 120 minutos.', 400);
   }
 
-  if (updates.instantOfferExpirationSeconds !== undefined && (updates.instantOfferExpirationSeconds < 5 || updates.instantOfferExpirationSeconds > 120)) {
+  if (updates.instantOfferExpirationSeconds !== undefined && (!Number.isInteger(updates.instantOfferExpirationSeconds) || updates.instantOfferExpirationSeconds < 5 || updates.instantOfferExpirationSeconds > 120)) {
     throw new PlatformConfigDomainError('INVALID_INSTANT_OFFER_EXPIRATION', 'A validade da oferta da Aula Agora deve estar entre 5 e 120 segundos.', 400);
+  }
+
+  if (updates.instantLessonExpirationMinutes !== undefined && (!Number.isInteger(updates.instantLessonExpirationMinutes) || updates.instantLessonExpirationMinutes < 1 || updates.instantLessonExpirationMinutes > 60)) {
+    throw new PlatformConfigDomainError('INVALID_INSTANT_LESSON_EXPIRATION', 'O tempo da Aula Agora deve estar entre 1 e 60 minutos.', 400);
   }
 
   const nowISO = now.toISOString();

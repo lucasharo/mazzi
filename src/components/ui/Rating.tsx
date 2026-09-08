@@ -79,7 +79,7 @@ export const Rating: React.FC<RatingProps> = ({
               tabIndex={value === star || (value === 0 && star === 1) ? 0 : -1}
               onClick={() => selectRating(star)}
               onKeyDown={(event) => handleKeyDown(event, star)}
-              className={`grid h-11 w-11 place-items-center rounded-xl cursor-pointer transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-yellow)] ${isFilled ? 'bg-amber-100 hover:bg-amber-200' : 'bg-slate-100 hover:bg-slate-200'}`}
+              className={`grid h-11 w-11 place-items-center rounded-2xl cursor-pointer transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-yellow)] ${isFilled ? 'bg-amber-100 hover:bg-amber-200' : 'bg-slate-100 hover:bg-slate-200'}`}
             >
               {starIcon}
             </ButtonBase>

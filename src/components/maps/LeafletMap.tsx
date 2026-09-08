@@ -152,10 +152,10 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         className: 'custom-mazzi-marker',
         html: `
           <div style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
-            <div style="background: ${isSelected ? '#FFC700' : '#020617'}; border: 2px solid ${isSelected ? '#020617' : '#FFC700'}; color: ${isSelected ? '#020617' : '#FFFFFF'}; border-radius: 14px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.25); font-weight: 900; font-size: 11px;">
+            <div style="background: ${isSelected ? '#FFC700' : 'var(--mazzi-dark)'}; border: 2px solid ${isSelected ? 'var(--mazzi-dark)' : '#FFC700'}; color: ${isSelected ? 'var(--mazzi-dark)' : '#FFFFFF'}; border-radius: var(--radius-2xl); width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.25); font-weight: 900; font-size: 11px;">
               ${providerMarker === 'vehicle' ? vehicleIcon : initials}
             </div>
-            ${providerMarker !== 'vehicle' ? `<div style="background: #020617; color: #FFC700; font-weight: 800; font-size: 9px; padding: 2px 6px; border-radius: 8px; margin-top: -6px; border: 1px solid #334155; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+            ${providerMarker !== 'vehicle' ? `<div style="background: var(--mazzi-dark); color: #FFC700; font-weight: 800; font-size: 9px; padding: 2px 6px; border-radius: var(--radius-2xl); margin-top: -6px; border: 1px solid #334155; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
               ${formatCentsToBRL(prov.startingPriceInCents)}
             </div>` : ''}
           </div>
@@ -181,7 +181,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       const popupContent = `
         <div style="padding: 6px 4px; font-family: system-ui, -apple-system, sans-serif; min-width: 180px;">
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-            <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; background: #FEF3C7; color: #92400E; padding: 2px 6px; border-radius: 6px;">
+            <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; background: #FEF3C7; color: #92400E; padding: 2px 6px; border-radius: var(--radius-2xl);">
               ${prov.type === 'DRIVING_SCHOOL' ? 'CFC / Autoescola' : 'Instrutor'}
             </span>
             <span style="font-size: 11px; font-weight: 800; color: #D97706;">★ ${prov.ratingAverage.toFixed(1)}</span>
@@ -190,7 +190,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           <span style="font-size: 11px; color: #64748B; display: block; margin-top: 1px;">📍 ${prov.neighborhood}, São Paulo</span>
           <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #F1F5F9; display: flex; align-items: center; justify-content: space-between;">
             <span style="font-size: 12px; font-weight: 900; color: #020617;">${formatCentsToBRL(prov.startingPriceInCents)}<span style="font-size: 9px; color: #94A3B8; font-weight: 500;"> / 50min</span></span>
-            ${onSelectProvider ? `<button id="leaflet-btn-${prov.id}" style="background: #FFC700; color: #020617; border: none; border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 800; cursor: pointer;">
+            ${onSelectProvider ? `<button id="leaflet-btn-${prov.id}" style="background: #FFC700; color: #020617; border: none; border-radius: var(--radius-2xl); padding: 4px 10px; font-size: 11px; font-weight: 800; cursor: pointer;">
               Ver Horários
             </button>` : ''}
           </div>

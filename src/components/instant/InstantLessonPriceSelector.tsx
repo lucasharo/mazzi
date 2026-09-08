@@ -32,11 +32,15 @@ export const InstantLessonPriceSelector: React.FC<InstantLessonPriceSelectorProp
             <span className="flex min-w-0 items-center gap-2">
               {option.maxPriceInCents == null ? <Infinity className="h-4 w-4 shrink-0" aria-hidden="true" /> : null}
               <span>
-                <span className="block text-sm font-extrabold">{label}</span>
-                <span className="block text-xs font-semibold text-slate-500">{option.eligibleProviderCount} {option.eligibleProviderCount === 1 ? 'profissional' : 'profissionais'}</span>
+                <span className="block text-sm font-extrabold leading-tight">{label}</span>
+                <span className="mt-1 block text-[11px] font-semibold text-slate-500">{option.eligibleProviderCount} {option.eligibleProviderCount === 1 ? 'profissional' : 'profissionais'}</span>
               </span>
             </span>
-            {selected && <Check className="h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />}
+            {selected && (
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs">
+                <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+              </span>
+            )}
           </ButtonBase>
         );
       })}

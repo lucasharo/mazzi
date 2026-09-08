@@ -22,7 +22,7 @@ As leituras administrativas falham de forma explícita e não são convertidas e
 - **Gestão de Usuários e Fornecedores:** Busca, bloqueio preventivo, alteração de status.
 - **Fila de Compliance:** Análise de CNH, CRLV, alvarás com visualizador seguro e aprovação/rejeição com justificativa obrigatória.
 - **Gestão de Reservas (Bookings):** Resolução de disputas, cancelamento administrativo, visualização de logs de presença e chat moderado.
-- **Prazo de Repasse:** configuração global em horas, com padrão de 72h; `0` é aceito para testes.
+- **Prazo de Repasse:** configuração global em horas; `0` é aceito para testes.
 - **Decisão de Disputa:** liberar repasse, reembolso integral/parcial, reagendamento ou encerramento sem efeito financeiro, sempre com justificativa e auditoria.
 
 O fluxo de revisão também atende documentos globais do instrutor e documentos vinculados ao contexto da autoescola por RPC segura, sem expor caminhos de storage ou dados sensíveis na UI.
@@ -30,8 +30,11 @@ O fluxo de revisão também atende documentos globais do instrutor e documentos 
 - **Contestações:** Tela própria para acompanhar relatos, descrição, participantes, data, horário e local da reserva. A operação deve usar descrições amigáveis; códigos internos, nomes de tabelas, funções, status técnicos e outros termos de domínio não devem aparecer para o usuário.
 
 ### 3. Configurações & Auditoria
-- Configuração global da taxa de comissão (`platform_fee_percentage`).
-- Configuração do tempo de expiração de Quotes (padrão: 10 minutos).
+- Configuração global das taxas da plataforma, taxa estimada do gateway e teto combinado.
+- Configuração da Agenda: validade da cotação, horizonte máximo de disponibilidade, antecedência mínima e raio padrão de busca.
+- Configuração operacional: abertura do check-in, prazo de repasse e prazo de resposta de contestações.
+- Configuração da Aula Agora: ETA máximo, validade da oferta, expiração do pagamento/busca e faixas de cancelamento/reembolso.
+- Os valores operacionais são lidos pelos apps Aluno e PRO por um contrato público autenticado; configurações financeiras, de repasse, contestação e reembolso permanecem backend-only quando não são necessárias à interface.
 - Trilha de Auditoria (`AuditLog`): Histórico cronológico detalhado com ator, ação, entidade, valores anteriores e novos; a leitura Admin retorna somente as colunas operacionais aprovadas.
 
 Pagamentos no ambiente DEV usam o Mercado Pago de teste; o gateway fake permanece restrito ao desenvolvimento local. Disputas, reassignment e operações reais de payout permanecem deferidos.

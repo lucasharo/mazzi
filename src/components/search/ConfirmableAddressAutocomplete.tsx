@@ -1,7 +1,8 @@
 import React, { useId, useRef, useState } from 'react';
-import { LoaderCircle, Navigation, X } from 'lucide-react';
+import { LoaderCircle, X } from 'lucide-react';
 import { activeGeocodingProvider, LocationSuggestion } from '../../domain/maps/geocoding-provider';
 import { ButtonBase } from '../ui/Button';
+import { LocationButton } from '../ui/LocationButton';
 import { Modal } from '../ui/Modal';
 import { AddressAutocomplete } from './AddressAutocomplete';
 
@@ -17,6 +18,7 @@ export interface ConfirmableAddressAutocompleteProps {
   inputClassName?: string;
   proximity?: { longitude: number; latitude: number };
   dropdownAlignment?: 'input' | 'viewport';
+  showTriggerClearButton?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
 }
@@ -45,6 +47,7 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
   inputClassName = '',
   proximity,
   dropdownAlignment = 'input',
+  showTriggerClearButton = true,
   onFocus,
   onBlur,
 }) => {
@@ -130,6 +133,7 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
   const handleClear = () => {
     onChange('');
     onClear?.();
+    window.requestAnimationFrame(() => triggerInputRef.current?.focus());
   };
 
   return (
@@ -156,10 +160,10 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
               openModal();
             }
           }}
-          className={`w-full cursor-pointer ${inputClassName} !pr-12`}
+          className={`w-full cursor-pointer ${inputClassName} ${showTriggerClearButton ? '!pr-12' : '!pr-0'}`}
         />
         <div className="absolute right-0 top-1/2 z-10 flex -translate-y-1/2 items-center">
-          {value.trim() && <ButtonBase type="button" onClick={(event) => { event.stopPropagation(); handleClear(); }} aria-label="Apagar endereço" title="Apagar endereço" className="grid h-8 w-8 place-items-center rounded-full text-[var(--mazzi-muted)] transition hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" aria-hidden="true" /></ButtonBase>}
+          {showTriggerClearButton && value.trim() && <ButtonBase type="button" onClick={(event) => { event.stopPropagation(); handleClear(); }} aria-label="Apagar endereço" title="Apagar endereço" className="grid h-8 w-8 place-items-center rounded-full text-[var(--mazzi-muted)] transition hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" aria-hidden="true" /></ButtonBase>}
         </div>
       </div>
 
@@ -167,6 +171,11 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
         id={`confirmable-address-${modalId}`}
         isOpen={isOpen}
         onClose={closeModal}
+        // This picker is an internal surface of the booking wizard. Its
+        // close action must not add/remove a browser-history entry, otherwise
+        // selecting an address can be interpreted as closing the parent
+        // wizard as well.
+        useHistory={false}
         ariaLabel="Confirmar endereço"
         layer="nested"
         presentation="fullscreen"
@@ -182,23 +191,18 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
             <AddressAutocomplete
               id={modalInputId}
               className="contents"
-              inputWrapperClassName="min-h-[74px] rounded-[28px] border border-[var(--mazzi-border)] bg-white px-4 pb-3 pl-[4.5rem] pr-12 pt-8 shadow-[0_12px_32px_rgba(32,33,38,0.08)] sm:px-5 sm:pb-4 sm:pl-[4.75rem] sm:pr-14 sm:pt-9"
+              inputWrapperClassName="min-h-[74px] rounded-2xl border border-[var(--mazzi-border)] bg-white px-4 pb-3 pl-[4.5rem] pr-12 pt-8 shadow-[0_12px_32px_rgba(32,33,38,0.08)] sm:px-5 sm:pb-4 sm:pl-[4.75rem] sm:pr-14 sm:pt-9"
               inputLabel={<span className="pointer-events-none absolute left-[4.5rem] top-3 z-10 mazzi-field-label sm:left-[4.75rem] sm:top-3.5">Localização</span>}
               inputLeading={(
-                <ButtonBase
-                  type="button"
+                <LocationButton
                   onClick={handleUseCurrentLocation}
-                  disabled={isLocating}
-                  aria-label="Usar minha localização atual"
-                  title="Usar minha localização atual"
-                  className="absolute left-4 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] transition hover:brightness-95 active:scale-95 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
-                >
-                  <Navigation className={`h-5 w-5 ${isLocating ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />
-                </ButtonBase>
+                  isLoading={isLocating}
+                  className="absolute left-4 top-1/2 z-10 -translate-y-1/2"
+                />
               )}
               inputTrailing={(
                 <div className="absolute right-2 top-[calc(50%+10px)] z-10 flex -translate-y-1/2 items-center gap-1">
-                  {draftValue.trim() && <ButtonBase type="button" onClick={() => { setDraftValue(''); setLocationError(null); }} aria-label="Apagar endereço pesquisado" title="Apagar endereço pesquisado" className="grid h-9 w-9 place-items-center rounded-full text-[var(--mazzi-muted)] transition hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" aria-hidden="true" /></ButtonBase>}
+                  {draftValue.trim() && <ButtonBase type="button" onClick={() => { setDraftValue(''); setLocationError(null); window.requestAnimationFrame(() => document.getElementById(modalInputId)?.focus()); }} aria-label="Apagar endereço pesquisado" title="Apagar endereço pesquisado" className="grid h-9 w-9 place-items-center rounded-full text-[var(--mazzi-muted)] transition hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" aria-hidden="true" /></ButtonBase>}
                 </div>
               )}
               value={draftValue}

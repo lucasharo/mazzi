@@ -233,7 +233,7 @@ export function formatTransmissionLabel(transmission?: string | null): string {
   if (!transmission) return 'Não se aplica';
   const upper = transmission.toUpperCase();
   if (upper === 'MANUAL') return 'Manual';
-  if (upper === 'AUTOMATIC') return 'Automática';
+  if (upper === 'AUTOMATIC') return 'Automático';
   if (upper === 'NOT_APPLICABLE') return 'Não se aplica';
   return 'Não se aplica';
 }

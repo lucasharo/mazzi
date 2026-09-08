@@ -2,7 +2,7 @@ import React from 'react';
 import { Calendar as CalendarIcon, Car, CheckCircle2, ExternalLink, MapPin, Sparkles, UserRound, WifiOff, XCircle } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Button } from '../../../components/ui/Button';
-import { formatDateBR, formatTimeBR } from '../../../lib/date-format';
+import { formatDateBR, formatTimeBR, formatTransmissionLabel } from '../../../lib/date-format';
 import { formatMeetingPoint } from '../../../lib/meeting-point';
 
 export type StripeCheckoutReturnStatus = 'CHECKOUT_SUCCESS' | 'SUCCESS' | 'CANCELLED' | 'OFFLINE' | 'ERROR';
@@ -14,6 +14,7 @@ interface Props {
   booking?: Booking | null;
   message?: string;
   onViewBookings: () => void;
+  onViewBooking?: (booking: Booking) => void;
   onBackToSearch: () => void;
   onSuccessComplete?: () => void;
 }
@@ -23,6 +24,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
   booking,
   message,
   onViewBookings,
+  onViewBooking,
   onBackToSearch,
   onSuccessComplete,
 }) => {
@@ -33,6 +35,8 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
   const isSuccess = status === 'SUCCESS';
   const isCheckoutSuccess = status === 'CHECKOUT_SUCCESS';
   const isSuccessPresentation = isSuccess || isCheckoutSuccess;
+  const isInstantBooking = booking?.snapshot?.source === 'AULA_AGORA'
+    || (booking as any)?.snapshot_data?.source === 'AULA_AGORA';
   const isCancelled = status === 'CANCELLED';
   const isOffline = status === 'OFFLINE';
   const [successTransitionComplete, setSuccessTransitionComplete] = React.useState(!isSuccessPresentation);
@@ -77,7 +81,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
               aria-live="polite"
               aria-label="Pagamento confirmado"
             >
-              <div className="mazzi-checkout-return-success-icon relative flex h-24 w-24 items-center justify-center rounded-[2rem] border-2 border-emerald-100 bg-emerald-50 text-emerald-600">
+              <div className="mazzi-checkout-return-success-icon relative flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-emerald-100 bg-emerald-50 text-emerald-600">
                 <CheckCircle2 className="h-14 w-14" strokeWidth={2.5} aria-hidden="true" />
                 <Sparkles className="absolute -right-2 -top-2 h-5 w-5 fill-emerald-300 text-emerald-50" aria-hidden="true" />
                 <Sparkles className="absolute -bottom-2 -left-2 h-4 w-4 fill-emerald-200 text-emerald-50" aria-hidden="true" />
@@ -86,7 +90,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
             </div>
           ) : isSuccessPresentation ? (
             <>
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-emerald-50 text-emerald-600">
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                 <CheckCircle2 className="h-10 w-10" strokeWidth={2.5} aria-hidden="true" />
                 <Sparkles className="absolute -right-2 -top-2 h-4 w-4 fill-emerald-300 text-emerald-50" aria-hidden="true" />
                 <Sparkles className="absolute -bottom-2 -left-2 h-3.5 w-3.5 fill-emerald-200 text-emerald-50" aria-hidden="true" />
@@ -138,7 +142,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
                     <div>
                       <p className="text-[11px] text-[var(--mazzi-muted)]">Veículo</p>
                       <p className="mt-1 text-[13px] font-extrabold text-[var(--mazzi-dark)]">{vehicleName}</p>
-                      <p className="mt-0.5 text-[11px] text-[var(--mazzi-muted)]">{booking.snapshot.transmission || 'Transmissão não informada'}</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--mazzi-muted)]">{booking.snapshot.transmission ? formatTransmissionLabel(booking.snapshot.transmission) : 'Transmissão não informada'}</p>
                     </div>
                   </div>
 
@@ -152,13 +156,19 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
                 </div>
               </div>}
 
-              <Button type="button" variant="secondary" size="md" className="mt-4 w-full max-w-md font-extrabold" onClick={onViewBookings}>
-                Ver minhas aulas
+              <Button type="button" variant="secondary" size="md" className="mt-4 w-full max-w-md font-extrabold" onClick={() => {
+                if (isInstantBooking && booking && onViewBooking) {
+                  onViewBooking(booking);
+                  return;
+                }
+                onViewBookings();
+              }}>
+                {isInstantBooking ? 'Ver aula' : 'Ver minhas aulas'}
               </Button>
             </>
           ) : isOffline ? (
             <>
-              <div className="flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-slate-100 text-slate-600">
+              <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
                 <WifiOff className="h-11 w-11" aria-hidden="true" />
               </div>
               <h2 className="mt-6 text-2xl font-black tracking-tight text-[var(--mazzi-dark)]">Sem conexão com a internet</h2>
@@ -171,7 +181,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
             </>
           ) : (
             <>
-              <div className={`flex h-20 w-20 items-center justify-center rounded-[1.75rem] ${isCancelled ? 'bg-slate-100 text-slate-500' : 'bg-rose-50 text-rose-600'}`}>
+              <div className={`flex h-20 w-20 items-center justify-center rounded-2xl ${isCancelled ? 'bg-slate-100 text-slate-500' : 'bg-rose-50 text-rose-600'}`}>
                 {isCancelled ? <ExternalLink className="h-11 w-11" aria-hidden="true" /> : <XCircle className="h-11 w-11" aria-hidden="true" />}
               </div>
               <h2 className="mt-6 text-2xl font-black tracking-tight text-[var(--mazzi-dark)]">

@@ -89,7 +89,7 @@ export const ProviderPixDestinationModal: React.FC<ProviderPixDestinationModalPr
           </div>
         </div>
 
-        {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">{error}</div>}
+        {error && <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">{error}</div>}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>

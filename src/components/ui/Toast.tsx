@@ -24,7 +24,7 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
       {toasts.map((toast) => {
         const config = {
           success: {
-            bg: 'bg-slate-900 border-amber-400/40 text-white',
+      bg: 'bg-[var(--mazzi-dark)] border-amber-400/40 text-white',
             icon: <CheckCircle2 className="w-5 h-5 text-amber-400 flex-shrink-0" />,
           },
           warning: {
@@ -36,7 +36,7 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
             icon: <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />,
           },
           info: {
-            bg: 'bg-slate-900 border-slate-700 text-white',
+      bg: 'bg-[var(--mazzi-dark)] border-[var(--mazzi-dark)] text-white',
             icon: <Info className="w-5 h-5 text-amber-400 flex-shrink-0" />,
           },
         }[toast.type];

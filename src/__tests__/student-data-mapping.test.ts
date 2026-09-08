@@ -67,4 +67,20 @@ describe('Student Experience Phase 1 formatters', () => {
     expect(booking.vehicleName).toBe('Onix');
     expect(booking.meetingPoint).toBe('Centro');
   });
+
+  it('hydrates instructor and provider avatars returned for the booking', () => {
+    const booking = mapBookingFromDb({
+      id: 'booking-avatar-1', student_id: 'student-1', provider_id: 'provider-1', instructor_id: 'instructor-1',
+      vehicle_id: 'vehicle-1', offering_id: 'offering-1', status: 'COMPLETED',
+      scheduled_start_at: '2026-08-25T12:00:00.000Z', scheduled_end_at: '2026-08-25T13:00:00.000Z',
+      price_in_cents: 12000, platform_fee_in_cents: 0, total_in_cents: 12000,
+      instructor_avatar_url: 'https://cdn.example.com/instructor-1.jpg',
+      provider_avatar_url: 'https://cdn.example.com/provider-1.jpg',
+      snapshot_data: { category: 'B', instructorName: 'Instrutor 1', providerName: 'Autoescola 1', vehicleName: 'Onix', meetingPoint: { label: 'Centro' } },
+      meeting_point: { label: 'Centro' }, created_at: '2026-08-01T00:00:00Z',
+    });
+
+    expect(booking.snapshot.instructorAvatarUrl).toBe('https://cdn.example.com/instructor-1.jpg');
+    expect(booking.snapshot.providerAvatarUrl).toBe('https://cdn.example.com/provider-1.jpg');
+  });
 });

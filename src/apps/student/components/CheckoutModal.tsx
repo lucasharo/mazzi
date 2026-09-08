@@ -7,12 +7,12 @@ import { Button, ButtonBase } from '../../../components/ui/Button';
 import { IconButton } from '../../../components/ui/IconButton';
 import { Input } from '../../../components/ui/Input';
 import { Badge } from '../../../components/ui/Badge';
+import { CountdownTimer } from '../../../components/ui/CountdownTimer';
 import { formatCentsToBRL } from '../../../domain/money';
 import { isQuoteExpired, QuoteDomainError } from '../../../domain/quote';
 import {
   createBookingHold,
   BookingDomainError,
-  PAYMENT_HOLD_EXPIRATION_MINUTES,
   PAYMENT_PROCESSING_GRACE_MINUTES,
 } from '../../../domain/booking';
 import { PaymentService } from '../../../domain/payments/payment-service';
@@ -26,7 +26,9 @@ import { geocodeAddress } from '../../../lib/geocoding';
 import { getCheckoutGatewayProvider, getStripeEnvironment, getStripePublishableKey } from '../../../lib/payment-gateway-config';
 import { StripeHostedCheckout } from './StripeHostedCheckout';
 import { ConfirmableAddressAutocomplete } from '../../../components/search/ConfirmableAddressAutocomplete';
-import { LocationSuggestion } from '../../../domain/maps/geocoding-provider';
+import { activeGeocodingProvider, LocationSuggestion } from '../../../domain/maps/geocoding-provider';
+import { LocationButton } from '../../../components/ui/LocationButton';
+import type { PublicPlatformConfiguration } from '../../../domain/platform-config';
 
 export interface CheckoutModalProps {
   wizardHeader?: React.ReactNode;
@@ -43,10 +45,12 @@ export interface CheckoutModalProps {
   scheduledStartAt?: string; // ISO String
   onGoToBookings?: () => void;
   onChooseAnotherSlot?: () => void;
+  onReturnToInstantWizard?: () => void;
   onBookingCancelled?: () => void;
   existingBookings?: Booking[];
   onBookingConfirmed: (booking: Booking) => void;
   resumeBooking?: Booking | null;
+  platformConfiguration?: PublicPlatformConfiguration | null;
 }
 
 type CheckoutStep =
@@ -116,6 +120,22 @@ function friendlyCheckoutError(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function toStudentSavedAddress(suggestion: LocationSuggestion): StudentSavedAddress {
+  return {
+    formattedAddress: suggestion.formattedAddress,
+    latitude: Number(suggestion.latitude),
+    longitude: Number(suggestion.longitude),
+    postalCode: suggestion.postalCode,
+    placeId: suggestion.placeId,
+    addressLine1: suggestion.addressLine1,
+    addressLine2: suggestion.addressLine2,
+    neighborhood: suggestion.neighborhood,
+    city: suggestion.city,
+    state: suggestion.stateCode || suggestion.state,
+    country: suggestion.country,
+  };
+}
+
 function formatCheckoutDate(value?: string | null): string {
   if (!value) return 'Data não informada';
   try {
@@ -140,10 +160,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   scheduledStartAt,
   onGoToBookings,
   onChooseAnotherSlot,
+  onReturnToInstantWizard,
   onBookingCancelled,
   existingBookings = [],
   onBookingConfirmed,
   resumeBooking,
+  platformConfiguration,
 }) => {
   const { user, isAuthenticated } = useAuth();
   const checkoutGatewayProvider = getCheckoutGatewayProvider();
@@ -165,16 +187,41 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [meetingPointType, setMeetingPointType] = useState<'PROVIDER' | 'STUDENT'>('PROVIDER');
   const [studentAddress, setStudentAddress] = useState('');
   const [studentAddressLocation, setStudentAddressLocation] = useState<StudentSavedAddress | null>(null);
+  const [isStudentAddressLocating, setIsStudentAddressLocating] = useState(false);
+
+  const handleUseStudentCurrentLocation = async () => {
+    if (isStudentAddressLocating || !navigator.geolocation) return;
+    setIsStudentAddressLocating(true);
+    setStudentAddress('');
+    setStudentAddressLocation(null);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+      });
+      const suggestion = await activeGeocodingProvider.reverseGeocode(position.coords.latitude, position.coords.longitude);
+      const savedAddress = toStudentSavedAddress(suggestion);
+      setStudentAddress(suggestion.formattedAddress);
+      setStudentAddressLocation(savedAddress);
+    } catch (error) {
+      console.warn('CHECKOUT_STUDENT_LOCATION_FAILED', error);
+    } finally {
+      setIsStudentAddressLocating(false);
+    }
+  };
 
   // Time remaining counters
-  const [quoteTimeRemainingSec, setQuoteTimeRemainingSec] = useState<number>(600);
-  const [holdTimeRemainingSec, setHoldTimeRemainingSec] = useState<number>(600);
+  // Never present a commercial deadline before the backend/configuration has
+  // supplied the authoritative expiration timestamp.
+  const [quoteTimeRemainingSec, setQuoteTimeRemainingSec] = useState<number>(0);
+  const [holdTimeRemainingSec, setHoldTimeRemainingSec] = useState<number>(0);
 
   // A pending booking already has a frozen commercial snapshot. Reuse it to
   // render the same quote preview shown after selecting a new time slot.
   const resumedQuote = React.useMemo<Quote | null>(() => {
     if (!resumeBooking) return null;
-    const expiresAt = resumeBooking.holdExpiresAt || new Date(Date.now() + PAYMENT_HOLD_EXPIRATION_MINUTES * 60_000).toISOString();
+    const expiresAt = resumeBooking.holdExpiresAt || (platformConfiguration
+      ? new Date(Date.now() + platformConfiguration.quoteExpirationMinutes * 60_000).toISOString()
+      : '');
     return {
       id: resumeBooking.quoteId || resumeBooking.id,
       studentId: resumeBooking.studentId,
@@ -201,7 +248,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       expiresAt,
       idempotencyKey: resumeBooking.idempotencyKey,
     };
-  }, [offering?.durationMinutes, offering?.transmission, resumeBooking]);
+  }, [offering?.durationMinutes, offering?.transmission, platformConfiguration, resumeBooking]);
 
   const displayQuote = quote || resumedQuote;
   const isInstantLesson = resumeBooking?.snapshot?.source === 'AULA_AGORA';
@@ -233,6 +280,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setPayment(null);
     setPaymentMethod(null);
     setStripePaymentPending(false);
+    setQuoteTimeRemainingSec(0);
+    setHoldTimeRemainingSec(0);
     setStudentAddress(user?.studentSavedAddress?.formattedAddress || '');
     setStudentAddressLocation(user?.studentSavedAddress || null);
     setStep('QUOTE_PREVIEW');
@@ -256,7 +305,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setStudentAddress(resumeBooking.fullMeetingPoint || persistedMeetingPoint || '');
         setStudentAddressLocation(null);
       }
-      const resumeExpiresAt = resumeBooking.holdExpiresAt || new Date(Date.now() + PAYMENT_HOLD_EXPIRATION_MINUTES * 60_000).toISOString();
+      const resumeExpiresAt = resumeBooking.holdExpiresAt || (platformConfiguration
+        ? new Date(Date.now() + platformConfiguration.quoteExpirationMinutes * 60_000).toISOString()
+        : '');
       setQuoteTimeRemainingSec(Math.max(0, Math.floor((new Date(resumeExpiresAt).getTime() - Date.now()) / 1000)));
       setStep('QUOTE_PREVIEW');
       return;
@@ -572,7 +623,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         offering,
         existingBookings,
         idempotencyKey,
-        holdDurationMinutes: PAYMENT_HOLD_EXPIRATION_MINUTES,
+        holdDurationMinutes: platformConfiguration?.quoteExpirationMinutes,
       });
 
       let realBookingId = holdResult.booking.id;
@@ -957,12 +1008,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   const handleCancelPendingBooking = async () => {
-    if (!booking || isProcessing) return;
+    const pendingBooking = booking || resumeBooking;
+    if (!pendingBooking || isProcessing) return;
 
     setIsProcessing(true);
     setErrorMessage(null);
     try {
-      await dbService.cancelPendingBooking(booking.id);
+      await dbService.cancelPendingBooking(pendingBooking.id);
       void dbService.trackAnalyticsEvent('CHECKOUT_CANCELLED', {
         cancellation_source: 'student_back_action',
       }).catch((analyticsError) => {
@@ -972,18 +1024,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       });
       onBookingCancelled?.();
       onClose();
-      onChooseAnotherSlot?.();
+      if (isInstantLesson) {
+        onReturnToInstantWizard?.();
+      } else {
+        onChooseAnotherSlot?.();
+      }
     } catch (error) {
       setErrorMessage(friendlyCheckoutError(error, 'Não foi possível cancelar esta reserva. Tente novamente.'));
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const formatCountdown = (totalSec: number) => {
-    const mins = Math.floor(totalSec / 60);
-    const secs = totalSec % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleCopyPixCode = () => {
@@ -1004,12 +1054,28 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     (isInstantLesson ? instantMeetingPoint.trim() : meetingPointType === 'PROVIDER' || studentAddress.trim()),
   );
   const quotePreviewFooter = step === 'QUOTE_PREVIEW' ? (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full items-center gap-3">
+      {isInstantLesson && (
+        <Button
+          type="button"
+          variant="dangerSoft"
+          size="sm"
+          className="w-fit shrink-0 font-bold"
+          leftIcon={<XCircle className="h-4 w-4 shrink-0" aria-hidden="true" />}
+          showDefaultIcon={false}
+          isLoading={isProcessing}
+          disabled={isProcessing || stripePaymentPending}
+          onClick={() => { void handleCancelPendingBooking(); }}
+          aria-label="Cancelar"
+        >
+          Cancelar
+        </Button>
+      )}
       <Button
         type="button"
         variant="primary"
         size="sm"
-        className={wizardHeader ? 'w-full font-bold' : 'w-full font-bold shadow-xs'}
+        className={wizardHeader ? 'min-w-0 flex-1 font-bold' : 'min-w-0 flex-1 font-bold shadow-xs'}
         leftIcon={<DollarSign className="h-4 w-4 shrink-0" aria-hidden="true" />}
         isLoading={isProcessing}
         disabled={!checkoutFormValid}
@@ -1018,7 +1084,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       >
         {resumeBooking?.snapshot?.source === 'AULA_AGORA' ? 'Confirmar pagamento' : 'Continuar para pagamento'}
       </Button>
-
     </div>
   ) : undefined;
   const handlePreviewBack = () => {
@@ -1036,7 +1101,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         onClose();
         onChooseAnotherSlot?.();
   };
-  const quotePreviewBackAction = step === 'QUOTE_PREVIEW' ? (wizardHeader ? (
+  const quotePreviewBackAction = step === 'QUOTE_PREVIEW' && !isInstantLesson ? (wizardHeader ? (
     <Button type="button" variant="outline" disabled={isProcessing} onClick={handlePreviewBack} leftIcon={<ArrowLeft className="h-4 w-4" aria-hidden="true" />}>Voltar</Button>
   ) : (
     <IconButton
@@ -1051,7 +1116,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onExit || onClose}
+      onClose={isInstantLesson ? onClose : onExit || onClose}
       className={wizardHeader ? 'instant-light' : ''}
       ariaLabel="Confirmar sua aula"
       footerVariant={wizardHeader ? 'wizard' : 'default'}
@@ -1078,7 +1143,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             aria-live="polite"
             aria-label="Pagamento confirmado"
           >
-            <div className={`mazzi-success-overlay-icon relative flex h-24 w-24 items-center justify-center rounded-[2rem] border-2 border-emerald-100 bg-emerald-50 text-emerald-600 shadow-[0_16px_36px_rgba(6,95,70,0.3)] ${
+            <div className={`mazzi-success-overlay-icon relative flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-emerald-100 bg-emerald-50 text-emerald-600 shadow-[0_16px_36px_rgba(6,95,70,0.3)] ${
               successAnimationPhase === 'TRANSITION' ? 'mazzi-success-overlay-icon-exit' : ''
             }`}>
               <CheckCircle2 className="h-14 w-14" strokeWidth={2.5} aria-hidden="true" />
@@ -1111,16 +1176,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {/* STEP 1: QUOTE PREVIEW */}
         {step === 'QUOTE_PREVIEW' && displayQuote && (
           <div className="space-y-4">
-            {/* Countdown Badge */}
-            <div className="flex items-center justify-between rounded-2xl bg-[#202126] border border-[#202126] p-3 text-white" aria-live="polite">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#f6c945] shrink-0" aria-hidden="true" />
-                <span className="text-xs font-semibold text-white/80">Este valor fica reservado por mais</span>
-              </div>
-              <span className="font-mono text-sm font-extrabold text-[#f6c945]">
-                {formatCountdown(quoteTimeRemainingSec)}
-              </span>
-            </div>
+            <CountdownTimer secondsRemaining={quoteTimeRemainingSec} />
 
             {/* Provider & Schedule Summary */}
             <div className="mazzi-compact-card rounded-2xl border border-[#e9e6de] bg-white space-y-3 p-4 sm:p-5 text-xs text-slate-700 shadow-2xs">
@@ -1133,7 +1189,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <span className="text-[11px] text-slate-500 block truncate">{displayProviderName}</span>
                   )}
                 </div>
-                <span className="shrink-0 bg-amber-100/80 text-amber-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
+                <span className="shrink-0 bg-amber-100/80 text-amber-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-2xl">
                   Cat. {displayCategory}
                 </span>
               </div>
@@ -1189,7 +1245,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   type="button"
                   aria-pressed={meetingPointType === 'PROVIDER'}
                   onClick={() => setMeetingPointType('PROVIDER')}
-                  className={`min-h-[44px] px-3 py-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-2xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     meetingPointType === 'PROVIDER'
                       ? 'border-amber-400 bg-amber-50/80 text-slate-950 shadow-2xs'
                       : 'border-[#e9e6de] bg-white text-slate-600 hover:border-slate-300'
@@ -1202,7 +1258,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   type="button"
                   aria-pressed={meetingPointType === 'STUDENT'}
                   onClick={() => setMeetingPointType('STUDENT')}
-                  className={`min-h-[44px] px-3 py-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-2xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] ${
                     meetingPointType === 'STUDENT'
                       ? 'border-amber-400 bg-amber-50/80 text-slate-950 shadow-2xs'
                       : 'border-[#e9e6de] bg-white text-slate-600 hover:border-slate-300'
@@ -1213,40 +1269,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </ButtonBase>
               </div>
               {meetingPointType === 'STUDENT' && (
-                <div>
-                  <label htmlFor="checkout-student-address" className="mazzi-field-label mb-1.5 block">
-                    Endereço completo para o ponto de encontro
-                  </label>
-                  <ConfirmableAddressAutocomplete
-                    id="checkout-student-address"
-                    value={studentAddress}
-                    onChange={(value) => {
-                      setStudentAddress(value);
-                      setStudentAddressLocation(null);
-                    }}
-                    onConfirm={(suggestion: LocationSuggestion | null) => {
-                      if (suggestion) {
-                        setStudentAddressLocation({
-                          formattedAddress: suggestion.formattedAddress,
-                          latitude: suggestion.latitude,
-                          longitude: suggestion.longitude,
-                          postalCode: suggestion.postalCode,
-                          placeId: suggestion.placeId,
-                          addressLine1: suggestion.addressLine1,
-                          addressLine2: suggestion.addressLine2,
-                          neighborhood: suggestion.neighborhood,
-                          city: suggestion.city,
-                          state: suggestion.stateCode || suggestion.state,
-                          country: suggestion.country,
-                        });
-                      }
-                    }}
-                    onClear={() => setStudentAddressLocation(null)}
-                    placeholder="Digite seu endereço com número e bairro"
-                    ariaLabel="Endereço completo para o ponto de encontro"
-                    dropdownAlignment="viewport"
-                    inputClassName="min-h-[44px] rounded-xl border border-[#e9e6de] bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                  />
+                <div className="mazzi-card p-3 transition-all focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)] focus-within:ring-offset-2">
+                  <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5">
+                    <LocationButton onClick={() => void handleUseStudentCurrentLocation()} isLoading={isStudentAddressLocating} />
+                    <label htmlFor="checkout-student-address" className="min-w-0 cursor-text">
+                      <span className="block text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--mazzi-muted)]">Localização</span>
+                      <ConfirmableAddressAutocomplete
+                        id="checkout-student-address"
+                        value={studentAddress}
+                        onChange={(value) => {
+                          setStudentAddress(value);
+                          setStudentAddressLocation(null);
+                        }}
+                        onConfirm={(suggestion: LocationSuggestion | null) => {
+                          if (suggestion) setStudentAddressLocation(toStudentSavedAddress(suggestion));
+                        }}
+                        onClear={() => setStudentAddressLocation(null)}
+                        showTriggerClearButton={false}
+                        placeholder="Digite um endereço, bairro ou local"
+                        ariaLabel="Buscar endereço ou local"
+                        dropdownAlignment="viewport"
+                        inputClassName="mt-0.5 min-h-[32px] bg-transparent pr-7 text-sm font-extrabold text-[var(--mazzi-text)] outline-none placeholder:text-slate-400 focus:outline-none"
+                      />
+                    </label>
+                  </div>
                 </div>
               )}
               </>}
@@ -1339,15 +1385,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'PAYMENT_SELECTION' && booking && (
           <div className="space-y-4">
             {/* Hold Expiration Counter */}
-            <div className="flex items-center justify-between rounded-2xl bg-[#202126] border border-[#202126] p-3 text-white" aria-live="polite">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#f6c945] shrink-0" aria-hidden="true" />
-                <span className="text-xs font-semibold text-white/80">Horário reservado temporariamente por mais</span>
-              </div>
-              <span className="font-mono text-sm font-extrabold text-[#f6c945]">
-                {formatCountdown(holdTimeRemainingSec)}
-              </span>
-            </div>
+            <CountdownTimer secondsRemaining={holdTimeRemainingSec} label="Horário reservado temporariamente por mais" />
 
             {/* Reservation summary: the student reviews the selected details before leaving for Stripe. */}
             <div className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-3 shadow-2xs">
@@ -1447,7 +1485,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>}
 
             {checkoutGatewayProvider === 'fake' && !paymentMethod && (
-              <p role="status" className="rounded-xl bg-slate-50 px-3 py-2 text-center text-xs font-semibold text-[var(--mazzi-muted)]">
+              <p role="status" className="rounded-2xl bg-slate-50 px-3 py-2 text-center text-xs font-semibold text-[var(--mazzi-muted)]">
                 Selecione uma forma de pagamento para continuar.
               </p>
             )}
@@ -1456,7 +1494,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {checkoutGatewayProvider === 'fake' && paymentMethod === 'PIX' && payment && (
               <div className="mazzi-compact-card p-4 rounded-2xl bg-white border border-[#e9e6de] text-center space-y-3 shadow-2xs">
                 <p className="text-xs font-bold text-slate-800">Código PIX Copia e Cola (Simulado)</p>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] text-slate-600 break-all select-all">
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 font-mono text-[11px] text-slate-600 break-all select-all">
                   {payment.pixQrCode || `FAKE_PIX_SIMULATED_PAYMENT_ENV_DEVELOPMENT_${payment.id}`}
                 </div>
 
@@ -1559,9 +1597,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               isLoading={isProcessing}
               disabled={isProcessing || stripePaymentPending}
               onClick={() => { void handleCancelPendingBooking(); }}
-              aria-label="Cancelar a reserva e escolher outro horário"
+              aria-label={isInstantLesson ? 'Cancelar aula agora' : 'Cancelar a reserva e escolher outro horário'}
             >
-              Voltar e escolher outro horário
+              {isInstantLesson ? 'Cancelar aula' : 'Voltar e escolher outro horário'}
             </Button>
           </div>
         )}
@@ -1570,7 +1608,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'SUCCESS' && booking && (
           <div className="space-y-4 py-4 text-center">
             <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
-              <div className={`relative flex h-16 w-16 items-center justify-center rounded-[1.5rem] border border-emerald-200 bg-emerald-50 text-emerald-600 ${
+              <div className={`relative flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-600 ${
                 successAnimationPhase === 'LOADING' ? 'scale-75 opacity-0' : 'mazzi-success-final'
               }`}>
                 <CheckCircle2 className="h-10 w-10" strokeWidth={2.5} aria-hidden="true" />
@@ -1588,7 +1626,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <p className="mx-auto max-w-xs text-xs leading-relaxed text-[var(--mazzi-muted)]">
                 Sua reserva está confirmada. Você pode acompanhar todos os detalhes na aba de Aulas.
               </p>
-              {showTestCopy && <div className="mx-auto inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-[var(--mazzi-yellow-hover)] px-3 py-1.5 text-xs font-bold text-amber-950">
+              {showTestCopy && <div className="mx-auto inline-flex items-center gap-1.5 rounded-2xl border border-amber-200 bg-[var(--mazzi-yellow-hover)] px-3 py-1.5 text-xs font-bold text-amber-950">
                 <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-amber-700" aria-hidden="true" />
                 <span>{checkoutGatewayProvider === 'fake' ? 'Reserva confirmada em ambiente de validação.' : 'Reserva confirmada em ambiente de teste.'}</span>
               </div>}

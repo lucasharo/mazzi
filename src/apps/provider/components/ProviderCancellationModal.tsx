@@ -93,7 +93,7 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
 
         {/* Booking Summary */}
         {booking.snapshot?.source === 'AULA_AGORA' && <div role="note" className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">O cancelamento será analisado.</p><p>Cancelamento injustificado gera advertência. Ao atingir 3 em 30 dias, você fica 24 horas sem receber novas solicitações de Aula Agora. Aulas agendadas e repasses não são afetados. Emergências e problemas de segurança podem ser isentos após análise; você pode apresentar justificativa em Gestão.</p></div>}
-        <div className="mazzi-compact-card p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-xs space-y-1">
+        <div className="mazzi-compact-card p-3.5 rounded-2xl bg-slate-100 border border-slate-200 text-xs space-y-1">
           <p className="font-extrabold text-slate-900">{booking.studentName}</p>
           <p className="text-slate-600">
             {booking.scheduledDate} • {booking.startTime} - {booking.endTime} (Cat. {booking.category})
@@ -102,7 +102,7 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
 
         {/* Error Feedback */}
         {errorMessage && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMessage}</span>
           </div>
@@ -132,7 +132,7 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
               value={customReason}
               onChange={(e) => onCustomReasonChange(e.target.value)}
               placeholder="Descreva detalhadamente a justificativa para o cancelamento..."
-              className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-[#202126]"
+              className="w-full text-xs p-3 rounded-2xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-[#202126]"
             />
             {isOther && !customReason.trim() && (
               <p className="text-[11px] font-bold text-rose-600">

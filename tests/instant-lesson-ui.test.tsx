@@ -35,7 +35,8 @@ describe('Aula Agora shared UI', () => {
       />,
     );
     expect(markup).toContain('8 min');
-    expect(markup).toContain('15s');
+    expect(markup).toContain('00:15');
+    expect(markup).toContain('role="timer"');
     expect(markup).toContain('Aceitar');
     expect(markup).toContain('Recusar');
   });

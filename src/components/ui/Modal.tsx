@@ -130,7 +130,7 @@ export const Modal: React.FC<ModalProps> = ({
   const modalContent = (
     <div
       id={id || 'mazzi-modal'}
-      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'modal' ? 'items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs' : 'items-stretch justify-stretch bg-white'} animate-in fade-in duration-150 ${className}`}
+      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'modal' ? 'items-center justify-center bg-[var(--mazzi-dark)]/40 p-4 backdrop-blur-xs' : 'items-stretch justify-stretch bg-white'} animate-in fade-in duration-150 ${className}`}
       onClick={(e) => {
         if (presentation === 'modal' && closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}

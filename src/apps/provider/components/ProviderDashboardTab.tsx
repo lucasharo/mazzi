@@ -1,8 +1,10 @@
 import React from 'react';
-import { AlertTriangle, ArrowRight, Star, Calendar, Plus, Mail, Check, CircleX, Building2, } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Calendar, Check, ChevronRight, CircleX, Building2, Mail, Plus, Star, } from 'lucide-react';
 import { Provider, Booking, ComplianceDocument, Vehicle, InstantLessonSettings, InstantLessonInstructorStatus } from '../../../types';
-import type { SchoolInvitationContext } from '../../../lib/db-service';
+import type { SchoolInstructorComplianceSummary, SchoolInvitationContext, SchoolMembership } from '../../../lib/db-service';
+import type { ProviderPaymentAccount } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
 import { evaluateProviderEligibility } from '../../../domain/compliance';
 import { resolveComplianceDocumentStatus } from '../../../domain/provider-compliance-presentation';
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
@@ -12,6 +14,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { UpcomingBookingCard, UpcomingBookingEmptyCard } from '../../../components/ui/UpcomingBookingCard';
 import { ProviderInstantLessonSummaryCard } from './ProviderInstantLessonSummaryCard';
 import { getInstantLessonAvailabilityNotice } from '../../../domain/instant-lesson';
+import { isProviderPaymentAccountReady } from '../../../domain/payments/provider-payment-readiness';
 
 interface ProviderDashboardTabProps {
   currentProvider: Provider;
@@ -22,6 +25,11 @@ interface ProviderDashboardTabProps {
   activeInstantBooking?: Booking | null;
   providerDocs: ComplianceDocument[];
   providerVehicles: Vehicle[];
+  offerings: Array<{ id: string; instructorId?: string; vehicleId: string; status: string }>;
+  availabilityRules: Array<{ instructorId?: string; isActive: boolean }>;
+  paymentAccount?: ProviderPaymentAccount | null;
+  schoolInstructors?: SchoolMembership[];
+  schoolInstructorSummary?: SchoolInstructorComplianceSummary[];
   onSelectBooking: (booking: Booking) => void;
   onNavigateTab: (tabId: 'dashboard' | 'bookings' | 'earnings' | 'management' | 'profile') => void;
   onOpenAddVehicleModal: () => void;
@@ -48,6 +56,11 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   activeInstantBooking = null,
   providerDocs,
   providerVehicles,
+  offerings = [],
+  availabilityRules = [],
+  paymentAccount,
+  schoolInstructors = [],
+  schoolInstructorSummary = [],
   onSelectBooking,
   onNavigateTab,
   onOpenAddVehicleModal,
@@ -69,6 +82,28 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility, providerDocs);
   const instantAvailabilityNotice = getInstantLessonAvailabilityNotice(bookings || confirmedBookings, nowMs);
   const dashboardBooking = activeInstantBooking || nextBooking;
+  const cancelledBookings = (bookings || []).filter((booking) => booking.status.startsWith('CANCELLED')).length;
+  const marketplacePendingByInstructor = React.useMemo(() => {
+    const instructors = currentProvider.type === 'DRIVING_SCHOOL'
+      ? schoolInstructors.filter((instructor) => instructor.isActive && instructor.membershipStatus === 'ACTIVE')
+      : currentUserId
+        ? [{ id: '', userId: currentUserId, name: currentProvider.name, membershipStatus: 'ACTIVE', isActive: true }]
+        : [];
+
+    return instructors.map((instructor) => {
+      const pending: string[] = [];
+      const hasActiveVehicle = providerVehicles.some((vehicle) => vehicle.status === 'ACTIVE');
+      const compliance = currentProvider.type === 'DRIVING_SCHOOL'
+        ? schoolInstructorSummary.find((entry) => entry.membershipId === instructor.id)?.eligible === true
+        : complianceEligibility.isEligible;
+
+      if (!hasActiveVehicle) pending.push('Veículo ativo não cadastrado');
+      if (!compliance) pending.push('Compliance aprovado pendente');
+      if (!isProviderPaymentAccountReady(paymentAccount)) pending.push('Conta bancária não cadastrada');
+
+      return { instructorName: instructor.name || 'Instrutor', pending };
+    }).filter((item) => item.pending.length > 0);
+  }, [availabilityRules, complianceEligibility.isEligible, currentProvider.name, currentProvider.type, currentUserId, offerings, paymentAccount, providerVehicles, schoolInstructorSummary, schoolInstructors]);
 
   return (
     <div className="space-y-[10px] text-left">
@@ -89,7 +124,13 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
       )}
 
       {/* Compliance status: shared with the PRO profile */}
-      {!isRefreshing && <ComplianceStatusAlert status={complianceStatus} />}
+      {!isRefreshing && (
+        <ComplianceStatusAlert
+          status={complianceStatus}
+          marketplaceReady={marketplacePendingByInstructor.length === 0}
+          marketplacePending={marketplacePendingByInstructor.flatMap((item) => item.pending)}
+        />
+      )}
 
       {/* Próxima aula fica logo após o credenciamento para priorizar o próximo compromisso. */}
       {!isRefreshing && !calendarLoadError && (
@@ -129,39 +170,29 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
 
       {!isRefreshing && !calendarLoadError && (
         <>
-          {/* Operational Metrics Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="mazzi-card p-4">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--mazzi-muted)]">
-                Aulas Hoje
-              </span>
-              <p className="mt-1 text-2xl font-bold text-[var(--mazzi-dark)]">{todayBookings.length}</p>
-            </div>
+          {/* Resumo no mesmo padrão compacto do dashboard do aluno. */}
+          <section aria-label="Resumo das aulas" className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Aulas Hoje', value: todayBookings.length, icon: <Calendar className="h-5 w-5" aria-hidden="true" /> },
+              { label: 'Confirmadas', value: confirmedBookings.length, icon: <Calendar className="h-5 w-5" aria-hidden="true" /> },
+              { label: 'Concluídas', value: completedBookings.length, icon: <Check className="h-5 w-5" aria-hidden="true" /> },
+              { label: 'Canceladas', value: cancelledBookings, icon: <CircleX className="h-5 w-5" aria-hidden="true" /> },
+            ].map((item) => (
+              <Card key={item.label} padding="none" className="mazzi-compact-card flex min-h-[68px] items-center justify-between gap-2 rounded-2xl shadow-xs">
+                <div className="min-w-0">
+                  <p className="mazzi-eyebrow text-[9px] text-[var(--mazzi-muted)]">{item.label}</p>
+                  <p className="mt-0.5 text-[24px] font-black leading-none tracking-[-0.04em] text-[var(--mazzi-dark)] tabular-nums">{item.value}</p>
+                </div>
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-2xl bg-transparent text-[var(--mazzi-dark)]">{item.icon}</span>
+              </Card>
+            ))}
+          </section>
 
-            <div className="mazzi-card p-4">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--mazzi-muted)]">
-                Confirmadas
-              </span>
-              <p className="mt-1 text-2xl font-bold text-emerald-600">{confirmedBookings.length}</p>
-            </div>
-
-            <div className="mazzi-card p-4">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--mazzi-muted)]">
-                Concluídas
-              </span>
-              <p className="mt-1 text-2xl font-bold text-[var(--mazzi-dark)]">{completedBookings.length}</p>
-            </div>
-
-            <div className="rounded-[22px] border border-[var(--mazzi-dark)] bg-[var(--mazzi-dark)] p-4 text-white shadow-[var(--mazzi-shadow)]">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--mazzi-yellow)]">
-                Avaliação
-              </span>
-              <p className="mt-1 flex items-center gap-1 text-xl font-bold text-white">
-                <Star className="w-4 h-4 fill-[#f6c945] text-[#f6c945]" />
-                {currentProvider.ratingAverage?.toFixed(1) || '5.0'}
-              </p>
-            </div>
-          </div>
+          {/* O PRO mantém a avaliação, fora do resumo operacional. */}
+          <section className="flex min-h-[68px] items-center justify-between rounded-2xl border border-[var(--mazzi-dark)] bg-[var(--mazzi-dark)] px-4 py-3 text-white shadow-xs" aria-label="Avaliação do perfil">
+            <span className="mazzi-eyebrow text-[9px] text-[var(--mazzi-yellow)]">Avaliação do Perfil:</span>
+            <span className="flex items-center gap-1 text-xl font-black"><Star className="h-4 w-4 fill-[var(--mazzi-yellow)] text-[var(--mazzi-yellow)]" />{currentProvider.ratingAverage?.toFixed(1) || '5.0'}</span>
+          </section>
 
           <ProviderEarningsDashboardCard onNavigate={() => onNavigateTab('earnings')} refreshKey={isRefreshing ? 1 : 0} />
         </>
@@ -184,20 +215,21 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         <ButtonBase
           type="button"
           onClick={() => onNavigateTab('management')}
-          className="mazzi-card group flex min-h-20 cursor-pointer items-center justify-between p-4 text-left transition hover:border-slate-300"
+          aria-label="Abrir gerenciamento de agenda, veículos e ofertas"
+          className="mazzi-card group flex min-h-[68px] w-full items-center justify-between gap-3.5 rounded-2xl p-3.5 text-left shadow-xs transition-all duration-200 ease-out hover:shadow-md active:scale-[0.99]"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-[#202126] font-bold flex items-center justify-center">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 transition group-hover:text-amber-700">
-                Gerenciar agenda, veículos e ofertas
-              </h3>
-              <p className="text-xs text-slate-500">Configure horários, veículos, categorias e preços</p>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]" aria-hidden="true">
+              <Calendar className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <span className="mazzi-eyebrow block text-[9px] text-[#8b6800]">Gerenciar agenda, veículos e ofertas</span>
+              <span className="mt-1 block truncate text-xs font-medium text-[var(--mazzi-muted)]">Configure horários, veículos, categorias e preços</span>
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition" />
+          <span className="ml-auto grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)]" aria-hidden="true">
+            <ChevronRight className="h-5 w-5 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
+          </span>
         </ButtonBase>
       </div>}
 
@@ -235,34 +267,6 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
         </div>
       </Modal>
 
-      {/* Operational Alerts */}
-      <div className="mazzi-compact-card p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-2">
-        <div className="flex items-center gap-2 font-bold">
-          <AlertTriangle className="w-4 h-4 text-amber-700" />
-          <span>Alertas da Operação MAZZI Pro:</span>
-        </div>
-        <ul className="list-disc pl-5 space-y-1 text-amber-800 font-medium">
-          {providerDocs.some((d) => d.status === 'PENDING' || d.status === 'IN_REVIEW') && (
-            <li>Você possui documentos aguardando análise de compliance.</li>
-          )}
-          {providerDocs.some((d) => d.status === 'EXPIRED') && (
-            <li>Você possui documentos vencidos. Envie uma nova versão para atualizar o credenciamento.</li>
-          )}
-          {providerVehicles.length === 0 && (
-            <li>
-              Nenhum veículo cadastrado.{' '}
-              <ButtonBase
-                type="button"
-                onClick={onOpenAddVehicleModal}
-                className="underline font-bold hover:text-amber-950 inline-flex items-center gap-1"
-              >
-                <Plus className="w-3 h-3" />
-                Cadastrar Veículo
-              </ButtonBase>
-            </li>
-          )}
-        </ul>
-      </div>
     </div>
   );
 };

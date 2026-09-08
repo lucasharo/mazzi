@@ -64,7 +64,7 @@ const SuggestionList: React.FC<SuggestionListProps> = ({ id, options, onSelect }
         key={option.code}
         type="button"
         role="option"
-        className="flex min-h-10 w-full items-center rounded-xl px-3 py-2 text-left text-sm text-[var(--mazzi-text)] transition-colors hover:bg-[var(--mazzi-yellow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
+        className="flex min-h-10 w-full items-center rounded-2xl px-3 py-2 text-left text-sm text-[var(--mazzi-text)] transition-colors hover:bg-[var(--mazzi-yellow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mazzi-dark)]"
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => onSelect(option)}
       >

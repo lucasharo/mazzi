@@ -40,7 +40,7 @@ export function AppBottomNav<T extends string>({ ariaLabel, activeId, items, onC
             onClick={() => onChange(item.id)}
             className={`relative mx-1 flex min-h-12 items-center justify-center rounded-2xl transition active:scale-95 ${active ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-[0_6px_16px_rgba(246,201,69,.28)]' : 'flex-col text-[var(--mazzi-muted)] hover:text-[var(--mazzi-dark)]'}`}
           >
-            <span className="relative grid h-8 w-8 place-items-center rounded-xl" aria-hidden="true">
+            <span className="relative grid h-8 w-8 place-items-center rounded-2xl" aria-hidden="true">
               {item.icon}
             </span>
             {(item.showBadge || (!!item.badge && item.badge > 0)) && (

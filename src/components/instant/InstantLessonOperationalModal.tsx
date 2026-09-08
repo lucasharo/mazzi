@@ -13,9 +13,13 @@ interface InstantLessonOperationalModalProps {
   etaMinutes?: number | null;
   onOpenNavigation?: () => void;
   onSetOnTheWay?: (bookingId: string) => Promise<void>;
+  onMarkArrived?: (bookingId: string) => Promise<void>;
+  isMarkingArrived?: boolean;
   onCheckIn?: (booking: Booking) => void | Promise<string | void>;
   onOpenChat?: (booking: Booking) => void;
   isLoading?: boolean;
+  checkInWindowBeforeMinutes?: number | null;
+  instantLessonExpirationMinutes?: number;
 }
 
 export const InstantLessonOperationalModal: React.FC<InstantLessonOperationalModalProps> = (props) => {
@@ -31,9 +35,13 @@ export const InstantLessonOperationalModal: React.FC<InstantLessonOperationalMod
       etaMinutes={props.etaMinutes}
       onOpenNavigation={props.onOpenNavigation}
       onSetOnTheWay={props.onSetOnTheWay}
+      onMarkArrived={props.onMarkArrived}
+      isMarkingArrived={props.isMarkingArrived}
       onCheckIn={props.onCheckIn}
       onOpenChat={props.onOpenChat}
       isLoading={props.isLoading}
+      checkInWindowBeforeMinutes={props.checkInWindowBeforeMinutes}
+      instantLessonExpirationMinutes={props.instantLessonExpirationMinutes}
     />
   );
 };

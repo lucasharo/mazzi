@@ -27,7 +27,7 @@ function MetricCard({
   dark?: boolean;
 }) {
   return (
-    <div className={`p-4 rounded-2xl border shadow-xs ${dark ? 'bg-slate-950 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+    <div className={`p-4 rounded-2xl border shadow-xs ${dark ? 'bg-[var(--mazzi-dark)] border-[var(--mazzi-dark)] text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
       <div className="flex items-center justify-between gap-3">
         <span className={`text-[10px] font-black uppercase tracking-widest ${dark ? 'text-amber-400' : 'text-slate-500'}`}>
           {label}
@@ -57,9 +57,9 @@ function PeriodSelector({
           type="button"
           onClick={() => onChange(days)}
           disabled={isLoading}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-black transition ${
             period === days
-              ? 'bg-slate-950 text-white'
+              ? 'bg-[var(--mazzi-dark)] text-white'
               : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-950'
           }`}
         >
@@ -214,7 +214,7 @@ export const ProviderAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refr
       </div>
 
       {isLoading && <p className="text-xs font-bold text-slate-500">Carregando desempenho...</p>}
-      {error && <p className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">{error}</p>}
+      {error && <p className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-2xl p-3">{error}</p>}
 
       {summary && !isLoading && !error && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

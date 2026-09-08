@@ -51,7 +51,7 @@ export const UpcomingBookingCard: React.FC<UpcomingBookingCardProps> = ({ bookin
           {meetingPointText && <span className="block truncate text-[11px] font-semibold text-[var(--mazzi-muted)]">{meetingPointText}</span>}
         </span>
       </span>
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200" aria-hidden="true">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)] transition hover:bg-slate-200" aria-hidden="true">
         <ChevronRight className="h-5 w-5" />
       </span>
     </ButtonBase>
@@ -66,7 +66,7 @@ export const UpcomingBookingEmptyCard: React.FC<UpcomingBookingEmptyCardProps> =
   <section className="mazzi-card flex min-h-[68px] w-full items-center justify-between gap-3.5 p-3.5" aria-label="Próxima aula">
     <span className="flex min-w-0 items-center gap-3">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-muted)]">
-        <CalendarClock className="h-5 w-5" aria-hidden="true" />
+        <CalendarClock className="h-5 w-5 text-[var(--mazzi-dark)]" aria-hidden="true" />
       </span>
       <span className="min-w-0">
         <span className="mazzi-eyebrow block text-[9px] text-[var(--mazzi-muted)]">Próxima aula</span>

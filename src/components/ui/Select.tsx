@@ -142,7 +142,7 @@ export const Select: React.FC<SelectProps> = ({
                   aria-selected={isSelected}
                   disabled={option.disabled}
                   onClick={() => chooseOption(option)}
-                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors ${option.disabled ? 'cursor-not-allowed text-slate-300' : isSelected ? 'bg-[var(--mazzi-yellow-soft)] font-bold text-[var(--mazzi-text)]' : 'text-[var(--mazzi-text)] hover:bg-[var(--mazzi-yellow-hover)]'}`}
+                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left text-sm transition-colors ${option.disabled ? 'cursor-not-allowed text-slate-300' : isSelected ? 'bg-[var(--mazzi-yellow-soft)] font-bold text-[var(--mazzi-text)]' : 'text-[var(--mazzi-text)] hover:bg-[var(--mazzi-yellow-hover)]'}`}
                 >
                   <span className="min-w-0 truncate">{option.label}</span>
                   {isSelected && <Check className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}

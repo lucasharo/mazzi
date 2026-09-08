@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Search, Calendar as CalendarIcon, LayoutGrid, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, List, SlidersHorizontal, RefreshCw, Clock, History, Car, Phone, ShieldCheck, Lock, Mail, Camera } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, LayoutDashboard, User, UserPen, Pencil, UserRound, MessageSquare, Map as MapIcon, SlidersHorizontal, RefreshCw, Clock, History, Car, Phone, ShieldCheck, Lock, Mail, Camera, Eye, EyeOff } from 'lucide-react';
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { LessonWizardHeader } from '../../components/ui/LessonWizardHeader';
@@ -19,9 +19,11 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
 
-import { getBookingEndTimestamp, getStudentBookingSection, isBookingEnded, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { getBookingEndTimestamp, getEffectiveBookingHoldExpiresAt, getStudentBookingSection, isBookingEnded, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
 import { getInstantLessonAvailabilityNotice } from '../../domain/instant-lesson';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
+import { DEFAULT_PLATFORM_CONFIGURATION, toPublicPlatformConfiguration, type PublicPlatformConfiguration } from '../../domain/platform-config';
+import { needsMeetingPointAddress, resolveMeetingPointAddress } from '../../domain/maps/meeting-point-address';
 import { SearchHeader } from '../../components/search/SearchHeader';
 import { FilterDrawer } from '../../components/search/FilterDrawer';
 import { ProviderResultCard } from '../../components/search/ProviderResultCard';
@@ -45,9 +47,12 @@ import { formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
+import { ProfileAvatar } from '../../components/profile/ProfileAvatar';
 import { ProfileSectionHeader } from '../../components/profile/ProfileSectionHeader';
+import { ProfileDetailsCard } from '../../components/profile/ProfileDetailsCard';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
 import { maskCpf } from '../../utils/cpf';
+import { maskCpf as formatCpf } from '../../lib/input-masks';
 import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
 import { MaskedInput } from '../../components/ui/MaskedInput';
 import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTargetFromHash, useMobileAppRoute } from '../../lib/mobile-app-router';
@@ -261,7 +266,7 @@ const StudentStatsGrid: React.FC<{ stats: StudentDashboardStats }> = ({ stats })
             <p className="mazzi-eyebrow text-[9px] text-[var(--mazzi-muted)]">{item.label}</p>
             <p className="mt-0.5 text-[24px] font-black leading-none tracking-[-0.04em] text-[var(--mazzi-dark)] tabular-nums">{item.value}</p>
           </div>
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[var(--mazzi-surface-soft)] text-[var(--mazzi-dark)]">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-2xl bg-transparent text-[var(--mazzi-dark)]">
             {item.icon}
           </span>
         </Card>
@@ -280,6 +285,29 @@ export const StudentApp: React.FC = () => {
   const { user, logout } = useAuth();
   const isRealSupabase = !!((import.meta as any).env?.VITE_SUPABASE_URL && !(import.meta as any).env?.VITE_SUPABASE_URL.includes('placeholder'));
 
+  const [platformConfiguration, setPlatformConfiguration] = useState<PublicPlatformConfiguration | null>(
+    () => isRealSupabase ? null : toPublicPlatformConfiguration(DEFAULT_PLATFORM_CONFIGURATION),
+  );
+  const [platformConfigurationError, setPlatformConfigurationError] = useState(false);
+
+  useEffect(() => {
+    if (!isRealSupabase) return;
+    let active = true;
+    setPlatformConfiguration(null);
+    setPlatformConfigurationError(false);
+    void dbService.getPublicPlatformConfiguration()
+      .then((configuration) => {
+        if (active) setPlatformConfiguration(configuration);
+      })
+      .catch((error) => {
+        console.error('Failed to load public platform configuration:', error);
+        if (active) setPlatformConfigurationError(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isRealSupabase]);
+
   const [activeTab, setActiveTab] = useMobileAppRoute<StudentTab>('student', 'home', ['home', 'bookings', 'profile']);
   const [bookingFlowStep, setBookingFlowStep] = useState<StudentBookingFlowStep>('overview');
   const [bookingTab, setBookingTab] = useState<'confirmed' | 'today' | 'history'>('confirmed');
@@ -293,12 +321,14 @@ export const StudentApp: React.FC = () => {
   const [activeInstantLesson, setActiveInstantLesson] = useState<{ request: InstantLessonRequest; offer?: InstantLessonOffer } | null>(null);
   const [instantLessonTracking, setInstantLessonTracking] = useState<InstantLessonTracking | null>(null);
   const [instantLessonLoading, setInstantLessonLoading] = useState(false);
+  const [instantLessonStarting, setInstantLessonStarting] = useState(false);
   const activeInstantRequestInFlightRef = useRef<Promise<void> | null>(null);
   const instantRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const instantCheckoutOpeningRef = useRef<Promise<void> | null>(null);
   const instantPaymentBookingIdRef = useRef<string | null>(null);
   const instantReturnToMapBookingIdRef = useRef<string | null>(null);
   const instantRequestIdempotencyRef = useRef<string | null>(null);
+  const instantLessonStartRef = useRef<{ cancelled: boolean; completed: boolean; requestId?: string; cancelPromise?: Promise<void> } | null>(null);
   const [notificationToasts, setNotificationToasts] = useState<ToastMessage[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
   const [searchedLocation, setSearchedLocation] = useState<{ lat: number; lng: number; label?: string } | undefined>();
@@ -309,6 +339,7 @@ export const StudentApp: React.FC = () => {
   const [profileBirthDate, setProfileBirthDate] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [isStudentCpfVisible, setIsStudentCpfVisible] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
   const savedProfileAvatarRef = useRef<string | undefined>();
   const [bookingsLoading, setBookingsLoading] = useState(true);
@@ -330,9 +361,20 @@ export const StudentApp: React.FC = () => {
   const checkoutPaymentStatusInFlightRef = useRef<{ paymentId: string; promise: Promise<any> } | null>(null);
   const checkoutVerificationInFlightRef = useRef<{ key: string; promise: Promise<any> } | null>(null);
 
-  const openBookingSearch = () => {
+  const openBookingSearch = (instantLocation?: { address: string; coordinates: StudentLocation }) => {
+    setIsInstantLessonOpen(false);
     setBookingFlowStep('search');
     setActiveTab('bookings');
+    if (instantLocation) {
+      setSearchLocation(instantLocation.address);
+      setSearchedLocation({ ...instantLocation.coordinates, label: instantLocation.address });
+      setSearchRequest((previous) => ({
+        ...previous,
+        latitude: instantLocation.coordinates.lat,
+        longitude: instantLocation.coordinates.lng,
+        page: 1,
+      }));
+    }
   };
 
   const requestBookingsRefresh = useCallback((source: 'realtime' | 'manual' = 'manual') => {
@@ -391,7 +433,21 @@ export const StudentApp: React.FC = () => {
   }, []);
 
   const requestUserLocation = useCallback((): Promise<StudentLocation> => {
-    if (userLocation) return Promise.resolve(userLocation);
+    const hydrateCurrentLocationAddress = (location: StudentLocation) => {
+      void resolveMeetingPointAddress(location.lat, location.lng)
+        .then((address) => {
+          setSearchLocation((current) => needsMeetingPointAddress(current) ? address : current);
+          setSearchedLocation((current) => current?.label && !needsMeetingPointAddress(current.label)
+            ? current
+            : { ...location, label: address });
+        })
+        .catch(() => undefined);
+    };
+
+    if (userLocation) {
+      hydrateCurrentLocationAddress(userLocation);
+      return Promise.resolve(userLocation);
+    }
     if (locationRequestInFlightRef.current) return locationRequestInFlightRef.current;
     if (!navigator.geolocation) {
       setLocationStatus('UNAVAILABLE');
@@ -412,6 +468,7 @@ export const StudentApp: React.FC = () => {
     }).then((location) => {
       setUserLocation(location);
       setLocationStatus('RESOLVED');
+      hydrateCurrentLocationAddress(location);
       return location;
     }).catch((error) => {
       if (process.env.NODE_ENV !== 'production') {
@@ -460,7 +517,11 @@ export const StudentApp: React.FC = () => {
     if (activeInstantRequestInFlightRef.current) return activeInstantRequestInFlightRef.current;
     const request = dbService.getMyActiveInstantRequest()
       .then(async (active) => {
+        // Do not let a transient refresh result replace the request while the
+        // Aula Agora creation flow is still settling.
+        if (!active && instantLessonStartRef.current) return;
         setActiveInstantLesson(active);
+        if (active && instantLessonStartRef.current) setInstantLessonStarting(false);
         if (!active?.request.bookingId) {
           // A terminal/expired request must not be reused by the next search.
           // Keep the key only while the create/dispatch flow can still be
@@ -479,20 +540,32 @@ export const StudentApp: React.FC = () => {
           setInstantLessonTracking(null);
         }
       })
-      .catch(() => { setActiveInstantLesson(null); setInstantLessonTracking(null); })
+      .catch(() => {
+        if (instantLessonStartRef.current) return;
+        setActiveInstantLesson(null);
+        setInstantLessonTracking(null);
+      })
       .finally(() => { activeInstantRequestInFlightRef.current = null; });
     activeInstantRequestInFlightRef.current = request;
     return request;
   }, [openInstantBookingCheckout]);
 
-  const loadInstantPriceOptions = useCallback((params: { latitude: number; longitude: number; category: VehicleCategory; transmission: TransmissionType | 'ALL' }) => (
-    dbService.getInstantPriceOptions(params)
-  ), []);
+  const loadInstantPriceOptions = useCallback((params: { latitude: number; longitude: number; category: VehicleCategory; transmission: TransmissionType | 'ALL' }) => {
+    if (isRealSupabase && !platformConfiguration) {
+      return Promise.reject(new Error('PUBLIC_PLATFORM_CONFIGURATION_INVALID'));
+    }
+    return dbService.getInstantPriceOptions(params);
+  }, [isRealSupabase, platformConfiguration]);
 
   const refreshActiveInstantLesson = useCallback((): Promise<void> => {
+    // The start flow performs its own time-sensitive dispatch. A polling
+    // dispatch in parallel can make a valid request look terminal and briefly
+    // return the wizard to the user.
+    if (instantLessonStartRef.current) return Promise.resolve();
     if (instantRefreshInFlightRef.current) return instantRefreshInFlightRef.current;
     const request = (async () => {
       const active = await dbService.getMyActiveInstantRequest().catch(() => null);
+      if (instantLessonStartRef.current) return;
       if (active?.request.status === 'SEARCHING') {
         await dbService.dispatchInstantLessonRequest(active.request.id).catch(() => undefined);
       }
@@ -502,6 +575,20 @@ export const StudentApp: React.FC = () => {
     return request;
   }, [loadActiveInstantLesson]);
 
+  const cancelInstantLessonStart = useCallback((startFlow: { cancelled: boolean; completed: boolean; requestId?: string; cancelPromise?: Promise<void> }) => {
+    startFlow.cancelled = true;
+    if (!startFlow.requestId) return Promise.resolve();
+    if (!startFlow.cancelPromise) {
+      startFlow.cancelPromise = dbService.cancelInstantLessonRequest(startFlow.requestId)
+        .then(() => {
+          instantRequestIdempotencyRef.current = null;
+          setActiveInstantLesson(null);
+        })
+        .catch(() => undefined);
+    }
+    return startFlow.cancelPromise;
+  }, []);
+
   const handleStartInstantLesson = useCallback(async (params: {
     meetingPoint: StudentSavedAddress;
     latitude: number;
@@ -510,8 +597,14 @@ export const StudentApp: React.FC = () => {
     transmission: TransmissionType | 'ALL';
     maxPriceInCents: number | null;
   }): Promise<InstantLessonRequest> => {
+    const startFlow: { cancelled: boolean; completed: boolean; requestId?: string; cancelPromise?: Promise<void> } = { cancelled: false, completed: false };
+    instantLessonStartRef.current = startFlow;
+    setInstantLessonStarting(true);
     setInstantLessonLoading(true);
     try {
+      if (isRealSupabase && !platformConfiguration) {
+        throw new Error('PUBLIC_PLATFORM_CONFIGURATION_INVALID');
+      }
       // The price preview is time-sensitive because provider locations expire
       // quickly and dispatch applies the live schedule-conflict guard.
       const latestPriceOptions = await dbService.getInstantPriceOptions(params);
@@ -527,7 +620,16 @@ export const StudentApp: React.FC = () => {
       const idempotencyKey = instantRequestIdempotencyRef.current || crypto.randomUUID();
       instantRequestIdempotencyRef.current = idempotencyKey;
       const created = await dbService.createInstantLessonRequest({ ...params, idempotencyKey });
+      startFlow.requestId = created.requestId;
+      if (startFlow.cancelled) {
+        await cancelInstantLessonStart(startFlow);
+        throw new Error('INSTANT_SEARCH_CANCELLED');
+      }
       const dispatched = await dbService.dispatchInstantLessonRequest(created.requestId);
+      if (startFlow.cancelled) {
+        await cancelInstantLessonStart(startFlow);
+        throw new Error('INSTANT_SEARCH_CANCELLED');
+      }
       if (dispatched.status === 'FAILED' || dispatched.offersCreated < 1) {
         instantRequestIdempotencyRef.current = null;
         throw new Error('INSTANT_NO_PROFESSIONAL_AVAILABLE');
@@ -544,24 +646,46 @@ export const StudentApp: React.FC = () => {
         createdAt: new Date().toISOString(),
       };
       await loadActiveInstantLesson();
+      startFlow.completed = true;
       return nextRequest;
     } catch (error) {
+      // A dispatch can time out after the backend has already created the
+      // request. Re-read it before surfacing an error so the UI does not jump
+      // back to the wizard and then return to the search screen on polling.
+      if (!startFlow.cancelled && startFlow.requestId) {
+        const activeAfterFailure = await dbService.getMyActiveInstantRequest().catch(() => null);
+        if (activeAfterFailure?.request.id === startFlow.requestId
+          && (activeAfterFailure.request.status === 'SEARCHING' || activeAfterFailure.request.status === 'MATCHED')) {
+          await loadActiveInstantLesson();
+          startFlow.completed = true;
+          return activeAfterFailure.request;
+        }
+      }
       throw error;
     } finally {
+      if (instantLessonStartRef.current === startFlow) instantLessonStartRef.current = null;
+      if (!startFlow.completed) setInstantLessonStarting(false);
       setInstantLessonLoading(false);
     }
-  }, [loadActiveInstantLesson, user?.id]);
+  }, [cancelInstantLessonStart, isRealSupabase, loadActiveInstantLesson, platformConfiguration, user?.id]);
 
   const handleCancelInstantLesson = useCallback(async (requestId: string) => {
     setInstantLessonLoading(true);
     try {
       await dbService.cancelInstantLessonRequest(requestId);
       instantRequestIdempotencyRef.current = null;
+      setInstantLessonStarting(false);
       setActiveInstantLesson(null);
     } finally {
       setInstantLessonLoading(false);
     }
   }, []);
+
+  const handleCancelPendingInstantLesson = useCallback(() => {
+    const startFlow = instantLessonStartRef.current;
+    if (startFlow) void cancelInstantLessonStart(startFlow);
+    setInstantLessonStarting(false);
+  }, [cancelInstantLessonStart]);
 
   useEffect(() => {
     if (!isInstantLessonOpen) return undefined;
@@ -635,6 +759,11 @@ export const StudentApp: React.FC = () => {
     locationRequestStartedRef.current = true;
     void requestUserLocation().catch(() => undefined);
   }, [activeTab, bookingFlowStep, requestUserLocation]);
+
+  useEffect(() => {
+    if (!isInstantLessonOpen || activeInstantLesson) return;
+    void requestUserLocation().catch(() => undefined);
+  }, [activeInstantLesson, isInstantLessonOpen, requestUserLocation]);
 
   useEffect(() => {
     setProfileName(user?.name || '');
@@ -972,7 +1101,7 @@ export const StudentApp: React.FC = () => {
   const [searchRequest, setSearchRequest] = useState<SearchRequest>({
     latitude: undefined,
     longitude: undefined,
-    radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
+    radiusMeters: isRealSupabase ? undefined : DEFAULT_PLATFORM_CONFIGURATION.searchRadiusDefaultsKm * 1000,
     category: 'B',
     providerType: 'ALL',
     transmission: 'ALL',
@@ -1056,7 +1185,21 @@ function applyStrictProviderFilters(
   const [realSearchResponse, setRealSearchResponse] = useState<SearchResultResponse | null>(null);
 
   useEffect(() => {
+    if (!platformConfiguration) return;
+    const configuredRadiusMeters = platformConfiguration.searchRadiusDefaultsKm * 1000;
+    setSearchRequest((previous) => previous.radiusMeters === undefined || previous.radiusMeters === DEFAULT_SEARCH_RADIUS_METERS
+      ? { ...previous, radiusMeters: configuredRadiusMeters }
+      : previous);
+  }, [platformConfiguration]);
+
+  useEffect(() => {
     if (!isRealSupabase) return;
+
+    if (!platformConfiguration) {
+      setRealSearchResponse(null);
+      setSearchLoading(!platformConfigurationError);
+      return;
+    }
 
     const hasValidLocation =
       searchRequest.latitude !== undefined &&
@@ -1131,12 +1274,15 @@ function applyStrictProviderFilters(
     return () => {
       window.clearTimeout(timer);
     };
-  }, [isRealSupabase, searchRequest, searchRefreshKey, searchViewMode]);
+  }, [isRealSupabase, platformConfiguration, platformConfigurationError, searchRequest, searchRefreshKey, searchViewMode]);
 
+  const defaultSearchRadiusMeters = platformConfiguration?.searchRadiusDefaultsKm
+    ? platformConfiguration.searchRadiusDefaultsKm * 1000
+    : searchRequest.radiusMeters;
   const defaultSearchRequest: SearchRequest = {
     latitude: searchRequest.latitude,
     longitude: searchRequest.longitude,
-    radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
+    radiusMeters: defaultSearchRadiusMeters,
     category: 'B',
     providerType: 'ALL',
     transmission: 'ALL',
@@ -1145,6 +1291,7 @@ function applyStrictProviderFilters(
     limit: 10,
   };
   const additionalFilterCount = countAdditionalStudentFilters(searchRequest);
+  const isInitialLocationLoading = locationStatus === 'RESOLVING' || (Boolean(userLocation) && !searchLocation);
 
   useEffect(() => {
     const loc = searchedLocation || userLocation;
@@ -1259,6 +1406,23 @@ function applyStrictProviderFilters(
     setIsCheckoutOpen(false);
     setResumeBooking(null);
   };
+  const returnToInstantLessonWizard = () => {
+    instantRequestIdempotencyRef.current = null;
+    instantPaymentBookingIdRef.current = null;
+    setActiveInstantLesson(null);
+    setInstantLessonTracking(null);
+    setInstantLessonStarting(false);
+    setInstantLessonLoading(false);
+    setIsCheckoutOpen(false);
+    setResumeBooking(null);
+    setCheckoutProvider(null);
+    setCheckoutVehicle(null);
+    setCheckoutOffering(null);
+    setSelectedSlot(null);
+    setActiveTab('home');
+    setBookingFlowStep('overview');
+    setIsInstantLessonOpen(true);
+  };
   const backToBookingChoices = () => {
     if (!checkoutProvider) return;
     const contexts = filterBookingContextsByInstructor(bookingContextsForSelection, checkoutOffering?.instructorId);
@@ -1272,6 +1436,19 @@ function applyStrictProviderFilters(
       setInstructorChoices(groupBookingContextsByInstructor(bookingContextsForSelection));
       setInstructorPickerProvider(checkoutProvider);
     }
+  };
+  const backToBookingSearch = () => {
+    setIsSlotSelectorOpen(false);
+    setIsCheckoutOpen(false);
+    setSelectedSlot(null);
+    setCheckoutProvider(null);
+    setCheckoutVehicle(null);
+    setCheckoutOffering(null);
+    setOfferingPickerProvider(null);
+    setOfferingPickerSlot(null);
+    setBookingContextChoices([]);
+    setBookingFlowStep('search');
+    setActiveTab('bookings');
   };
 
   const handleOpenCheckoutByProviderId = async (providerId: string, _date?: string, slot?: any) => {
@@ -1423,7 +1600,8 @@ function applyStrictProviderFilters(
         if (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') return true;
 
         if (b.status === 'PENDING_PAYMENT') {
-          const holdValid = b.holdExpiresAt ? new Date(b.holdExpiresAt).getTime() > nowMs : true;
+          const effectiveHoldExpiresAt = getEffectiveBookingHoldExpiresAt(b, platformConfiguration?.instantLessonExpirationMinutes);
+          const holdValid = effectiveHoldExpiresAt ? new Date(effectiveHoldExpiresAt).getTime() > nowMs : true;
           return holdValid;
         }
 
@@ -1431,7 +1609,7 @@ function applyStrictProviderFilters(
       });
 
     return sortBookingsForNext(upcoming, nowMs);
-  }, [confirmedBookings, nowMs]);
+  }, [confirmedBookings, nowMs, platformConfiguration?.instantLessonExpirationMinutes]);
 
   const instantAvailabilityNotice = useMemo(
     () => getInstantLessonAvailabilityNotice(confirmedBookings, nowMs),
@@ -1677,7 +1855,7 @@ function applyStrictProviderFilters(
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Button type="button" variant="primary" size="sm" className="w-full" onClick={openBookingSearch} leftIcon={<Search className="h-4 w-4" aria-hidden="true" />}>
+                  <Button type="button" variant="primary" size="sm" className="w-full" onClick={() => openBookingSearch()} leftIcon={<Search className="h-4 w-4" aria-hidden="true" />}>
                     Buscar profissionais
                   </Button>
                 </div>
@@ -1735,6 +1913,7 @@ function applyStrictProviderFilters(
                   setSearchLocation('');
                   setSearchedLocation(undefined);
                 }}
+                isInitialLoading={isInitialLocationLoading}
               />
 
               <section aria-label="Quantidade de profissionais encontrados" className="mt-[10px]">
@@ -1748,31 +1927,11 @@ function applyStrictProviderFilters(
                     <ButtonBase
                       type="button"
                       onClick={() => setIsFilterDrawerOpen(true)}
-                      className="flex h-11 items-center gap-2 rounded-xl border border-[var(--mazzi-border)] bg-white px-3 text-xs font-bold shadow-xs cursor-pointer"
+                      className="flex h-11 items-center gap-2 rounded-2xl border border-[var(--mazzi-border)] bg-white px-3 text-xs font-bold shadow-xs cursor-pointer"
                     >
                       <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
                       Filtros{additionalFilterCount > 0 ? ` ${additionalFilterCount}` : ''}
                     </ButtonBase>
-                    <div aria-label="Modo de visualização" className="flex rounded-xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
-                      <ButtonBase
-                        type="button"
-                        aria-label="Exibir lista"
-                        aria-pressed={searchViewMode === 'list'}
-                        onClick={() => setSearchViewMode('list')}
-                        className={`grid h-9 w-9 place-items-center rounded-lg cursor-pointer ${searchViewMode === 'list' ? 'bg-white shadow-sm' : ''}`}
-                      >
-                        <List className="h-4 w-4" />
-                      </ButtonBase>
-                      <ButtonBase
-                        type="button"
-                        aria-label="Exibir mapa"
-                        aria-pressed={searchViewMode === 'map'}
-                        onClick={() => { setSearchViewMode('map'); setSearchRequest((previous) => ({ ...previous, page: 1 })); }}
-                        className={`grid h-9 w-9 place-items-center rounded-lg cursor-pointer ${searchViewMode === 'map' ? 'bg-white shadow-sm' : ''}`}
-                      >
-                        <MapIcon className="h-4 w-4" />
-                      </ButtonBase>
-                    </div>
                   </div>
                 </div>
               </section>
@@ -1787,7 +1946,6 @@ function applyStrictProviderFilters(
                 </div>
               )}
 
-              {/* List vs Map View */}
               {searchViewMode === 'map' ? (
                 <div className="space-y-3">
                   <MapView
@@ -1858,7 +2016,7 @@ function applyStrictProviderFilters(
                   setSearchRequest({
                     latitude: searchRequest.latitude,
                     longitude: searchRequest.longitude,
-                    radiusMeters: DEFAULT_SEARCH_RADIUS_METERS,
+                    radiusMeters: defaultSearchRadiusMeters,
                     category: 'B',
                     providerType: 'ALL',
                     transmission: 'ALL',
@@ -1869,6 +2027,7 @@ function applyStrictProviderFilters(
                     limit: 10,
                   })
                 }
+                defaultRadiusMeters={isRealSupabase ? defaultSearchRadiusMeters ?? null : defaultSearchRadiusMeters}
               />
 
               {/* Public Profile Modal */}
@@ -1902,25 +2061,6 @@ function applyStrictProviderFilters(
                 </ButtonBase>}
               />
 
-              <Card padding="sm" className="rounded-2xl shadow-xs" data-component="agenda-wizard-entry">
-                <p className="mazzi-eyebrow px-2 pt-1 text-[9px] text-[var(--mazzi-muted)]">Agendar uma aula</p>
-                <ButtonBase
-                  type="button"
-                  onClick={openBookingSearch}
-                  className="mt-1 flex min-h-16 w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-[var(--mazzi-surface-soft)] active:scale-[0.99]"
-                  aria-label="Buscar profissionais para agendar uma aula"
-                >
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-[var(--mazzi-dark)]">
-                    <Search className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-extrabold text-[var(--mazzi-dark)]">Buscar profissionais</span>
-                    <span className="mt-0.5 block text-xs font-medium leading-relaxed text-[var(--mazzi-muted)]">Escolha um profissional e encontre um horário disponível.</span>
-                  </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-[var(--mazzi-muted)]" aria-hidden="true" />
-                </ButtonBase>
-              </Card>
-
               {/* Filter Tabs */}
               <div role="tablist" aria-label="Aulas" className="grid grid-cols-3 gap-1 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-1">
                 <ButtonBase
@@ -1928,7 +2068,7 @@ function applyStrictProviderFilters(
                   aria-selected={bookingTab === 'confirmed'}
                   type="button"
                   onClick={() => selectBookingTab('confirmed')}
-                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
+                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-bold transition ${
                     bookingTab === 'confirmed'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
                       : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
@@ -1942,7 +2082,7 @@ function applyStrictProviderFilters(
                   aria-selected={bookingTab === 'today'}
                   type="button"
                   onClick={() => selectBookingTab('today')}
-                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
+                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-bold transition ${
                     bookingTab === 'today'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
                       : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
@@ -1956,7 +2096,7 @@ function applyStrictProviderFilters(
                   aria-selected={bookingTab === 'history'}
                   type="button"
                   onClick={() => selectBookingTab('history')}
-                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition ${
+                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-bold transition ${
                     bookingTab === 'history'
                       ? 'bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)] shadow-xs'
                       : 'text-slate-600 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/50 font-semibold'
@@ -2000,7 +2140,7 @@ function applyStrictProviderFilters(
                       description={bookingQuickFilter === 'all' ? 'Você não possui aulas confirmadas no momento.' : 'Tente selecionar outro filtro rápido.'}
                       actionLabel="Buscar aulas"
                       actionIcon={<Search className="h-4 w-4" aria-hidden="true" />}
-                      onAction={openBookingSearch}
+                      onAction={() => openBookingSearch()}
                     />
                   ) : (
                     filteredUpcomingBookings.map((b) => (
@@ -2074,21 +2214,12 @@ function applyStrictProviderFilters(
               />
 
               <div className="text-center pt-2">
-                <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] bg-[var(--mazzi-yellow)] text-2xl font-bold border border-[var(--mazzi-border)]">
-                  {profileAvatar ? (
-                    <img src={profileAvatar} alt="Foto do perfil" className="h-full w-full object-cover" />
-                  ) : user?.name ? (
-                    user.name.split(' ').map((name) => name[0]).join('').slice(0, 2).toUpperCase()
-                  ) : (
-                    'AN'
-                  )}
-                </div>
+                <ProfileAvatar name={profileName || user?.name || 'Aluno'} imageUrl={profileAvatar} size="xl" className="mx-auto h-24 w-24 text-2xl" />
                 <h3 className="mt-4 truncate text-2xl font-bold text-[var(--mazzi-dark)]">{profileName || user?.name || 'Nome não informado'}</h3>
                 <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{user?.email || 'E-mail não informado'}</p>
               </div>
 
-              <div className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
-                <h4 className="text-sm font-bold text-[var(--mazzi-dark)]">Dados do perfil</h4>
+              <ProfileDetailsCard>
                 {isEditingProfile ? (
                   <Modal
                     isOpen={isEditingProfile}
@@ -2136,7 +2267,7 @@ function applyStrictProviderFilters(
                             value={profileName}
                             onChange={(event) => setProfileName(event.target.value)}
                             disabled={profileSaving}
-                            className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition shadow-2xs"
+                            className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition shadow-2xs"
                             placeholder="Seu nome completo"
                           />
                         </div>
@@ -2153,7 +2284,7 @@ function applyStrictProviderFilters(
                               onChange={setProfilePhone}
                               placeholder="(11) 99999-9999"
                               disabled={profileSaving}
-                              className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition shadow-2xs"
+                              className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition shadow-2xs"
                             />
                           </div>
 
@@ -2167,7 +2298,7 @@ function applyStrictProviderFilters(
                               onChange={(event) => setProfileBirthDate(formatDateMask(event.target.value))}
                               placeholder="DD/MM/AAAA"
                               disabled={profileSaving}
-                              className="w-full min-h-11 rounded-xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition shadow-2xs"
+                              className="w-full min-h-11 rounded-2xl border border-[var(--mazzi-border)] bg-white px-3.5 py-2.5 text-sm font-semibold text-[var(--mazzi-dark)] focus:border-[var(--mazzi-yellow)] focus:outline-none focus:ring-2 focus:ring-[var(--mazzi-focus-glow)] transition shadow-2xs"
                             />
                           </div>
                         </div>
@@ -2187,13 +2318,25 @@ function applyStrictProviderFilters(
                             <label className="mazzi-field-label mb-1.5 block" htmlFor="student-profile-cpf">
                               CPF
                             </label>
-                            <Input
-                              id="student-profile-cpf"
-                              value={maskCpf(user?.cpf)}
-                              readOnly
-                              aria-readonly="true"
-                              className="w-full min-h-11 rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2.5 text-sm font-mono text-slate-600 cursor-not-allowed shadow-2xs"
-                            />
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id="student-profile-cpf"
+                                value={isStudentCpfVisible ? formatCpf(user?.cpf || '') : maskCpf(user?.cpf)}
+                                readOnly
+                                aria-readonly="true"
+                                className="w-full min-h-11 rounded-2xl border border-slate-200 bg-white/90 px-3.5 py-2.5 text-sm font-mono text-slate-600 cursor-not-allowed shadow-2xs"
+                              />
+                              {user?.cpf && <ButtonBase
+                                type="button"
+                                onClick={() => setIsStudentCpfVisible((visible) => !visible)}
+                                aria-label={isStudentCpfVisible ? 'Ocultar CPF' : 'Visualizar CPF'}
+                                aria-pressed={isStudentCpfVisible}
+                                title={isStudentCpfVisible ? 'Ocultar CPF' : 'Visualizar CPF'}
+                                className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-surface-soft)] text-slate-600 transition-colors duration-200 ease-out hover:text-[var(--mazzi-dark)] focus-visible:ring-2 focus-visible:ring-[var(--mazzi-focus-glow)]"
+                              >
+                                {isStudentCpfVisible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                              </ButtonBase>}
+                            </div>
                             <p className="mt-1 text-[10px] text-slate-400 font-medium">
                               CPF não pode ser alterado pelo aplicativo.
                             </p>
@@ -2208,7 +2351,7 @@ function applyStrictProviderFilters(
                               value={user?.email || ''}
                               readOnly
                               aria-readonly="true"
-                              className="w-full min-h-11 rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2.5 text-sm text-slate-600 cursor-not-allowed shadow-2xs"
+                              className="w-full min-h-11 rounded-2xl border border-slate-200 bg-white/90 px-3.5 py-2.5 text-sm text-slate-600 cursor-not-allowed shadow-2xs"
                             />
                             <p className="mt-1 text-[10px] text-slate-400 font-medium">
                               E-mail utilizado para acesso.
@@ -2218,25 +2361,37 @@ function applyStrictProviderFilters(
                       </div>
 
                       {profileError && (
-                        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
+                        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
                           {profileError}
                         </div>
                       )}
                     </div>
                   </Modal>
                 ) : (
-                  <dl className="mt-4 space-y-3 text-sm">
+                  <dl>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-slate-500">Telefone</dt>
-                      <dd className="font-semibold text-[var(--mazzi-text)]">{profilePhone || 'Não informado'}</dd>
+                      <dt className="text-slate-500">CPF</dt>
+                      <dd className="relative pr-9 font-mono font-semibold text-[var(--mazzi-text)]">
+                        <span>{isStudentCpfVisible ? formatCpf(user?.cpf || '') : maskCpf(user?.cpf)}</span>
+                        {user?.cpf && <ButtonBase
+                          type="button"
+                          onClick={() => setIsStudentCpfVisible((visible) => !visible)}
+                          aria-label={isStudentCpfVisible ? 'Ocultar CPF' : 'Visualizar CPF'}
+                          aria-pressed={isStudentCpfVisible}
+                          title={isStudentCpfVisible ? 'Ocultar CPF' : 'Visualizar CPF'}
+                          className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-2xl bg-white text-slate-500 transition-colors duration-200 ease-out hover:bg-[var(--mazzi-surface-soft)] hover:text-[var(--mazzi-dark)] focus-visible:ring-2 focus-visible:ring-[var(--mazzi-focus-glow)]"
+                        >
+                          {isStudentCpfVisible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                        </ButtonBase>}
+                      </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-slate-500">E-mail</dt>
                       <dd className="truncate font-semibold text-[var(--mazzi-text)]">{user?.email || 'Não informado'}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="text-slate-500">CPF</dt>
-                      <dd className="font-mono font-semibold text-[var(--mazzi-text)]">{maskCpf(user?.cpf)}</dd>
+                      <dt className="text-slate-500">Telefone</dt>
+                      <dd className="font-semibold text-[var(--mazzi-text)]">{profilePhone || 'Não informado'}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-slate-500">Data de nascimento</dt>
@@ -2244,7 +2399,7 @@ function applyStrictProviderFilters(
                     </div>
                   </dl>
                 )}
-              </div>
+              </ProfileDetailsCard>
 
               <div className="mazzi-hero text-left">
                 <div className="p-5">
@@ -2279,7 +2434,7 @@ function applyStrictProviderFilters(
           ariaLabel="Navegação principal"
           activeId={navigationTab}
           items={[
-            { id: 'home', label: 'Início', icon: <LayoutGrid className="w-5 h-5" /> },
+            { id: 'home', label: 'Início', icon: <LayoutDashboard className="w-5 h-5" /> },
             { id: 'bookings', label: 'Aulas', icon: <CalendarIcon className="w-5 h-5" /> },
             { id: 'profile', label: 'Perfil', icon: <User className="w-5 h-5" /> },
           ]}
@@ -2300,11 +2455,14 @@ function applyStrictProviderFilters(
       <InstantLessonModal
         isOpen={isInstantLessonOpen}
         onClose={closeStudentWizard}
+        onScheduleLesson={openBookingSearch}
         location={userLocation}
         locationLabel={searchLocation || 'Minha localização atual'}
         onRequestLocation={requestUserLocation}
         onLoadPriceOptions={loadInstantPriceOptions}
         onStart={handleStartInstantLesson}
+        onCancelPendingSearch={handleCancelPendingInstantLesson}
+        isStarting={instantLessonStarting}
         activeRequest={activeInstantLesson}
         bookingStatus={confirmedBookings.find((booking) => booking.id === activeInstantLesson?.request.bookingId)?.status}
         booking={confirmedBookings.find((booking) => booking.id === activeInstantLesson?.request.bookingId)}
@@ -2322,6 +2480,9 @@ function applyStrictProviderFilters(
         onPayBooking={(bookingId) => { void openInstantBookingCheckout(bookingId); }}
         onCancelRequest={handleCancelInstantLesson}
         isLoading={instantLessonLoading}
+        isInitialLocationLoading={isInitialLocationLoading}
+        checkInWindowBeforeMinutes={isRealSupabase ? platformConfiguration?.checkInWindowBeforeMinutes ?? null : platformConfiguration?.checkInWindowBeforeMinutes}
+        instantLessonExpirationMinutes={platformConfiguration?.instantLessonExpirationMinutes}
       />
 
       {/* Booking Details Modal */}
@@ -2355,6 +2516,8 @@ function applyStrictProviderFilters(
           setSelectedBookingForDetails(updatedBooking);
           return updatedBooking;
         }}
+        checkInWindowBeforeMinutes={isRealSupabase ? platformConfiguration?.checkInWindowBeforeMinutes ?? null : platformConfiguration?.checkInWindowBeforeMinutes}
+        instantLessonExpirationMinutes={platformConfiguration?.instantLessonExpirationMinutes}
       />
 
       <Modal
@@ -2488,7 +2651,7 @@ function applyStrictProviderFilters(
       {isSlotSelectorOpen && checkoutOffering && (
         <SlotSelectorModal
           wizardHeader={<LessonWizardHeader steps={bookingWizardStepsWithSearch} current="Horário" title="Quando será sua aula?" onClose={closeStudentWizard} />}
-          onBack={bookingWizardSteps.length > 2 ? backToBookingChoices : closeBookingWizard}
+          onBack={bookingWizardSteps.length > 2 ? backToBookingChoices : backToBookingSearch}
           backLabel="Voltar"
           isOpen={isSlotSelectorOpen}
           onClose={() => setIsSlotSelectorOpen(false)}
@@ -2499,6 +2662,8 @@ function applyStrictProviderFilters(
           priceInCents={checkoutOffering.priceInCents}
           transmission={checkoutOffering.transmission}
           existingBookings={confirmedBookings}
+          bookingHorizonDays={platformConfiguration?.availabilityHorizonDays}
+          minimumBookingNoticeHours={platformConfiguration?.minimumBookingNoticeHours}
           onSelect={(slot) => {
             setSelectedSlot(slot);
             setIsSlotSelectorOpen(false);
@@ -2524,12 +2689,14 @@ function applyStrictProviderFilters(
           scheduledStartAt={selectedSlot?.slot_start_at || resumeBooking?.scheduledStartAt}
           existingBookings={confirmedBookings}
           resumeBooking={resumeBooking}
+          platformConfiguration={platformConfiguration}
           onChooseAnotherSlot={() => {
             setIsCheckoutOpen(false);
             setResumeBooking(null);
             setSelectedSlot(null);
             setIsSlotSelectorOpen(true);
           }}
+          onReturnToInstantWizard={resumeBooking?.snapshot?.source === 'AULA_AGORA' ? returnToInstantLessonWizard : undefined}
           onBookingCancelled={() => {
             setBookingsRefreshKey((k) => k + 1);
           }}
@@ -2572,6 +2739,14 @@ function applyStrictProviderFilters(
             setBookingsRefreshKey((value) => value + 1);
             setBookingFlowStep('overview');
             setActiveTab('bookings');
+          }}
+          onViewBooking={(booking) => {
+            stripeCheckoutFlowActiveRef.current = false;
+            clearStripeCheckoutReturnParams();
+            setStripeCheckoutReturn(null);
+            setBookingFlowStep('overview');
+            setActiveTab('bookings');
+            setSelectedBookingForDetails(booking);
           }}
           onBackToSearch={() => {
             stripeCheckoutFlowActiveRef.current = false;

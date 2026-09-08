@@ -48,7 +48,7 @@ export const Calendar: React.FC<CalendarProps> = ({
               key={item.dateStr}
               disabled={!item.isAvailable}
               onClick={() => onSelectDate(item.dateStr)}
-              className={`flex-shrink-0 flex flex-col items-center justify-center w-14 h-18 rounded-2xl border transition-all text-center p-2 focus:outline-none cursor-pointer ${
+              className={`flex-shrink-0 flex flex-col items-center justify-center w-14 h-18 rounded-md border transition-all text-center p-2 focus:outline-none cursor-pointer ${
                 isSelected
                   ? 'bg-amber-400 border-amber-400 text-slate-950 shadow-sm ring-2 ring-amber-400/40 font-extrabold scale-102'
                   : item.isAvailable
