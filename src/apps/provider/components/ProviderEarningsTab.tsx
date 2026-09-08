@@ -15,8 +15,8 @@ import { dbService } from '../../../lib/db-service';
 import { invalidateProviderEarningsQueries, serverState } from '../../../lib/server-state';
 import { formatCentsToBRL } from '../../../domain/money';
 import { formatDateBR } from '../../../lib/date-format';
-import { buildProviderEarningsInsights, PROVIDER_INSIGHTS_MINIMUM_STUDENTS } from '../../../domain/provider-earnings';
-import type { ProviderEarningsPeriodPreset, ProviderEarningsSummary } from '../../../types';
+import { buildProviderEarningsInsights, canShowProviderRating, PROVIDER_INSIGHTS_MINIMUM_STUDENTS, PROVIDER_RATING_MINIMUM_STUDENTS } from '../../../domain/provider-earnings';
+import type { ProviderEarningsPeriodPreset, ProviderEarningsReviews, ProviderEarningsSummary } from '../../../types';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { Badge } from '../../../components/ui/Badge';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -174,6 +174,8 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
 function ReviewsCard({ summary }: { summary: ProviderEarningsSummary }) {
   const insights = buildProviderEarningsInsights(summary.reviews);
   const overall = summary.reviews.rating_overall;
+  const ratingUnlocked = canShowProviderRating(summary.reviews.distinct_students_count);
+  const canRenderRating = ratingUnlocked && overall != null;
   return (
     <section className="mazzi-compact-card rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-earnings-reviews-title">
       <div className="flex items-start justify-between gap-3">
@@ -183,10 +185,12 @@ function ReviewsCard({ summary }: { summary: ProviderEarningsSummary }) {
           </h2>
           <p className="mt-1 text-xs font-medium text-slate-500">Dados reais das avaliações recebidas.</p>
         </div>
-        {overall == null ? <Badge variant="default">Sem avaliações</Badge> : <Badge variant="success">{overall.toFixed(1)} / 5</Badge>}
+        {canRenderRating ? <Badge variant="success">{overall.toFixed(1)} / 5</Badge> : <Badge variant="default">Nota em formação</Badge>}
       </div>
 
-      {overall == null ? (
+      {!ratingUnlocked ? (
+        <p className="mazzi-compact-card mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">A nota ficará disponível após avaliações de {PROVIDER_RATING_MINIMUM_STUDENTS} alunos diferentes.</p>
+      ) : overall == null ? (
         <p className="mazzi-compact-card mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Você ainda não recebeu avaliações.</p>
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
@@ -326,19 +330,20 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
   );
 };
 
-export const ProviderEarningsDashboardCard: React.FC<{ onNavigate: () => void; refreshKey?: number; providerId?: string; userId?: string }> = ({ onNavigate, refreshKey = 0, providerId, userId }) => {
+export const ProviderEarningsDashboardCard: React.FC<{ onNavigate: () => void; refreshKey?: number; providerId?: string; userId?: string; onReviewsLoaded?: (reviews: ProviderEarningsReviews | null) => void }> = ({ onNavigate, refreshKey = 0, providerId, userId, onReviewsLoaded }) => {
   const [summary, setSummary] = useState<ProviderEarningsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
+    onReviewsLoaded?.(null);
     setIsLoading(true);
     (providerId && userId
       ? serverState.getProviderEarnings({ providerId, userId, period: 30 })
       : dbService.getProviderEarningsSummary(30)
-    ).then((data) => { if (active) setSummary(data); }).catch(() => { if (active) setSummary(null); }).finally(() => { if (active) setIsLoading(false); });
+    ).then((data) => { if (active) { setSummary(data); onReviewsLoaded?.(data.reviews); } }).catch(() => { if (active) { setSummary(null); onReviewsLoaded?.(null); } }).finally(() => { if (active) setIsLoading(false); });
     return () => { active = false; };
-  }, [providerId, refreshKey, userId]);
+  }, [onReviewsLoaded, providerId, refreshKey, userId]);
 
   return (
     <section className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50/70 p-5 shadow-2xs" aria-labelledby="provider-dashboard-earnings-title">

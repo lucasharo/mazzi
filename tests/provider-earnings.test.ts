@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ProviderBottomNav } from '../src/apps/provider/components/ProviderBottomNav';
 import { ProviderEarningsTab } from '../src/apps/provider/components/ProviderEarningsTab';
-import { buildProviderEarningsInsights } from '../src/domain/provider-earnings';
+import { buildProviderEarningsInsights, canShowProviderRating } from '../src/domain/provider-earnings';
 import { dbService } from '../src/lib/db-service';
 
 afterEach(cleanup);
@@ -58,6 +58,25 @@ describe('PRO Ganhos — navigation and deterministic insights', () => {
     expect(unlocked.isUnlocked).toBe(true);
     expect(unlocked.strongest).toEqual(['Didática']);
     expect(unlocked.weakest).toEqual(['Pontualidade']);
+  });
+
+  it('does not expose the PRO rating before 10 distinct students', () => {
+    expect(canShowProviderRating(9)).toBe(false);
+    expect(canShowProviderRating(10)).toBe(true);
+  });
+
+  it('hides the rating and dimensions in Ganhos until 10 distinct students', async () => {
+    const getSummary = vi.spyOn(dbService, 'getProviderEarningsSummary').mockResolvedValue({
+      ...earningsSummary,
+      reviews: reviews(9),
+    });
+
+    render(React.createElement(ProviderEarningsTab));
+
+    await screen.findByText('Nota em formação');
+    expect(screen.queryByText('4.5 / 5')).toBeNull();
+    expect(screen.getByText('A nota ficará disponível após avaliações de 10 alunos diferentes.')).toBeTruthy();
+    expect(getSummary).toHaveBeenCalledWith(30);
   });
 
   it('ignores null dimensions and resolves ties in a stable order', () => {

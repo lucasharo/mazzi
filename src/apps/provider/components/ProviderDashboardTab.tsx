@@ -15,6 +15,8 @@ import { UpcomingBookingCard, UpcomingBookingEmptyCard } from '../../../componen
 import { ProviderInstantLessonSummaryCard } from './ProviderInstantLessonSummaryCard';
 import { getInstantLessonAvailabilityNotice } from '../../../domain/instant-lesson';
 import { isProviderPaymentAccountReady } from '../../../domain/payments/provider-payment-readiness';
+import { canShowProviderRating } from '../../../domain/provider-earnings';
+import type { ProviderEarningsReviews } from '../../../types';
 
 interface ProviderDashboardTabProps {
   currentProvider: Provider;
@@ -78,6 +80,8 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
 }) => {
   const [selectedInvitation, setSelectedInvitation] = React.useState<typeof schoolInvitations[number] | null>(null);
   const [invitationAction, setInvitationAction] = React.useState<'ACCEPT' | 'DECLINE' | null>(null);
+  const [providerReviews, setProviderReviews] = React.useState<ProviderEarningsReviews | null>(null);
+  const canRenderProfileRating = Boolean(providerReviews && canShowProviderRating(providerReviews.distinct_students_count) && providerReviews.rating_overall != null);
   const complianceEligibility = evaluateProviderEligibility(currentProvider, providerDocs);
   const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility, providerDocs);
   const instantAvailabilityNotice = getInstantLessonAvailabilityNotice(bookings || confirmedBookings, nowMs);
@@ -189,12 +193,14 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           </section>
 
           {/* O PRO mantém a avaliação, fora do resumo operacional. */}
-          <section className="flex min-h-[68px] items-center justify-between rounded-2xl border border-[var(--mazzi-dark)] bg-[var(--mazzi-dark)] px-4 py-3 text-white shadow-xs" aria-label="Avaliação do perfil">
-            <span className="mazzi-eyebrow text-[9px] text-[var(--mazzi-yellow)]">Avaliação do Perfil:</span>
-            <span className="flex items-center gap-1 text-xl font-black"><Star className="h-4 w-4 fill-[var(--mazzi-yellow)] text-[var(--mazzi-yellow)]" />{currentProvider.ratingAverage?.toFixed(1) || '5.0'}</span>
-          </section>
+           <section className="flex min-h-[68px] items-center justify-between rounded-2xl border border-[var(--mazzi-dark)] bg-[var(--mazzi-dark)] px-4 py-3 text-white shadow-xs" aria-label="Avaliação do perfil">
+             <span className="mazzi-eyebrow text-[9px] text-[var(--mazzi-yellow)]">Avaliação do Perfil:</span>
+             {canRenderProfileRating ? (
+               <span className="flex items-center gap-1 text-xl font-black"><Star className="h-4 w-4 fill-[var(--mazzi-yellow)] text-[var(--mazzi-yellow)]" />{providerReviews?.rating_overall?.toFixed(1)}</span>
+             ) : <span className="text-xs font-bold text-slate-300">Em formação</span>}
+           </section>
 
-          <ProviderEarningsDashboardCard onNavigate={() => onNavigateTab('earnings')} refreshKey={isRefreshing ? 1 : 0} providerId={currentProvider.id} userId={currentUserId} />
+           <ProviderEarningsDashboardCard onNavigate={() => onNavigateTab('earnings')} refreshKey={isRefreshing ? 1 : 0} providerId={currentProvider.id} userId={currentUserId} onReviewsLoaded={setProviderReviews} />
         </>
       )}
 
@@ -205,7 +211,7 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
           </span>
           <p className="text-lg font-black text-white flex items-center gap-1">
             <Star className="w-4 h-4 fill-[#f6c945] text-[#f6c945]" />
-            {currentProvider.ratingAverage?.toFixed(1) || '5.0'}
+             {canRenderProfileRating ? providerReviews?.rating_overall?.toFixed(1) : 'Em formação'}
           </p>
         </div>
       )}

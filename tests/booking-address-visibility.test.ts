@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Booking } from '../src/types';
 import { getBookingAddressVisibility } from '../src/domain/booking-address-visibility';
-import { getStudentBookingMeetingPointText } from '../src/lib/booking-meeting-point-display';
+import { getProviderBookingMeetingPointText, getStudentBookingMeetingPointText } from '../src/lib/booking-meeting-point-display';
 
 function makeBooking(overrides: Partial<Booking> = {}): Booking {
   return {
@@ -72,5 +72,20 @@ describe('student booking address visibility', () => {
       .toBe(false);
     expect(getStudentBookingMeetingPointText(booking, undefined, Date.parse('2026-09-08T17:30:00.000Z')))
       .toBe('Rua do Aluno, 200');
+  });
+
+  it('hides a student address from the PRO card until displacement starts', () => {
+    const booking = makeBooking({
+      meetingPoint: 'Rua do Aluno, 200',
+      fullMeetingPoint: 'Rua do Aluno, 200',
+      snapshot: {
+        ...makeBooking().snapshot,
+        meetingPoint: { type: 'STUDENT_ADDRESS', address: 'Rua do Aluno, 200' },
+      },
+    });
+
+    expect(getProviderBookingMeetingPointText(booking)).toBe('Endereço estará disponível quando você clicar em “Estou a caminho”.');
+    expect(getProviderBookingMeetingPointText(booking)).not.toContain('Rua do Aluno');
+    expect(getProviderBookingMeetingPointText({ ...booking, providerOnTheWayAt: '2026-09-08T18:00:00.000Z' })).toBe('Rua do Aluno, 200');
   });
 });

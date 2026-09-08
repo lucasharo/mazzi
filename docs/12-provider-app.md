@@ -36,7 +36,7 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 ### 1.1 Ganhos e desempenho
 - A área **Ganhos** usa a RPC financeira dedicada e a tabela canônica `payouts`.
 - Exibe ganhos líquidos, recebido, a receber, bloqueado, próximos repasses, evolução, aulas concluídas e ticket médio líquido.
-- Avaliações usam dados reais de `reviews`; insights detalhados só aparecem após 30 alunos distintos avaliados.
+- Avaliações usam dados reais de `reviews`; a nota do PRO só aparece após 10 alunos distintos avaliados e insights detalhados só aparecem após 30 alunos distintos avaliados.
 - A autorização é derivada da sessão: instrutor próprio com `provider.finance.read_own` ou autoescola autorizada com `school.finance.read`.
 
 ### 2. Dashboard da Autoescola (CFC)

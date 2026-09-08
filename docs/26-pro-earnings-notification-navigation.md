@@ -11,7 +11,7 @@ O relatório do PRO chama exclusivamente `public.get_provider_earnings_summary`.
 - `failed_cents`: `FAILED`, separado como atenção;
 - série diária: `net_earned_cents`, com cortes em `America/Sao_Paulo`;
 - repasses futuros: `scheduled_release_at`, sem incluir bloqueados na previsão normal;
-- avaliações: fonte real `reviews`; o limite é `COUNT(DISTINCT student_id) >= 30`.
+- avaliações: fonte real `reviews`; a nota do PRO exige `COUNT(DISTINCT student_id) >= 10` e os insights detalhados exigem `COUNT(DISTINCT student_id) >= 30`.
 
 Os períodos suportados são 7, 14 e 30 dias, com 30 dias inicialmente selecionado. Sem reviews reais, a tela mostra estado vazio e nunca uma nota artificial.
 

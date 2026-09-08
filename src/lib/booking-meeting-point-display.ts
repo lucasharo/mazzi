@@ -28,3 +28,31 @@ export function getStudentBookingMeetingPointText(
       : '')
     || fallback;
 }
+
+export function getProviderBookingMeetingPointText(
+  booking: Booking,
+  fallback = 'Ponto de encontro indicado no mapa',
+): string {
+  const meetingPoints = [booking.meetingPoint, booking.snapshot?.meetingPoint];
+  const isProviderAddress = meetingPoints.some((value) => (
+    typeof value === 'object'
+      && value !== null
+      && (value as { type?: string }).type === 'PROVIDER_ADDRESS'
+  ));
+  const providerOnTheWayAt = booking.providerOnTheWayAt
+    || booking.snapshot?.provider_on_the_way_at
+    || (booking.snapshot as { providerOnTheWayAt?: string } | undefined)?.providerOnTheWayAt;
+  const canShowAddress = isProviderAddress || Boolean(providerOnTheWayAt) || booking.status === 'COMPLETED';
+
+  if (!canShowAddress) return 'Endereço estará disponível quando você clicar em “Estou a caminho”.';
+  if (booking.status === 'PENDING_PAYMENT') {
+    return formatPendingPaymentMeetingPoint(booking.meetingPoint || booking.snapshot?.meetingPoint || booking.fullMeetingPoint);
+  }
+
+  return formatMeetingPoint(booking.meetingPoint)
+    || formatMeetingPoint(booking.snapshot?.meetingPoint)
+    || (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint)
+      ? booking.fullMeetingPoint
+      : '')
+    || fallback;
+}

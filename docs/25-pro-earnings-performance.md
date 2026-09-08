@@ -31,4 +31,4 @@ A bottom navigation do PRO é: `Início`, `Agenda`, `Aulas`, `Ganhos` e `Gestão
 
 ## Avaliações e insights
 
-As avaliações são lidas de `reviews`. A nota geral e as dimensões reais são mostradas sem nota fictícia. Insights detalhados só desbloqueiam quando `COUNT(DISTINCT student_id) >= 30`; com menos alunos a tela mostra o progresso. A interpretação é determinística e local, sem LLM ou resumo gerado por IA.
+As avaliações são lidas de `reviews`. A nota geral e as dimensões reais são mostradas sem nota fictícia somente quando `COUNT(DISTINCT student_id) >= 10`; abaixo disso a tela mantém a nota em formação. Insights detalhados só desbloqueiam quando `COUNT(DISTINCT student_id) >= 30`; com menos alunos a tela mostra o progresso. A interpretação é determinística e local, sem LLM ou resumo gerado por IA.

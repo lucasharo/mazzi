@@ -1,6 +1,11 @@
 import type { ProviderEarningsReviews, ProviderReviewDimension } from '../types';
 
 export const PROVIDER_INSIGHTS_MINIMUM_STUDENTS = 30;
+export const PROVIDER_RATING_MINIMUM_STUDENTS = 10;
+
+export function canShowProviderRating(distinctStudents: number): boolean {
+  return Math.max(0, Math.trunc(distinctStudents || 0)) >= PROVIDER_RATING_MINIMUM_STUDENTS;
+}
 
 const DIMENSION_LABELS: Record<ProviderReviewDimension, string> = {
   didactics: 'Didática',
