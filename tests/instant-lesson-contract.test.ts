@@ -69,7 +69,7 @@ describe('TASK-089 Aula Agora persistence contract', () => {
   it('removes student maps after the lesson starts', () => {
     expect(studentBookingDetails).toContain("const isLessonStarted = booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);");
     expect(studentBookingDetails).toContain('!isLessonStarted && isProviderOnTheWay');
-    expect(studentBookingDetails).toContain('{!isLessonStarted && !isPendingPayment && visibleMapPoint');
+    expect(studentBookingDetails).toContain('{!completedMapOnly && !isLessonStarted && !isPendingPayment && visibleMapPoint');
     expect(instantModal).toContain("const isLessonStarted = bookingStatus === 'IN_PROGRESS' || booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);");
     expect(instantModal).toContain('const showTrackingMap = !isLessonStarted');
   });
@@ -97,7 +97,7 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(studentBookingDetails).toContain('&& isProviderAddress');
     expect(studentBookingDetails).toContain('&& !isAddressReleaseWindowOpen;');
     expect(studentBookingDetails).not.toContain('O endereço e o mapa serão liberados quando o instrutor clicar em');
-    expect(studentBookingDetails).toContain('meetingPoint={visibleMeetingPoint}');
+    expect(studentBookingDetails).toContain("meetingPoint={completedMapOnly ? '' : visibleMeetingPoint}");
     expect(studentBookingDetails).toContain('meetingPointNotice={meetingPointNotice}');
     expect(studentBookingDetails).toContain('visibleMapPoint');
     expect(studentBookingDetails).toContain('showNavigation={isProviderAddress && !shouldHideProviderLocation && Boolean(mapPoint)}');

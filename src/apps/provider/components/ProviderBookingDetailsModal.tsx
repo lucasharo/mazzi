@@ -200,6 +200,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const mapPoint = hasExactMeetingPoint
     ? { lat: latitude, lng: longitude, title: meetingPointText }
     : undefined;
+  const completedMapOnly = isCompleted && Boolean(mapPoint);
   const lessonStart = booking.lessonStartedAt || '';
   const lessonEnd = booking.lessonFinishedAt || '';
   const durationLabel = booking.status === 'COMPLETED' && lessonStart && lessonEnd
@@ -566,17 +567,20 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
               : `Horário: ${booking.startTime} às ${booking.endTime}`}
             durationLabel={durationLabel}
-            meetingPoint={canShowMeetingPoint ? meetingPointText : ''}
+            meetingPoint={completedMapOnly ? '' : canShowMeetingPoint ? meetingPointText : ''}
             meetingPointNotice={meetingPointNotice}
-            isProviderAddress={isProviderMeetingPoint}
-            showCopyAddress={!isWaitingPayment && isOnTheWay && !isProviderMeetingPoint}
+            isProviderAddress={isProviderMeetingPoint && !completedMapOnly}
+            showCopyAddress={!isWaitingPayment && isOnTheWay && !isProviderMeetingPoint && !isCompleted}
             addressCopied={addressCopied}
             onCopyAddress={handleCopyAddress}
           />
-          {!isWaitingPayment && !canShowMeetingPoint && mapPoint && (
-            <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
+          {completedMapOnly && !isWaitingPayment && mapPoint && (
+            <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker />
           )}
-          {mapPoint && canShowMeetingPoint && <BookingMapPreview
+          {!completedMapOnly && !isWaitingPayment && !canShowMeetingPoint && mapPoint && (
+             <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
+          )}
+          {!completedMapOnly && mapPoint && canShowMeetingPoint && <BookingMapPreview
             latitude={mapPoint.lat}
             longitude={mapPoint.lng}
             title={mapPoint.title}
@@ -607,7 +611,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         </div>
       </Modal>
 
-      {latitude != null && longitude != null && (
+      {latitude != null && longitude != null && !isCompleted && (
         <ExternalNavigationModal
           isOpen={navModalOpen}
           onClose={() => setNavModalOpen(false)}
