@@ -56,4 +56,35 @@ describe('NotificationsPanel navigation', () => {
     }));
     expect(markNotificationAsRead).toHaveBeenCalledWith('22222222-2222-4222-8222-222222222222');
   });
+
+  it('opens the Student destination even when marking the notification as read fails', async () => {
+    const bookingId = '6e4578ed-ef6d-40c6-bb5c-008cdc472b1d';
+    getMyNotifications.mockResolvedValue([{
+      id: '33333333-3333-4333-8333-333333333333',
+      userId: 'student-1',
+      type: 'BOOKING_CONFIRMED',
+      title: 'Aula confirmada',
+      body: 'Sua aula foi confirmada.',
+      entityType: 'booking',
+      entityId: bookingId,
+      isRead: false,
+      createdAt: '2026-09-02T20:00:00.000Z',
+      appContext: 'STUDENT',
+    }]);
+    markNotificationAsRead.mockRejectedValue(new Error('temporary failure'));
+    const onNavigate = vi.fn();
+
+    render(<NotificationsPanel appContext="STUDENT" onNavigate={onNavigate} />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Abrir conteúdo' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir conteúdo' }));
+
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith({
+      version: 1,
+      appContext: 'STUDENT',
+      entityType: 'booking',
+      entityId: bookingId,
+      action: 'details',
+    }));
+  });
 });

@@ -117,7 +117,10 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ appConte
   const openNotification = async (notification: Notification) => {
     const resolved = targetFromNotification(notification);
     if (!resolved.ok || !onNavigate) return;
-    if (!notification.isRead && !(await markAsRead(notification.id))) return;
+    // Reading the notification and opening its destination are independent
+    // actions. A transient RLS/cache error while marking it as read must not
+    // make the primary action appear to do nothing.
+    if (!notification.isRead) await markAsRead(notification.id);
     onNavigate(resolved.target);
   };
 

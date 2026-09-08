@@ -1730,7 +1730,7 @@ function applyStrictProviderFilters(
     setIsEditingProfile(true);
   };
 
-  const handleNotificationTarget = (target: NotificationNavigationTarget) => {
+  const handleNotificationTarget = async (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'STUDENT') return;
     if (target.entityType !== 'booking' || !target.entityId) return;
@@ -1739,8 +1739,24 @@ function applyStrictProviderFilters(
       setActiveTab('bookings');
       return;
     }
-    const booking = confirmedBookings.find((item) => item.id === target.entityId);
     setActiveTab('bookings');
+    let booking = confirmedBookings.find((item) => item.id === target.entityId);
+
+    // The notification can arrive before the booking cache is refreshed. In
+    // that case revalidate the student's booking resource before declaring the
+    // destination unavailable, otherwise "Abrir conteúdo" silently lands on
+    // the list without opening the detail modal.
+    if (!booking && user?.id) {
+      try {
+        await invalidateStudentBookingQueries(user.id, target.entityId);
+        const latestBookings = await loadBookingsData();
+        booking = latestBookings.find((item) => item.id === target.entityId);
+        if (latestBookings.length > 0) setConfirmedBookings(latestBookings);
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') console.error('Failed to refresh booking from notification:', error);
+      }
+    }
+
     if (!booking) {
       showNotificationFeedback('Esta aula não está mais disponível.');
       return;
@@ -1754,13 +1770,13 @@ function applyStrictProviderFilters(
     if (bookingsLoading || !pendingNotificationTargetRef.current) return;
     const target = pendingNotificationTargetRef.current;
     pendingNotificationTargetRef.current = null;
-    handleNotificationTarget(target);
+    void handleNotificationTarget(target);
   }, [bookingsLoading, confirmedBookings]);
 
   const openNotificationTarget = (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'STUDENT') return;
-    handleNotificationTarget(target);
+    void handleNotificationTarget(target);
     clearNotificationNavigationTargetFromHash('student', 'bookings');
   };
 
@@ -1774,7 +1790,7 @@ function applyStrictProviderFilters(
     if (!user || bookingsLoading) return;
     const target = getNotificationNavigationTargetFromHash('student');
     if (!target || target.appContext !== 'STUDENT') return;
-    handleNotificationTarget(target);
+    void handleNotificationTarget(target);
     clearPendingNotificationTarget();
     clearNotificationNavigationTargetFromHash('student', 'bookings');
     signalInitialNavigationReady();
