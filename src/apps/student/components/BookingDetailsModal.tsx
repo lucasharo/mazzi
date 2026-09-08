@@ -338,7 +338,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   );
   const checkInFlowActive = ['CONFIRMED', 'IN_PROGRESS'].includes(booking.status);
   const visibleMapPoint = shouldHideProviderLocation ? undefined : mapPoint;
-  const completedMapOnly = isCompleted && Boolean(mapPoint);
+  const staticLessonMap = ['IN_PROGRESS', 'COMPLETED'].includes(booking.status) && Boolean(mapPoint);
   const meetingPointNotice = shouldHideProviderLocation
     ? isProviderAddress && Number.isFinite(scheduledStartMs)
       ? `Endereço estará disponível a partir de ${formatTimeBR(new Date(scheduledStartMs - (60 * 60 * 1_000)).toISOString())}.`
@@ -704,13 +704,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             onCopyAddress={handleCopyMeetingPoint}
           />
 
-          {completedMapOnly && !isPendingPayment && mapPoint && (
+          {staticLessonMap && !isPendingPayment && mapPoint && (
             <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker />
           )}
-          {!completedMapOnly && !isLessonStarted && !isPendingPayment && shouldHideProviderLocation && mapPoint && (
+          {!staticLessonMap && !isLessonStarted && !isPendingPayment && shouldHideProviderLocation && mapPoint && (
              <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
           )}
-          {!completedMapOnly && !isLessonStarted && !isPendingPayment && visibleMapPoint && <BookingMapPreview
+          {!staticLessonMap && !isLessonStarted && !isPendingPayment && visibleMapPoint && <BookingMapPreview
             latitude={visibleMapPoint.lat}
             longitude={visibleMapPoint.lng}
             title={visibleMapPoint.title}
@@ -758,7 +758,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </div>
       </Modal>
     )}
-    {isProviderAddress && mapPoint && !isCompleted && (
+    {isProviderAddress && mapPoint && !staticLessonMap && (
       <ExternalNavigationModal
         isOpen={isNavigationOpen}
         onClose={() => setIsNavigationOpen(false)}

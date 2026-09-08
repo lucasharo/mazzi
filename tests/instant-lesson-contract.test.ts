@@ -69,7 +69,8 @@ describe('TASK-089 Aula Agora persistence contract', () => {
   it('removes student maps after the lesson starts', () => {
     expect(studentBookingDetails).toContain("const isLessonStarted = booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);");
     expect(studentBookingDetails).toContain('!isLessonStarted && isProviderOnTheWay');
-    expect(studentBookingDetails).toContain('{!completedMapOnly && !isLessonStarted && !isPendingPayment && visibleMapPoint');
+    expect(studentBookingDetails).toContain("const staticLessonMap = ['IN_PROGRESS', 'COMPLETED'].includes(booking.status) && Boolean(mapPoint);");
+    expect(studentBookingDetails).toContain('{!staticLessonMap && !isLessonStarted && !isPendingPayment && visibleMapPoint');
     expect(instantModal).toContain("const isLessonStarted = bookingStatus === 'IN_PROGRESS' || booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);");
     expect(instantModal).toContain('const showTrackingMap = !isLessonStarted');
   });

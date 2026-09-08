@@ -200,7 +200,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const mapPoint = hasExactMeetingPoint
     ? { lat: latitude, lng: longitude, title: meetingPointText }
     : undefined;
-  const completedMapOnly = isCompleted && Boolean(mapPoint);
+  const staticLessonMap = ['IN_PROGRESS', 'COMPLETED'].includes(booking.status) && Boolean(mapPoint);
   const lessonStart = booking.lessonStartedAt || '';
   const lessonEnd = booking.lessonFinishedAt || '';
   const durationLabel = booking.status === 'COMPLETED' && lessonStart && lessonEnd
@@ -574,13 +574,13 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             addressCopied={addressCopied}
             onCopyAddress={handleCopyAddress}
           />
-          {completedMapOnly && !isWaitingPayment && mapPoint && (
+          {staticLessonMap && !isWaitingPayment && mapPoint && (
             <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker />
           )}
-          {!completedMapOnly && !isWaitingPayment && !canShowMeetingPoint && mapPoint && (
+          {!staticLessonMap && !isWaitingPayment && !canShowMeetingPoint && mapPoint && (
              <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
           )}
-          {!completedMapOnly && mapPoint && canShowMeetingPoint && <BookingMapPreview
+          {!staticLessonMap && mapPoint && canShowMeetingPoint && <BookingMapPreview
             latitude={mapPoint.lat}
             longitude={mapPoint.lng}
             title={mapPoint.title}
@@ -611,7 +611,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         </div>
       </Modal>
 
-      {latitude != null && longitude != null && !isCompleted && (
+      {latitude != null && longitude != null && !staticLessonMap && (
         <ExternalNavigationModal
           isOpen={navModalOpen}
           onClose={() => setNavModalOpen(false)}
