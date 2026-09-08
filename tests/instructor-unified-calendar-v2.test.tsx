@@ -441,6 +441,37 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
       expect((await screen.findByRole('alert')).textContent).toContain('O check-in ainda não está disponível.');
     });
 
+    it('mantém os horários dos check-ins no detalhe após a aula ser concluída', () => {
+      const booking = {
+        id: 'bk_completed_checkins',
+        providerId: 'p_private_checkin',
+        status: 'COMPLETED',
+        studentName: 'Aluno Concluído',
+        scheduledDate: '20/08/2026',
+        startTime: '09:00',
+        endTime: '10:00',
+        scheduledStartAt: '2026-08-20T09:00:00-03:00',
+        category: 'B',
+        studentCheckedIn: true,
+        instructorCheckedIn: true,
+        checkinStudentAt: '2026-08-20T08:42:00-03:00',
+        checkinInstructorAt: '2026-08-20T08:45:00-03:00',
+        lessonStartedAt: '2026-08-20T09:01:00-03:00',
+        lessonFinishedAt: '2026-08-20T09:51:00-03:00',
+      };
+
+      render(
+        <ProviderBookingDetailsModal
+          {...defaultModalProps}
+          booking={booking}
+          canCancelBooking={() => false}
+        />
+      );
+
+      expect(screen.getByText(/08:42/)).toBeTruthy();
+      expect(screen.getByText(/08:45/)).toBeTruthy();
+    });
+
     it('só exibe Iniciar aula depois dos dois check-ins na Aula Agora', async () => {
       const onStartLesson = vi.fn().mockResolvedValue(undefined);
       const booking = {

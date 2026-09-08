@@ -34,7 +34,7 @@ describe('TASK-090 check-in contract', () => {
   });
 
   it('explains that the address for scheduled and Aula Agora lessons is released after starting displacement', () => {
-    expect(providerModal).toContain('const canShowMeetingPoint = !isWaitingPayment && (isOnTheWay || isProviderMeetingPoint);');
+    expect(providerModal).toContain('const canShowMeetingPoint = !isWaitingPayment && (isOnTheWay || isProviderMeetingPoint || isCompleted);');
     expect(providerModal).toContain('const meetingPointNotice = !canShowMeetingPoint && !isWaitingPayment');
     expect(providerModal).toContain('meetingPointNotice={meetingPointNotice}');
     expect(providerModal).toContain('meetingPoint={canShowMeetingPoint ? meetingPointText : \'\'}');

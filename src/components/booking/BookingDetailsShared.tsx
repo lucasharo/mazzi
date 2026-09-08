@@ -107,7 +107,7 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
         checked={studentCheckedIn}
         checkedAt={booking.checkinStudentAt}
         statusText="Aguardando check-in"
-        action={audience === 'student' ? checkInAction : undefined}
+        action={audience === 'student' && showCheckInAction ? checkInAction : undefined}
       />
 
       <PresenceRow

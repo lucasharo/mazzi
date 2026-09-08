@@ -164,6 +164,13 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const isConfirmed = booking.status === 'CONFIRMED';
   const isInProgress = booking.status === 'IN_PROGRESS';
   const isCompleted = booking.status === 'COMPLETED';
+  const hasPersistedCheckInData = Boolean(
+    booking.studentCheckedIn
+    || booking.instructorCheckedIn
+    || booking.checkinStudentAt
+    || booking.checkinInstructorAt,
+  );
+  const checkInFlowActive = ['CONFIRMED', 'IN_PROGRESS'].includes(booking.status);
   const duration = calculateLessonDurationMinutes(booking);
   const studentName = booking.studentName?.trim() || 'Aluno';
   const providerName = snapshot.providerName || booking.providerName;
@@ -180,7 +187,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
       : formatMeetingPoint(rawMeetingPoint) ||
         (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint) ? booking.fullMeetingPoint : '') ||
         'Ponto de encontro indicado no mapa';
-  const canShowMeetingPoint = !isWaitingPayment && (isOnTheWay || isProviderMeetingPoint);
+  const canShowMeetingPoint = !isWaitingPayment && (isOnTheWay || isProviderMeetingPoint || isCompleted);
   const meetingPointNotice = !canShowMeetingPoint && !isWaitingPayment
     ? 'Endereço estará disponível quando você clicar em “Estou a caminho”.'
     : undefined;
@@ -538,13 +545,13 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           <BookingPresenceCard
             audience="provider"
             booking={hasArrivedState && !booking.instructorCheckedIn ? { ...booking, instructorCheckedIn: true } : booking}
-            visible={booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS' || isOnTheWay}
+            visible={checkInFlowActive || isOnTheWay || hasPersistedCheckInData}
             checkInAvailability={checkInAvailability}
             canCheckInAtLocation
             checkInError={checkInError}
             isCheckingIn={isCheckingIn}
-            onCheckIn={handleCheckIn}
-            showCheckInAction={isProviderMeetingPoint}
+            onCheckIn={checkInFlowActive ? handleCheckIn : undefined}
+            showCheckInAction={isProviderMeetingPoint && checkInFlowActive}
           />
 
           <BookingDetailsOverview

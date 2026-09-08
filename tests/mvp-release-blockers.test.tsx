@@ -282,6 +282,30 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
       expect(screen.queryByText('Aguardando check-in')).toBeNull();
     });
 
+    it('C2. COMPLETED mantém os horários dos dois check-ins no detalhe', () => {
+      const completedBooking: Booking = {
+        ...baseConfirmedBooking,
+        status: 'COMPLETED',
+        studentCheckedIn: true,
+        instructorCheckedIn: true,
+        checkinStudentAt: '2026-08-20T09:42:00-03:00',
+        checkinInstructorAt: '2026-08-20T09:45:00-03:00',
+        lessonStartedAt: '2026-08-20T10:01:00-03:00',
+        lessonFinishedAt: '2026-08-20T10:51:00-03:00',
+      };
+
+      render(
+        <BookingDetailsModal
+          isOpen={true}
+          onClose={vi.fn()}
+          booking={completedBooking}
+        />
+      );
+
+      expect(screen.getByText(/09:42/)).toBeTruthy();
+      expect(screen.getByText(/09:45/)).toBeTruthy();
+    });
+
     it('D. RPC error renderiza erro amigável na UI', async () => {
       const onStudentCheckInMock = vi.fn().mockRejectedValue(new Error('CHECKIN_WINDOW_EXPIRED'));
       stubCheckInLocation();

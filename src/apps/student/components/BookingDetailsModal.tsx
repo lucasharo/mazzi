@@ -330,6 +330,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     && isProviderAddress
     && !isAddressReleaseWindowOpen;
   const visibleMeetingPoint = shouldHideProviderLocation ? '' : meetingPoint;
+  const hasPersistedCheckInData = Boolean(
+    booking.studentCheckedIn
+    || booking.instructorCheckedIn
+    || booking.checkinStudentAt
+    || booking.checkinInstructorAt,
+  );
+  const checkInFlowActive = ['CONFIRMED', 'IN_PROGRESS'].includes(booking.status);
   const visibleMapPoint = shouldHideProviderLocation ? undefined : mapPoint;
   const meetingPointNotice = shouldHideProviderLocation
     ? isProviderAddress && Number.isFinite(scheduledStartMs)
@@ -668,11 +675,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           <BookingPresenceCard
             audience="student"
             booking={booking}
-            visible={booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS'}
+            visible={checkInFlowActive || hasPersistedCheckInData}
             checkInAvailability={checkInAvailability}
             checkInError={checkInError}
             isCheckingIn={isCheckingIn}
-            onCheckIn={handleStudentCheckInAction}
+            onCheckIn={checkInFlowActive ? handleStudentCheckInAction : undefined}
+            showCheckInAction={checkInFlowActive}
           />
 
           <BookingDetailsOverview
