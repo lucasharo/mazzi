@@ -6,6 +6,10 @@ const migration = readFileSync(
   resolve(process.cwd(), 'supabase/migrations/20260828190000_lesson_concurrency_and_notifications.sql'),
   'utf8',
 );
+const notificationRepairMigration = readFileSync(
+  resolve(process.cwd(), 'supabase/migrations/20260908200955_restore_lesson_lifecycle_notifications.sql'),
+  'utf8',
+);
 
 describe('aula em andamento e notificações operacionais', () => {
   it('serializa inícios por aluno e instrutor e impede conflito existente', () => {
@@ -22,5 +26,14 @@ describe('aula em andamento e notificações operacionais', () => {
     expect(migration).toContain("'LESSON_COMPLETED'");
     expect(migration).toContain('ON CONFLICT DO NOTHING');
     expect(migration).toContain('notify_booking_participants');
+  });
+
+  it('preserva os disparos depois das RPCs de check-in e ciclo de aula serem sobrescritas', () => {
+    expect(notificationRepairMigration.match(/PERFORM public\.notify_booking_participants\(/g)).toHaveLength(4);
+    expect(notificationRepairMigration).toContain("'STUDENT_CHECKIN'");
+    expect(notificationRepairMigration).toContain("'PROVIDER_CHECKIN'");
+    expect(notificationRepairMigration).toContain("'LESSON_STARTED'");
+    expect(notificationRepairMigration).toContain("'LESSON_COMPLETED'");
+    expect(notificationRepairMigration).toContain('v_uid');
   });
 });
