@@ -4216,4 +4216,3 @@ export const EMAIL_TEMPLATE_SOURCES = {
 </html>
 `,
 } as const;
-
