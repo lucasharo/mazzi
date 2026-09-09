@@ -21,7 +21,7 @@ export const UpcomingBookingCard: React.FC<UpcomingBookingCardProps> = ({ bookin
     ? booking.snapshot?.vehicleName || booking.vehicleName
     : undefined;
   const meetingPointText = perspective === 'student'
-    ? getStudentBookingMeetingPointText(booking, 'Ponto de encontro indicado no mapa')
+    ? getStudentBookingMeetingPointText(booking, 'Região da aula')
     : getProviderBookingMeetingPointText(booking);
   const duration = calculateLessonDurationMinutes(booking) || 50;
   const details = [participantName, contextLabel, `${duration} min`].filter(Boolean).join(' · ');

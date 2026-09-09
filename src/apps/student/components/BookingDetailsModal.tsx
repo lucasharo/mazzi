@@ -7,7 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
 import { formatCentsToBRL } from '../../../domain/money';
 import { calculateLessonDurationMinutes, formatDateBR, formatTimeBR } from '../../../lib/date-format';
-import { getEffectiveBookingHoldExpiresAt, UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
+import { CANCELLED_BOOKING_STATUSES, getEffectiveBookingHoldExpiresAt, UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { formatMeetingPoint, formatPendingPaymentMeetingPoint } from '../../../lib/meeting-point';
 import { dbService } from '../../../lib/db-service';
 import { requestCheckInLocation } from '../../../lib/checkin-location';
@@ -18,8 +18,11 @@ import { getCheckInAvailability } from '../../../domain/checkin';
 import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
 import { ExternalNavigationModal } from '../../../components/instant/ExternalNavigationModal';
 import { InstantLessonTrackingCard } from '../../../components/instant/InstantLessonTrackingCard';
+import { CountdownTimer } from '../../../components/ui/CountdownTimer';
 import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices } from '../../../components/booking/BookingDetailsShared';
 import { INSTANT_STUDENT_TRACKING_INTERVAL_SECONDS } from '../../../domain/instant-lesson';
+
+const BOOKING_DETAIL_REFRESH_INTERVAL_MS = 3_000;
 
 export interface BookingDetailsModalProps {
   isOpen: boolean;
@@ -144,7 +147,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     // payment and cancellation data do not stay stuck on the object used to
     // open the modal.
     refreshBooking();
-    const timer = window.setInterval(refreshBooking, 10_000);
+    const timer = window.setInterval(refreshBooking, BOOKING_DETAIL_REFRESH_INTERVAL_MS);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') refreshBooking();
     };
@@ -164,9 +167,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   ]);
 
   const isInstantBooking = booking?.snapshot?.source === 'AULA_AGORA';
+  // Keep the live booking column authoritative, but accept the legacy
+  // snapshot while an older persisted client object is being rehydrated.
+  // Otherwise the backend state is correct but the student never sees the
+  // tracking action until the app is fully reloaded.
   const providerOnTheWayAt = booking?.providerOnTheWayAt
-    || booking?.snapshot?.provider_on_the_way_at
-    || (booking?.snapshot as any)?.providerOnTheWayAt;
+    || (booking?.snapshot as Booking['snapshot'] & { provider_on_the_way_at?: string; providerOnTheWayAt?: string })?.provider_on_the_way_at
+    || (booking?.snapshot as Booking['snapshot'] & { provider_on_the_way_at?: string; providerOnTheWayAt?: string })?.providerOnTheWayAt;
   const isLessonStarted = booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);
   const trackingBookingId = booking && ['CONFIRMED', 'IN_PROGRESS'].includes(booking.status)
     && !isLessonStarted
@@ -292,6 +299,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     ? buildTrackingRequest(booking)
     : null;
   const isCompleted = booking.status === 'COMPLETED';
+  const isCancelled = CANCELLED_BOOKING_STATUSES.includes(booking.status);
   const isDisputed = booking.status === 'DISPUTED';
   const isPaymentNotCompleted = UNPAID_BOOKING_STATUSES.includes(booking.status);
   const canOpenChat = !isPaymentNotCompleted;
@@ -329,7 +337,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     && !isProviderOnTheWay
     && isProviderAddress
     && !isAddressReleaseWindowOpen;
-  const visibleMeetingPoint = shouldHideProviderLocation ? '' : meetingPoint;
+  const visibleMeetingPoint = isCancelled
+    ? (isProviderAddress ? '' : meetingPoint)
+    : shouldHideProviderLocation ? '' : meetingPoint;
   const hasPersistedCheckInData = Boolean(
     booking.studentCheckedIn
     || booking.instructorCheckedIn
@@ -337,8 +347,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     || booking.checkinInstructorAt,
   );
   const checkInFlowActive = ['CONFIRMED', 'IN_PROGRESS'].includes(booking.status);
-  const visibleMapPoint = shouldHideProviderLocation ? undefined : mapPoint;
+  const visibleMapPoint = shouldHideProviderLocation || isCancelled ? undefined : mapPoint;
   const staticLessonMap = ['IN_PROGRESS', 'COMPLETED'].includes(booking.status) && Boolean(mapPoint);
+  const cancelledMapOnly = isCancelled && Boolean(mapPoint);
   const meetingPointNotice = shouldHideProviderLocation
     ? isProviderAddress && Number.isFinite(scheduledStartMs)
       ? `Endereço estará disponível a partir de ${formatTimeBR(new Date(scheduledStartMs - (60 * 60 * 1_000)).toISOString())}.`
@@ -653,7 +664,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       ) : (
         /* STANDARD DETAILS VIEW */
         <div className="space-y-4 text-left">
-          {!isLessonStarted && !shouldHideProviderLocation && (trackingPreview || (trackingRequest ? (
+          {isPendingPayment && isHoldValid && secondsLeft !== null && (
+            <CountdownTimer
+              secondsRemaining={secondsLeft}
+              ariaLabel={`Você tem mais ${secondsLeft} segundos para realizar o pagamento`}
+            />
+          )}
+          {!isLessonStarted && !shouldHideProviderLocation && isProviderOnTheWay && (trackingPreview || (trackingRequest ? (
             <InstantLessonTrackingCard
               request={trackingRequest}
               tracking={instantTracking}
@@ -698,19 +715,22 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             durationLabel={durationLabel}
             meetingPoint={visibleMeetingPoint}
             meetingPointNotice={meetingPointNotice}
-            isProviderAddress={isProviderAddress && !shouldHideProviderLocation}
-            showCopyAddress={isProviderAddress && !isPendingPayment && !shouldHideProviderLocation && !isCompleted}
+            isProviderAddress={isProviderAddress && !shouldHideProviderLocation && !isCancelled}
+            showCopyAddress={isProviderAddress && !isPendingPayment && !shouldHideProviderLocation && !staticLessonMap && !isCancelled}
             addressCopied={isAddressCopied}
             onCopyAddress={handleCopyMeetingPoint}
           />
 
-          {staticLessonMap && !isPendingPayment && mapPoint && (
+          {cancelledMapOnly && !isPendingPayment && mapPoint && (
+            <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
+          )}
+          {staticLessonMap && !isCancelled && !isPendingPayment && mapPoint && (
             <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker />
           )}
-          {!staticLessonMap && !isLessonStarted && !isPendingPayment && shouldHideProviderLocation && mapPoint && (
+          {!staticLessonMap && !isCancelled && !isLessonStarted && !isPendingPayment && shouldHideProviderLocation && mapPoint && (
              <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
           )}
-          {!staticLessonMap && !isLessonStarted && !isPendingPayment && visibleMapPoint && <BookingMapPreview
+          {!staticLessonMap && !isCancelled && !isLessonStarted && !isPendingPayment && visibleMapPoint && <BookingMapPreview
             latitude={visibleMapPoint.lat}
             longitude={visibleMapPoint.lng}
             title={visibleMapPoint.title}
@@ -729,6 +749,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             isHoldValid={isHoldValid}
             secondsLeft={secondsLeft}
             isExpired={isExpired}
+            showCountdown={false}
           />
 
           <BookingDisputePanel booking={booking} currentUserId={currentUserId} />
@@ -744,6 +765,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         ariaLabel="Acompanhamento do profissional"
         size="md"
         layer="nested"
+        showBackButton
         useHistory={false}
         fillContent
       >
@@ -758,7 +780,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </div>
       </Modal>
     )}
-    {isProviderAddress && mapPoint && !staticLessonMap && (
+    {isProviderAddress && mapPoint && !staticLessonMap && !isCancelled && (
       <ExternalNavigationModal
         isOpen={isNavigationOpen}
         onClose={() => setIsNavigationOpen(false)}

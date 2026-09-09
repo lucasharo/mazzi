@@ -28,17 +28,19 @@ interface InstantLessonModalProps {
   currentUserId?: string;
   onOpenChat?: (booking: Booking) => void;
   onBookingUpdated?: (booking: Booking) => void;
+  onRefreshBooking?: (bookingId: string) => Promise<Booking | null>;
   onPayBooking?: (bookingId: string) => void;
   onCancelRequest: (requestId: string) => Promise<void>;
   onCancelPendingSearch?: () => void;
-  isStarting?: boolean;
+  returnToPriceStep?: boolean;
+  onStudentCheckIn?: (bookingId: string, location: { latitude: number; longitude: number }) => Promise<Booking>;
   isLoading?: boolean;
   isInitialLocationLoading?: boolean;
   checkInWindowBeforeMinutes?: number | null;
   instantLessonExpirationMinutes?: number;
 }
 
-export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, onClose, onScheduleLesson, location, locationLabel, onRequestLocation, onLoadPriceOptions, onStart, activeRequest, tracking, bookingStatus, booking, currentUserId, onOpenChat, onBookingUpdated, onPayBooking, onCancelRequest, onCancelPendingSearch, isStarting, isLoading, isInitialLocationLoading, checkInWindowBeforeMinutes, instantLessonExpirationMinutes }) => {
+export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, onClose, onScheduleLesson, location, locationLabel, onRequestLocation, onLoadPriceOptions, onStart, activeRequest, tracking, bookingStatus, booking, currentUserId, onOpenChat, onBookingUpdated, onRefreshBooking, onPayBooking, onCancelRequest, onCancelPendingSearch, returnToPriceStep = false, onStudentCheckIn, isLoading, isInitialLocationLoading, checkInWindowBeforeMinutes, instantLessonExpirationMinutes }) => {
   const [trackingOpen, setTrackingOpen] = useState(false);
   useEffect(() => { setTrackingOpen(false); }, [isOpen, booking?.id]);
   const isLessonStarted = bookingStatus === 'IN_PROGRESS' || booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);
@@ -47,21 +49,25 @@ export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, 
   if (showTrackingMap && !booking) {
     return <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da aula" useHistory={false}><p role="status">Carregando informações da aula…</p></Modal>;
   }
-  if (booking && activeRequest && !trackingOpen && bookingStatus !== 'PENDING_PAYMENT') {
-    return <BookingDetailsModal isOpen={isOpen} onClose={onClose} booking={booking} currentUserId={currentUserId} onOpenChat={onOpenChat} onBookingUpdated={onBookingUpdated} useHistory={false}
+  if (booking && bookingStatus !== 'PENDING_PAYMENT' && (isLessonStarted || (activeRequest && !trackingOpen))) {
+    return <BookingDetailsModal isOpen={isOpen} onClose={onClose} booking={booking} currentUserId={currentUserId} onOpenChat={onOpenChat} onBookingUpdated={onBookingUpdated} onRefreshBooking={onRefreshBooking} onStudentCheckIn={onStudentCheckIn} useHistory={false}
       checkInWindowBeforeMinutes={checkInWindowBeforeMinutes}
       instantLessonExpirationMinutes={instantLessonExpirationMinutes}
       trackingPreview={showTrackingMap ? <InstantLessonTrackingCard request={activeRequest.request} tracking={tracking} providerName={activeRequest.offer?.providerName} onOpenTracking={() => setTrackingOpen(true)} /> : undefined} />;
   }
-  if (isStarting || activeRequest?.request.status === 'SEARCHING') {
+  const isSearching = activeRequest?.request.status === 'SEARCHING' || (!activeRequest && Boolean(isLoading));
+  // Switch to the full-screen search surface as soon as the request starts,
+  // before the backend response arrives, so the search state never flashes
+  // inside the padded white wizard surface.
+  if (activeRequest?.request.status === 'SEARCHING') {
     const cancelSearch = activeRequest?.request.status === 'SEARCHING'
       ? () => void onCancelRequest(activeRequest.request.id)
       : onCancelPendingSearch || onClose;
     return <Modal className="instant-searching" isOpen={isOpen} onClose={onClose} ariaLabel="Buscando profissionais" size="md" useHistory={false} fillContent>
-      <InstantLessonSearchingScreen onCancel={cancelSearch} isCancelling={Boolean(activeRequest) && isLoading} />
+      <InstantLessonSearchingScreen onCancel={cancelSearch} isCancelling={Boolean(isLoading)} />
     </Modal>;
   }
-  return <Modal className={!activeRequest ? 'instant-light' : ''} isOpen={isOpen} onClose={onClose} title={activeRequest ? (trackingOpen ? 'Acompanhamento da aula' : 'Aula Agora') : undefined} ariaLabel="Aula Agora" size="md" useHistory={false} fillContent={showTrackingMap || !activeRequest}>
+  return <Modal className={isSearching ? 'instant-searching' : !activeRequest ? 'instant-light' : ''} isOpen={isOpen} onClose={trackingOpen ? () => setTrackingOpen(false) : onClose} title={activeRequest ? (trackingOpen ? 'Acompanhamento do instrutor' : 'Aula Agora') : undefined} ariaLabel="Aula Agora" size="md" useHistory={false} showBackButton={trackingOpen} fillContent={showTrackingMap || !activeRequest}>
     {activeRequest ? <div className={showTrackingMap ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden' : 'space-y-4'}>
       {!showTrackingMap && <div className="shrink-0">
       <InstantLessonStatusCard request={activeRequest.request} paymentConfirmed={bookingStatus === 'CONFIRMED' || bookingStatus === 'IN_PROGRESS'} onCancel={() => void onCancelRequest(activeRequest.request.id)} isCancelling={isLoading} />
@@ -70,6 +76,6 @@ export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, 
       {!showTrackingMap && activeRequest.offer && <InstantLessonOfferCard offer={activeRequest.offer} />}
       {bookingStatus === 'PENDING_PAYMENT' && activeRequest.request.status === 'MATCHED' && activeRequest.request.bookingId && <div className="mazzi-compact-card space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-semibold text-amber-950">O profissional aceitou. Confira os dados da aula e confirme o pagamento para iniciar.</p><Button type="button" variant="primary" className="w-full font-extrabold" onClick={() => onPayBooking?.(activeRequest.request.bookingId!)} disabled={!onPayBooking || isLoading}>Confirmar pagamento</Button></div>}
       {showTrackingMap && <InstantLessonTrackingCard request={activeRequest.request} tracking={tracking} providerName={activeRequest.offer?.providerName} priceInCents={activeRequest.offer?.offeredPriceInCents} offer={activeRequest.offer} paymentConfirmed={bookingStatus === 'CONFIRMED' || bookingStatus === 'IN_PROGRESS'} />}
-    </div> : <InstantLessonWizard location={location} locationLabel={locationLabel} currentUserId={currentUserId} onClose={onClose} onScheduleLesson={onScheduleLesson} onRequestLocation={onRequestLocation} onLoadPriceOptions={onLoadPriceOptions} onStart={onStart} onCancelPendingSearch={onCancelPendingSearch} isLoading={isLoading} isInitialLocationLoading={isInitialLocationLoading} />}
+    </div> : <InstantLessonWizard location={location} locationLabel={locationLabel} currentUserId={currentUserId} onClose={onClose} onScheduleLesson={onScheduleLesson} onRequestLocation={onRequestLocation} onLoadPriceOptions={onLoadPriceOptions} onStart={onStart} onCancelPendingSearch={onCancelPendingSearch} returnToPriceStep={returnToPriceStep} isLoading={isLoading} isInitialLocationLoading={isInitialLocationLoading} />}
   </Modal>;
 };

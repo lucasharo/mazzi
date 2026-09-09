@@ -30,6 +30,7 @@ export interface LeafletMapProps {
   providerMarker?: 'initials' | 'vehicle';
   followSelectedProvider?: boolean;
   interactive?: boolean;
+  onReady?: () => void;
 }
 
 export const LeafletMap: React.FC<LeafletMapProps> = ({
@@ -48,6 +49,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   providerMarker = 'initials',
   followSelectedProvider = false,
   interactive = true,
+  onReady,
 }) => {
   const meetingPoint = validCoordinates(rawMeetingPoint) ? rawMeetingPoint : undefined;
   const mapCenter = validCoordinates(rawMapCenter) ? rawMapCenter : undefined;
@@ -57,6 +59,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersGroupRef = useRef<L.LayerGroup | null>(null);
   const followingRef = useRef(true);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -106,6 +110,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     mapInstanceRef.current = map;
     const pauseFollowing = () => { followingRef.current = false; };
     map.on('dragstart zoomstart', pauseFollowing);
+    map.whenReady(() => onReadyRef.current?.());
 
     } catch (error) {
       dispose();

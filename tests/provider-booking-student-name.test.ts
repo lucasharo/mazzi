@@ -29,4 +29,10 @@ describe('provider booking student name mapping', () => {
 
     expect(booking.studentName).toBe('Ana Maria');
   });
+
+  it('hydrates the student avatar returned by the instructor booking context', () => {
+    const booking = mapBookingFromDb(bookingRow({ student_avatar_url: 'https://cdn.example/student.jpg' }));
+
+    expect(booking.studentAvatarUrl).toBe('https://cdn.example/student.jpg');
+  });
 });

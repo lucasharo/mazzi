@@ -16,8 +16,10 @@ export const serverState = {
   getStudentBookings: (studentId: string) => queryClient.fetchQuery({
     queryKey: queryKeys.student.bookings(studentId),
     queryFn: () => dbService.getBookings(),
-    ...CACHE_POLICY.short,
-    meta: { cacheClass: 'short' },
+    // Booking status, check-ins and cancellation are operational state. Never
+    // serve a 45-second stale snapshot when a screen explicitly refreshes it.
+    ...CACHE_POLICY.critical,
+    meta: { cacheClass: 'server-authority' },
   }),
 
   getStudentActiveInstantLesson: (studentId: string) => queryClient.fetchQuery<{ request: InstantLessonRequest; offer?: InstantLessonOffer } | null>({
@@ -46,8 +48,10 @@ export const serverState = {
     return queryClient.fetchQuery<Booking[]>({
       queryKey: queryKeys.provider.bookings(params.providerId, scope),
       queryFn: () => params.isInstructor ? dbService.getMyUnifiedInstructorBookings() : dbService.getMyProviderBookings(params.providerId),
-      ...CACHE_POLICY.short,
-      meta: { cacheClass: 'short' },
+      // The booking list is the source for the open detail modal and must
+      // reflect lifecycle changes immediately after invalidation.
+      ...CACHE_POLICY.critical,
+      meta: { cacheClass: 'server-authority' },
     });
   },
 

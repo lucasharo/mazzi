@@ -32,6 +32,7 @@ export interface PlatformConfiguration {
   instantMaxEtaMinutes: number; // Default: 30
   instantOfferExpirationSeconds: number; // Default: 15
   instantLessonExpirationMinutes: number; // Default: 5, payment/search deadline for Aula Agora
+  instantDeclineCooldownMinutes: number; // Default: 5, same student/instructor cooldown after decline
   instantRefundOnWayInitialPercent: number; // Default: 90
   instantRefundOnWayMiddlePercent: number; // Default: 80
   instantRefundOnWayLatePercent: number; // Default: 70
@@ -85,6 +86,7 @@ export const DEFAULT_PLATFORM_CONFIGURATION: PlatformConfiguration = {
   instantMaxEtaMinutes: 30,
   instantOfferExpirationSeconds: 15,
   instantLessonExpirationMinutes: 5,
+  instantDeclineCooldownMinutes: 5,
   instantRefundOnWayInitialPercent: 90,
   instantRefundOnWayMiddlePercent: 80,
   instantRefundOnWayLatePercent: 70,
@@ -210,6 +212,10 @@ export function updatePlatformConfiguration(params: UpdatePlatformConfigParams):
 
   if (updates.instantLessonExpirationMinutes !== undefined && (!Number.isInteger(updates.instantLessonExpirationMinutes) || updates.instantLessonExpirationMinutes < 1 || updates.instantLessonExpirationMinutes > 60)) {
     throw new PlatformConfigDomainError('INVALID_INSTANT_LESSON_EXPIRATION', 'O tempo da Aula Agora deve estar entre 1 e 60 minutos.', 400);
+  }
+
+  if (updates.instantDeclineCooldownMinutes !== undefined && (!Number.isInteger(updates.instantDeclineCooldownMinutes) || updates.instantDeclineCooldownMinutes < 1 || updates.instantDeclineCooldownMinutes > 60)) {
+    throw new PlatformConfigDomainError('INVALID_INSTANT_DECLINE_COOLDOWN', 'O intervalo após recusa da Aula Agora deve estar entre 1 e 60 minutos.', 400);
   }
 
   const nowISO = now.toISOString();

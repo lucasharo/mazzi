@@ -11,11 +11,11 @@ const ALLOWED_EVENTS = new Set([
   "BOOKING_CONFIRMED", "BOOKING_CANCELLED", "NEW_MESSAGE", "STUDENT_CHECKIN",
   "PROVIDER_CHECKIN", "LESSON_STARTED", "LESSON_COMPLETED", "CONTESTATION_UPDATED",
   "COMPLIANCE_PENDING", "PAYOUT_PAID", "PAYOUT_BLOCKED", "PAYOUT_FAILED",
-  "REVIEW_AVAILABLE", "REVIEW_RECEIVED",
+  "INSTANT_LESSON_OFFER", "REVIEW_AVAILABLE", "REVIEW_RECEIVED",
 ]);
 const ALLOWED_CONTEXTS = new Set(["STUDENT", "PRO"]);
-const ALLOWED_ENTITIES = new Set(["booking", "payout", "earnings", "compliance"]);
-const ALLOWED_ACTIONS = new Set(["details", "chat", "review", "reviews", "compliance"]);
+const ALLOWED_ENTITIES = new Set(["booking", "payout", "earnings", "compliance", "instant_offer"]);
+const ALLOWED_ACTIONS = new Set(["details", "chat", "review", "reviews", "compliance", "instant_offer"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isValidTarget(row: Record<string, unknown>): boolean {

@@ -1,2 +1,5 @@
 [functions.cancel-instant-booking]
 verify_jwt = false
+
+[functions.send-email-delivery]
+verify_jwt = false

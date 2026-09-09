@@ -34,7 +34,7 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
       priceInCents: 10000,
       platformFeeInCents: 1000,
       totalInCents: 11000,
-      meetingPoint: { type: 'PROVIDER_ADDRESS', address: 'Rua do Instrutor, 100' },
+      meetingPoint: { type: 'PROVIDER_ADDRESS', address: 'Rua do Instrutor, 100', neighborhood: 'Lapa', city: 'São Paulo' },
     },
     meetingPoint: 'Rua do Instrutor, 100',
     fullMeetingPoint: 'Rua do Instrutor, 100',
@@ -53,7 +53,7 @@ describe('student booking address visibility', () => {
 
     expect(visibility.shouldHideProviderAddress).toBe(true);
     expect(getStudentBookingMeetingPointText(booking, undefined, Date.parse('2026-09-08T17:30:00.000Z')))
-      .toMatch(/^Endereço estará disponível a partir de/);
+      .toBe('Lapa, São Paulo');
     expect(getStudentBookingMeetingPointText(booking, undefined, Date.parse('2026-09-08T17:30:00.000Z')))
       .not.toContain('Rua do Instrutor');
   });
@@ -64,7 +64,7 @@ describe('student booking address visibility', () => {
       fullMeetingPoint: 'Rua do Aluno, 200',
       snapshot: {
         ...makeBooking().snapshot,
-        meetingPoint: { type: 'STUDENT_ADDRESS', address: 'Rua do Aluno, 200' },
+        meetingPoint: { type: 'STUDENT_ADDRESS', address: 'Rua do Aluno, 200', neighborhood: 'Lapa', city: 'São Paulo' },
       },
     });
 
@@ -80,12 +80,31 @@ describe('student booking address visibility', () => {
       fullMeetingPoint: 'Rua do Aluno, 200',
       snapshot: {
         ...makeBooking().snapshot,
-        meetingPoint: { type: 'STUDENT_ADDRESS', address: 'Rua do Aluno, 200' },
+        meetingPoint: { type: 'STUDENT_ADDRESS', address: 'Rua do Aluno, 200', neighborhood: 'Lapa', city: 'São Paulo' },
       },
     });
 
-    expect(getProviderBookingMeetingPointText(booking)).toBe('Endereço estará disponível quando você clicar em “Estou a caminho”.');
+    expect(getProviderBookingMeetingPointText(booking)).toBe('Lapa, São Paulo');
     expect(getProviderBookingMeetingPointText(booking)).not.toContain('Rua do Aluno');
     expect(getProviderBookingMeetingPointText({ ...booking, providerOnTheWayAt: '2026-09-08T18:00:00.000Z' })).toBe('Rua do Aluno, 200');
+  });
+
+  it('hides the other user address after cancellation while preserving the own address', () => {
+    const providerAddressBooking = makeBooking({ status: 'CANCELLED_BY_STUDENT' });
+    expect(getStudentBookingMeetingPointText(providerAddressBooking)).toBe('Lapa, São Paulo');
+
+    const studentAddressBooking = makeBooking({
+      status: 'CANCELLED_BY_PROVIDER',
+      meetingPoint: 'Rua do Aluno, 200',
+      fullMeetingPoint: 'Rua do Aluno, 200',
+      snapshot: {
+        ...makeBooking().snapshot,
+        meetingPoint: { type: 'STUDENT_ADDRESS', address: 'Rua do Aluno, 200', neighborhood: 'Lapa', city: 'São Paulo' },
+      },
+    });
+    expect(getProviderBookingMeetingPointText(studentAddressBooking)).toBe('Lapa, São Paulo');
+
+    expect(getProviderBookingMeetingPointText(providerAddressBooking)).toBe('Rua do Instrutor, 100');
+    expect(getStudentBookingMeetingPointText(studentAddressBooking)).toBe('Rua do Aluno, 200');
   });
 });

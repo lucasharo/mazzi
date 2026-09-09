@@ -417,7 +417,7 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
         expect(onRefreshBooking).toHaveBeenCalledWith(baseConfirmedBooking.id);
         expect(onRefreshBooking).toHaveBeenCalledTimes(1);
 
-        await vi.advanceTimersByTimeAsync(10_000);
+        await vi.advanceTimersByTimeAsync(3_000);
         expect(onRefreshBooking).toHaveBeenCalledTimes(2);
         unmount();
       } finally {

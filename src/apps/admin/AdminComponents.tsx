@@ -2192,6 +2192,7 @@ export const SettingsTab: React.FC<{
   const [instantMaxEtaMinutes, setInstantMaxEtaMinutes] = useState<number | ''>(config.instantMaxEtaMinutes);
   const [instantOfferExpirationSeconds, setInstantOfferExpirationSeconds] = useState<number | ''>(config.instantOfferExpirationSeconds);
   const [instantLessonExpirationMinutes, setInstantLessonExpirationMinutes] = useState<number | ''>(config.instantLessonExpirationMinutes);
+  const [instantDeclineCooldownMinutes, setInstantDeclineCooldownMinutes] = useState<number | ''>(config.instantDeclineCooldownMinutes);
   const [instantRefundOnWayInitialPercent, setInstantRefundOnWayInitialPercent] = useState<number | ''>(config.instantRefundOnWayInitialPercent);
   const [instantRefundOnWayMiddlePercent, setInstantRefundOnWayMiddlePercent] = useState<number | ''>(config.instantRefundOnWayMiddlePercent);
   const [instantRefundOnWayLatePercent, setInstantRefundOnWayLatePercent] = useState<number | ''>(config.instantRefundOnWayLatePercent);
@@ -2214,6 +2215,7 @@ export const SettingsTab: React.FC<{
     setInstantMaxEtaMinutes(config.instantMaxEtaMinutes);
     setInstantOfferExpirationSeconds(config.instantOfferExpirationSeconds);
     setInstantLessonExpirationMinutes(config.instantLessonExpirationMinutes);
+    setInstantDeclineCooldownMinutes(config.instantDeclineCooldownMinutes);
     setInstantRefundOnWayInitialPercent(config.instantRefundOnWayInitialPercent);
     setInstantRefundOnWayMiddlePercent(config.instantRefundOnWayMiddlePercent);
     setInstantRefundOnWayLatePercent(config.instantRefundOnWayLatePercent);
@@ -2224,7 +2226,7 @@ export const SettingsTab: React.FC<{
 
   const handleSave = async () => {
     if (!isAuthorized) return;
-    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius, checkInWindowBefore, contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds, instantLessonExpirationMinutes, instantRefundOnWayInitialPercent, instantRefundOnWayMiddlePercent, instantRefundOnWayLatePercent, instantRefundAfterArrivalPercent, instantRefundInitialWindowMinutes, instantRefundMiddleWindowMinutes].some((value) => value === '')) return;
+    if ([fee, mercadoPagoFee, totalFeeCap, horizon, quoteExp, minNotice, safetyPeriod, radius, checkInWindowBefore, contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds, instantLessonExpirationMinutes, instantDeclineCooldownMinutes, instantRefundOnWayInitialPercent, instantRefundOnWayMiddlePercent, instantRefundOnWayLatePercent, instantRefundAfterArrivalPercent, instantRefundInitialWindowMinutes, instantRefundMiddleWindowMinutes].some((value) => value === '')) return;
     try {
       setIsSaving(true);
       await onUpdateConfig({
@@ -2241,6 +2243,7 @@ export const SettingsTab: React.FC<{
         instantMaxEtaMinutes,
         instantOfferExpirationSeconds,
         instantLessonExpirationMinutes,
+        instantDeclineCooldownMinutes,
         instantRefundOnWayInitialPercent,
         instantRefundOnWayMiddlePercent,
         instantRefundOnWayLatePercent,
@@ -2425,6 +2428,11 @@ export const SettingsTab: React.FC<{
               <label className="mazzi-field-label block">Expiração da Aula Agora (minutos)</label>
               <Input type="number" min={1} max={60} value={instantLessonExpirationMinutes} onChange={(e) => setInstantLessonExpirationMinutes(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
               <span className="block text-[10px] text-slate-500">Tempo para o aluno concluir a busca e o pagamento da Aula Agora.</span>
+            </div>
+            <div className="space-y-1">
+              <label className="mazzi-field-label block">Bloqueio após recusa (minutos)</label>
+              <Input type="number" min={1} max={60} value={instantDeclineCooldownMinutes} onChange={(e) => setInstantDeclineCooldownMinutes(e.target.value === '' ? '' : Number(e.target.value))} disabled={!isAuthorized} className="text-xs" />
+              <span className="block text-[10px] text-slate-500">Após recusar, o PRO não recebe valores nem ofertas do mesmo aluno durante este período.</span>
             </div>
           </div>
           <div className="mt-4 border-t border-amber-200/70 pt-4">

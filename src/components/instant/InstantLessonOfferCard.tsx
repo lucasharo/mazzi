@@ -40,7 +40,7 @@ export const InstantLessonOfferCard: React.FC<InstantLessonOfferCardProps> = ({ 
       <p className="mt-3 text-xs font-semibold text-slate-500">{formatInstantStatus(offer.status)} · {offer.durationMinutes} min</p>
       {onAccept && onDecline && (
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <Button variant="secondary" size="sm" leftIcon={<Check className="h-4 w-4" />} onClick={onAccept} isLoading={isLoading === 'accept'} disabled={!actionable}>Aceitar</Button>
+          <Button variant="secondary" size="sm" className="focus-visible:!ring-0" leftIcon={<Check className="h-4 w-4" />} onClick={onAccept} isLoading={isLoading === 'accept'} disabled={!actionable}>Aceitar</Button>
           <Button variant="dangerSoft" size="sm" leftIcon={<CircleX className="h-4 w-4" aria-hidden="true" />} onClick={onDecline} isLoading={isLoading === 'decline'} disabled={!actionable}>Recusar</Button>
         </div>
       )}

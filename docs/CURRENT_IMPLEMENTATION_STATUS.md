@@ -21,6 +21,8 @@
 - Configuração por veículo (`instant_enabled`) permanece independente e o campo legado `instant_online` é apenas compatibilidade.
 - Migration aplicada somente no Supabase DEV `bhvpkgonhlujmxvwnxix`; Production não foi alterada.
 
+Atualização (2026-09-09): a migration `20260909160000_admin_configurable_instant_decline_cooldown.sql` passou a ocultar os valores e impedir nova oferta do mesmo aluno ao instrutor que recusou a oferta anterior. O período é configurável no Admin e inicia em 5 minutos.
+
 **Última revisão**: 2026-09-01
 *Nota: Este documento deve ser atualizado sempre que uma TASK alterar o estado de uma feature relevante.*
 

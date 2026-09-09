@@ -18,10 +18,13 @@ import { formatCentsToBRL } from '../../../domain/money';
 import { calculateLessonDurationMinutes, formatTransmissionLabel, formatTimeBR } from '../../../lib/date-format';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
-import { getBookingStartTimestamp, getEffectiveBookingHoldExpiresAt } from '../../../domain/booking';
+import { CANCELLED_BOOKING_STATUSES, getBookingStartTimestamp, getEffectiveBookingHoldExpiresAt } from '../../../domain/booking';
 import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
 import { ExternalNavigationModal } from '../../../components/instant/ExternalNavigationModal';
+import { CountdownTimer } from '../../../components/ui/CountdownTimer';
 import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices } from '../../../components/booking/BookingDetailsShared';
+
+const BOOKING_DETAIL_REFRESH_INTERVAL_MS = 3_000;
 
 export interface ProviderBookingDetailsModalProps {
   isOpen: boolean;
@@ -121,7 +124,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     // Realtime remains the fast path, while this scoped fallback keeps the
     // open detail authoritative if the channel is delayed or unavailable.
     refreshBooking();
-    const timer = window.setInterval(refreshBooking, 10_000);
+    const timer = window.setInterval(refreshBooking, BOOKING_DETAIL_REFRESH_INTERVAL_MS);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') refreshBooking();
     };
@@ -139,7 +142,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   if (!booking) return null;
 
   const isWaitingPayment = isWaitingPaymentProp || booking.status === 'PENDING_PAYMENT';
-  const isOnTheWay = isOnTheWayProp || hasStartedDisplacement || Boolean(booking.providerOnTheWayAt || booking.snapshot?.provider_on_the_way_at);
+  const isOnTheWay = isOnTheWayProp || hasStartedDisplacement || Boolean(booking.providerOnTheWayAt);
   const isArrived = hasArrivedState || Boolean(booking.instructorCheckedIn);
 
   const snapshot = booking.snapshot || {
@@ -164,6 +167,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const isConfirmed = booking.status === 'CONFIRMED';
   const isInProgress = booking.status === 'IN_PROGRESS';
   const isCompleted = booking.status === 'COMPLETED';
+  const isCancelled = CANCELLED_BOOKING_STATUSES.includes(booking.status);
   const hasPersistedCheckInData = Boolean(
     booking.studentCheckedIn
     || booking.instructorCheckedIn
@@ -188,7 +192,12 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint) ? booking.fullMeetingPoint : '') ||
         'Ponto de encontro indicado no mapa';
   const canShowMeetingPoint = !isWaitingPayment && (isOnTheWay || isProviderMeetingPoint || isCompleted);
-  const meetingPointNotice = !canShowMeetingPoint && !isWaitingPayment
+  const visibleMeetingPoint = isCancelled
+    ? (isProviderMeetingPoint ? meetingPointText : '')
+    : canShowMeetingPoint ? meetingPointText : '';
+  const meetingPointNotice = isCancelled
+    ? undefined
+    : !canShowMeetingPoint && !isWaitingPayment
     ? 'Endereço estará disponível quando você clicar em “Estou a caminho”.'
     : undefined;
 
@@ -201,6 +210,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     ? { lat: latitude, lng: longitude, title: meetingPointText }
     : undefined;
   const staticLessonMap = ['IN_PROGRESS', 'COMPLETED'].includes(booking.status) && Boolean(mapPoint);
+  const cancelledMapOnly = isCancelled && Boolean(mapPoint);
   const lessonStart = booking.lessonStartedAt || '';
   const lessonEnd = booking.lessonFinishedAt || '';
   const durationLabel = booking.status === 'COMPLETED' && lessonStart && lessonEnd
@@ -212,6 +222,9 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const bookingTotalInCents = snapshot.totalInCents ?? booking.totalInCents ?? lessonPriceInCents;
   const netAmountInCents = Math.max(0, bookingTotalInCents - platformFeeInCents);
   const effectiveHoldExpiresAt = getEffectiveBookingHoldExpiresAt(booking, instantLessonExpirationMinutes);
+  const paymentSecondsLeft = effectiveHoldExpiresAt
+    ? Math.max(0, Math.ceil((new Date(effectiveHoldExpiresAt).getTime() - checkInNow.getTime()) / 1_000))
+    : null;
 
   const canCancel = canCancelBooking
     ? canCancelBooking(booking)
@@ -519,6 +532,12 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         footer={isWaitingPayment ? instantFooter : standardFooter}
       >
         <div className="space-y-4 text-left" data-component="provider-booking-details-modal">
+          {isWaitingPayment && paymentSecondsLeft !== null && paymentSecondsLeft > 0 && (
+            <CountdownTimer
+              secondsRemaining={paymentSecondsLeft}
+              ariaLabel={`O aluno tem mais ${paymentSecondsLeft} segundos para realizar o pagamento`}
+            />
+          )}
           {isWaitingPayment && !isCompleted && (
             <div className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <div className="flex items-start gap-3">
@@ -537,10 +556,11 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
 
           <BookingDetailsHeader
             status={booking.status}
-            audience="provider"
-            title={studentName}
-            subtitle={`Aula #${booking.id.slice(0, 8)}`}
-            instructorCheckedIn={Boolean(booking.instructorCheckedIn)}
+             audience="provider"
+             title={studentName}
+             subtitle={`Aula #${booking.id.slice(0, 8)}`}
+             avatarUrl={booking.studentAvatarUrl || booking.snapshot?.studentAvatarUrl}
+             instructorCheckedIn={Boolean(booking.instructorCheckedIn)}
           />
 
           <BookingPresenceCard
@@ -567,20 +587,23 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               ? `Início: ${formatTimeBR(lessonStart)} · Fim: ${formatTimeBR(lessonEnd)}`
               : `Horário: ${booking.startTime} às ${booking.endTime}`}
             durationLabel={durationLabel}
-            meetingPoint={canShowMeetingPoint ? meetingPointText : ''}
+            meetingPoint={visibleMeetingPoint}
             meetingPointNotice={meetingPointNotice}
             isProviderAddress={isProviderMeetingPoint}
-            showCopyAddress={!isWaitingPayment && isOnTheWay && !isProviderMeetingPoint && !isCompleted}
+            showCopyAddress={!isWaitingPayment && isOnTheWay && !isProviderMeetingPoint && !isInProgress && !isCompleted && !isCancelled}
             addressCopied={addressCopied}
             onCopyAddress={handleCopyAddress}
           />
-          {staticLessonMap && !isWaitingPayment && mapPoint && (
+          {cancelledMapOnly && !isWaitingPayment && mapPoint && (
+            <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
+          )}
+          {staticLessonMap && !isCancelled && !isWaitingPayment && mapPoint && (
             <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker />
           )}
-          {!staticLessonMap && !isWaitingPayment && !canShowMeetingPoint && mapPoint && (
+          {!staticLessonMap && !isCancelled && !isWaitingPayment && !canShowMeetingPoint && mapPoint && (
              <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
           )}
-          {!staticLessonMap && mapPoint && canShowMeetingPoint && <BookingMapPreview
+          {!staticLessonMap && !isCancelled && mapPoint && canShowMeetingPoint && <BookingMapPreview
             latitude={mapPoint.lat}
             longitude={mapPoint.lng}
             title={mapPoint.title}
@@ -603,15 +626,16 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           <BookingPaymentStateNotices
             isPendingPayment={isWaitingPayment}
             isHoldValid={effectiveHoldExpiresAt ? new Date(effectiveHoldExpiresAt).getTime() > Date.now() : true}
-            secondsLeft={effectiveHoldExpiresAt ? Math.max(0, Math.ceil((new Date(effectiveHoldExpiresAt).getTime() - Date.now()) / 1000)) : null}
+            secondsLeft={paymentSecondsLeft}
             isExpired={booking.status === 'EXPIRED' || (isWaitingPayment && Boolean(effectiveHoldExpiresAt) && new Date(effectiveHoldExpiresAt).getTime() <= Date.now())}
+            showCountdown={false}
           />
 
           <BookingDisputePanel booking={booking} currentUserId={currentUserId} />
         </div>
       </Modal>
 
-      {latitude != null && longitude != null && !staticLessonMap && (
+      {latitude != null && longitude != null && !staticLessonMap && !isCancelled && (
         <ExternalNavigationModal
           isOpen={navModalOpen}
           onClose={() => setNavModalOpen(false)}

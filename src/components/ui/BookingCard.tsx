@@ -64,7 +64,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   const student = booking.studentName || booking.student?.name || 'Aluno';
   const point = isStudent
     ? getStudentBookingMeetingPointText(booking)
-    : getProviderBookingMeetingPointText(booking, 'Ponto de encontro a combinar');
+    : getProviderBookingMeetingPointText(booking, 'Região da aula');
   const transLabel = booking.snapshot?.transmission === 'AUTOMATIC' ? 'Automático' : 'Manual';
   const category = booking.snapshot?.category || 'B';
   const duration = calculateLessonDurationMinutes(booking) || 50;
@@ -76,7 +76,9 @@ export const BookingCard: React.FC<BookingCardProps> = ({
 
   // Single name display: show instructor name (or student name if in instructor perspective) exactly once
   const mainDisplayName = isInstructorPerspective ? student : instructor;
-  const mainDisplayAvatar = isInstructorPerspective ? undefined : booking.snapshot.instructorAvatarUrl || booking.snapshot.providerAvatarUrl;
+  const mainDisplayAvatar = isInstructorPerspective
+    ? booking.studentAvatarUrl || booking.snapshot?.studentAvatarUrl
+    : booking.snapshot.instructorAvatarUrl || booking.snapshot.providerAvatarUrl;
   const scheduledStartTime = booking.startTime || (booking.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : '');
   const scheduledEndTime = booking.endTime || (booking.scheduledEndAt ? formatTimeBR(booking.scheduledEndAt) : '');
   const lessonStartTime = booking.lessonStartedAt ? formatTimeBR(booking.lessonStartedAt) : '';

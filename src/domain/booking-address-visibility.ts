@@ -26,9 +26,7 @@ export function getBookingAddressVisibility(
       && (value as { type?: string }).type === 'PROVIDER_ADDRESS'
   ));
 
-  const providerOnTheWayAt = booking.providerOnTheWayAt
-    || booking.snapshot?.provider_on_the_way_at
-    || (booking.snapshot as { providerOnTheWayAt?: string } | undefined)?.providerOnTheWayAt;
+  const providerOnTheWayAt = booking.providerOnTheWayAt;
   const isLessonStarted = booking.status === 'IN_PROGRESS' || Boolean(booking.lessonStartedAt);
   const scheduledStartMs = getBookingStartTimestamp(booking);
   const releaseAtMs = scheduledStartMs > 0

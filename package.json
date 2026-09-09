@@ -16,6 +16,7 @@
     "build:admin": "vite build --mode=admin",
     "build:landing": "vite build --mode=landing",
     "build:all": "npm run build:student && npm run build:instructor && npm run build:admin && npm run build:landing",
+    "sync:email-templates": "node scripts/sync-email-templates.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",

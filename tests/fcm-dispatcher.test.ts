@@ -5,6 +5,7 @@ const dispatcher = fs.readFileSync('supabase/functions/dispatch-push-notificatio
 const fcm = fs.readFileSync('supabase/functions/_shared/fcm-http-v1.ts', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20260902153159_task_087_fcm_dispatch.sql', 'utf8');
 const webhookMigration = fs.readFileSync('supabase/migrations/20260902154300_task_087_fcm_webhook_dispatch.sql', 'utf8');
+const messageNotificationMigration = fs.readFileSync('supabase/migrations/20260908220000_fix_message_notification_targets.sql', 'utf8');
 
 describe('TASK-087 FCM dispatcher contract', () => {
   it('accepts only the authenticated webhook contract and canonical notification id', () => {
@@ -41,5 +42,18 @@ describe('TASK-087 FCM dispatcher contract', () => {
     expect(webhookMigration).toContain('vault.decrypted_secrets');
     expect(webhookMigration).toContain('net.http_post');
     expect(webhookMigration).toContain('dispatch-push-notification');
+  });
+
+  it('targets new-message push notifications at the booking that opens the chat', () => {
+    expect(messageNotificationMigration).toContain("entity_type = 'booking'");
+    expect(messageNotificationMigration).toContain('entity_id = c.booking_id');
+    expect(messageNotificationMigration).toContain("'booking',\n    v_conversation.booking_id");
+    expect(messageNotificationMigration).toContain("navigation_action = 'chat'");
+  });
+
+  it('allows Aula Agora offers to reach the PRO device', () => {
+    expect(dispatcher).toContain('"INSTANT_LESSON_OFFER"');
+    expect(dispatcher).toContain('"instant_offer"');
+    expect(dispatcher).toContain('"instant_offer"]');
   });
 });

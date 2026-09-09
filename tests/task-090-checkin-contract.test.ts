@@ -36,19 +36,19 @@ describe('TASK-090 check-in contract', () => {
   it('explains that the address for scheduled and Aula Agora lessons is released after starting displacement', () => {
     expect(providerModal).toContain('const canShowMeetingPoint = !isWaitingPayment && (isOnTheWay || isProviderMeetingPoint || isCompleted);');
     expect(providerModal).toContain("const staticLessonMap = ['IN_PROGRESS', 'COMPLETED'].includes(booking.status) && Boolean(mapPoint);");
-    expect(providerModal).toContain('const meetingPointNotice = !canShowMeetingPoint && !isWaitingPayment');
+    expect(providerModal).toContain('const meetingPointNotice = isCancelled');
     expect(providerModal).toContain('meetingPointNotice={meetingPointNotice}');
-    expect(providerModal).toContain("meetingPoint={canShowMeetingPoint ? meetingPointText : ''}");
-    expect(providerModal).toContain('showCopyAddress={!isWaitingPayment && isOnTheWay && !isProviderMeetingPoint && !isCompleted}');
+    expect(providerModal).toContain('meetingPoint={visibleMeetingPoint}');
+    expect(providerModal).toContain('showCopyAddress={!isWaitingPayment && isOnTheWay && !isProviderMeetingPoint && !isInProgress && !isCompleted && !isCancelled}');
     expect(providerModal).toContain('showMarker />');
     expect(providerModal).toContain('showNavigation={!isInProgress && hasExactMeetingPoint && !isProviderMeetingPoint}');
-    expect(providerModal).toContain('{latitude != null && longitude != null && !staticLessonMap && (');
+    expect(providerModal).toContain('{latitude != null && longitude != null && !staticLessonMap && !isCancelled && (');
     expect(studentModal).toContain("const staticLessonMap = ['IN_PROGRESS', 'COMPLETED'].includes(booking.status) && Boolean(mapPoint);");
     expect(studentModal).toContain('meetingPoint={visibleMeetingPoint}');
-    expect(studentModal).toContain('showCopyAddress={isProviderAddress && !isPendingPayment && !shouldHideProviderLocation && !isCompleted}');
-    expect(studentModal).toContain('{staticLessonMap && !isPendingPayment && mapPoint && (');
+    expect(studentModal).toContain('showCopyAddress={isProviderAddress && !isPendingPayment && !shouldHideProviderLocation && !staticLessonMap && !isCancelled}');
+    expect(studentModal).toContain('{staticLessonMap && !isCancelled && !isPendingPayment && mapPoint && (');
     expect(studentModal).toContain('showMarker />');
-    expect(studentModal).toContain('{isProviderAddress && mapPoint && !staticLessonMap && (');
+    expect(studentModal).toContain('{isProviderAddress && mapPoint && !staticLessonMap && !isCancelled && (');
     expect(providerModal).toContain("const modalTitle = 'Detalhes da aula';");
     expect(providerModal).not.toContain("'Aula Agora Confirmada'");
     expect(providerModal).toContain('const isArrived = hasArrivedState || Boolean(booking.instructorCheckedIn);');

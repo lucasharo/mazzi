@@ -14,14 +14,23 @@ function canRegisterServiceWorker(): boolean {
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1';
   const isProductionBuild = env.PROD === true;
-  // Local Vite development must not register the PWA worker: it can cache
-  // source modules and leave React/ReactDOM out of sync after HMR/reloads.
-  // HTTPS DEV tunnels still register it so FCM can receive background pushes.
   const isLocalDevOrigin = window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1';
   const isRemoteDevBuild = env.DEV === true && secureOrigin && !isLocalDevOrigin;
+  const hasFirebaseMessagingConfig = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_MESSAGING_SENDER_ID',
+    'VITE_FIREBASE_APP_ID',
+    'VITE_FCM_VAPID_KEY',
+  ].every((key) => typeof env[key] === 'string' && env[key].trim().length > 0);
+  // The worker never caches Vite source modules, but localhost only needs it
+  // when FCM is configured; this keeps ordinary local development unchanged
+  // while allowing DEV push tokens to be registered from localhost.
+  const isLocalFcmDev = env.DEV === true && isLocalDevOrigin && hasFirebaseMessagingConfig;
 
-  return secureOrigin && (isProductionBuild || isRemoteDevBuild);
+  return secureOrigin && (isProductionBuild || isRemoteDevBuild || isLocalFcmDev);
 }
 
 export function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {

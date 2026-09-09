@@ -89,6 +89,7 @@ describe('Stripe hosted onboarding contract', () => {
     expect(serviceWorker).toContain("url.pathname.startsWith('/src/')");
     expect(serviceWorker).toContain("url.pathname.startsWith('/node_modules/')");
     expect(serviceWorkerRegistration).toContain('isRemoteDevBuild');
+    expect(serviceWorkerRegistration).toContain('isLocalFcmDev');
 
     const identityPrefillMigration = fs.readFileSync(
       path.join(root, 'supabase/migrations/20260903013436_stripe_connect_identity_prefill.sql'),

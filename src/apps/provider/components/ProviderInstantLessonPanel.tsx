@@ -159,6 +159,9 @@ export const ProviderInstantLessonPanel: React.FC<
     () => pendingPaymentInstantBookings.filter((booking) => isPendingPaymentHoldActive(booking, now + serverClockOffsetMs)),
     [pendingPaymentInstantBookings, now, serverClockOffsetMs],
   );
+  const pendingPaymentSecondsLeft = visiblePendingPaymentInstantBookings[0]?.holdExpiresAt
+    ? Math.max(0, Math.ceil((new Date(visiblePendingPaymentInstantBookings[0].holdExpiresAt).getTime() - (now + serverClockOffsetMs)) / 1_000))
+    : null;
   const save = async (
     configuration: (typeof configurations)[number],
     enabledOverride?: boolean,
@@ -204,6 +207,13 @@ export const ProviderInstantLessonPanel: React.FC<
   };
   return (
     <section className="space-y-4" aria-labelledby="instant-lesson-title">
+      {pendingPaymentSecondsLeft !== null && (
+        <CountdownTimer
+          secondsRemaining={pendingPaymentSecondsLeft}
+          label="O aluno tem mais tempo para realizar o pagamento"
+          ariaLabel={`O aluno tem mais ${pendingPaymentSecondsLeft} segundos para realizar o pagamento`}
+        />
+      )}
       <div className="mazzi-compact-card rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-3 shadow-sm ring-1 ring-amber-100/70">
         <div className="flex items-start gap-2.5">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">

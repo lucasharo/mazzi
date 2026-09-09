@@ -43,6 +43,12 @@ export const UNPAID_BOOKING_STATUSES: BookingStatus[] = [
   'EXPIRED',
 ];
 
+/** Statuses in which a booking is cancelled and must not expose the other user's address. */
+export const CANCELLED_BOOKING_STATUSES: BookingStatus[] = [
+  'CANCELLED_BY_STUDENT',
+  'CANCELLED_BY_PROVIDER',
+];
+
 /** A pending payment remains actionable only while its backend hold is valid. */
 export function isPendingPaymentHoldActive(
   booking: Booking,

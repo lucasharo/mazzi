@@ -19,6 +19,10 @@ const instantVehicleVisibilityMigration = readFileSync('supabase/migrations/2026
 const canonicalInstructorAvailabilityMigration = readFileSync('supabase/migrations/20260905230000_task_089_canonical_instructor_availability.sql', 'utf8');
 const canonicalStatusRlsMigration = readFileSync('supabase/migrations/20260905232000_task_089_canonical_status_rls.sql', 'utf8');
 const availabilityWindowMigration = readFileSync('supabase/migrations/20260905234000_task_089_instructor_availability_window.sql', 'utf8');
+const instantDeclineCooldownMigration = readFileSync('supabase/migrations/20260909150000_instant_offer_decline_cooldown.sql', 'utf8');
+const configurableInstantDeclineCooldownMigration = readFileSync('supabase/migrations/20260909160000_admin_configurable_instant_decline_cooldown.sql', 'utf8');
+const adminComponents = readFileSync('src/apps/admin/AdminComponents.tsx', 'utf8');
+const adminApp = readFileSync('src/apps/admin/AdminApp.tsx', 'utf8');
 const dbService = readFileSync('src/lib/db-service.ts', 'utf8');
 const instantModal = readFileSync('src/apps/student/components/InstantLessonModal.tsx', 'utf8');
 const instantWizard = readFileSync('src/components/instant/InstantLessonWizard.tsx', 'utf8');
@@ -66,13 +70,44 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(studentBookingDetails).toContain('onOpenTracking={() => setIsTrackingOpen(true)}');
   });
 
+  it('keeps a declined Aula Agora instructor out of the same student matching for five minutes', () => {
+    expect(instantDeclineCooldownMigration).toContain("declined_request.student_id=v_req.student_id");
+    expect(instantDeclineCooldownMigration).toContain("declined.status='DECLINED'");
+    expect(instantDeclineCooldownMigration).toContain("declined.updated_at>v_now-INTERVAL '5 minutes'");
+  });
+
+  it('hides declined instructors from price options and exposes the cooldown to Admin', () => {
+    expect(configurableInstantDeclineCooldownMigration).toContain("declined_request.student_id = v_uid");
+    expect(configurableInstantDeclineCooldownMigration).toContain("value->>'decline_cooldown_minutes'");
+    expect(configurableInstantDeclineCooldownMigration).toContain('p_decline_cooldown_minutes INTEGER');
+    expect(configurableInstantDeclineCooldownMigration).toContain('INVALID_INSTANT_DECLINE_COOLDOWN');
+    expect(adminComponents).toContain('Bloqueio após recusa (minutos)');
+    expect(adminApp).toContain('declineCooldownMinutes: instantDeclineCooldownMinutes');
+  });
+
   it('removes student maps after the lesson starts', () => {
     expect(studentBookingDetails).toContain("const isLessonStarted = booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);");
     expect(studentBookingDetails).toContain('!isLessonStarted && isProviderOnTheWay');
     expect(studentBookingDetails).toContain("const staticLessonMap = ['IN_PROGRESS', 'COMPLETED'].includes(booking.status) && Boolean(mapPoint);");
-    expect(studentBookingDetails).toContain('{!staticLessonMap && !isLessonStarted && !isPendingPayment && visibleMapPoint');
+    expect(studentBookingDetails).toContain('{!staticLessonMap && !isCancelled && !isLessonStarted && !isPendingPayment && visibleMapPoint');
     expect(instantModal).toContain("const isLessonStarted = bookingStatus === 'IN_PROGRESS' || booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);");
     expect(instantModal).toContain('const showTrackingMap = !isLessonStarted');
+  });
+
+  it('returns from instructor tracking to booking details when the lesson starts', () => {
+    expect(instantModal).toContain("if (booking && bookingStatus !== 'PENDING_PAYMENT' && (isLessonStarted || (activeRequest && !trackingOpen)))");
+    expect(studentApp).toContain('const activeInstantBooking = useMemo(() => {');
+    expect(studentApp).toContain('bookingStatus={activeInstantBooking?.status}');
+    expect(studentApp).toContain('booking={activeInstantBooking}');
+  });
+
+  it('returns to the price step when the last Aula Agora offer is declined', () => {
+    expect(studentApp).toContain("setInstantLessonReturnToPrice(true);");
+    expect(studentApp).toContain('returnToPriceStep={instantLessonReturnToPrice}');
+    expect(instantModal).toContain('returnToPriceStep?: boolean;');
+    expect(instantModal).toContain('returnToPriceStep={returnToPriceStep}');
+    expect(instantWizard).toContain('returnToPriceStep?: boolean;');
+    expect(instantWizard).toContain("setDraft((current) => ({ ...current, step: 2, maxPrice: null, priceChosen: false }));");
   });
 
   it('keeps the PRO booking detail underneath the nested chat modal', () => {
@@ -188,7 +223,9 @@ describe('TASK-089 Aula Agora persistence contract', () => {
 
   it('keeps stale price previews from showing a transient search state', () => {
     expect(studentApp).toContain('const latestPriceOptions = await dbService.getInstantPriceOptions(params);');
-    expect(studentApp).toContain("dispatched.status === 'FAILED' || dispatched.offersCreated < 1");
+    expect(studentApp).toContain("created.status === 'FAILED' || created.status === 'EXPIRED'");
+    expect(studentApp).toContain('create_instant_lesson_request dispatches the first offer wave');
+    expect(studentApp).not.toContain("dispatched.status === 'FAILED' || dispatched.offersCreated < 1");
     expect(studentApp).not.toContain('setActiveInstantLesson({ request: nextRequest });');
     expect(instantWizard).toContain('INSTANT_NO_PROFESSIONAL_AVAILABLE');
   });

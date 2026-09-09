@@ -130,6 +130,19 @@ export const Modal: React.FC<ModalProps> = ({
     xl: 'max-w-2xl',
   };
 
+  const closeControl = (
+    <IconButton
+      label={showBackButton ? 'Voltar' : 'Fechar diálogo'}
+      onClick={onClose}
+      data-dialog-autofocus="true"
+      className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors"
+    >
+      {showBackButton
+        ? <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+        : <X className="w-4 h-4" aria-hidden="true" />}
+    </IconButton>
+  );
+
   const modalContent = (
     <div
       id={id || 'mazzi-modal'}
@@ -153,21 +166,13 @@ export const Modal: React.FC<ModalProps> = ({
         {title && (
           <div className="bg-white px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between">
             <div className="flex min-w-0 items-center gap-2">
+              {showBackButton && closeControl}
               {headerAction}
               <h3 id={titleId} className="font-extrabold text-[var(--mazzi-dark)] text-base">{title}</h3>
             </div>
             <div className="flex items-center gap-2">
               <EnvironmentBadge />
-              <IconButton
-                label={showBackButton ? 'Voltar' : 'Fechar diálogo'}
-                onClick={onClose}
-                data-dialog-autofocus="true"
-                className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors"
-              >
-                {showBackButton
-                  ? <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-                  : <X className="w-4 h-4" aria-hidden="true" />}
-              </IconButton>
+              {!showBackButton && closeControl}
             </div>
           </div>
         )}

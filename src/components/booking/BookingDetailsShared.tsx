@@ -22,6 +22,7 @@ import { CountdownTimer } from '../ui/CountdownTimer';
 import { UniversalMap } from '../maps/UniversalMap';
 import { CheckInAvailability } from '../../domain/checkin';
 import { formatTimeBR } from '../../lib/date-format';
+import { ProfileAvatar } from '../profile/ProfileAvatar';
 
 export type BookingDetailsAudience = 'student' | 'provider';
 
@@ -31,6 +32,7 @@ interface BookingDetailsHeaderProps {
   title: string;
   subtitle?: React.ReactNode;
   instructorCheckedIn?: boolean;
+  avatarUrl?: string;
 }
 
 export const BookingDetailsHeader: React.FC<BookingDetailsHeaderProps> = ({
@@ -39,12 +41,16 @@ export const BookingDetailsHeader: React.FC<BookingDetailsHeaderProps> = ({
   title,
   subtitle,
   instructorCheckedIn,
+  avatarUrl,
 }) => (
   <div className="mazzi-compact-card flex items-start justify-between gap-3 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
-    <div className="min-w-0">
+    <div className="flex min-w-0 items-start gap-3">
+      {avatarUrl && <ProfileAvatar name={title} imageUrl={avatarUrl} size="md" className="h-11 w-11" />}
+      <div className="min-w-0">
       <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--mazzi-muted)]">Detalhes da aula</p>
       <p className="mt-0.5 truncate text-sm font-extrabold text-[var(--mazzi-dark)]">{title}</p>
       {subtitle && <p className="mt-1 text-[11px] font-medium text-slate-500">{subtitle}</p>}
+      </div>
     </div>
     <StatusBadge className="mt-0.5" status={status} audience={audience === 'student' ? 'student' : undefined} instructorCheckedIn={instructorCheckedIn} />
   </div>
@@ -338,6 +344,7 @@ interface BookingPaymentStateNoticesProps {
   isHoldValid: boolean;
   secondsLeft: number | null;
   isExpired: boolean;
+  showCountdown?: boolean;
 }
 
 export const BookingPaymentStateNotices: React.FC<BookingPaymentStateNoticesProps> = ({
@@ -345,9 +352,10 @@ export const BookingPaymentStateNotices: React.FC<BookingPaymentStateNoticesProp
   isHoldValid,
   secondsLeft,
   isExpired,
+  showCountdown = true,
 }) => (
   <>
-    {isPendingPayment && isHoldValid && secondsLeft !== null && (
+    {showCountdown && isPendingPayment && isHoldValid && secondsLeft !== null && (
       <CountdownTimer secondsRemaining={secondsLeft} />
     )}
     {isPendingPayment && isHoldValid && secondsLeft === null && (

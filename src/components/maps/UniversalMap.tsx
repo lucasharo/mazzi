@@ -24,6 +24,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
     providerMarker,
     followSelectedProvider,
     interactive,
+    onReady,
   } = props;
 
   const [showRadius, setShowRadius] = useState(showCoverageRadius);
@@ -88,6 +89,7 @@ export const UniversalMap: MapProviderComponent = (props: MapProviderProps) => {
           providerMarker={providerMarker}
           followSelectedProvider={followSelectedProvider}
           interactive={interactive}
+          onReady={onReady}
         />
       </Suspense>
     </div>

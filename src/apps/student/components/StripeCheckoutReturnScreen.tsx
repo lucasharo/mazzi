@@ -66,7 +66,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
     typeof value === 'object' && value !== null && (value as { type?: string }).type === 'PROVIDER_ADDRESS'
   ));
   const isLessonStarted = booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);
-  const isProviderOnTheWay = Boolean(booking?.providerOnTheWayAt || (booking?.snapshot as any)?.provider_on_the_way_at);
+  const isProviderOnTheWay = Boolean(booking?.providerOnTheWayAt);
   const shouldHideMeetingPoint = Boolean(booking)
     && !isLessonStarted
     && !isProviderOnTheWay

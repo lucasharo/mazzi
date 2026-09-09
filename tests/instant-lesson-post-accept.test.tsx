@@ -69,6 +69,13 @@ describe('Instant Lesson Post-Accept & Active Journey Flow', () => {
       expect(sql).toContain("'PROVIDER_ON_THE_WAY'");
       expect(sql).toContain("'is_idempotent', TRUE");
       expect(sql).toContain("ARRAY['meetingPoint','meeting_point','fullMeetingPoint','latitude','longitude']");
+
+      const persistenceMigrationPath = path.join(process.cwd(), 'supabase/migrations/20260908213000_provider_on_the_way_persistence.sql');
+      expect(fs.existsSync(persistenceMigrationPath)).toBe(true);
+      const persistenceSql = fs.readFileSync(persistenceMigrationPath, 'utf8');
+      expect(persistenceSql).toContain('ADD COLUMN IF NOT EXISTS provider_on_the_way_at TIMESTAMPTZ');
+      expect(persistenceSql).toContain('SET provider_on_the_way_at = v_now');
+      expect(persistenceSql).toContain('SET provider_on_the_way_at = v_previous_at');
     });
   });
 

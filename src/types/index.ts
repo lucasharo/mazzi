@@ -468,6 +468,7 @@ export interface BookingSnapshot {
   provider_on_the_way_at?: string;
   instructorAvatarUrl?: string;
   providerAvatarUrl?: string;
+  studentAvatarUrl?: string;
   providerId: string;
   providerName: string;
   providerType: ProviderType;
@@ -493,6 +494,7 @@ export interface Booking {
   id: string;
   studentId: string;
   studentName?: string;
+  studentAvatarUrl?: string;
   providerId: string;
   providerName: string;
   instructorId: string;

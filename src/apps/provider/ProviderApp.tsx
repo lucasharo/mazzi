@@ -33,6 +33,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Badge } from '../../components/ui/Badge';
+import { EnvironmentBadge } from '../../components/ui/EnvironmentBadge';
+import { IconButton } from '../../components/ui/IconButton';
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel';
 import { SettingsPanel } from '../../components/settings/SettingsPanel';
 import { NotificationsPanel } from '../../components/notifications/NotificationsPanel';
@@ -77,7 +79,7 @@ import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTar
 import type { NotificationNavigationTarget } from '../../lib/notification-navigation';
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
-import { disableStoredPushDevice } from '../../lib/push-device-registry';
+import { disableStoredPushDevice, registerPushDevice } from '../../lib/push-device-registry';
 import { dismissInitialSplash, signalInitialNavigationReady } from '../../lib/initial-splash';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
 import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
@@ -99,7 +101,7 @@ import { InstantLessonOperationalModal } from '../../components/instant/InstantL
 import { InstantLessonOfferBottomSheet } from '../../components/instant/InstantLessonOfferBottomSheet';
 import { ExternalNavigationModal } from '../../components/instant/ExternalNavigationModal';
 import { ToastContainer, ToastMessage } from '../../components/ui/Toast';
-import { AlertCircle, ArrowRight, Calendar as CalendarIcon, CheckCircle2, Clock3, Info, LogOut, RefreshCw, Sparkles, Upload, WalletCards, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Calendar as CalendarIcon, CheckCircle2, Clock3, Info, LogOut, RefreshCw, Sparkles, Upload, WalletCards, XCircle } from 'lucide-react';
 
 function preserveLessonProgress(current: Booking, refreshed: Booking): Booking {
   if (current.id !== refreshed.id) return refreshed;
@@ -109,6 +111,19 @@ function preserveLessonProgress(current: Booking, refreshed: Booking): Booking {
   // agenda while that stale response is being applied.
   if (current.status === 'COMPLETED' && refreshed.status !== 'COMPLETED') return current;
   if (current.status === 'IN_PROGRESS' && refreshed.status === 'CONFIRMED') return current;
+
+  // The displacement action is one-way. Do not let a stale query response
+  // make the "Estou a caminho" action available again after it was confirmed.
+  if (current.providerOnTheWayAt && !refreshed.providerOnTheWayAt) {
+    return {
+      ...refreshed,
+      providerOnTheWayAt: current.providerOnTheWayAt,
+      snapshot: {
+        ...refreshed.snapshot,
+        provider_on_the_way_at: current.providerOnTheWayAt,
+      },
+    };
+  }
 
   return refreshed;
 }
@@ -384,7 +399,9 @@ export const ProviderApp: React.FC = () => {
         setIsInstantOperationalModalOpen(false);
         setIsExternalNavModalOpen(false);
         setActiveTab('bookings');
-        setSelectedBooking(activeInstantBooking);
+        window.setTimeout(() => {
+          setSelectedBooking(activeInstantBooking);
+        }, 0);
       }
       prevInstantBookingRef.current = { id: activeInstantBooking.id, status: activeInstantBooking.status };
     }
@@ -393,7 +410,22 @@ export const ProviderApp: React.FC = () => {
   const handleSetOnTheWay = async (bookingId: string) => {
     setIsOnTheWayLoading(true);
     try {
-      await dbService.setProviderOnTheWay(bookingId);
+      const result = await dbService.setProviderOnTheWay(bookingId);
+      const providerOnTheWayAt = result.provider_on_the_way_at || new Date().toISOString();
+      const markProviderOnTheWay = (booking: Booking): Booking => ({
+        ...booking,
+        providerOnTheWayAt,
+        snapshot: {
+          ...booking.snapshot,
+          provider_on_the_way_at: providerOnTheWayAt,
+        },
+      });
+      setBookings((currentBookings) => currentBookings.map((booking) => (
+        booking.id === bookingId ? markProviderOnTheWay(booking) : booking
+      )));
+      setSelectedBooking((currentBooking) => (
+        currentBooking?.id === bookingId ? markProviderOnTheWay(currentBooking) : currentBooking
+      ));
       if (activeProviderId && user?.id) await invalidateProviderBookingQueries(activeProviderId, user.id, bookingId);
       showProviderFeedback('success', 'Você está a caminho!', 'Notificamos o aluno que você já se deslocou para o ponto de encontro.');
       await loadWorkspace(activeProviderId, { silent: true });
@@ -421,6 +453,14 @@ export const ProviderApp: React.FC = () => {
       unsubscribe();
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!isRealSupabase || !user?.id) return;
+    // FCM tokens can be rotated or invalidated by the browser. Refresh the
+    // server registration whenever the PRO app opens so new pushes use the
+    // current token instead of a stale device record.
+    void registerPushDevice({ appContext: 'PRO', userId: user.id });
+  }, [isRealSupabase, user?.id]);
 
   const handleLogout = async () => {
     // Nunca deixe a disponibilidade do instrutor persistir depois do logout.
@@ -905,8 +945,10 @@ export const ProviderApp: React.FC = () => {
     if (!acceptedBooking) return;
 
     acceptedInstantBookingIdRef.current = null;
+    setIsInstantSettingsOpen(false);
+    setIsInstantOperationalModalOpen(false);
     setActiveTab('bookings');
-    setSelectedBooking(acceptedBooking);
+    window.setTimeout(() => setSelectedBooking(acceptedBooking), 0);
   }, [bookings]);
 
   const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
@@ -1150,10 +1192,40 @@ export const ProviderApp: React.FC = () => {
       const result = await dbService.respondToInstantOffer(offerId, action);
       if (currentProvider?.id && user?.id) void invalidateProviderInstantQueries(currentProvider.id, user.id);
       await loadInstantOffers();
-      if (action === 'ACCEPT' && result.bookingId) showProviderFeedback('success', 'Solicitação aceita', 'A nova aula foi adicionada à sua agenda.');
       if (action === 'DECLINE') showProviderFeedback('info', 'Solicitação recusada', 'Você continuará disponível para novas solicitações.');
-      if (action === 'ACCEPT' && result.bookingId) acceptedInstantBookingIdRef.current = result.bookingId;
-      if (result.bookingId) await loadWorkspace(activeProviderId, { silent: true });
+      if (action === 'ACCEPT' && result.bookingId) {
+        const acceptedBookingId = result.bookingId;
+        acceptedInstantBookingIdRef.current = acceptedBookingId;
+
+        try {
+          const isInstructorUser = user?.role === 'INSTRUCTOR' || user?.roles?.includes('INSTRUCTOR');
+          if (activeProviderId && user?.id) {
+            await invalidateProviderBookingQueries(activeProviderId, user.id, acceptedBookingId);
+          }
+          const refreshedBookings = await serverState.getProviderBookings({
+            providerId: activeProviderId,
+            userId: user?.id || 'unknown',
+            isInstructor: isInstructorUser,
+          });
+          setBookings(refreshedBookings || []);
+          const acceptedBooking = refreshedBookings.find((booking) => booking.id === acceptedBookingId);
+
+          if (acceptedBooking) {
+            acceptedInstantBookingIdRef.current = null;
+            setIsInstantSettingsOpen(false);
+            setIsInstantOperationalModalOpen(false);
+            setActiveTab('bookings');
+            window.setTimeout(() => setSelectedBooking(acceptedBooking), 0);
+          }
+        } catch (refreshError) {
+          // The accept RPC already succeeded. Keep the navigation ref so the
+          // normal workspace/realtime refresh can open the detail later.
+          console.warn('Could not immediately hydrate accepted instant booking:', refreshError);
+          void loadWorkspace(activeProviderId, { silent: true });
+        }
+
+        showProviderFeedback('success', 'Solicitação aceita', 'A nova aula foi adicionada à sua agenda.');
+      }
     } catch (error) {
       // A rejected accept can mean the card expired while it was visible.
       // Refresh immediately so the stale card cannot be clicked again.
@@ -2189,7 +2261,7 @@ status: 'IN_REVIEW',
   return (
     <div className="mazzi-app flex flex-col min-h-dvh bg-[#f7f5ef] text-[var(--mazzi-text)]">
       {/* Header */}
-      {activeTab === 'dashboard' && (
+      {!isInstantSettingsOpen && activeTab === 'dashboard' && (
         <ProviderHeader
           currentProvider={currentProvider}
           currentRole={currentRole}
@@ -2203,6 +2275,47 @@ status: 'IN_REVIEW',
       )}
 
       {/* Main Content Body */}
+      {isInstantSettingsOpen ? (
+        <main className="mazzi-mobile mazzi-provider-content flex flex-1 flex-col bg-white">
+          <div className="-mx-5 border-b border-[var(--mazzi-border)] bg-white sm:-mx-7">
+            <div className="mx-auto flex min-h-16 w-full max-w-[680px] items-center justify-between gap-3 px-6">
+              <div className="flex min-w-0 items-center gap-2">
+                <IconButton
+                  label="Voltar para o painel"
+                  onClick={() => setIsInstantSettingsOpen(false)}
+                  className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:bg-slate-200/80 hover:text-[var(--mazzi-dark)]"
+                >
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                </IconButton>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--mazzi-muted)]">Operação</p>
+                  <h1 className="truncate text-base font-extrabold text-[var(--mazzi-dark)]">Aula Agora</h1>
+                </div>
+              </div>
+              <EnvironmentBadge />
+            </div>
+          </div>
+          <div className="mx-auto w-full max-w-[680px] flex-1 space-y-4 overflow-y-auto px-4 py-4 pb-8 sm:px-7">
+            <ProviderInstantLessonPanel
+              provider={currentProvider}
+              offerings={offerings}
+              vehicles={vehicles}
+              instructorOptions={instantInstructorOptions}
+              availabilityInstructorOptions={currentProvider?.type === 'DRIVING_SCHOOL' ? schoolInstantInstructorOptions : instantInstructorOptions}
+              marketplacePendingByInstructor={instantMarketplacePendingByInstructor}
+              settings={instantSettings}
+              platformConfig={instantPlatformConfig}
+              instructorStatuses={instantInstructorStatuses}
+              currentUserId={user?.id}
+              canManageInstructorAvailability={canManageInstantInstructorAvailability}
+              onSave={handleSaveInstantSetting}
+              onToggleOnline={handleToggleInstantOnline}
+              isLoading={instantActionLoading}
+              pendingPaymentInstantBookings={pendingPaymentInstantBookings}
+            />
+          </div>
+        </main>
+      ) : (
       <main className="mazzi-mobile mazzi-provider-content flex flex-1 flex-col space-y-[10px] pb-28">
         {/* Workspace Error Banner */}
         {workspaceError && (
@@ -2487,14 +2600,17 @@ status: 'IN_REVIEW',
         )}
 
       </main>
+      )}
 
       {/* Floating Bottom Navigation */}
-      <ProviderBottomNav
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        bookingUpdatesCount={bookingUpdatesCount}
-        showManagementAlert={availabilityRules.length === 0 || !vehicles.some((vehicle) => vehicle.status === 'ACTIVE') || !offerings.some((offering) => offering.status === 'ACTIVE') || !isProviderPaymentAccountReady(paymentAccount)}
-      />
+      {!isInstantSettingsOpen && (
+        <ProviderBottomNav
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          bookingUpdatesCount={bookingUpdatesCount}
+          showManagementAlert={availabilityRules.length === 0 || !vehicles.some((vehicle) => vehicle.status === 'ACTIVE') || !offerings.some((offering) => offering.status === 'ACTIVE') || !isProviderPaymentAccountReady(paymentAccount)}
+        />
+      )}
 
       {/* MODALS */}
       {/* Booking Details Modal */}
@@ -2703,36 +2819,6 @@ status: 'IN_REVIEW',
           </div>
         </Modal>
       )}
-
-      <Modal
-        isOpen={isInstantSettingsOpen}
-        onClose={() => setIsInstantSettingsOpen(false)}
-        title="Configurar Aula Agora"
-        size="lg"
-        presentation="fullscreen"
-        portal
-        className="instant-light"
-      >
-        <div className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:p-6">
-          <ProviderInstantLessonPanel
-            provider={currentProvider}
-            offerings={offerings}
-            vehicles={vehicles}
-            instructorOptions={instantInstructorOptions}
-            availabilityInstructorOptions={currentProvider?.type === 'DRIVING_SCHOOL' ? schoolInstantInstructorOptions : instantInstructorOptions}
-            marketplacePendingByInstructor={instantMarketplacePendingByInstructor}
-            settings={instantSettings}
-            platformConfig={instantPlatformConfig}
-            instructorStatuses={instantInstructorStatuses}
-            currentUserId={user?.id}
-            canManageInstructorAvailability={canManageInstantInstructorAvailability}
-            onSave={handleSaveInstantSetting}
-            onToggleOnline={handleToggleInstantOnline}
-            isLoading={instantActionLoading}
-            pendingPaymentInstantBookings={pendingPaymentInstantBookings}
-          />
-        </div>
-      </Modal>
 
       <InstantLessonOfferBottomSheet
         isOpen={Boolean(instantOfferSheetOffer)}

@@ -61,7 +61,7 @@ import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTar
 import type { NotificationNavigationTarget } from '../../lib/notification-navigation';
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
-import { disableStoredPushDevice } from '../../lib/push-device-registry';
+import { disableStoredPushDevice, registerPushDevice } from '../../lib/push-device-registry';
 import { StudentProMigrationCard } from './components/StudentProMigrationCard';
 import { InstantLessonModal } from './components/InstantLessonModal';
 import { InstantLessonAvailabilityNotice } from '../../components/instant/InstantLessonAvailabilityNotice';
@@ -321,9 +321,10 @@ export const StudentApp: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isInstantLessonOpen, setIsInstantLessonOpen] = useState(false);
   const [activeInstantLesson, setActiveInstantLesson] = useState<{ request: InstantLessonRequest; offer?: InstantLessonOffer } | null>(null);
+  const [instantLessonReturnToPrice, setInstantLessonReturnToPrice] = useState(false);
   const [instantLessonTracking, setInstantLessonTracking] = useState<InstantLessonTracking | null>(null);
   const [instantLessonLoading, setInstantLessonLoading] = useState(false);
-  const [instantLessonStarting, setInstantLessonStarting] = useState(false);
+  const activeInstantLessonRef = useRef<{ request: InstantLessonRequest; offer?: InstantLessonOffer } | null>(null);
   const activeInstantRequestInFlightRef = useRef<Promise<void> | null>(null);
   const instantRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const instantCheckoutOpeningRef = useRef<Promise<void> | null>(null);
@@ -331,6 +332,10 @@ export const StudentApp: React.FC = () => {
   const instantReturnToMapBookingIdRef = useRef<string | null>(null);
   const instantRequestIdempotencyRef = useRef<string | null>(null);
   const instantLessonStartRef = useRef<{ cancelled: boolean; completed: boolean; requestId?: string; cancelPromise?: Promise<void> } | null>(null);
+
+  useEffect(() => {
+    activeInstantLessonRef.current = activeInstantLesson;
+  }, [activeInstantLesson]);
   const [notificationToasts, setNotificationToasts] = useState<ToastMessage[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
   const [searchedLocation, setSearchedLocation] = useState<{ lat: number; lng: number; label?: string } | undefined>();
@@ -518,16 +523,24 @@ export const StudentApp: React.FC = () => {
     return request;
   }, [loadBookingsData]);
 
-  const loadActiveInstantLesson = useCallback((): Promise<void> => {
-    if (activeInstantRequestInFlightRef.current) return activeInstantRequestInFlightRef.current;
+  const loadActiveInstantLesson = useCallback((options: { force?: boolean } = {}): Promise<void> => {
+    const force = options.force === true;
+    if (!force && activeInstantRequestInFlightRef.current) return activeInstantRequestInFlightRef.current;
     if (!user?.id) return Promise.resolve();
-    const request = serverState.getStudentActiveInstantLesson(user.id)
+    const request = (force ? dbService.getMyActiveInstantRequest() : serverState.getStudentActiveInstantLesson(user.id))
       .then(async (active) => {
+        // A forced read can replace an older in-flight refresh. The older
+        // response must not overwrite the request just created by the user.
+        if (activeInstantRequestInFlightRef.current !== request) return;
         // Do not let a transient refresh result replace the request while the
         // Aula Agora creation flow is still settling.
         if (!active && instantLessonStartRef.current) return;
+        if (!active && isInstantLessonOpen && ['SEARCHING', 'MATCHED'].includes(activeInstantLessonRef.current?.request.status || '')) {
+          setInstantLessonReturnToPrice(true);
+        }
+        if (active) setInstantLessonReturnToPrice(false);
+        activeInstantLessonRef.current = active;
         setActiveInstantLesson(active);
-        if (active && instantLessonStartRef.current) setInstantLessonStarting(false);
         if (!active?.request.bookingId) {
           // A terminal/expired request must not be reused by the next search.
           // Keep the key only while the create/dispatch flow can still be
@@ -551,10 +564,12 @@ export const StudentApp: React.FC = () => {
         setActiveInstantLesson(null);
         setInstantLessonTracking(null);
       })
-      .finally(() => { activeInstantRequestInFlightRef.current = null; });
+      .finally(() => {
+        if (activeInstantRequestInFlightRef.current === request) activeInstantRequestInFlightRef.current = null;
+      });
     activeInstantRequestInFlightRef.current = request;
     return request;
-  }, [openInstantBookingCheckout, user?.id]);
+  }, [isInstantLessonOpen, openInstantBookingCheckout, user?.id]);
 
   const loadInstantPriceOptions = useCallback((params: { latitude: number; longitude: number; category: VehicleCategory; transmission: TransmissionType | 'ALL' }) => {
     if (isRealSupabase && !platformConfiguration) {
@@ -589,6 +604,8 @@ export const StudentApp: React.FC = () => {
       startFlow.cancelPromise = dbService.cancelInstantLessonRequest(startFlow.requestId)
         .then(() => {
           instantRequestIdempotencyRef.current = null;
+          setInstantLessonReturnToPrice(false);
+          activeInstantLessonRef.current = null;
           setActiveInstantLesson(null);
           if (user?.id) void invalidateStudentInstantQueries(user.id);
         })
@@ -607,7 +624,7 @@ export const StudentApp: React.FC = () => {
   }): Promise<InstantLessonRequest> => {
     const startFlow: { cancelled: boolean; completed: boolean; requestId?: string; cancelPromise?: Promise<void> } = { cancelled: false, completed: false };
     instantLessonStartRef.current = startFlow;
-    setInstantLessonStarting(true);
+    setInstantLessonReturnToPrice(false);
     setInstantLessonLoading(true);
     try {
       if (isRealSupabase && !platformConfiguration) {
@@ -633,12 +650,10 @@ export const StudentApp: React.FC = () => {
         await cancelInstantLessonStart(startFlow);
         throw new Error('INSTANT_SEARCH_CANCELLED');
       }
-      const dispatched = await dbService.dispatchInstantLessonRequest(created.requestId);
-      if (startFlow.cancelled) {
-        await cancelInstantLessonStart(startFlow);
-        throw new Error('INSTANT_SEARCH_CANCELLED');
-      }
-      if (dispatched.status === 'FAILED' || dispatched.offersCreated < 1) {
+      // create_instant_lesson_request dispatches the first offer wave
+      // atomically. Calling dispatch again here sees the already-created
+      // pending offer and incorrectly reports offers_created = 0.
+      if (created.status === 'FAILED' || created.status === 'EXPIRED') {
         instantRequestIdempotencyRef.current = null;
         throw new Error('INSTANT_NO_PROFESSIONAL_AVAILABLE');
       }
@@ -653,7 +668,7 @@ export const StudentApp: React.FC = () => {
         expiresAt: created.expiresAt,
         createdAt: new Date().toISOString(),
       };
-      await loadActiveInstantLesson();
+      await loadActiveInstantLesson({ force: true });
       startFlow.completed = true;
       return nextRequest;
     } catch (error) {
@@ -674,7 +689,6 @@ export const StudentApp: React.FC = () => {
       throw error;
     } finally {
       if (instantLessonStartRef.current === startFlow) instantLessonStartRef.current = null;
-      if (!startFlow.completed) setInstantLessonStarting(false);
       setInstantLessonLoading(false);
     }
   }, [cancelInstantLessonStart, isRealSupabase, loadActiveInstantLesson, platformConfiguration, user?.id]);
@@ -684,7 +698,8 @@ export const StudentApp: React.FC = () => {
     try {
       await dbService.cancelInstantLessonRequest(requestId);
       instantRequestIdempotencyRef.current = null;
-      setInstantLessonStarting(false);
+      setInstantLessonReturnToPrice(false);
+      activeInstantLessonRef.current = null;
       setActiveInstantLesson(null);
       if (user?.id) await invalidateStudentInstantQueries(user.id);
     } finally {
@@ -695,8 +710,24 @@ export const StudentApp: React.FC = () => {
   const handleCancelPendingInstantLesson = useCallback(() => {
     const startFlow = instantLessonStartRef.current;
     if (startFlow) void cancelInstantLessonStart(startFlow);
-    setInstantLessonStarting(false);
   }, [cancelInstantLessonStart]);
+
+  const handleStudentCheckIn = useCallback(async (bookingId: string, location: CheckInLocation): Promise<Booking> => {
+    const { bookings, updatedBooking } = await studentCheckInAndRehydrateBooking(bookingId, location);
+    setConfirmedBookings(bookings);
+    setSelectedBookingForDetails(updatedBooking);
+    setBookingsRefreshKey((key) => key + 1);
+    if (user?.id) await invalidateStudentBookingQueries(user.id, bookingId);
+    return updatedBooking;
+  }, [user?.id]);
+
+  const handleInstantStudentCheckIn = useCallback(async (bookingId: string, location: CheckInLocation): Promise<Booking> => {
+    const { bookings, updatedBooking } = await studentCheckInAndRehydrateBooking(bookingId, location);
+    setConfirmedBookings(bookings);
+    setBookingsRefreshKey((key) => key + 1);
+    if (user?.id) await invalidateStudentBookingQueries(user.id, bookingId);
+    return updatedBooking;
+  }, [user?.id]);
 
   useEffect(() => {
     if (!isInstantLessonOpen) return undefined;
@@ -722,6 +753,14 @@ export const StudentApp: React.FC = () => {
       unsubscribe();
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!isRealSupabase || !user?.id) return;
+    // FCM tokens can be rotated or invalidated by the browser. Refresh the
+    // server registration whenever the Student app opens so new pushes use
+    // the current token instead of a stale device record.
+    void registerPushDevice({ appContext: 'STUDENT', userId: user.id });
+  }, [isRealSupabase, user?.id]);
 
   const handleLogout = async () => {
     try {
@@ -1305,6 +1344,11 @@ function applyStrictProviderFilters(
   };
   const additionalFilterCount = countAdditionalStudentFilters(searchRequest);
   const isInitialLocationLoading = locationStatus === 'RESOLVING' || (Boolean(userLocation) && !searchLocation);
+  // Aula Agora must search using the same coordinates represented by the
+  // address shown to the student. When an address was selected in the search
+  // flow, using the device location here could make the preview show a
+  // professional for one point while the request was dispatched for another.
+  const instantLessonLocation = searchedLocation || userLocation;
 
   useEffect(() => {
     const loc = searchedLocation || userLocation;
@@ -1394,6 +1438,8 @@ function applyStrictProviderFilters(
   ];
   const bookingWizardStepsWithSearch = ['Profissional', ...bookingWizardSteps];
   const closeStudentWizard = () => {
+    setInstantLessonReturnToPrice(false);
+    activeInstantLessonRef.current = null;
     setActiveTab('home');
     setBookingFlowStep('overview');
     setIsInstantLessonOpen(false);
@@ -1423,9 +1469,10 @@ function applyStrictProviderFilters(
   const returnToInstantLessonWizard = () => {
     instantRequestIdempotencyRef.current = null;
     instantPaymentBookingIdRef.current = null;
+    setInstantLessonReturnToPrice(false);
+    activeInstantLessonRef.current = null;
     setActiveInstantLesson(null);
     setInstantLessonTracking(null);
-    setInstantLessonStarting(false);
     setInstantLessonLoading(false);
     setIsCheckoutOpen(false);
     setResumeBooking(null);
@@ -1638,6 +1685,21 @@ function applyStrictProviderFilters(
       )
       .sort((a, b) => bookingTimestamp(a) - bookingTimestamp(b));
   }, [confirmedBookings, nowMs]);
+
+  // Keep the live Aula Agora booking attached to the modal even if the
+  // active-request RPC briefly returns null during the provider transition to
+  // IN_PROGRESS. Otherwise the tracking modal falls back to the wizard.
+  const activeInstantBooking = useMemo(() => {
+    const requestBookingId = activeInstantLesson?.request.bookingId;
+    if (requestBookingId) {
+      const requestBooking = confirmedBookings.find((booking) => booking.id === requestBookingId);
+      if (requestBooking) return requestBooking;
+    }
+
+    return confirmedBookings
+      .filter((booking) => booking.snapshot?.source === 'AULA_AGORA' && ['PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS'].includes(booking.status))
+      .sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a))[0];
+  }, [activeInstantLesson?.request.bookingId, confirmedBookings]);
 
   const historyBookings = useMemo(() => {
     return confirmedBookings
@@ -2500,18 +2562,18 @@ function applyStrictProviderFilters(
         isOpen={isInstantLessonOpen}
         onClose={closeStudentWizard}
         onScheduleLesson={openBookingSearch}
-        location={userLocation}
-        locationLabel={searchLocation || 'Minha localização atual'}
+        location={instantLessonLocation}
+        locationLabel={searchLocation || instantLessonLocation?.label || 'Minha localização atual'}
         onRequestLocation={requestUserLocation}
         onLoadPriceOptions={loadInstantPriceOptions}
         onStart={handleStartInstantLesson}
         onCancelPendingSearch={handleCancelPendingInstantLesson}
-        isStarting={instantLessonStarting}
         activeRequest={activeInstantLesson}
-        bookingStatus={confirmedBookings.find((booking) => booking.id === activeInstantLesson?.request.bookingId)?.status}
-        booking={confirmedBookings.find((booking) => booking.id === activeInstantLesson?.request.bookingId)}
+        bookingStatus={activeInstantBooking?.status}
+        booking={activeInstantBooking}
         currentUserId={user?.id}
         onOpenChat={(booking) => setSelectedBookingForChat(booking)}
+        onRefreshBooking={refreshBookingForDetails}
         onBookingUpdated={(updated) => {
           setConfirmedBookings((previous) => previous.map((booking) => booking.id === updated.id ? updated : booking));
           setBookingsRefreshKey((key) => key + 1);
@@ -2524,6 +2586,8 @@ function applyStrictProviderFilters(
         tracking={instantLessonTracking}
         onPayBooking={(bookingId) => { void openInstantBookingCheckout(bookingId); }}
         onCancelRequest={handleCancelInstantLesson}
+        returnToPriceStep={instantLessonReturnToPrice}
+        onStudentCheckIn={handleInstantStudentCheckIn}
         isLoading={instantLessonLoading}
         isInitialLocationLoading={isInitialLocationLoading}
         checkInWindowBeforeMinutes={isRealSupabase ? platformConfiguration?.checkInWindowBeforeMinutes ?? null : platformConfiguration?.checkInWindowBeforeMinutes}
@@ -2556,13 +2620,7 @@ function applyStrictProviderFilters(
             setSelectedBookingForChat(target);
           }
         }}
-        onStudentCheckIn={async (bookingId, location: CheckInLocation) => {
-          const { bookings, updatedBooking } = await studentCheckInAndRehydrateBooking(bookingId, location);
-          setConfirmedBookings(bookings);
-          setSelectedBookingForDetails(updatedBooking);
-          if (user?.id) await invalidateStudentBookingQueries(user.id, bookingId);
-          return updatedBooking;
-        }}
+        onStudentCheckIn={handleStudentCheckIn}
         checkInWindowBeforeMinutes={isRealSupabase ? platformConfiguration?.checkInWindowBeforeMinutes ?? null : platformConfiguration?.checkInWindowBeforeMinutes}
         instantLessonExpirationMinutes={platformConfiguration?.instantLessonExpirationMinutes}
       />

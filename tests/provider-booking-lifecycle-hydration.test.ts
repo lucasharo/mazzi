@@ -178,6 +178,7 @@ describe('TASK-052 — Provider Booking Lifecycle Hydration & Reload Resilience 
     const row = {
       ...baseDbRow,
       status: 'CONFIRMED',
+      provider_on_the_way_at: '2026-09-04T16:01:00Z',
       meeting_point: {
         latitude: -23.5583,
         longitude: -46.6601,
@@ -198,5 +199,19 @@ describe('TASK-052 — Provider Booking Lifecycle Hydration & Reload Resilience 
     expect(booking.status).toBe('CONFIRMED');
     expect(booking.providerOnTheWayAt).toBe('2026-09-04T16:01:00Z');
     expect(booking.snapshot.meetingPoint).toMatchObject({ latitude: -23.5583, longitude: -46.6601 });
+  });
+
+  it('L. provider displacement remains visible after reload when the RPC only returns snapshot_data', () => {
+    const row = {
+      ...baseDbRow,
+      snapshot_data: {
+        ...baseDbRow.snapshot_data,
+        provider_on_the_way_at: '2026-09-04T16:01:00Z',
+      },
+    };
+
+    const booking = mapBookingFromDb(row);
+
+    expect(booking.providerOnTheWayAt).toBe('2026-09-04T16:01:00Z');
   });
 });

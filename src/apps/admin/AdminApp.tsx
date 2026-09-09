@@ -179,6 +179,7 @@ export const AdminApp: React.FC = () => {
               if (item.value?.max_eta_minutes !== null && item.value?.max_eta_minutes !== undefined) mappedConfig.instantMaxEtaMinutes = Number(item.value.max_eta_minutes);
               if (item.value?.offer_expiration_seconds !== null && item.value?.offer_expiration_seconds !== undefined) mappedConfig.instantOfferExpirationSeconds = Number(item.value.offer_expiration_seconds);
               if (item.value?.payment_expiration_minutes !== null && item.value?.payment_expiration_minutes !== undefined) mappedConfig.instantLessonExpirationMinutes = Number(item.value.payment_expiration_minutes);
+              if (item.value?.decline_cooldown_minutes !== null && item.value?.decline_cooldown_minutes !== undefined) mappedConfig.instantDeclineCooldownMinutes = Number(item.value.decline_cooldown_minutes);
               if (item.value?.instant_refund_on_way_initial_percent !== null && item.value?.instant_refund_on_way_initial_percent !== undefined) mappedConfig.instantRefundOnWayInitialPercent = Number(item.value.instant_refund_on_way_initial_percent);
               if (item.value?.instant_refund_on_way_middle_percent !== null && item.value?.instant_refund_on_way_middle_percent !== undefined) mappedConfig.instantRefundOnWayMiddlePercent = Number(item.value.instant_refund_on_way_middle_percent);
               if (item.value?.instant_refund_on_way_late_percent !== null && item.value?.instant_refund_on_way_late_percent !== undefined) mappedConfig.instantRefundOnWayLatePercent = Number(item.value.instant_refund_on_way_late_percent);
@@ -403,14 +404,15 @@ export const AdminApp: React.FC = () => {
       const persistedUpdates = Object.fromEntries(
         Object.entries(updates).filter(([, value]) => typeof value === 'number'),
       ) as Record<string, number>;
-      const { contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds, instantLessonExpirationMinutes, instantRefundOnWayInitialPercent, instantRefundOnWayMiddlePercent, instantRefundOnWayLatePercent, instantRefundAfterArrivalPercent, instantRefundInitialWindowMinutes, instantRefundMiddleWindowMinutes, ...standardUpdates } = persistedUpdates;
+      const { contestationResponseHours, instantMaxEtaMinutes, instantOfferExpirationSeconds, instantLessonExpirationMinutes, instantDeclineCooldownMinutes, instantRefundOnWayInitialPercent, instantRefundOnWayMiddlePercent, instantRefundOnWayLatePercent, instantRefundAfterArrivalPercent, instantRefundInitialWindowMinutes, instantRefundMiddleWindowMinutes, ...standardUpdates } = persistedUpdates;
       if (Object.keys(standardUpdates).length > 0) await dbService.updatePlatformConfigs(standardUpdates);
       if (contestationResponseHours !== undefined) await dbService.updateContestationResponseHours(contestationResponseHours);
-      if (instantMaxEtaMinutes !== undefined || instantOfferExpirationSeconds !== undefined || instantLessonExpirationMinutes !== undefined) {
+      if (instantMaxEtaMinutes !== undefined || instantOfferExpirationSeconds !== undefined || instantLessonExpirationMinutes !== undefined || instantDeclineCooldownMinutes !== undefined) {
         await dbService.updateAdminInstantLessonConfig({
           maxEtaMinutes: instantMaxEtaMinutes ?? platformConfig.instantMaxEtaMinutes,
           offerExpirationSeconds: instantOfferExpirationSeconds ?? platformConfig.instantOfferExpirationSeconds,
           paymentExpirationMinutes: instantLessonExpirationMinutes ?? platformConfig.instantLessonExpirationMinutes,
+          declineCooldownMinutes: instantDeclineCooldownMinutes ?? platformConfig.instantDeclineCooldownMinutes,
         });
       }
       if (instantRefundOnWayInitialPercent !== undefined || instantRefundOnWayMiddlePercent !== undefined || instantRefundOnWayLatePercent !== undefined || instantRefundAfterArrivalPercent !== undefined || instantRefundInitialWindowMinutes !== undefined || instantRefundMiddleWindowMinutes !== undefined) {

@@ -1,19 +1,24 @@
 import type { Booking } from '../types';
+import { CANCELLED_BOOKING_STATUSES } from '../domain/booking';
 import { getBookingAddressVisibility } from '../domain/booking-address-visibility';
-import { formatTimeBR } from './date-format';
-import { formatMeetingPoint, formatPendingPaymentMeetingPoint } from './meeting-point';
+import { formatApproximateMeetingPoint, formatMeetingPoint, formatPendingPaymentMeetingPoint } from './meeting-point';
 import { needsMeetingPointAddress } from '../domain/maps/meeting-point-address';
 
 export function getStudentBookingMeetingPointText(
   booking: Booking,
-  fallback = 'Ponto de encontro a combinar',
+  fallback = 'Região da aula',
   nowMs = Date.now(),
 ): string {
   const visibility = getBookingAddressVisibility(booking, nowMs);
+  if (CANCELLED_BOOKING_STATUSES.includes(booking.status) && visibility.isProviderAddress) {
+    return formatApproximateMeetingPoint(booking.snapshot?.meetingPoint || booking.meetingPoint || booking.fullMeetingPoint, fallback);
+  }
+
   if (visibility.shouldHideProviderAddress) {
-    return visibility.releaseAtMs !== undefined
-      ? `Endereço estará disponível a partir de ${formatTimeBR(new Date(visibility.releaseAtMs).toISOString())}.`
-      : 'Endereço estará disponível quando o instrutor estiver a caminho.';
+    return formatApproximateMeetingPoint(
+      booking.snapshot?.meetingPoint || booking.meetingPoint || booking.fullMeetingPoint,
+      fallback,
+    );
   }
 
   if (booking.status === 'PENDING_PAYMENT') {
@@ -31,7 +36,7 @@ export function getStudentBookingMeetingPointText(
 
 export function getProviderBookingMeetingPointText(
   booking: Booking,
-  fallback = 'Ponto de encontro indicado no mapa',
+  fallback = 'Região da aula',
 ): string {
   const meetingPoints = [booking.meetingPoint, booking.snapshot?.meetingPoint];
   const isProviderAddress = meetingPoints.some((value) => (
@@ -39,12 +44,19 @@ export function getProviderBookingMeetingPointText(
       && value !== null
       && (value as { type?: string }).type === 'PROVIDER_ADDRESS'
   ));
-  const providerOnTheWayAt = booking.providerOnTheWayAt
-    || booking.snapshot?.provider_on_the_way_at
-    || (booking.snapshot as { providerOnTheWayAt?: string } | undefined)?.providerOnTheWayAt;
+  if (CANCELLED_BOOKING_STATUSES.includes(booking.status) && !isProviderAddress) {
+    return formatApproximateMeetingPoint(booking.snapshot?.meetingPoint || booking.meetingPoint || booking.fullMeetingPoint, fallback);
+  }
+
+  const providerOnTheWayAt = booking.providerOnTheWayAt;
   const canShowAddress = isProviderAddress || Boolean(providerOnTheWayAt) || booking.status === 'COMPLETED';
 
-  if (!canShowAddress) return 'Endereço estará disponível quando você clicar em “Estou a caminho”.';
+  if (!canShowAddress) {
+    return formatApproximateMeetingPoint(
+      booking.snapshot?.meetingPoint || booking.meetingPoint || booking.fullMeetingPoint,
+      fallback,
+    );
+  }
   if (booking.status === 'PENDING_PAYMENT') {
     return formatPendingPaymentMeetingPoint(booking.meetingPoint || booking.snapshot?.meetingPoint || booking.fullMeetingPoint);
   }

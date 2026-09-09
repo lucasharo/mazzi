@@ -55,6 +55,7 @@ import { formatFullMeetingPoint, formatMeetingPoint } from './meeting-point';
 import type { PublicPlatformConfiguration } from '../domain/platform-config';
 import type { CheckInLocation } from './checkin-location';
 import { getCheckoutGatewayProvider } from './payment-gateway-config';
+import { normalizePhone } from './input-masks';
 
 // Cast supabase to any to safely query dynamic tables
 const sp = supabase as any;
@@ -274,6 +275,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
   const providerName = snapshot.providerName || snapshot.provider_name || row.provider_name || '';
   const instructorAvatarUrl = snapshot.instructorAvatarUrl || snapshot.instructor_avatar_url || row.instructor_avatar_url || undefined;
   const providerAvatarUrl = snapshot.providerAvatarUrl || snapshot.provider_avatar_url || row.provider_avatar_url || undefined;
+  const studentAvatarUrl = snapshot.studentAvatarUrl || snapshot.student_avatar_url || row.student_avatar_url || undefined;
   const vehicleName = snapshot.vehicleName || snapshot.vehicle_name || row.vehicle_name || '';
   const structuredMeetingPoint = row.meeting_point ?? snapshot.meetingPoint ?? snapshot.meeting_point ?? '';
   const meetingPointLabel = formatMeetingPoint(structuredMeetingPoint);
@@ -284,6 +286,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     providerName,
     ...(instructorAvatarUrl ? { instructorAvatarUrl } : {}),
     ...(providerAvatarUrl ? { providerAvatarUrl } : {}),
+    ...(studentAvatarUrl ? { studentAvatarUrl } : {}),
     vehicleName,
     meetingPoint: structuredMeetingPoint,
     meetingPointLabel,
@@ -311,6 +314,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     id: row.id,
     studentId: row.student_id,
     studentName,
+    studentAvatarUrl,
     providerId: row.provider_id,
     providerName,
     instructorId: row.instructor_id,
@@ -356,7 +360,15 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     checkinStudentLongitude: row.checkin_student_longitude == null ? undefined : Number(row.checkin_student_longitude),
     checkinInstructorLatitude: row.checkin_instructor_latitude == null ? undefined : Number(row.checkin_instructor_latitude),
     checkinInstructorLongitude: row.checkin_instructor_longitude == null ? undefined : Number(row.checkin_instructor_longitude),
-    providerOnTheWayAt: row.provider_on_the_way_at || snapshot.provider_on_the_way_at || snapshot.providerOnTheWayAt || undefined,
+    // Prefer the live booking column. Provider booking RPCs may return the
+    // persisted lifecycle timestamp only inside snapshot_data, so retain that
+    // fallback to keep the action idempotent after a workspace reload.
+    providerOnTheWayAt:
+      row.provider_on_the_way_at
+      || row.providerOnTheWayAt
+      || snapshot.provider_on_the_way_at
+      || (snapshot as any).providerOnTheWayAt
+      || undefined,
     fullMeetingPoint,
     createdAt: row.created_at,
   };
@@ -1039,7 +1051,9 @@ export const dbService = {
       p_provider_id: providerId,
       p_name: profileData.name !== undefined ? profileData.name.trim() : null,
       p_legal_name: profileData.legalName !== undefined ? profileData.legalName.trim() : null,
-      p_public_contact: profileData.publicContact !== undefined ? profileData.publicContact.trim() : null,
+      // The RPC stores the public contact as digits only. Keep this boundary
+      // defensive because callers may still hold the presentation mask.
+      p_public_contact: profileData.publicContact !== undefined ? normalizePhone(profileData.publicContact) : null,
       p_commercial_email: profileData.commercialEmail !== undefined ? profileData.commercialEmail.trim() : null,
       p_neighborhood: profileData.neighborhood !== undefined ? profileData.neighborhood.trim() : null,
       p_city: profileData.city !== undefined ? profileData.city.trim() : null,
@@ -1194,6 +1208,27 @@ export const dbService = {
     if (rows.length === 0) return [];
 
     const bookingIds = rows.map((row: any) => row.id).filter(Boolean);
+    let studentAvatarByBooking = new Map<string, any>();
+    if (bookingIds.length > 0) {
+      try {
+        const { data: avatars, error: avatarsError } = await sp.rpc('get_my_instructor_booking_avatars', {
+          p_booking_ids: bookingIds,
+        });
+        // The RPC is introduced by a migration and may be absent while the
+        // local frontend is pointed at an older DEV schema. Keep the booking
+        // list usable until that migration is applied; other errors remain
+        // observable for diagnosis.
+        if (avatarsError && avatarsError.code !== 'PGRST202') throw avatarsError;
+        if (!avatarsError) {
+          studentAvatarByBooking = new Map<string, any>((avatars || []).map((item: any) => [item.booking_id, item]));
+        }
+      } catch (avatarError) {
+        // Avatar hydration is supplementary and must not block the calendar.
+        if ((avatarError as { code?: string } | null)?.code !== 'PGRST202') {
+          console.warn('Could not hydrate student booking avatars:', avatarError);
+        }
+      }
+    }
     let bookingCategoryMap = new Map<string, string>();
     if (bookingIds.length > 0) {
       const { data: categoriesData } = await sp.rpc('get_my_booking_categories', {
@@ -1205,7 +1240,7 @@ export const dbService = {
     }
 
     return rows
-      .map((row: any) => mapBookingFromDb(row, bookingCategoryMap.get(row.id)))
+      .map((row: any) => mapBookingFromDb({ ...row, ...(studentAvatarByBooking.get(row.id) || {}) }, bookingCategoryMap.get(row.id)))
       .sort((a: Booking, b: Booking) => {
         const aTime = new Date(a.scheduledStartAt || 0).getTime();
         const bTime = new Date(b.scheduledStartAt || 0).getTime();
@@ -2140,11 +2175,12 @@ export const dbService = {
     return configuration.checkInWindowBeforeMinutes;
   },
 
-  async updateAdminInstantLessonConfig(params: { maxEtaMinutes: number; offerExpirationSeconds: number; paymentExpirationMinutes: number }): Promise<void> {
+  async updateAdminInstantLessonConfig(params: { maxEtaMinutes: number; offerExpirationSeconds: number; paymentExpirationMinutes: number; declineCooldownMinutes: number }): Promise<void> {
     const { error } = await sp.rpc('update_admin_instant_lesson_config', {
       p_max_eta_minutes: params.maxEtaMinutes,
       p_offer_expiration_seconds: params.offerExpirationSeconds,
       p_payment_expiration_minutes: params.paymentExpirationMinutes,
+      p_decline_cooldown_minutes: params.declineCooldownMinutes,
     });
     if (error) throw error;
   },
@@ -2655,8 +2691,9 @@ export const dbService = {
     return mapBookingDispute(data);
   },
 
-  async setProviderOnTheWay(bookingId: string): Promise<void> {
-    const { error } = await sp.rpc('set_provider_on_the_way', { p_booking_id: bookingId });
+  async setProviderOnTheWay(bookingId: string): Promise<{ provider_on_the_way_at?: string }> {
+    const { data, error } = await sp.rpc('set_provider_on_the_way', { p_booking_id: bookingId });
     if (error) throw error;
+    return data || {};
   }
 };

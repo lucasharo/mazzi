@@ -564,10 +564,10 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
         category: 'B',
         instructorCheckedIn: false,
         studentCheckedIn: false,
+        providerOnTheWayAt: '2026-08-20T08:40:00-03:00',
         meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' },
         snapshot: {
           source: 'AULA_AGORA',
-          provider_on_the_way_at: '2026-08-20T08:40:00-03:00',
           meetingPoint: { latitude: -23.56, longitude: -46.65, address: 'Rua da Aula, 10' },
         },
       };
@@ -651,7 +651,7 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
         expect(onRefreshBooking).toHaveBeenCalledWith(booking.id);
         expect(onRefreshBooking).toHaveBeenCalledTimes(1);
 
-        await vi.advanceTimersByTimeAsync(10_000);
+        await vi.advanceTimersByTimeAsync(3_000);
         expect(onRefreshBooking).toHaveBeenCalledTimes(2);
         unmount();
       } finally {

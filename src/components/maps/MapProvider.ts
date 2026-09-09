@@ -30,6 +30,8 @@ export interface MapProviderProps {
   followSelectedProvider?: boolean;
   /** Enables map gestures, controls and marker interactions. */
   interactive?: boolean;
+  /** Called once the map engine has initialized and is ready to be shown. */
+  onReady?: () => void;
 }
 
 /**

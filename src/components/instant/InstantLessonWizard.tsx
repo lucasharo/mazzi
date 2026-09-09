@@ -26,6 +26,7 @@ interface Props {
   onLoadPriceOptions: (params: { latitude: number; longitude: number; category: VehicleCategory; transmission: Transmission }) => Promise<InstantLessonPriceOption[]>;
   onStart: (params: { meetingPoint: StudentSavedAddress; latitude: number; longitude: number; category: VehicleCategory; transmission: Transmission; maxPriceInCents: number | null }) => Promise<InstantLessonRequest>;
   onCancelPendingSearch?: () => void;
+  returnToPriceStep?: boolean;
   isLoading?: boolean;
   isInitialLocationLoading?: boolean;
 }
@@ -48,7 +49,7 @@ function restore(key: string | undefined, fallback: Draft): Draft {
   return fallback;
 }
 
-export function InstantLessonWizard({ category = 'B', location, locationLabel, currentUserId, onClose, onScheduleLesson, onRequestLocation, onLoadPriceOptions, onStart, onCancelPendingSearch, isLoading, isInitialLocationLoading = false }: Props) {
+export function InstantLessonWizard({ category = 'B', location, locationLabel, currentUserId, onClose, onScheduleLesson, onRequestLocation, onLoadPriceOptions, onStart, onCancelPendingSearch, returnToPriceStep = false, isLoading, isInitialLocationLoading = false }: Props) {
   const storageKey = currentUserId ? `mazzi:instant-wizard:${currentUserId}` : undefined;
   const [draft, setDraft] = useState<Draft>(() => restore(storageKey, { step: 0, address: locationLabel, location: validLocation(location) ? location : undefined, transmission: 'ALL', maxPrice: null, priceChosen: false }));
   const [options, setOptions] = useState<InstantLessonPriceOption[]>([]);
@@ -58,6 +59,7 @@ export function InstantLessonWizard({ category = 'B', location, locationLabel, c
   const [cancellingSearch, setCancellingSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
+  const [mapReady, setMapReady] = useState(false);
   const submitLock = useRef(false);
   const locationVersion = useRef(0);
   const mounted = useRef(true);
@@ -102,14 +104,21 @@ export function InstantLessonWizard({ category = 'B', location, locationLabel, c
     return () => { cancelled = true; };
   }, [draft.step, draft.location?.lat, draft.location?.lng, category, draft.transmission, retry]);
 
+  useEffect(() => {
+    if (!returnToPriceStep || !validLocation(draft.location) || draft.step === 2) return;
+    setDraft((current) => ({ ...current, step: 2, maxPrice: null, priceChosen: false }));
+  }, [draft.location?.lat, draft.location?.lng, draft.step, returnToPriceStep]);
+
   const busy = submitting || isLoading || locating;
   const addressValid = validLocation(draft.location) && Boolean(draft.address.trim());
+  const canContinueFromAddress = addressValid && mapReady && !isInitialLocationLoading && !busy;
   const available = options.some(o => o.eligibleProviderCount > 0);
   const selected = options.find(o => o.maxPriceInCents === draft.maxPrice);
   const canStart = addressValid && draft.priceChosen && selected && selected.eligibleProviderCount > 0 && !loading && !busy;
   const cancelPendingSearch = onCancelPendingSearch || onClose;
   const updateAddress = (address: string, next?: { lat: number; lng: number }) => {
     locationVersion.current += 1;
+    setMapReady(false);
     setLocating(false); setOptions([]); setError(null);
     setDraft(d => ({ ...d, address, location: validLocation(next) ? next : undefined, priceChosen: false }));
   };
@@ -199,7 +208,7 @@ export function InstantLessonWizard({ category = 'B', location, locationLabel, c
             </div>
           </div>
         </div>
-        {addressValid ? <div className="overflow-hidden rounded-2xl border border-[var(--mazzi-border)]"><UniversalMap providers={[]} mapCenter={draft.location} meetingPoint={{ ...draft.location!, title: draft.address }} height="200px" zoom={16} showMeetingPointPopup={false} interactive={false} /></div>
+        {addressValid ? <div className="overflow-hidden rounded-2xl border border-[var(--mazzi-border)]"><UniversalMap key={`${draft.location!.lat}:${draft.location!.lng}`} providers={[]} mapCenter={draft.location} meetingPoint={{ ...draft.location!, title: draft.address }} height="200px" zoom={16} showMeetingPointPopup={false} interactive={false} onReady={() => setMapReady(true)} /></div>
           : <div className="flex min-h-40 items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-500 p-5 text-sm text-slate-600"><MapPin className="h-6 w-6 shrink-0" aria-hidden="true" />Confirme um endereço para ver o ponto no mapa.</div>}
       </div>)}
       {draft.step === 1 && <fieldset disabled={busy} className="min-w-0 space-y-2 text-slate-900"><legend className="sr-only">Câmbio</legend>
@@ -240,7 +249,7 @@ export function InstantLessonWizard({ category = 'B', location, locationLabel, c
     </div>
     <WizardActionFooter>
       <Button type="button" variant="outline" disabled={busy} onClick={draft.step === 0 ? onClose : back} leftIcon={draft.step === 0 ? <X className="h-4 w-4" aria-hidden="true" /> : <ArrowLeft className="h-4 w-4" aria-hidden="true" />}>{draft.step === 0 ? 'Fechar' : 'Voltar'}</Button>
-      <Button type="button" data-instant-primary="true" variant="primary" className="min-h-12 flex-1" disabled={draft.step === 2 ? !canStart : busy || !addressValid} isLoading={submitting || isLoading}
+      <Button type="button" data-instant-primary="true" variant="primary" className="min-h-12 flex-1" disabled={draft.step === 2 ? !canStart : busy || !canContinueFromAddress} isLoading={submitting || isLoading}
         onClick={() => { if (draft.step === 2) void start(); else { setError(null); setDraft(d => ({ ...d, step: d.step + 1 })); } }}
         leftIcon={draft.step === 2 ? <Search className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" />}>
         {draft.step === 2 ? 'Encontrar profissional' : 'Continuar'}

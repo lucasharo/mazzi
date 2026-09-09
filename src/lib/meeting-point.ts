@@ -70,3 +70,12 @@ export function formatPendingPaymentMeetingPoint(value: MeetingPointValue): stri
 
   return 'Endereço liberado após confirmação do pagamento';
 }
+
+/** Formats only the approximate region for agenda cards that cannot reveal the exact address. */
+export function formatApproximateMeetingPoint(
+  value: MeetingPointValue,
+  fallback = 'Região da aula',
+): string {
+  const formatted = formatPendingPaymentMeetingPoint(value);
+  return formatted === 'Endereço liberado após confirmação do pagamento' ? fallback : formatted;
+}
