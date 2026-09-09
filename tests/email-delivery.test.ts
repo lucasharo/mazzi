@@ -171,6 +171,13 @@ describe('MAZZI email delivery infrastructure', () => {
     expect(source).toContain('account.slice(-4)');
   });
 
+  it('routes DEV test delivery to the configured Resend test recipient without mutating the canonical recipient', () => {
+    const source = readFileSync('supabase/functions/send-email-delivery/index.ts', 'utf8');
+    expect(source).toContain('MAZZI_EMAIL_TEST_RECIPIENT');
+    expect(source).toContain('recipientEmail = testRecipient');
+    expect(source).toContain('to: recipientEmail');
+  });
+
   it('fails safely when Resend credentials are absent', () => {
     expect(() => new ResendEmailProvider({ apiKey: '', from: 'MAZZI <noreply@example.com>' })).toThrowError(new EmailProviderError('RESEND_API_KEY_MISSING', 'RESEND_API_KEY não configurada.', false));
   });

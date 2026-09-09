@@ -210,20 +210,25 @@ async function markFailed(service: any, id: string, error: unknown) {
 }
 
 async function processClaimedDelivery(service: any, provider: any, delivery: any, mode: string, config: any) {
+  let recipientEmail = String(delivery.recipient_email || '').trim();
   if (mode === "dev-test") {
+    const testRecipient = (Deno.env.get("MAZZI_EMAIL_TEST_RECIPIENT") || "").trim().toLowerCase();
     const allowlist = (Deno.env.get("MAZZI_EMAIL_TEST_ALLOWLIST") || "")
       .split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
-    if (!allowlist.includes(String(delivery.recipient_email).toLowerCase())) {
+    if (!testRecipient || !allowlist.includes(testRecipient)) {
       await markFailed(service, delivery.id, "EMAIL_DEV_RECIPIENT_NOT_ALLOWLISTED");
       return { deliveryId: delivery.id, status: "FAILED", code: "RECIPIENT_NOT_ALLOWLISTED" };
     }
+    // DEV-only safety valve: keep the canonical recipient on the delivery record,
+    // but route the actual test message to the verified Resend test mailbox.
+    recipientEmail = testRecipient;
   }
 
   try {
     const params = await resolveParams(service, delivery, config);
     const html = await renderEmailTemplate(delivery.template_name, params);
     const result = await provider.send({
-      to: delivery.recipient_email,
+      to: recipientEmail,
       subject: EMAIL_SUBJECTS[delivery.template_name],
       html,
       idempotencyKey: delivery.idempotency_key,
