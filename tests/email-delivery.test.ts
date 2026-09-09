@@ -167,6 +167,7 @@ describe('MAZZI email delivery infrastructure', () => {
   it('uses only payout bank fragments', () => {
     const source = readFileSync('supabase/functions/send-email-delivery/index.ts', 'utf8');
     expect(source).not.toMatch(/holder_document|destination_key\b/);
+    expect(source).not.toContain('amount_in_cents, platform_fee_in_cents, provider_amount_in_cents');
     expect(source).toContain('branch.slice(-2)');
     expect(source).toContain('account.slice(-4)');
   });

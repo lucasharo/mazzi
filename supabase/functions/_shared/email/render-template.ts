@@ -4,6 +4,7 @@ import {
   type EmailTemplateName,
   type EmailTemplateParamsMap,
 } from './email-types.ts';
+import { EMAIL_TEMPLATE_SOURCES } from './email-template-sources.ts';
 
 declare const Deno: { readTextFile(path: string | URL): Promise<string> };
 
@@ -85,8 +86,11 @@ export function renderTemplate<T extends EmailTemplateName>(
 }
 
 export async function loadEmailTemplate(templateName: EmailTemplateName): Promise<string> {
+  // Keep the canonical HTML files in the repository, but use TypeScript sources
+  // at runtime because the MCP deployment bundle does not include static HTML.
   const filename = EMAIL_TEMPLATE_FILES[templateName];
-  return Deno.readTextFile(new URL(`./templates/${filename}`, import.meta.url));
+  if (!filename || !EMAIL_TEMPLATE_SOURCES[templateName]) throw new Error('EMAIL_TEMPLATE_NOT_FOUND');
+  return EMAIL_TEMPLATE_SOURCES[templateName];
 }
 
 export async function renderEmailTemplate<T extends EmailTemplateName>(

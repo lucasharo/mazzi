@@ -79,11 +79,11 @@ async function bookingContext(service: any, bookingId: string) {
 
 async function latestPayment(service: any, bookingId: string, paymentId?: string) {
   if (paymentId) {
-    return single(service, "payments", paymentId, "id, booking_id, public_reference, amount_in_cents, platform_fee_in_cents, provider_amount_in_cents");
+    return single(service, "payments", paymentId, "id, booking_id, public_reference, amount_in_cents");
   }
   const { data, error } = await service
     .from("payments")
-    .select("id, booking_id, public_reference, amount_in_cents, platform_fee_in_cents, provider_amount_in_cents")
+    .select("id, booking_id, public_reference, amount_in_cents")
     .eq("booking_id", bookingId)
     .order("created_at", { ascending: false })
     .limit(1)
