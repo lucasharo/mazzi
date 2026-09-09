@@ -75,7 +75,8 @@ import { formatCentsToBRL } from '../../domain/money';
 import { formatMeetingPoint } from '../../lib/meeting-point';
 import { normalizePhone, maskStateUF, normalizeServiceRadius } from '../../lib/input-masks';
 import { formatDateMask, toISODateString, validateBirthDate } from '../../utils/age';
-import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTargetFromHash, useMobileAppRoute } from '../../lib/mobile-app-router';
+import { CURRENT_PROFESSIONAL_TERMS_VERSION } from '../../domain/professional-terms';
+import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTargetFromHash, getPublicEmailRouteFromPath, useMobileAppRoute } from '../../lib/mobile-app-router';
 import type { NotificationNavigationTarget } from '../../lib/notification-navigation';
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
@@ -167,6 +168,7 @@ export const ProviderApp: React.FC = () => {
   const shouldAutoSelectTodayRef = useRef(true);
   const bookingSnapshotRef = useRef<string | null>(null);
   const startingLessonBookingIdRef = useRef<string | null>(null);
+  const publicEmailNavigationRef = useRef<string | null>(null);
   const [managementSubTab, setManagementSubTab] = useState<'schedule_rules' | 'schedule_blocks' | 'vehicles' | 'offerings' | 'compliance' | 'memberships' | 'account'>('schedule_rules');
   const [bookingFilterTab, setBookingFilterTab] = useState<'upcoming' | 'today' | 'history'>('upcoming');
   const [bookingQuickFilter, setBookingQuickFilter] = useState<'all' | 'confirmed' | 'in_progress' | 'completed' | 'disputed' | 'cancelled'>('all');
@@ -952,6 +954,9 @@ export const ProviderApp: React.FC = () => {
   }, [bookings]);
 
   const currentProvider = providers.find((p) => p.id === activeProviderId) || null;
+  const hasPendingProviderCompliance = currentProvider
+    ? !evaluateProviderEligibility(currentProvider, complianceDocs).isEligible
+    : false;
   const instantOffersPollingEnabled = useMemo(() => (
     Boolean(currentProvider?.id) && instantInstructorStatuses.some((status) => (
       status.providerId === currentProvider?.id
@@ -1375,6 +1380,57 @@ export const ProviderApp: React.FC = () => {
     signalInitialNavigationReady();
   }, [bookings, isAuthLoading, user, workspaceLoading]);
 
+  useEffect(() => {
+    if (isAuthLoading || workspaceLoading || !user) return;
+    const emailRoute = getPublicEmailRouteFromPath();
+    if (!emailRoute || emailRoute.kind === 'refund') return;
+    const navigationKey = `${emailRoute.kind}:${emailRoute.reference}`;
+    if (publicEmailNavigationRef.current === navigationKey) return;
+    publicEmailNavigationRef.current = navigationKey;
+
+    const openEmailDestination = async () => {
+      if (emailRoute.kind === 'earnings') {
+        setActiveTab('earnings');
+        try {
+          const payout = await dbService.getMyProviderPayoutDetailByReference(emailRoute.reference);
+          setSelectedPayoutDetail(payout);
+        } catch (error) {
+          if (process.env.NODE_ENV !== 'production') console.error('Failed to open payout from email link:', error);
+          showProviderFeedback('warning', 'Repasse indisponível', 'Este repasse não está mais disponível.');
+        }
+        signalInitialNavigationReady();
+        return;
+      }
+
+      let booking = bookings.find((item) => item.publicReference === emailRoute.reference) || null;
+      if (!booking && emailRoute.kind === 'lesson' && activeProviderId) {
+        try {
+          const refreshedBookings = await serverState.getProviderBookings({
+            providerId: activeProviderId,
+            userId: user.id,
+            isInstructor: user.role === 'INSTRUCTOR' || user.roles?.includes('INSTRUCTOR'),
+          });
+          setBookings(refreshedBookings || []);
+          booking = refreshedBookings.find((item) => item.publicReference === emailRoute.reference) || null;
+        } catch (error) {
+          if (process.env.NODE_ENV !== 'production') console.error('Failed to open lesson from email link:', error);
+        }
+      }
+
+      if (!booking) {
+        showProviderFeedback('warning', 'Conteúdo indisponível', 'Esta aula não está mais disponível.');
+        signalInitialNavigationReady();
+        return;
+      }
+
+      setActiveTab('bookings');
+      setSelectedBooking(booking);
+      signalInitialNavigationReady();
+    };
+
+    void openEmailDestination();
+  }, [activeProviderId, bookings, isAuthLoading, user, workspaceLoading]);
+
   if (isAuthLoading || workspaceLoading) {
     return (
       <div className="min-h-dvh bg-[#f7f5ef] text-[#202126] font-sans">
@@ -1413,7 +1469,7 @@ export const ProviderApp: React.FC = () => {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => void loadWorkspace(activeProviderId || user?.providerId || '')}
+              onClick={() => loadWorkspace(activeProviderId || user?.providerId || '')}
               leftIcon={<RefreshCw className="w-4 h-4" />}
             >
               Tentar Novamente
@@ -1421,7 +1477,7 @@ export const ProviderApp: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void handleLogout()}
+              onClick={() => handleLogout()}
               leftIcon={<LogOut className="w-4 h-4" />}
             >
               Sair da Conta
@@ -2211,8 +2267,8 @@ status: 'IN_REVIEW',
     }
   };
 
-  const handleAcceptComplianceTerms = async () => {
-    if (!currentProvider || !user || isAcceptingComplianceTerms) return;
+  const handleAcceptComplianceTerms = async (): Promise<boolean> => {
+    if (!currentProvider || !user || isAcceptingComplianceTerms) return false;
 
     setIsAcceptingComplianceTerms(true);
     setComplianceTermsError(null);
@@ -2220,14 +2276,16 @@ status: 'IN_REVIEW',
       await dbService.saveComplianceDoc({
         providerId: currentProvider.id,
         type: 'MAZZI_TERMS_ACCEPTANCE',
-        storagePath: 'acceptance://mazzi-ethics/v1',
+        storagePath: `acceptance://mazzi-ethics/${CURRENT_PROFESSIONAL_TERMS_VERSION}`,
         status: 'APPROVED',
         scope: 'PROVIDER',
       });
       await loadWorkspace(currentProvider.id, { silent: true });
+      return true;
     } catch (error) {
       console.error('Compliance terms acceptance failed:', error);
       setComplianceTermsError('Não foi possível registrar sua concordância. Tente novamente.');
+      return false;
     } finally {
       setIsAcceptingComplianceTerms(false);
     }
@@ -2321,7 +2379,7 @@ status: 'IN_REVIEW',
         {workspaceError && (
           <div className="mazzi-compact-card p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800 flex items-center justify-between">
             <span>{workspaceError}</span>
-            <Button variant="ghost" size="sm" onClick={() => void loadWorkspace(activeProviderId)}>
+            <Button variant="ghost" size="sm" onClick={() => loadWorkspace(activeProviderId)}>
               Tentar Novamente
             </Button>
           </div>
@@ -2331,7 +2389,7 @@ status: 'IN_REVIEW',
         {unifiedCalendarError && (
           <div className="mazzi-compact-card p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-extrabold text-amber-900 flex items-center justify-between">
             <span>{unifiedCalendarError}</span>
-            <Button variant="ghost" size="sm" onClick={() => void loadWorkspace(activeProviderId)}>
+            <Button variant="ghost" size="sm" onClick={() => loadWorkspace(activeProviderId)}>
               Tentar Novamente
             </Button>
           </div>
@@ -2533,7 +2591,7 @@ status: 'IN_REVIEW',
             offeringError={offeringError}
             offeringNotice={offeringNotice}
             onUploadDocClick={(type) => setUploadModalDocType(type)}
-            onAcceptComplianceTerms={() => void handleAcceptComplianceTerms()}
+            onAcceptComplianceTerms={handleAcceptComplianceTerms}
             onViewComplianceDocument={(document) => { void handleViewComplianceDocument(document); }}
              isAcceptingComplianceTerms={isAcceptingComplianceTerms}
              complianceTermsError={complianceTermsError}
@@ -2608,7 +2666,7 @@ status: 'IN_REVIEW',
           activeTab={activeTab}
           onTabChange={setActiveTab}
           bookingUpdatesCount={bookingUpdatesCount}
-          showManagementAlert={availabilityRules.length === 0 || !vehicles.some((vehicle) => vehicle.status === 'ACTIVE') || !offerings.some((offering) => offering.status === 'ACTIVE') || !isProviderPaymentAccountReady(paymentAccount)}
+          showManagementAlert={hasPendingProviderCompliance || availabilityRules.length === 0 || !vehicles.some((vehicle) => vehicle.status === 'ACTIVE') || !offerings.some((offering) => offering.status === 'ACTIVE') || !isProviderPaymentAccountReady(paymentAccount)}
         />
       )}
 
@@ -2811,7 +2869,8 @@ status: 'IN_REVIEW',
                 variant="primary"
                 size="sm"
                 disabled={!selectedComplianceFile || isUploadingCompliance}
-                onClick={() => void handleComplianceFileUpload()}
+                isLoading={isUploadingCompliance}
+                onClick={() => handleComplianceFileUpload()}
               >
                 {isUploadingCompliance ? 'Enviando...' : 'Enviar Documento'}
               </Button>

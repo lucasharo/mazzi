@@ -142,6 +142,7 @@ export interface Database {
       bookings: {
         Row: {
           id: string;
+          public_reference: string;
           student_id: string;
           provider_id: string;
           instructor_id: string;
@@ -179,6 +180,7 @@ export interface Database {
           method: PaymentMethod;
           status: PaymentStatus;
           amount_in_cents: number;
+          public_reference: string;
           external_transaction_id: string | null;
           idempotency_key: string;
           gateway_provider: string;
@@ -197,6 +199,7 @@ export interface Database {
       payouts: {
         Row: {
           id: string;
+          public_reference: string;
           provider_id: string;
           booking_id: string;
           amount_in_cents: number;

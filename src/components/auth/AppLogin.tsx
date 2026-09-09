@@ -191,8 +191,8 @@ function ProfessionalPathOption({ icon, title, description, onClick }: Professio
   return (
     <Button
       type="button"
-      variant="outline"
-      className="h-auto min-h-[104px] w-full items-center justify-start gap-3 whitespace-normal rounded-2xl px-4 py-4 text-left"
+      variant="ghost"
+      className="h-auto min-h-[104px] w-full items-center justify-start gap-3 rounded-2xl border border-[var(--mazzi-border)] bg-white px-4 py-4 text-left text-[var(--mazzi-dark)] shadow-none transition-colors duration-200 hover:border-amber-300 hover:bg-amber-50/60 active:bg-amber-100/70"
       contentClassName="flex-1 whitespace-normal"
       leftIcon={
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700">

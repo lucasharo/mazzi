@@ -91,7 +91,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
           transition: isDragging ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
         }}
-        className="w-full max-w-md bg-white rounded-t-2xl shadow-2xl border-t border-[var(--mazzi-border)] max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300 ease-out text-left select-none"
+        className="w-full max-w-md bg-white rounded-t-2xl shadow-2xl border-t border-[var(--mazzi-border)] max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300 ease-out text-left select-none focus:outline-none"
       >
         {/* Touch/Mouse Drag handle area for swipe-down-to-close */}
         <div

@@ -50,6 +50,7 @@ import {
   InstantCancellationQuote,
 } from '../types';
 import { normalizeComplianceStatus } from '../domain/compliance-status';
+import { CURRENT_PROFESSIONAL_TERMS_VERSION } from '../domain/professional-terms';
 import { formatDateBR, formatTimeBR, getBusinessDateOnly } from './date-format';
 import { formatFullMeetingPoint, formatMeetingPoint } from './meeting-point';
 import type { PublicPlatformConfiguration } from '../domain/platform-config';
@@ -64,6 +65,18 @@ function isMissingRpc(error: any, functionName: string): boolean {
   return error?.code === 'PGRST202'
     && typeof error?.message === 'string'
     && error.message.includes(`public.${functionName}`);
+}
+
+function mapProviderPayoutDetail(data: any): ProviderPayoutDetail {
+  return {
+    id: String(data.id),
+    status: data.status,
+    amount_in_cents: Number(data.amount_in_cents),
+    scheduled_release_at: data.scheduled_release_at,
+    released_at: data.released_at || null,
+    processed_at: data.processed_at || null,
+    failure_reason: data.failure_reason || null,
+  };
 }
 
 function mapInstantSettingRow(row: any, fallback?: { instructorId?: string; vehicleId?: string }): InstantLessonSettings {
@@ -312,6 +325,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
 
   return {
     id: row.id,
+    publicReference: row.public_reference || undefined,
     studentId: row.student_id,
     studentName,
     studentAvatarUrl,
@@ -350,6 +364,7 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     priceInCents: row.price_in_cents,
     platformFeeInCents: row.platform_fee_in_cents,
     gatewayFeeInCents: row.gateway_fee_in_cents == null ? undefined : Number(row.gateway_fee_in_cents),
+    paymentPublicReference: row.payment_public_reference || undefined,
     paymentStatus: row.payment_status || undefined,
     paymentPaidAt: row.payment_paid_at || undefined,
     totalInCents: row.total_in_cents,
@@ -377,6 +392,8 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
 export function mapComplianceFromDb(row: any): ComplianceDocument {
   const documentType = row.document_type === 'CNH' ? 'CNH_EAR' : row.document_type;
   const expiresAt = row.expires_at || undefined;
+  const termsVersion = row.terms_version
+    || (documentType === 'MAZZI_TERMS_ACCEPTANCE' ? row.storage_path?.match(/^acceptance:\/\/mazzi-ethics\/(.+)$/)?.[1] : undefined);
   const normalizedStatus = normalizeComplianceStatus(row.status);
   const isExpired = Boolean(
     expiresAt &&
@@ -390,10 +407,15 @@ export function mapComplianceFromDb(row: any): ComplianceDocument {
     membershipId: row.membership_id || undefined,
     scope: row.scope || undefined,
     type: documentType,
-    title: row.document_type === 'CNH' || row.document_type === 'CNH_EAR'
-      ? 'Carteira Nacional de Habilitação com EAR'
-      : row.document_type,
+    title: documentType === 'MAZZI_TERMS_ACCEPTANCE'
+      ? 'Termo de Adesão, Uso e Conduta do Profissional MAZZI'
+      : row.document_type === 'CNH' || row.document_type === 'CNH_EAR'
+        ? 'Carteira Nacional de Habilitação com EAR'
+        : row.document_type,
     status: isExpired ? 'EXPIRED' : normalizedStatus,
+    termsVersion,
+    documentHash: row.document_hash || undefined,
+    acceptedAt: row.accepted_at || row.created_at || undefined,
     fileName: row.storage_path ? row.storage_path.split('/').pop() || 'document.pdf' : 'document.pdf',
     storagePath: row.storage_path || '',
     uploadedAt: row.created_at,
@@ -1417,6 +1439,15 @@ export const dbService = {
     if (error) throw error;
     return data;
   },
+  async getMyBookingIdByPaymentReference(publicReference: string): Promise<string | null> {
+    const { data, error } = await sp
+      .from('payments')
+      .select('booking_id')
+      .eq('public_reference', publicReference)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.booking_id || null;
+  },
   async verifyStripeCheckoutSession(paymentId: string, sessionId: string): Promise<any> {
     const { data, error } = await sp.functions.invoke('verify-stripe-checkout-session', {
       body: { paymentId, sessionId },
@@ -1696,15 +1727,14 @@ export const dbService = {
   async getMyProviderPayoutDetail(payoutId: string): Promise<ProviderPayoutDetail> {
     const { data, error } = await sp.rpc('get_my_provider_payout_detail', { p_payout_id: payoutId });
     if (error || !data) throw error || new Error('PAYOUT_UNAVAILABLE');
-    return {
-      id: String(data.id),
-      status: data.status,
-      amount_in_cents: Number(data.amount_in_cents),
-      scheduled_release_at: data.scheduled_release_at,
-      released_at: data.released_at || null,
-      processed_at: data.processed_at || null,
-      failure_reason: data.failure_reason || null,
-    };
+    return mapProviderPayoutDetail(data);
+  },
+  async getMyProviderPayoutDetailByReference(publicReference: string): Promise<ProviderPayoutDetail> {
+    const { data, error } = await sp.rpc('get_my_provider_payout_detail_by_reference', {
+      p_public_reference: publicReference,
+    });
+    if (error || !data) throw error || new Error('PAYOUT_UNAVAILABLE');
+    return mapProviderPayoutDetail(data);
   },
   async updateMyStudentAddress(address: StudentSavedAddress): Promise<void> {
     const { error } = await sp.rpc('update_my_student_address', { p_address: address });
@@ -1720,13 +1750,13 @@ export const dbService = {
     const [{ data: names, error: namesError }, { data: categoriesData }, { data: paymentRows, error: paymentsError }] = await Promise.all([
       sp.rpc('get_admin_booking_names', { p_booking_ids: bookingIds }),
       sp.rpc('get_my_booking_categories', { p_booking_ids: bookingIds }),
-      sp.from('payments').select('booking_id, status, gateway_fee_in_cents, paid_at, created_at').in('booking_id', bookingIds),
+      sp.from('payments').select('booking_id, status, public_reference, gateway_fee_in_cents, paid_at, created_at').in('booking_id', bookingIds),
     ]);
     if (namesError) throw namesError;
     if (paymentsError) throw paymentsError;
     const namesByBooking = new Map<string, any>((names || []).map((item: any) => [item.booking_id, item]));
     const categoriesByBooking = new Map<string, string>((categoriesData || []).map((item: any) => [item.booking_id, item.category]));
-    const paymentsByBooking = new Map<string, { fee?: number; status?: MazziPaymentStatus; paidAt?: string; timestamp: number }>();
+    const paymentsByBooking = new Map<string, { fee?: number; status?: MazziPaymentStatus; publicReference?: string; paidAt?: string; timestamp: number }>();
     for (const payment of paymentRows || []) {
       const timestamp = new Date(payment.paid_at || payment.created_at || 0).getTime();
       const current = paymentsByBooking.get(payment.booking_id);
@@ -1734,6 +1764,7 @@ export const dbService = {
         paymentsByBooking.set(payment.booking_id, {
           fee: payment.gateway_fee_in_cents == null ? undefined : Number(payment.gateway_fee_in_cents),
           status: payment.status || undefined,
+          publicReference: payment.public_reference || undefined,
           paidAt: payment.paid_at || undefined,
           timestamp,
         });
@@ -1744,6 +1775,7 @@ export const dbService = {
         ...row,
         ...(namesByBooking.get(row.id) || {}),
         payment_status: paymentsByBooking.get(row.id)?.status,
+        payment_public_reference: paymentsByBooking.get(row.id)?.publicReference,
         payment_paid_at: paymentsByBooking.get(row.id)?.paidAt,
         gateway_fee_in_cents: paymentsByBooking.get(row.id)?.fee,
       }, categoriesByBooking.get(row.id)))
@@ -1952,7 +1984,7 @@ export const dbService = {
     if (expirationError) throw expirationError;
     const { data, error } = await sp
       .from('compliance_documents')
-      .select('id,provider_id,user_id,membership_id,scope,document_type,status,storage_path,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
+      .select('id,provider_id,user_id,membership_id,scope,document_type,status,storage_path,terms_version,document_hash,accepted_at,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
     if (error) throw error;
     return (data || []).map(mapComplianceFromDb);
   },
@@ -1975,7 +2007,7 @@ export const dbService = {
       throw new Error('COMPLIANCE_SUBMISSION_SCOPE_UNSUPPORTED');
     }
     if (doc.type === 'MAZZI_TERMS_ACCEPTANCE') {
-      const version = doc.storagePath.match(/^acceptance:\/\/mazzi-ethics\/(.+)$/)?.[1] || 'v1';
+      const version = doc.storagePath.match(/^acceptance:\/\/mazzi-ethics\/(.+)$/)?.[1] || CURRENT_PROFESSIONAL_TERMS_VERSION;
       const { data, error } = await sp.rpc('provider_accept_mazzi_terms', {
         p_provider_id: doc.providerId,
         p_terms_version: version,

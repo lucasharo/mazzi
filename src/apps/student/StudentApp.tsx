@@ -57,7 +57,7 @@ import { maskCpf } from '../../utils/cpf';
 import { maskCpf as formatCpf } from '../../lib/input-masks';
 import { formatDateMask, formatBirthDateForDisplay, validateBirthDate, toISODateString } from '../../utils/age';
 import { MaskedInput } from '../../components/ui/MaskedInput';
-import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTargetFromHash, useMobileAppRoute } from '../../lib/mobile-app-router';
+import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTargetFromHash, getPublicEmailRouteFromPath, useMobileAppRoute } from '../../lib/mobile-app-router';
 import type { NotificationNavigationTarget } from '../../lib/notification-navigation';
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
@@ -359,6 +359,7 @@ export const StudentApp: React.FC = () => {
   const shouldAutoSelectTodayRef = useRef(true);
   const stripeCheckoutFlowActiveRef = useRef(false);
   const pendingNotificationTargetRef = useRef<NotificationNavigationTarget | null>(null);
+  const publicEmailNavigationRef = useRef<string | null>(null);
   const notificationNavigationTimeoutRef = useRef<number | null>(null);
   const bookingsLoadInFlightRef = useRef<Promise<void> | null>(null);
   const bookingsDataLoadInFlightRef = useRef<Promise<Booking[]> | null>(null);
@@ -1836,6 +1837,61 @@ function applyStrictProviderFilters(
     void handleNotificationTarget(target);
   }, [bookingsLoading, confirmedBookings]);
 
+  useEffect(() => {
+    if (!user || bookingsLoading) return;
+    const emailRoute = getPublicEmailRouteFromPath();
+    if (!emailRoute || emailRoute.kind === 'earnings') return;
+    const navigationKey = `${emailRoute.kind}:${emailRoute.reference}`;
+    if (publicEmailNavigationRef.current === navigationKey) return;
+    publicEmailNavigationRef.current = navigationKey;
+
+    const openEmailDestination = async () => {
+      let booking = emailRoute.kind === 'lesson'
+        ? confirmedBookings.find((item) => item.publicReference === emailRoute.reference)
+        : null;
+
+      if (emailRoute.kind === 'refund') {
+        try {
+          const bookingId = await dbService.getMyBookingIdByPaymentReference(emailRoute.reference);
+          booking = bookingId ? confirmedBookings.find((item) => item.id === bookingId) || null : null;
+        } catch (error) {
+          if (process.env.NODE_ENV !== 'production') console.error('Failed to resolve refund from email link:', error);
+        }
+      }
+
+      // The email link can be opened before the booking cache has refreshed.
+      // Revalidate once before telling the student that the lesson is unavailable.
+      if (!booking && user.id) {
+        try {
+          await invalidateStudentBookingQueries(user.id);
+          const latestBookings = await loadBookingsData();
+          if (emailRoute.kind === 'lesson') {
+            booking = latestBookings.find((item) => item.publicReference === emailRoute.reference);
+          } else if (emailRoute.kind === 'refund') {
+            const bookingId = await dbService.getMyBookingIdByPaymentReference(emailRoute.reference);
+            booking = bookingId ? latestBookings.find((item) => item.id === bookingId) || null : null;
+          }
+          if (latestBookings.length > 0) setConfirmedBookings(latestBookings);
+        } catch (error) {
+          if (process.env.NODE_ENV !== 'production') console.error('Failed to open student email link:', error);
+        }
+      }
+
+      if (!booking) {
+        showNotificationFeedback(emailRoute.kind === 'refund'
+          ? 'Não foi possível localizar os detalhes do reembolso na sua conta.'
+          : 'Não foi possível localizar esta aula na sua conta.');
+        return;
+      }
+
+      setActiveTab('bookings');
+      setSelectedBookingForDetails(booking);
+      signalInitialNavigationReady();
+    };
+
+    void openEmailDestination();
+  }, [bookingsLoading, confirmedBookings, loadBookingsData, user]);
+
   const openNotificationTarget = (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'STUDENT') return;
@@ -2527,7 +2583,7 @@ function applyStrictProviderFilters(
               <NotificationCenterLink onOpen={() => setIsSettingsOpen(true)} />
 
               <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4">
-                <Button variant="ghost" size="sm" className="text-rose-700 hover:bg-rose-50 font-bold" onClick={() => { void handleLogout(); }}>
+                <Button variant="ghost" size="sm" className="text-rose-700 hover:bg-rose-50 font-bold" onClick={() => handleLogout()}>
                   Sair
                 </Button>
               </div>

@@ -100,7 +100,7 @@ export function getStatusPresentation(
 export const complianceDocumentTypeLabels: Record<string, string> = {
   CNH: 'CNH com EAR',
   CNH_EAR: 'CNH com EAR',
-  MAZZI_TERMS_ACCEPTANCE: 'Termos de ética e segurança da plataforma MAZZI',
+  MAZZI_TERMS_ACCEPTANCE: 'Termo de Adesão, Uso e Conduta do Profissional MAZZI',
   COMPANY_REGISTRATION: 'Cadastro da empresa',
   CFC_AUTHORIZATION: 'Autorização da Autoescola / CFC',
   CFC_AUTHORIZATION_STATE: 'Portaria de credenciamento do CFC no DETRAN-SP',

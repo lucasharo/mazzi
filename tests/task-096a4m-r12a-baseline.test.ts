@@ -10,7 +10,7 @@ const lifecycleMigration = readFileSync(resolve(process.cwd(), 'supabase/migrati
 describe('TASK-096A4M-R12A canonical baseline candidate', () => {
   it('contains the server-authoritative terms contract', () => {
     expect(baseline).toContain('public.current_mazzi_terms_version()');
-    expect(baseline).toContain("SELECT 'v1'::text");
+    expect(baseline).toContain("SELECT 'v2'::text");
     expect(baseline).toContain('TERMS_VERSION_NOT_CURRENT');
     expect(baseline).toContain("acceptance://mazzi-ethics/' || v_current_version");
     expect(baseline).toContain("GRANT EXECUTE ON FUNCTION public.provider_accept_mazzi_terms(uuid,text) TO authenticated");
@@ -22,7 +22,8 @@ describe('TASK-096A4M-R12A canonical baseline candidate', () => {
     expect(referenceData).toContain("'PROVIDER'::public.compliance_document_scope");
     expect(referenceData).toContain("'2026-01-01'::timestamptz");
     expect(baseline).toContain('public.is_provider_activation_eligible(p_provider_id uuid)');
-    expect(baseline).toContain("terms.storage_path='acceptance://mazzi-ethics/'||public.current_mazzi_terms_version()");
+    expect(baseline).toContain('terms.terms_version=public.current_mazzi_terms_version()');
+    expect(baseline).toContain("terms.document_hash='sha256:c256a7d94920ada35d9a7ad6528cb38a1bf7cdd23e0e336d6b4c48eba2c8b69f'");
   });
 
   it('contains USER_GLOBAL and PROVIDER activation plus accurate audit status', () => {

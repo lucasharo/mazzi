@@ -28,7 +28,7 @@ describe('TASK-077A static contracts', () => {
 
   it('uses an explicit Admin compliance projection and only uses a short signed URL for authorized viewing', () => {
     expect(dbService).toContain('async getAdminComplianceDocs()');
-    expect(dbService).toContain('id,provider_id,user_id,membership_id,scope,document_type,status,storage_path,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
+    expect(dbService).toContain('id,provider_id,user_id,membership_id,scope,document_type,status,storage_path,terms_version,document_hash,accepted_at,rejection_reason,expires_at,reviewed_by,reviewed_at,created_at');
     const adminComplianceMethod = dbService.match(/async getAdminComplianceDocs\(\)[\s\S]*?\n  \},/)?.[0] || '';
     expect(adminComplianceMethod).not.toContain("select('*')");
     expect(adminApp).toContain('dbService.getAdminComplianceDocs()');

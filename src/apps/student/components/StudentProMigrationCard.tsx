@@ -64,7 +64,7 @@ export const StudentProMigrationCard: React.FC = () => {
             variant="outline"
             leftIcon={<ShieldCheck className="h-4 w-4" />}
             disabled={isBusy}
-            onClick={() => void runOnboarding()}
+            onClick={() => runOnboarding()}
           >
             Ativar perfil profissional
           </Button>

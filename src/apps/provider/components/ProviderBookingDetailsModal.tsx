@@ -334,7 +334,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
                 className="w-full rounded-2xl border-[var(--mazzi-yellow)] bg-[var(--mazzi-yellow)] font-extrabold text-[var(--mazzi-dark)] hover:brightness-95"
                 isLoading={isCompleting}
                 disabled={isCompleting}
-                onClick={() => void onCompleteLesson(booking)}
+                onClick={() => onCompleteLesson(booking)}
                 leftIcon={<CheckCircle2 className="h-4 w-4 text-[var(--mazzi-dark)]" aria-hidden="true" />}
               >
                 Finalizar aula
@@ -346,7 +346,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               variant="primary"
               className="w-full rounded-2xl font-extrabold"
               isLoading={submittingDisplacement || isLoading}
-              onClick={() => void handleStartDisplacement()}
+              onClick={() => handleStartDisplacement()}
               leftIcon={<Navigation className="h-4 w-4" aria-hidden="true" />}
             >
               Estou a caminho
@@ -358,7 +358,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               className="w-full rounded-2xl font-extrabold"
               disabled={isLoading || submittingDisplacement || isCheckingIn || !checkInAvailability.canCheckIn}
               isLoading={isCheckingIn}
-              onClick={() => void handleMarkArrived()}
+              onClick={() => handleMarkArrived()}
               leftIcon={<MapPin className="h-4 w-4 text-[var(--mazzi-dark)]" aria-hidden="true" />}
             >
               Cheguei ao local
@@ -379,7 +379,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
                 className="w-full rounded-2xl border-emerald-600 bg-emerald-600 font-extrabold text-white hover:bg-emerald-700"
                 isLoading={isStarting}
                 disabled={isStarting}
-                onClick={() => void handleStartLesson()}
+                onClick={() => handleStartLesson()}
                 leftIcon={<Play className="h-4 w-4 fill-current" aria-hidden="true" />}
               >
                 Iniciar aula
@@ -433,7 +433,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             size="sm"
             className="w-full rounded-2xl font-bold"
             isLoading={submittingDisplacement || isLoading}
-            onClick={() => void handleStartDisplacement()}
+            onClick={() => handleStartDisplacement()}
             leftIcon={<Navigation className="h-4 w-4" aria-hidden="true" />}
           >
             Estou a caminho
@@ -446,7 +446,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             className="w-full rounded-2xl font-bold"
             disabled={isLoading || submittingDisplacement || isCheckingIn || !checkInAvailability.canCheckIn}
             isLoading={isCheckingIn}
-            onClick={() => void handleMarkArrived()}
+            onClick={() => handleMarkArrived()}
             leftIcon={<MapPin className="h-4 w-4 text-[var(--mazzi-dark)]" aria-hidden="true" />}
           >
             Cheguei ao local
@@ -459,7 +459,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           variant="primary"
           size="sm"
           className="w-full rounded-2xl border-emerald-600 bg-emerald-600 font-bold text-white shadow-md transition-all hover:bg-emerald-700 hover:shadow-lg"
-          onClick={() => void handleStartLesson()}
+          onClick={() => handleStartLesson()}
           disabled={isStarting}
           isLoading={isStarting}
           leftIcon={<Play className="h-4 w-4 fill-current" aria-hidden="true" />}

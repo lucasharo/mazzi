@@ -449,7 +449,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
   const exceptionFooter = (
     <>
       <Button variant="dangerSoft" size="sm" onClick={onCloseAddExceptionModal} disabled={pendingAction !== null}>Cancelar</Button>
-      <Button variant="primary" size="sm" onClick={() => void runAsyncAction('exception-save', onSaveException)} disabled={pendingAction !== null} isLoading={pendingAction === 'exception-save'}>Salvar Bloqueio</Button>
+      <Button variant="primary" size="sm" onClick={() => runAsyncAction('exception-save', onSaveException)} disabled={pendingAction !== null} isLoading={pendingAction === 'exception-save'}>Salvar Bloqueio</Button>
     </>
   );
 
@@ -556,7 +556,7 @@ export const ProviderScheduleTab: React.FC<ProviderScheduleTabProps> = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => void runAsyncAction(`rule-delete-${rule.id}`, () => onDeleteRule(rule.id))}
+                      onClick={() => runAsyncAction(`rule-delete-${rule.id}`, () => onDeleteRule(rule.id))}
                       disabled={pendingAction !== null}
                       isLoading={pendingAction === `rule-delete-${rule.id}`}
                       className="text-rose-600 hover:bg-rose-50"

@@ -96,6 +96,8 @@ describe('TASK-089 Aula Agora persistence contract', () => {
 
   it('returns from instructor tracking to booking details when the lesson starts', () => {
     expect(instantModal).toContain("if (booking && bookingStatus !== 'PENDING_PAYMENT' && (isLessonStarted || (activeRequest && !trackingOpen)))");
+    expect(instantModal).toContain('if (!isOpen || !trackingOpen || !booking?.id || !onRefreshBooking) return undefined;');
+    expect(instantModal).toContain('const timer = window.setInterval(refreshBooking, 3_000);');
     expect(studentApp).toContain('const activeInstantBooking = useMemo(() => {');
     expect(studentApp).toContain('bookingStatus={activeInstantBooking?.status}');
     expect(studentApp).toContain('booking={activeInstantBooking}');

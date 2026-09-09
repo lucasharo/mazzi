@@ -21,6 +21,34 @@ function getRouteFromHash(appKey: string, fallback: MobileAppRoute): string {
   return route || fallback;
 }
 
+export type PublicEmailRoute =
+  | { kind: 'lesson'; reference: string }
+  | { kind: 'refund'; reference: string }
+  | { kind: 'earnings'; reference: string };
+
+/** Reads stable public references used by links from transactional emails. */
+export function getPublicEmailRouteFromPath(): PublicEmailRoute | null {
+  if (typeof window === 'undefined') return null;
+  const match = window.location.pathname.match(/^\/(aulas|reembolsos|ganhos)\/([^/]+)\/?$/i);
+  if (!match) return null;
+  const kind = match[1].toLowerCase() === 'aulas'
+    ? 'lesson'
+    : match[1].toLowerCase() === 'reembolsos'
+      ? 'refund'
+      : 'earnings';
+  try {
+    return { kind, reference: decodeURIComponent(match[2]) };
+  } catch {
+    return { kind, reference: match[2] };
+  }
+}
+
+/** Reads the stable lesson reference used by links from transactional emails. */
+export function getPublicLessonReferenceFromPath(): string | null {
+  const route = getPublicEmailRouteFromPath();
+  return route?.kind === 'lesson' ? route.reference : null;
+}
+
 export function getNotificationNavigationTargetFromHash(appKey: string): NotificationNavigationTarget | null {
   if (typeof window === 'undefined') return null;
   const prefix = `#/${appKey}/`;

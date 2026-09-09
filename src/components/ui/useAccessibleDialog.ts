@@ -90,8 +90,7 @@ export function useAccessibleDialog<T extends HTMLElement>({
 
     const focusInitialElement = () => {
       const preferred = dialog.querySelector<HTMLElement>('[data-dialog-autofocus="true"]');
-      const firstFocusable = getFocusableElements(dialog)[0];
-      (preferred || firstFocusable || dialog).focus({ preventScroll: true });
+      (preferred || dialog).focus({ preventScroll: true });
     };
     const animationFrame = window.requestAnimationFrame(focusInitialElement);
 
@@ -114,7 +113,7 @@ export function useAccessibleDialog<T extends HTMLElement>({
       const first = focusableElements[0];
       const last = focusableElements[focusableElements.length - 1];
       const activeElement = document.activeElement;
-      if (event.shiftKey && (activeElement === first || !dialog.contains(activeElement))) {
+      if (event.shiftKey && (activeElement === first || activeElement === dialog || !dialog.contains(activeElement))) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && activeElement === last) {

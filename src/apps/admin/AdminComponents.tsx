@@ -895,7 +895,7 @@ export const ComplianceTab: React.FC<{
               O arquivo é privado e pode ser visualizado somente por pessoas autorizadas da equipe de compliance.
             </div>
 
-            <Button variant="outline" size="sm" leftIcon={<Eye className="h-4 w-4" />} onClick={() => void handleViewDocument()} disabled={isOpeningViewer}>
+            <Button variant="outline" size="sm" leftIcon={<Eye className="h-4 w-4" />} onClick={() => handleViewDocument()} disabled={isOpeningViewer} isLoading={isOpeningViewer}>
               {isOpeningViewer ? 'Abrindo documento...' : 'Visualizar documento'}
             </Button>
             {viewerError && <p role="alert" className="text-xs font-semibold text-rose-700">{viewerError}</p>}
@@ -1280,7 +1280,8 @@ export const BookingsTab: React.FC<{
   const filteredBookings = bookings.filter((b) => {
     const matchesSearch = b.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           b.studentName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          b.providerName.toLowerCase().includes(searchTerm.toLowerCase());
+                          b.providerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          b.paymentPublicReference?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'ALL' || b.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -1314,7 +1315,7 @@ export const BookingsTab: React.FC<{
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input
               className="pl-9 text-xs"
-              placeholder="Pesquisar por Aluno, CFC, ID..."
+              placeholder="Pesquisar por aluno, pagamento, ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -1419,6 +1420,12 @@ export const BookingsTab: React.FC<{
                 <div className="flex justify-between border-t border-slate-200 pt-1.5 font-bold">
                   <span className="text-slate-900">Total Pago pelo Aluno:</span>
                   <span className="font-mono text-slate-950">{formatCentsToBRL(selectedBook.totalInCents)}</span>
+                </div>
+                <div className="flex items-start justify-between gap-4 border-t border-slate-200 pt-1.5 text-[11px]">
+                  <span className="text-slate-500">Identificação do pagamento:</span>
+                  <span className="max-w-[65%] break-all text-right font-mono font-semibold text-slate-900">
+                    {selectedBook.paymentPublicReference || 'Ainda não gerada'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -2001,7 +2008,7 @@ export const UsersTab: React.FC<{
               <div className="grid gap-3 sm:grid-cols-[1fr_180px_auto] sm:items-end">
                 <Input label="E-mail do usuário" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="nome@empresa.com.br" />
                 <Select label="Acesso" value={roleToAdd} onChange={(event) => setRoleToAdd(event.target.value as Extract<UserRole, 'PLATFORM_ADMIN' | 'SUPPORT'>)} options={[{ value: 'SUPPORT', label: 'Suporte' }, { value: 'PLATFORM_ADMIN', label: 'Administrador da plataforma' }]} />
-                <Button variant="primary" size="sm" className="min-h-11" disabled={isSubmitting || !inviteEmail.trim()} onClick={() => void handleInvite()} leftIcon={<Users className="h-4 w-4" />}>{isSubmitting ? 'Enviando...' : 'Adicionar'}</Button>
+                <Button variant="primary" size="sm" className="min-h-11" disabled={isSubmitting || !inviteEmail.trim()} onClick={() => handleInvite()} isLoading={isSubmitting} leftIcon={<Users className="h-4 w-4" />}>{isSubmitting ? 'Enviando...' : 'Adicionar'}</Button>
               </div>
             </div>
             {selectedUser ? (
@@ -2020,7 +2027,7 @@ export const UsersTab: React.FC<{
                 <h4 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-1.5"><Lock className="w-4 h-4 text-amber-600" />Acesso administrativo adicional</h4>
                 <p className="text-[11px] text-slate-500 mt-0.5">Esta ação preserva a função principal e todos os acessos existentes do usuário.</p>
               </div>
-              <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={isSubmitting} onClick={() => void handleAddAdministrativeRole(selectedUser.id, 'SUPPORT')}>Conceder acesso de suporte</Button><Button variant="primary" size="sm" disabled={isSubmitting} onClick={() => void handleAddAdministrativeRole(selectedUser.id, 'PLATFORM_ADMIN')}>Conceder acesso de administrador</Button></div>
+              <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={isSubmitting} onClick={() => handleAddAdministrativeRole(selectedUser.id, 'SUPPORT')}>Conceder acesso de suporte</Button><Button variant="primary" size="sm" disabled={isSubmitting} onClick={() => handleAddAdministrativeRole(selectedUser.id, 'PLATFORM_ADMIN')}>Conceder acesso de administrador</Button></div>
             </div>
           </div>
         ) : (
@@ -2481,7 +2488,7 @@ export const SettingsTab: React.FC<{
               variant="primary"
               size="sm"
               leftIcon={<Settings className="w-4 h-4" />}
-              onClick={() => void handleSave()}
+              onClick={() => handleSave()}
               disabled={isSaving}
             >
               {isSaving ? 'Salvando...' : 'Salvar configurações'}

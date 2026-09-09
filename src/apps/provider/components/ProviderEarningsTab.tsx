@@ -293,7 +293,7 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
 
       {!isLoading && error && (
         <div role="alert" className="mazzi-compact-card rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
-          <div className="flex items-start gap-3"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /><div><p className="font-bold">Não foi possível carregar os ganhos.</p><p className="mt-1 text-xs font-medium">{error}</p><Button variant="dangerSoft" size="sm" className="mt-3" onClick={() => void load(true)} leftIcon={<RefreshCw className="h-4 w-4" aria-hidden="true" />}>Tentar novamente</Button></div></div>
+          <div className="flex items-start gap-3"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /><div><p className="font-bold">Não foi possível carregar os ganhos.</p><p className="mt-1 text-xs font-medium">{error}</p><Button variant="dangerSoft" size="sm" className="mt-3" onClick={() => load(true)} leftIcon={<RefreshCw className="h-4 w-4" aria-hidden="true" />}>Tentar novamente</Button></div></div>
         </div>
       )}
 

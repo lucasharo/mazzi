@@ -209,20 +209,11 @@ async function markFailed(service: any, id: string, error: unknown) {
   });
 }
 
-async function processClaimedDelivery(service: any, provider: any, delivery: any, mode: string, config: any) {
-  let recipientEmail = String(delivery.recipient_email || '').trim();
-  if (mode === "dev-test") {
-    const testRecipient = (Deno.env.get("MAZZI_EMAIL_TEST_RECIPIENT") || "").trim().toLowerCase();
-    const allowlist = (Deno.env.get("MAZZI_EMAIL_TEST_ALLOWLIST") || "")
-      .split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
-    if (!testRecipient || !allowlist.includes(testRecipient)) {
-      await markFailed(service, delivery.id, "EMAIL_DEV_RECIPIENT_NOT_ALLOWLISTED");
-      return { deliveryId: delivery.id, status: "FAILED", code: "RECIPIENT_NOT_ALLOWLISTED" };
-    }
-    // DEV-only safety valve: keep the canonical recipient on the delivery record,
-    // but route the actual test message to the verified Resend test mailbox.
-    recipientEmail = testRecipient;
-  }
+async function processClaimedDelivery(service: any, provider: any, delivery: any, config: any) {
+  // The domain event stores the recipient resolved from the canonical user
+  // record. Keep that address for DEV as well; a fixed test mailbox would make
+  // transactional messages appear to work while hiding recipient regressions.
+  const recipientEmail = String(delivery.recipient_email || '').trim();
 
   try {
     const params = await resolveParams(service, delivery, config);
@@ -295,7 +286,7 @@ Deno.serve(async (request) => {
     if (claim.error) return reply(500, { message: "Não foi possível reservar a entrega." });
     const delivery = Array.isArray(claim.data) ? claim.data[0] : claim.data;
     if (!delivery) break;
-    results.push(await processClaimedDelivery(service, provider, delivery, mode, config));
+    results.push(await processClaimedDelivery(service, provider, delivery, config));
     if (requestedDeliveryId) break;
   }
 

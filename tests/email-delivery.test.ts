@@ -172,10 +172,10 @@ describe('MAZZI email delivery infrastructure', () => {
     expect(source).toContain('account.slice(-4)');
   });
 
-  it('routes DEV test delivery to the configured Resend test recipient without mutating the canonical recipient', () => {
+  it('sends DEV delivery to the canonical recipient stored for the user', () => {
     const source = readFileSync('supabase/functions/send-email-delivery/index.ts', 'utf8');
-    expect(source).toContain('MAZZI_EMAIL_TEST_RECIPIENT');
-    expect(source).toContain('recipientEmail = testRecipient');
+    expect(source).toContain("const recipientEmail = String(delivery.recipient_email || '').trim();");
+    expect(source).not.toContain('MAZZI_EMAIL_TEST_RECIPIENT');
     expect(source).toContain('to: recipientEmail');
   });
 

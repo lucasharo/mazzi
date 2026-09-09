@@ -14,6 +14,7 @@ import {
   RegulatoryValidationStatus,
   VehicleCategory,
 } from '../types';
+import { CURRENT_PROFESSIONAL_TERMS_VERSION, PROFESSIONAL_TERMS_V2 } from './professional-terms';
 
 export class ComplianceDomainError extends Error {
   constructor(
@@ -133,12 +134,12 @@ export const DEFAULT_COMPLIANCE_REQUIREMENTS: ComplianceRequirement[] = [
     jurisdiction: 'INTERNAL_PLATFORM',
     providerType: 'INSTRUCTOR',
     documentType: 'MAZZI_TERMS_ACCEPTANCE',
-    title: 'Código de Ética e Segurança da Plataforma MAZZI',
-    description: 'Termo de adesão às diretrizes de qualidade, assiduidade e conduta profissional do marketplace MAZZI (norma comercial e de integridade interna, sem natureza de obrigação legal).',
+    title: 'Termo de Adesão, Uso e Conduta do Profissional MAZZI',
+    description: 'Termo de adesão, uso e conduta profissional para atuação no marketplace MAZZI, com aceite explícito e versionado.',
     isMandatory: true,
     sourceType: 'INTERNAL_MAZZI_RULE',
-    sourceReference: 'Política de Confiança e Segurança MAZZI v1.0 (Regra Interna de Marketplace)',
-    sourceIdentifier: 'MAZZI_SAFETY_POLICY_SEC_2',
+    sourceReference: 'Termo de Adesão, Uso e Conduta do Profissional MAZZI v2.0 (Regra Interna de Marketplace)',
+    sourceIdentifier: 'MAZZI_PROFESSIONAL_TERMS_V2',
     regulatoryStatus: 'REQUIRES_REGULATORY_VALIDATION',
     lastValidatedAt: '2026-08-14T00:00:00Z',
     effectiveFrom: '2026-01-01T00:00:00Z',
@@ -506,6 +507,21 @@ export function doesDocumentSatisfyRequirement(
   return documentType === requirementType;
 }
 
+/**
+ * The current professional terms are a versioned, hash-bound compliance gate.
+ * An older acceptance (or a row without the canonical hash) must not make the
+ * provider appear verified for the current terms.
+ */
+export function isCurrentProfessionalTermsAcceptance(document: ComplianceDocument, provider: Provider): boolean {
+  return document.type === 'MAZZI_TERMS_ACCEPTANCE'
+    && document.providerId === provider.id
+    && document.userId === provider.userId
+    && document.scope === 'PROVIDER'
+    && document.status === 'APPROVED'
+    && document.termsVersion === CURRENT_PROFESSIONAL_TERMS_VERSION
+    && document.documentHash === PROFESSIONAL_TERMS_V2.documentHash;
+}
+
 /** USER_GLOBAL is deliberately a closed set; provider and contextual documents
  * must never be promoted into the instructor's global compliance scope. */
 export const USER_GLOBAL_COMPLIANCE_DOCUMENT_TYPES = new Set([
@@ -584,6 +600,7 @@ export function evaluateProviderEligibility(
   for (const req of providerReqs) {
     const relevantDocuments = scopedDocuments.filter((doc) =>
       doesDocumentSatisfyRequirement(doc.type, req.documentType)
+      && (req.documentType !== 'MAZZI_TERMS_ACCEPTANCE' || isCurrentProfessionalTermsAcceptance(doc, provider))
     );
     const validApproved = relevantDocuments.filter(
       (doc) => doc.status === 'APPROVED' && !isComplianceDocumentExpired(doc, referenceDate)

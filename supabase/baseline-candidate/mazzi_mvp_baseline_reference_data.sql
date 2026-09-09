@@ -8,8 +8,8 @@ VALUES (
   'req_termo_conduta_mazzi',
   'INSTRUCTOR'::public.provider_type,
   'MAZZI_TERMS_ACCEPTANCE',
-  'Termos de conduta MAZZI',
-  'Aceite dos termos vigentes da MAZZI.',
+  'Termo de Adesão, Uso e Conduta do Profissional MAZZI',
+  'Aceite explícito e versionado dos termos vigentes da MAZZI.',
   TRUE,
   '2026-01-01'::timestamptz,
   'PROVIDER'::public.compliance_document_scope
@@ -17,6 +17,8 @@ VALUES (
 ON CONFLICT (id) DO UPDATE SET
   provider_type = EXCLUDED.provider_type,
   document_type = EXCLUDED.document_type,
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
   is_mandatory = EXCLUDED.is_mandatory,
   effective_from = EXCLUDED.effective_from,
   scope = EXCLUDED.scope;

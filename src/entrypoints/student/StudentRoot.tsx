@@ -36,6 +36,7 @@ const ProfessionalOnlyScreen: React.FC = () => {
 const StudentGate: React.FC = () => {
   const auth = useAuth();
   const [startupNavigationPending, setStartupNavigationPending] = React.useState<boolean | null>(null);
+  const hasShownUnauthenticatedScreenRef = React.useRef(false);
   React.useEffect(() => {
     registerServiceWorker();
   }, []);
@@ -80,7 +81,16 @@ const StudentGate: React.FC = () => {
     if (!auth.isLoading && startupNavigationPending === false && !isCheckoutCancellationReturn) dismissInitialSplash();
   }, [auth.isLoading, isCheckoutCancellationReturn, startupNavigationPending]);
 
-  if (auth.isLoading || startupNavigationPending === null) return null;
+  // Keep AppLogin mounted while a login attempt is in flight. AuthContext uses
+  // the same loading flag for initial hydration and for sign-in requests; if
+  // we return null here after the login screen has already rendered, the
+  // email/password state is lost exactly when an unconfirmed account needs
+  // the OTP screen.
+  if (!auth.isLoading && !auth.isAuthenticated) {
+    hasShownUnauthenticatedScreenRef.current = true;
+  }
+  if (startupNavigationPending === null) return null;
+  if (auth.isLoading && !hasShownUnauthenticatedScreenRef.current) return null;
   if (auth.recoveryInProgress) return <AppLogin kind="student" />;
   if (!auth.isAuthenticated) return <AppLogin kind="student" />;
   if (auth.isInstructorOnboarding) return <AppLogin kind="instructor" />;

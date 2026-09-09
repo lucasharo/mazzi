@@ -55,7 +55,11 @@ O compliance global do instrutor é separado do compliance do vínculo com uma a
 | `req_antecedentes_instrutor_fed` | Antecedentes Criminais (Regulamentar) | `CRIMINAL_BACKGROUND` | FEDERAL (BR) | Resolução CONTRAN nº 1.020/2025, Art. 110 & Lei 12.302/2010, Art. 4º, VI | `OFFICIALLY_VALIDATED` | 90 dias |
 | `req_credencial_detran_sp` | Credenciamento Operacional DETRAN-SP | `CREDENTIAL_DETRAN_SP` | STATE (SP) | Portaria DETRAN-SP de Credenciamento e Cadastro Operacional | `REQUIRES_REGULATORY_VALIDATION` | 2 anos |
 | `req_contran_789_historico` | Regulamentação Histórica Instrutor | `CREDENTIAL_HISTORICAL` | FEDERAL (BR) | Resolução CONTRAN nº 789/2020 (Superada pela CONTRAN 1.020/2025) | `SUPERSEDED` | Histórico |
-| `req_termo_conduta_mazzi` | Código de Ética e Segurança | `MAZZI_TERMS_ACCEPTANCE` | INTERNAL_PLATFORM | Política de Confiança e Segurança MAZZI v1.0 (Regra Interna de Marketplace) | `REQUIRES_REGULATORY_VALIDATION` | Permanente |
+| `req_termo_conduta_mazzi` | Termo de Adesão, Uso e Conduta do Profissional MAZZI v2.0 | `MAZZI_TERMS_ACCEPTANCE` | INTERNAL_PLATFORM | Termo de Adesão, Uso e Conduta do Profissional MAZZI v2.0 (Regra Interna de Marketplace) | `REQUIRES_REGULATORY_VALIDATION` | Permanente por versão |
+
+### Versionamento do termo do profissional
+
+O texto integral vigente é mantido no código em `src/domain/professional-terms.ts` e identificado por versão e hash SHA-256. A aceitação é registrada como histórico imutável em `compliance_documents`, com `terms_version`, `document_hash` e `accepted_at`; a RPC `provider_accept_mazzi_terms` aceita somente a versão atual publicada pelo backend. A versão v1 permanece preservada para consulta histórica e não é convertida retroativamente em v2. A publicação em produção depende de revisão jurídica, especialmente para substituir os placeholders cadastrais da pessoa jurídica.
 
 ### B. Autoescola / CFC (`DRIVING_SCHOOL`)
 | ID | Requisito | Tipo | Jurisdição | Fonte Normativa Principal | Status Regulatório | Validade |

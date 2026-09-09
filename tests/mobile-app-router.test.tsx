@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget, useMobileAppRoute } from '../src/lib/mobile-app-router';
+import { getNotificationNavigationTargetFromHash, getPublicEmailRouteFromPath, getPublicLessonReferenceFromPath, navigateToNotificationTarget, useMobileAppRoute } from '../src/lib/mobile-app-router';
 
 afterEach(() => {
   cleanup();
@@ -37,5 +37,19 @@ describe('useMobileAppRoute', () => {
     expect(getNotificationNavigationTargetFromHash('provider')).toEqual(target);
     const { result } = renderHook(() => useMobileAppRoute('provider', 'dashboard', ['dashboard', 'bookings', 'earnings', 'management'] as const));
     expect(result.current[0]).toBe('bookings');
+  });
+
+  it('extracts lesson references from transactional email paths', () => {
+    window.history.replaceState({}, '', '/aulas/MAZZI-LESSON-0B3D79E78F#/student/home');
+    expect(getPublicLessonReferenceFromPath()).toBe('MAZZI-LESSON-0B3D79E78F');
+  });
+
+  it.each([
+    ['/aulas/MAZZI-LESSON-0B3D79E78F', 'lesson', 'MAZZI-LESSON-0B3D79E78F'],
+    ['/reembolsos/MAZZI-PAY-E6C31865A7', 'refund', 'MAZZI-PAY-E6C31865A7'],
+    ['/ganhos/MAZZI-PAYOUT-9F0A1B2C3D', 'earnings', 'MAZZI-PAYOUT-9F0A1B2C3D'],
+  ])('extracts %s transactional email route', (path, kind, reference) => {
+    window.history.replaceState({}, '', `${path}#/student/home`);
+    expect(getPublicEmailRouteFromPath()).toEqual({ kind, reference });
   });
 });

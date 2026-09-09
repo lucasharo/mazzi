@@ -97,6 +97,9 @@ describe('public driving-school onboarding', () => {
     expect(appLogin).toContain('whitespace-normal');
     expect(appLogin).toContain('break-words text-xs');
     expect(appLogin).toContain('bg-[var(--mazzi-yellow-soft)]');
+    expect(appLogin).toContain('variant="ghost"');
+    expect(appLogin).toContain('bg-white');
+    expect(appLogin).toContain('hover:bg-amber-50/60');
     expect(appLogin).toContain('Crio o espaço da autoescola e me torno seu administrador responsável.');
     expect(appLogin).toContain('contentClassName="flex-1 whitespace-normal"');
     expect(button).toContain('contentClassName = \'\'');

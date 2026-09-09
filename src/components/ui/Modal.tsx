@@ -31,6 +31,8 @@ export interface ModalProps {
   fillContent?: boolean;
   /** Uses a back arrow when this surface returns to the modal underneath it. */
   showBackButton?: boolean;
+  /** Optional dark surface for full-screen app views. */
+  theme?: 'light' | 'dark';
 }
 
 export function useDialogHistory({
@@ -112,6 +114,7 @@ export const Modal: React.FC<ModalProps> = ({
   footerVariant = 'default',
   fillContent = false,
   showBackButton = layer === 'nested',
+  theme = 'light',
 }) => {
   const generatedId = useId();
   const titleId = `${id || generatedId}-title`;
@@ -134,8 +137,9 @@ export const Modal: React.FC<ModalProps> = ({
     <IconButton
       label={showBackButton ? 'Voltar' : 'Fechar diálogo'}
       onClick={onClose}
-      data-dialog-autofocus="true"
-      className="rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors"
+      className={theme === 'dark'
+        ? 'rounded-full bg-[#343944] text-slate-300 hover:bg-[#424856] hover:text-white transition-colors'
+        : 'rounded-full bg-[var(--mazzi-surface-soft)] text-slate-500 hover:text-[var(--mazzi-dark)] hover:bg-slate-200/80 transition-colors'}
     >
       {showBackButton
         ? <ArrowLeft className="w-4 h-4" aria-hidden="true" />
@@ -146,7 +150,7 @@ export const Modal: React.FC<ModalProps> = ({
   const modalContent = (
     <div
       id={id || 'mazzi-modal'}
-      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'modal' ? 'items-center justify-center bg-[var(--mazzi-dark)]/40 p-4 backdrop-blur-xs' : 'items-stretch justify-stretch bg-white'} animate-in fade-in duration-150 ${className}`}
+      className={`fixed inset-0 ${layer === 'nested' ? 'z-[100]' : 'z-[80]'} flex ${presentation === 'modal' ? 'items-center justify-center bg-[var(--mazzi-dark)]/40 p-4 backdrop-blur-xs' : `items-stretch justify-stretch ${theme === 'dark' ? 'bg-[#20232b]' : 'bg-white'}`} animate-in fade-in duration-150 ${className}`}
       onClick={(e) => {
         if (presentation === 'modal' && closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}
@@ -158,17 +162,17 @@ export const Modal: React.FC<ModalProps> = ({
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : ariaLabel || 'Janela de diálogo'}
         tabIndex={-1}
-        className={`relative w-full ${presentation === 'page' || presentation === 'fullscreen'
-          ? 'h-full max-w-none rounded-none border-0 bg-white shadow-none'
-          : `${sizeStyles[size]} mb-8 max-h-[90vh] rounded-2xl border border-[var(--mazzi-border)] bg-white shadow-xl`}
+        className={`relative w-full focus:outline-none ${presentation === 'page' || presentation === 'fullscreen'
+          ? `h-full max-w-none rounded-none border-0 ${theme === 'dark' ? 'bg-[#20232b]' : 'bg-white'} shadow-none`
+          : `${sizeStyles[size]} mb-8 max-h-[90vh] rounded-2xl border ${theme === 'dark' ? 'border-[#3a3f4d] bg-[#20232b]' : 'border-[var(--mazzi-border)] bg-white'} shadow-xl`}
           } overflow-clip flex flex-col animate-in ${presentation === 'modal' ? 'zoom-in-95' : presentation === 'page' ? 'slide-in-from-bottom-2' : ''} duration-150 text-left`}
       >
         {title && (
-          <div className="bg-white px-6 py-4 border-b border-[var(--mazzi-border)] flex items-center justify-between">
+          <div className={`px-6 py-4 border-b flex items-center justify-between ${theme === 'dark' ? 'border-[#3a3f4d] bg-[#20232b]' : 'border-[var(--mazzi-border)] bg-white'}`}>
             <div className="flex min-w-0 items-center gap-2">
               {showBackButton && closeControl}
               {headerAction}
-              <h3 id={titleId} className="font-extrabold text-[var(--mazzi-dark)] text-base">{title}</h3>
+              <h3 id={titleId} className={`font-extrabold text-base ${theme === 'dark' ? 'text-white' : 'text-[var(--mazzi-dark)]'}`}>{title}</h3>
             </div>
             <div className="flex items-center gap-2">
               <EnvironmentBadge />
@@ -177,7 +181,7 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
 
-        <div className={`mazzi-modal-content ${presentation === 'modal' ? 'p-6' : presentation === 'page' ? 'p-4 sm:p-6' : 'p-0'} ${fillContent ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'} flex-1 min-h-0`}>
+        <div className={`mazzi-modal-content ${presentation === 'modal' ? 'p-6' : presentation === 'page' ? 'p-4 sm:p-6' : 'p-0'} ${fillContent ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'} flex-1 min-h-0 ${theme === 'dark' ? 'bg-[#20232b]' : ''}`}>
           {presentation === 'page' ? <div className={`mx-auto w-full ${footerVariant === 'wizard' ? 'max-w-[480px]' : 'max-w-2xl'} ${fillContent ? 'flex h-full min-h-0 flex-col' : ''}`}>{children}</div> : children}
         </div>
 

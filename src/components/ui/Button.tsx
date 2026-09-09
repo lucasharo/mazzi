@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { getDefaultButtonActionIcon } from './ButtonActionIcon';
 
@@ -43,10 +43,25 @@ export const Button: React.FC<ButtonProps> = ({
   className = '',
   disabled,
   id,
+  onClick,
   ...props
 }) => {
+  const [autoLoading, setAutoLoading] = useState(false);
   const activeLoading = isLoading || loading;
+  const effectiveLoading = activeLoading || autoLoading;
   const defaultIcon = showDefaultIcon && !leftIcon && !rightIcon ? getDefaultButtonActionIcon(children) : null;
+
+  const handleClick: React.MouseEventHandler<HTMLButtonElement> = (event) => {
+    if (!onClick) return;
+    const result = onClick(event);
+    if (!result || typeof (result as unknown as PromiseLike<unknown>).then !== 'function') return;
+
+    setAutoLoading(true);
+    void Promise.resolve(result).then(
+      () => setAutoLoading(false),
+      () => setAutoLoading(false),
+    );
+  };
 
   const baseStyles =
     'inline-flex items-center justify-center font-bold rounded-2xl transition-all focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] focus-visible:ring-2 focus-visible:ring-[var(--mazzi-focus-glow)] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98] select-none whitespace-nowrap cursor-pointer';
@@ -76,12 +91,13 @@ export const Button: React.FC<ButtonProps> = ({
     <button
       id={id}
       data-component="button"
-      disabled={disabled || activeLoading}
-      aria-busy={activeLoading}
+      disabled={disabled || effectiveLoading}
+      aria-busy={effectiveLoading}
       className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
+      onClick={handleClick}
       {...props}
     >
-      {activeLoading ? (
+      {effectiveLoading ? (
         <>
           <span className="flex-shrink-0" aria-hidden="true">
           <Loader2 className="w-5 h-5 animate-spin text-current" aria-hidden="true" />

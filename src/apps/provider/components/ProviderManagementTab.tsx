@@ -25,6 +25,8 @@ import { getStatusPresentation } from '../../../domain/status-presentation';
 import { ProviderAccountTab } from './ProviderAccountTab';
 import { isProviderPaymentAccountReady } from '../../../domain/payments/provider-payment-readiness';
 import { Switch } from '../../../components/ui/Switch';
+import { ProfessionalTermsViewer } from '../../../components/provider/ProfessionalTermsViewer';
+import { CURRENT_PROFESSIONAL_TERMS_VERSION, PROFESSIONAL_TERMS_V2 } from '../../../domain/professional-terms';
 
 interface ProviderManagementTabProps {
   onRefresh: () => void;
@@ -77,7 +79,7 @@ interface ProviderManagementTabProps {
   offeringError: string | null;
   offeringNotice?: string | null;
   onUploadDocClick: (docType: string) => void;
-  onAcceptComplianceTerms: () => void;
+  onAcceptComplianceTerms: () => Promise<boolean>;
   onViewComplianceDocument: (document: ComplianceDocument) => void;
   isAcceptingComplianceTerms?: boolean;
   complianceTermsError?: string | null;
@@ -144,6 +146,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   const [isInviteInstructorModalOpen, setIsInviteInstructorModalOpen] = React.useState(false);
   const [pendingOfferingSwap, setPendingOfferingSwap] = useState<{ target: ServiceOffering; current: ServiceOffering } | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [isTermsViewerOpen, setIsTermsViewerOpen] = useState(false);
   const isSchool = currentProvider.type === 'DRIVING_SCHOOL';
   const hasPendingSchedule = availabilityRules.length === 0;
   const hasPendingVehicles = !vehicles.some((vehicle) => vehicle.status === 'ACTIVE');
@@ -151,6 +154,14 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
   const complianceEligibility = evaluateProviderEligibility(currentProvider, complianceDocs);
   const hasPendingCompliance = !complianceEligibility.isEligible;
   const hasPendingPayoutSetup = !isProviderPaymentAccountReady(paymentAccount);
+  const termsHistory = complianceDocs
+    .filter((document) => document.type === 'MAZZI_TERMS_ACCEPTANCE')
+    .sort((a, b) => new Date(b.acceptedAt || b.uploadedAt).getTime() - new Date(a.acceptedAt || a.uploadedAt).getTime());
+  const currentTermsDocument = termsHistory.find((document) => (
+    document.termsVersion === CURRENT_PROFESSIONAL_TERMS_VERSION
+    && document.documentHash === PROFESSIONAL_TERMS_V2.documentHash
+    && document.status === 'APPROVED'
+  ));
   const runAsyncAction = async (key: string, action: () => Promise<void>) => {
     if (pendingAction) return;
     setPendingAction(key);
@@ -282,7 +293,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                           <ButtonBase
                             type="button"
                             onClick={() => onOpenEditVehicle(vehicle.id)}
-                            className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--mazzi-dark)] text-white shadow-xs transition duration-200 ease-out hover:brightness-95 focus-visible:ring-2 focus-visible:ring-[var(--mazzi-focus-glow)] focus-visible:ring-offset-2"
+                            className="grid h-11 w-11 place-items-center rounded-2xl text-[var(--mazzi-muted)] transition duration-200 ease-out hover:bg-[var(--mazzi-surface-soft)] hover:text-[var(--mazzi-dark)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)]"
                             aria-label={`Editar veículo ${vehicle.brand} ${vehicle.model}`}
                             title="Editar veículo"
                           >
@@ -434,13 +445,49 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             </p>
           </div>
 
+          <section className="mazzi-card space-y-3 p-4" aria-labelledby="professional-terms-status-title">
+            <div>
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+                    <h3 id="professional-terms-status-title" className="min-w-0 text-sm font-extrabold text-[var(--mazzi-text)]">Termos do Profissional</h3>
+                  </div>
+                  <Badge variant={currentTermsDocument ? 'success' : 'warning'} className="shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px]">{currentTermsDocument ? 'Versão atual aceita' : 'Aceite necessário'}</Badge>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">Leia o termo completo antes de aceitar. Cada versão aceita fica registrada no seu histórico.</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+              <div className="text-xs font-bold text-slate-700">
+                <p>Versão atual: {PROFESSIONAL_TERMS_V2.displayVersion}</p>
+                {currentTermsDocument?.acceptedAt && <p className="mt-1 font-medium text-slate-500">Aceito em {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(currentTermsDocument.acceptedAt))}</p>}
+              </div>
+              <Button type="button" variant="primary" size="sm" leftIcon={<Eye className="h-3.5 w-3.5" aria-hidden="true" />} onClick={() => setIsTermsViewerOpen(true)}>
+                {currentTermsDocument ? 'Ver termo completo' : 'Ler e aceitar termo'}
+              </Button>
+            </div>
+          </section>
+
+          <ProfessionalTermsViewer
+            isOpen={isTermsViewerOpen}
+            onClose={() => setIsTermsViewerOpen(false)}
+            terms={PROFESSIONAL_TERMS_V2}
+            isAccepted={Boolean(currentTermsDocument)}
+            acceptedAt={currentTermsDocument?.acceptedAt}
+            isAccepting={isAcceptingComplianceTerms}
+            onAccept={async () => {
+              const accepted = await onAcceptComplianceTerms();
+              if (accepted) setIsTermsViewerOpen(false);
+            }}
+          />
+
           <div className="space-y-3">
-            {DEFAULT_COMPLIANCE_REQUIREMENTS.filter((r) => r.providerType === currentProvider.type).map((req) => {
+            {DEFAULT_COMPLIANCE_REQUIREMENTS.filter((r) => r.providerType === currentProvider.type && r.documentType !== 'MAZZI_TERMS_ACCEPTANCE').map((req) => {
               const docsForRequirement = complianceDocs
                 .filter((d) => d.type === req.documentType)
                 .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
               const doc = docsForRequirement[0];
-              const isTermsAcceptance = req.documentType === 'MAZZI_TERMS_ACCEPTANCE';
               const canResubmit = doc?.status === 'REJECTED' || doc?.status === 'EXPIRED';
               return (
                 <div
@@ -452,7 +499,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                       <span className="text-sm font-bold text-[var(--mazzi-text)]">{req.title}</span>
                     </div>
                     <p className="text-xs text-slate-500">{req.description}</p>
-                    {doc && !isTermsAcceptance && (
+                    {doc && (
                       <>
                         <p className="text-[11px] text-slate-600 font-mono">Arquivo: {doc.fileName}</p>
                         {doc.status === 'REJECTED' && doc.rejectionReason && (
@@ -465,12 +512,12 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <StatusBadge status={doc?.status ?? 'PENDING'} domain="compliance" />
                     <div className="flex flex-wrap items-center justify-end gap-2">
-                      {doc?.storagePath && !isTermsAcceptance && (
+                      {doc?.storagePath && (
                         <Button variant="outline" size="sm" leftIcon={<Eye className="w-3.5 h-3.5" aria-hidden="true" />} onClick={() => onViewComplianceDocument(doc)}>
                           Ver arquivo
                         </Button>
                       )}
-                      {(!doc || canResubmit) && !isTermsAcceptance && (
+                      {(!doc || canResubmit) && (
                         <Button
                           variant={canResubmit ? 'primary' : 'outline'}
                           size="sm"
@@ -478,18 +525,6 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
                           onClick={() => onUploadDocClick(req.documentType)}
                         >
                           {canResubmit ? 'Enviar novo arquivo' : 'Anexar Arquivo'}
-                        </Button>
-                      )}
-                      {!doc && isTermsAcceptance && (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          leftIcon={<Check className="w-3.5 h-3.5" />}
-                          onClick={onAcceptComplianceTerms}
-                          disabled={isAcceptingComplianceTerms}
-                          isLoading={isAcceptingComplianceTerms}
-                        >
-                          {isAcceptingComplianceTerms ? 'Registrando...' : 'Concordar e aceitar'}
                         </Button>
                       )}
                     </div>
@@ -586,7 +621,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddVehicleModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>
-            <Button variant="primary" size="sm" onClick={() => void runAsyncAction('save-vehicle', onSaveVehicle)} disabled={!vehicleFormValid || pendingAction !== null || onSavingVehicle} isLoading={pendingAction === 'save-vehicle' || onSavingVehicle} leftIcon={<Save className="w-4 h-4" />}>
+            <Button variant="primary" size="sm" onClick={() => runAsyncAction('save-vehicle', onSaveVehicle)} disabled={!vehicleFormValid || pendingAction !== null || onSavingVehicle} isLoading={pendingAction === 'save-vehicle' || onSavingVehicle} leftIcon={<Save className="w-4 h-4" />}>
               {vehicleForm.brand ? 'Enviar' : 'Salvar Veículo'}
             </Button>
           </div>
@@ -660,7 +695,7 @@ export const ProviderManagementTab: React.FC<ProviderManagementTabProps> = ({
             <Button variant="dangerSoft" size="sm" onClick={onCloseAddOfferingModal} leftIcon={<XCircle className="w-4 h-4" />}>
               Cancelar
             </Button>
-            <Button variant="primary" size="sm" onClick={() => void runAsyncAction('save-offering', onSaveOffering)} disabled={!offeringFormValid || pendingAction !== null || onSavingOffering} isLoading={pendingAction === 'save-offering' || onSavingOffering} leftIcon={<Save className="w-4 h-4" />}>
+            <Button variant="primary" size="sm" onClick={() => runAsyncAction('save-offering', onSaveOffering)} disabled={!offeringFormValid || pendingAction !== null || onSavingOffering} isLoading={pendingAction === 'save-offering' || onSavingOffering} leftIcon={<Save className="w-4 h-4" />}>
               Salvar Oferta
             </Button>
           </div>

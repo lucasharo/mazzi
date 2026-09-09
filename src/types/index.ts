@@ -240,6 +240,9 @@ export interface ComplianceDocument {
   type: string;
   title: string;
   status: DocumentStatus;
+  termsVersion?: string;
+  documentHash?: string;
+  acceptedAt?: string;
   fileName: string;
   storagePath: string; // Private bucket path: providers/{providerId}/compliance/{docId}/{filename}
   fileSize?: number;
@@ -492,6 +495,7 @@ export interface BookingSnapshot {
 
 export interface Booking {
   id: string;
+  publicReference?: string;
   studentId: string;
   studentName?: string;
   studentAvatarUrl?: string;
@@ -523,6 +527,7 @@ export interface Booking {
   priceInCents: number;
   platformFeeInCents: number;
   gatewayFeeInCents?: number;
+  paymentPublicReference?: string;
   paymentStatus?: MazziPaymentStatus;
   paymentPaidAt?: string;
   totalInCents: number;

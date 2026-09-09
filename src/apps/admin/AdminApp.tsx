@@ -678,10 +678,10 @@ export const AdminApp: React.FC = () => {
                 <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Perfil</dt><dd className="font-semibold text-[var(--mazzi-text)]">{getUserRoleLabel(user?.roles?.[0])}</dd></div>
                 </dl>
               </div>
-              {isEditingProfile && <div className="flex items-center gap-2.5 pt-5"><Button variant="dangerSoft" size="sm" className="w-1/2" onClick={() => { setProfileAvatar(savedProfileAvatar); setIsEditingProfile(false); }}>Cancelar</Button><Button variant="primary" size="sm" className="w-1/2" onClick={() => void handleSaveProfilePhoto()}>Salvar foto</Button></div>}
+              {isEditingProfile && <div className="flex items-center gap-2.5 pt-5"><Button variant="dangerSoft" size="sm" className="w-1/2" onClick={() => { setProfileAvatar(savedProfileAvatar); setIsEditingProfile(false); }}>Cancelar</Button><Button variant="primary" size="sm" className="w-1/2" onClick={() => handleSaveProfilePhoto()}>Salvar foto</Button></div>}
             </div>
 
-            {!isEditingProfile && <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4"><Button variant="ghost" size="sm" className="font-bold text-rose-700 hover:bg-rose-50" onClick={() => { void logout(); }} leftIcon={<LogOut className="w-4 h-4" />}>Sair</Button></div>}
+            {!isEditingProfile && <div className="flex justify-center border-t border-[var(--mazzi-border)] pt-4"><Button variant="ghost" size="sm" className="font-bold text-rose-700 hover:bg-rose-50" onClick={() => logout()} leftIcon={<LogOut className="w-4 h-4" />}>Sair</Button></div>}
           </section>
         )}
         </div>

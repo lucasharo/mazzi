@@ -39,6 +39,7 @@ import {
 } from '../src/domain/provider-lifecycle-service';
 import { AuthContext } from '../src/domain/rbac';
 import { ComplianceDocument, ComplianceRequirement, Provider } from '../src/types';
+import { PROFESSIONAL_TERMS_V2 } from '../src/domain/professional-terms';
 
 describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
   const studentContext: AuthContext = {
@@ -194,7 +195,7 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
       const termoMazzi = DEFAULT_COMPLIANCE_REQUIREMENTS.find((r) => r.id === 'req_termo_conduta_mazzi')!;
       expect(termoMazzi.sourceType).toBe('INTERNAL_MAZZI_RULE');
       expect(termoMazzi.jurisdiction).toBe('INTERNAL_PLATFORM');
-      expect(termoMazzi.sourceReference).toContain('Política de Confiança e Segurança MAZZI');
+      expect(termoMazzi.sourceReference).toContain('Termo de Adesão, Uso e Conduta do Profissional MAZZI v2.0');
     });
 
     it('ensures every catalog requirement possesses a sourceReference and validated rules have lastValidatedAt', () => {
@@ -487,10 +488,13 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
     const validTermoMazzi: ComplianceDocument = {
       id: 'doc_termo',
       providerId: 'prov_inst_1',
+      userId: 'usr_carlos',
       scope: 'PROVIDER',
       type: 'MAZZI_TERMS_ACCEPTANCE',
       title: 'Termo de Conduta MAZZI',
       status: 'APPROVED',
+      termsVersion: 'v2',
+      documentHash: PROFESSIONAL_TERMS_V2.documentHash,
       fileName: 'termo.pdf',
       storagePath: 'path/termo.pdf',
       uploadedAt: '2026-08-14T10:00:00Z',
@@ -614,10 +618,13 @@ describe('Sprint 04 — Providers & Compliance Domain Engine', () => {
       {
         id: 'doc_5',
         providerId: 'prov_pending_1',
+        userId: 'usr_instructor_candidate',
         scope: 'PROVIDER',
         type: 'MAZZI_TERMS_ACCEPTANCE',
         title: 'Termo de Conduta MAZZI',
         status: 'APPROVED',
+        termsVersion: 'v2',
+        documentHash: PROFESSIONAL_TERMS_V2.documentHash,
         fileName: 'termo.pdf',
         storagePath: 'path/termo.pdf',
         uploadedAt: '2026-08-14T10:00:00Z',

@@ -132,4 +132,11 @@ describe('provider offering and compliance reconciliation contracts', () => {
     expect(memberships).toContain('const complianceApproved = compliance?.globalComplianceValid === true && compliance.membershipComplianceValid === true;');
     expect(memberships).toContain("complianceApproved ? 'Compliance aprovado' : 'Compliance pendente'");
   });
+
+  it('keeps MAZZI terms acceptance independent from the other compliance documents', () => {
+    expect(managementTab).toContain("document.type === 'MAZZI_TERMS_ACCEPTANCE'");
+    expect(managementTab).toContain('<ProfessionalTermsViewer');
+    expect(managementTab).toContain('const accepted = await onAcceptComplianceTerms();');
+    expect(managementTab).not.toContain('hasPendingCompliance && isTermsAcceptance');
+  });
 });

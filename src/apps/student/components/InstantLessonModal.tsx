@@ -43,6 +43,30 @@ interface InstantLessonModalProps {
 export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, onClose, onScheduleLesson, location, locationLabel, onRequestLocation, onLoadPriceOptions, onStart, activeRequest, tracking, bookingStatus, booking, currentUserId, onOpenChat, onBookingUpdated, onRefreshBooking, onPayBooking, onCancelRequest, onCancelPendingSearch, returnToPriceStep = false, onStudentCheckIn, isLoading, isInitialLocationLoading, checkInWindowBeforeMinutes, instantLessonExpirationMinutes }) => {
   const [trackingOpen, setTrackingOpen] = useState(false);
   useEffect(() => { setTrackingOpen(false); }, [isOpen, booking?.id]);
+  useEffect(() => {
+    if (!isOpen || !trackingOpen || !booking?.id || !onRefreshBooking) return undefined;
+
+    let disposed = false;
+    let refreshInFlight = false;
+    const refreshBooking = () => {
+      if (disposed || refreshInFlight) return;
+      refreshInFlight = true;
+      void onRefreshBooking(booking.id)
+        .catch(() => undefined)
+        .finally(() => {
+          refreshInFlight = false;
+        });
+    };
+
+    // The full tracking view does not mount BookingDetailsModal, so it needs
+    // its own booking refresh to detect the PRO starting the lesson.
+    refreshBooking();
+    const timer = window.setInterval(refreshBooking, 3_000);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [booking?.id, isOpen, onRefreshBooking, trackingOpen]);
   const isLessonStarted = bookingStatus === 'IN_PROGRESS' || booking?.status === 'IN_PROGRESS' || Boolean(booking?.lessonStartedAt);
   const showTrackingMap = !isLessonStarted
     && (Boolean(tracking) || Boolean(activeRequest?.request.bookingId && bookingStatus === 'CONFIRMED'));

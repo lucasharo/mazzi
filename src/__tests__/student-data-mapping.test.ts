@@ -40,9 +40,11 @@ describe('Student Experience Phase 1 formatters', () => {
   it('maps camelCase booking snapshots and real names', () => {
     const booking = mapBookingFromDb({
       id: 'booking-1', student_id: 'student-1', provider_id: 'provider-1', instructor_id: 'instructor-1',
+      public_reference: 'MAZZI-LESSON-0B3D79E78F',
       vehicle_id: 'vehicle-1', offering_id: 'offering-1', status: 'CONFIRMED',
       scheduled_start_at: '2026-08-25T02:30:00.000Z', scheduled_end_at: '2026-08-25T03:30:00.000Z',
       price_in_cents: 12000, platform_fee_in_cents: 0, total_in_cents: 12000,
+      payment_public_reference: 'MAZZI-PAY-E6C31865A7',
       snapshot_data: { category: 'B', instructorName: 'Aline Teixeira Costa', providerName: 'CFC Paulista', vehicleName: 'VW Polo', meetingPoint: { name: 'Bela Vista' } },
       meeting_point: { name: 'Bela Vista' }, created_at: '2026-08-01T00:00:00Z',
     });
@@ -51,6 +53,8 @@ describe('Student Experience Phase 1 formatters', () => {
     expect(booking.vehicleName).toBe('VW Polo');
     expect(booking.meetingPoint).toBe('Bela Vista');
     expect(booking.scheduledDate).toBe('24/08/2026');
+    expect(booking.publicReference).toBe('MAZZI-LESSON-0B3D79E78F');
+    expect(booking.paymentPublicReference).toBe('MAZZI-PAY-E6C31865A7');
   });
 
   it('maps legacy snake_case booking snapshots for compatibility', () => {
