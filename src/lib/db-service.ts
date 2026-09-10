@@ -25,6 +25,7 @@ import {
   NotificationType,
   AdminAnalyticsSummary,
   AdminReportsResponse,
+  AdminReportDailyResponse,
   ProviderAnalyticsSummary,
   ProviderEarningsSummary,
   ProviderPayoutDetail,
@@ -1903,6 +1904,16 @@ export const dbService = {
     if (error) throw error;
     if (!data) throw new Error('ADMIN_REPORTS_UNAVAILABLE');
     return data as AdminReportsResponse;
+  },
+
+  async getAdminReportDaily(dateFrom: string, dateTo: string): Promise<AdminReportDailyResponse> {
+    const { data, error } = await sp.rpc('get_admin_report_daily', {
+      p_date_from: `${dateFrom}T00:00:00-03:00`,
+      p_date_to: `${dateTo}T00:00:00-03:00`,
+    });
+    if (error) throw error;
+    if (!data) throw new Error('ADMIN_REPORT_DAILY_UNAVAILABLE');
+    return data as AdminReportDailyResponse;
   },
 
   async getProviderAnalyticsSummary(days: AnalyticsPeriodPreset = 30): Promise<ProviderAnalyticsSummary> {

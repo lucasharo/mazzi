@@ -3,7 +3,7 @@ import { BarChart3, CalendarDays, Check, FileDown, RefreshCw } from 'lucide-reac
 import { dbService } from '../../lib/db-service';
 import { formatCentsToBRL } from '../../domain/money';
 import { formatDateBR, getBusinessDateOnly } from '../../lib/date-format';
-import { AdminReportKey, AdminReportsResponse } from '../../types';
+import { AdminReportDailyResponse, AdminReportDailyRow, AdminReportKey, AdminReportsResponse } from '../../types';
 import { Button, ButtonBase } from '../ui/Button';
 import { Input } from '../ui/Input';
 
@@ -21,6 +21,50 @@ const REPORTS: Array<{ key: AdminReportKey; title: string; description: string }
 ];
 
 const LABELS: Record<string, string> = {
+  created: 'Criados',
+  confirmed: 'Confirmadas',
+  completed: 'Concluídas',
+  cancelled: 'Canceladas',
+  expired: 'Expiradas',
+  instant_lesson: 'Aulas Agora',
+  payments_created: 'Pagamentos criados',
+  payments_paid: 'Pagamentos pagos',
+  payments_failed: 'Pagamentos falhos',
+  new_users: 'Novos usuários',
+  new_providers: 'Novos prestadores',
+  new_vehicles: 'Novos veículos',
+  new_offerings: 'Novas ofertas',
+  active_users: 'Usuários ativos',
+  students: 'Alunos',
+  instructors: 'Instrutores',
+  school_admins: 'Admins de autoescola',
+  blocked_or_inactive: 'Bloqueados ou inativos',
+  submitted: 'Enviados',
+  approved: 'Aprovados',
+  pending: 'Pendentes',
+  rejected: 'Rejeitados',
+  expiring_in_30_days: 'Vencendo em 30 dias',
+  cancelled_bookings: 'Reservas canceladas',
+  student_cancelled: 'Canceladas pelo aluno',
+  provider_cancelled: 'Canceladas pelo profissional',
+  disputes_opened: 'Contestações abertas',
+  disputes_resolved: 'Contestações resolvidas',
+  notifications_created: 'Notificações criadas',
+  notifications_unread: 'Notificações não lidas',
+  emails_created: 'E-mails criados',
+  emails_sent: 'E-mails enviados',
+  emails_failed: 'E-mails falhos',
+  profile_views: 'Perfis vistos',
+  provider_searches: 'Buscas por profissional',
+  available_slots_views: 'Consultas de horários',
+  checkout_started: 'Checkouts iniciados',
+  searches_without_result: 'Buscas sem resultado',
+  pending_cents: 'Repasses pendentes',
+  paid_cents: 'Repasses pagos',
+  failed_count: 'Falhas',
+  failed: 'Falhos',
+  no_show: 'No-show',
+  upcoming: 'Próximas',
   active_students: 'Alunos ativos',
   active_instructor_users: 'Instrutores ativos',
   active_school_admin_users: 'Admins de autoescola ativos',
@@ -46,8 +90,142 @@ const LABELS: Record<string, string> = {
   total: 'Total',
 };
 
+const TEXT_TRANSLATIONS: Record<string, string> = {
+  UNKNOWN: 'Não informado',
+  SEM_MOTIVO_INFORMADO: 'Sem motivo informado',
+  CONFIRMED: 'Confirmada',
+  COMPLETED: 'Concluída',
+  CANCELLED: 'Cancelada',
+  CANCELLED_BY_STUDENT: 'Cancelada pelo aluno',
+  CANCELLED_BY_PROVIDER: 'Cancelada pelo profissional',
+  EXPIRED: 'Expirada',
+  PENDING: 'Pendente',
+  PENDING_PAYMENT: 'Aguardando pagamento',
+  IN_PROGRESS: 'Em andamento',
+  NO_SHOW_STUDENT: 'Aluno não compareceu',
+  NO_SHOW_PROVIDER: 'Profissional não compareceu',
+  PAID: 'Pago',
+  FAILED: 'Falhou',
+  PROCESSING: 'Processando',
+  RELEASED: 'Liberado',
+  REJECTED: 'Rejeitado',
+  APPROVED: 'Aprovado',
+  IN_REVIEW: 'Em análise',
+  ACTIVE: 'Ativo',
+  INACTIVE: 'Inativo',
+  BLOCKED: 'Bloqueado',
+  STUDENT: 'Aluno',
+  INSTRUCTOR: 'Instrutor',
+  SCHOOL_ADMIN: 'Admin de autoescola',
+  PLATFORM_ADMIN: 'Admin da plataforma',
+  DRIVING_SCHOOL: 'Autoescola',
+  MANUAL: 'Manual',
+  AUTOMATIC: 'Automático',
+  REFUNDED: 'Reembolsado',
+  PARTIALLY_REFUNDED: 'Reembolso parcial',
+  SCHEDULED: 'Agendada',
+  ERROR: 'Erro',
+  STUDENT_CHANGED_MIND: 'Aluno desistiu',
+  PROVIDER_PERSONAL_EMERGENCY: 'Emergência pessoal do profissional',
+  VEHICLE_ISSUE: 'Problema no veículo',
+  PERSONAL_EMERGENCY: 'Emergência pessoal',
+  SCHEDULE_CONFLICT: 'Conflito de agenda',
+  WEATHER_OR_SAFETY: 'Clima ou segurança',
+  OPERATIONAL_ISSUE: 'Problema operacional',
+  OTHER: 'Outro',
+  AULA_AGORA: 'Aula Agora',
+  INSTANT: 'Aula Agora',
+  AGENDA: 'Agenda',
+  PROVIDER_SEARCH: 'Busca por profissional',
+  PROVIDER_PROFILE_VIEW: 'Visualização de perfil',
+  AVAILABLE_SLOTS_VIEW: 'Consulta de horários',
+  CHECKOUT_STARTED: 'Checkout iniciado',
+  PAYMENT_CONFIRMED: 'Pagamento confirmado',
+  CANCELLATION_REFUND_REQUESTED: 'Reembolso de cancelamento solicitado',
+  REFUND_COMPLETED: 'Reembolso concluído',
+  PRO_BOOKING_CONFIRMED: 'Reserva do profissional confirmada',
+  PRO_PAYOUT_COMPLETED: 'Repasse do profissional concluído',
+  SENT: 'Enviado',
+  PROCESSING_FAILED: 'Falha no processamento',
+};
+
+const DAILY_COLUMNS_BY_REPORT: Record<AdminReportKey, Array<{ key: keyof AdminReportDailyRow; title: string }>> = {
+  executive: [
+    { key: 'bookings_created', title: 'Reservas' },
+    { key: 'bookings_completed', title: 'Concluídas' },
+    { key: 'bookings_cancelled', title: 'Canceladas' },
+    { key: 'paid_volume_cents', title: 'Volume pago' },
+    { key: 'refunds_cents', title: 'Reembolsos' },
+    { key: 'payouts_cents', title: 'Repasses' },
+    { key: 'new_users', title: 'Novos usuários' },
+    { key: 'provider_searches', title: 'Buscas' },
+    { key: 'notifications_created', title: 'Notificações' },
+  ],
+  bookings: [
+    { key: 'bookings_created', title: 'Criadas' },
+    { key: 'bookings_completed', title: 'Concluídas' },
+    { key: 'bookings_cancelled', title: 'Canceladas' },
+    { key: 'instant_bookings', title: 'Aulas Agora' },
+  ],
+  revenue: [
+    { key: 'gross_volume_cents', title: 'Volume bruto' },
+    { key: 'paid_volume_cents', title: 'Volume pago' },
+    { key: 'refunds_cents', title: 'Reembolsos' },
+    { key: 'payment_abandonments', title: 'Desistências' },
+    { key: 'payment_abandonment_amount_cents', title: 'Valor desistido' },
+  ],
+  payouts: [{ key: 'payouts_cents', title: 'Repasses' }],
+  supply: [
+    { key: 'providers_created', title: 'Profissionais criados' },
+    { key: 'vehicles_created', title: 'Veículos criados' },
+    { key: 'offerings_created', title: 'Ofertas criadas' },
+  ],
+  demand: [
+    { key: 'provider_searches', title: 'Buscas' },
+    { key: 'provider_profile_views', title: 'Perfis vistos' },
+    { key: 'available_slots_views', title: 'Agendas consultadas' },
+    { key: 'checkout_started', title: 'Checkouts iniciados' },
+    { key: 'searches_without_result', title: 'Buscas sem resultado' },
+  ],
+  users: [
+    { key: 'new_users', title: 'Novos usuários' },
+    { key: 'students_created', title: 'Alunos' },
+    { key: 'instructors_created', title: 'Instrutores' },
+    { key: 'school_admins_created', title: 'Admins de autoescola' },
+  ],
+  compliance: [
+    { key: 'compliance_submitted', title: 'Enviados' },
+    { key: 'compliance_approved', title: 'Aprovados' },
+    { key: 'compliance_pending', title: 'Pendentes' },
+    { key: 'compliance_rejected', title: 'Rejeitados' },
+  ],
+  cancellations: [
+    { key: 'bookings_cancelled', title: 'Canceladas' },
+    { key: 'cancellations_after_paid', title: 'Pós-pagamento' },
+    { key: 'cancellation_refunds_cents', title: 'Reembolsos pós-pagamento' },
+    { key: 'payment_abandonments', title: 'Desistências de pagamento' },
+    { key: 'payment_abandonment_amount_cents', title: 'Valor desistido' },
+    { key: 'refunds_cents', title: 'Reembolsos totais' },
+    { key: 'disputes_opened', title: 'Contestações abertas' },
+    { key: 'disputes_resolved', title: 'Contestações resolvidas' },
+  ],
+  communications: [
+    { key: 'notifications_created', title: 'Notificações' },
+    { key: 'notifications_unread', title: 'Não lidas' },
+    { key: 'emails_created', title: 'E-mails criados' },
+    { key: 'emails_sent', title: 'E-mails enviados' },
+    { key: 'emails_failed', title: 'E-mails falhos' },
+  ],
+};
+
 function labelFor(key: string): string {
   return LABELS[key] || key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function translateReportText(value: string): string {
+  const normalized = value.trim();
+  if (normalized.includes(' / ')) return normalized.split(' / ').map((part) => translateReportText(part)).join(' / ');
+  return TEXT_TRANSLATIONS[normalized] || TEXT_TRANSLATIONS[normalized.toUpperCase()] || (normalized.includes('_') ? labelFor(normalized) : normalized);
 }
 
 function isMoneyKey(key: string): boolean {
@@ -59,7 +237,7 @@ function formatValue(key: string, value: unknown): string {
   if (isMoneyKey(key)) return formatCentsToBRL(Number(value));
   if (key.endsWith('_rate')) return `${(Number(value) * 100).toFixed(1)}%`;
   if (typeof value === 'number') return value.toLocaleString('pt-BR');
-  return String(value);
+  return typeof value === 'string' ? translateReportText(value) : String(value);
 }
 
 function flattenObject(value: Record<string, unknown>, prefix = ''): Array<[string, unknown]> {
@@ -94,6 +272,7 @@ export const AdminReportsPanel: React.FC<{ refreshKey?: number }> = ({ refreshKe
     () => Object.fromEntries(REPORTS.map(({ key }) => [key, true])) as Record<AdminReportKey, boolean>,
   );
   const [data, setData] = useState<AdminReportsResponse | null>(null);
+  const [dailyData, setDailyData] = useState<AdminReportDailyResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,7 +292,13 @@ export const AdminReportsPanel: React.FC<{ refreshKey?: number }> = ({ refreshKe
     setIsLoading(true);
     setError(null);
     try {
-      setData(await dbService.getAdminReports(dateFrom, getBusinessDateOnly(1, new Date(`${dateTo}T12:00:00`))));
+      const normalizedDateTo = getBusinessDateOnly(1, new Date(`${dateTo}T12:00:00`));
+      const [reports, daily] = await Promise.all([
+        dbService.getAdminReports(dateFrom, normalizedDateTo),
+        dbService.getAdminReportDaily(dateFrom, normalizedDateTo),
+      ]);
+      setData(reports);
+      setDailyData(daily);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível carregar os relatórios.');
     } finally {
@@ -131,6 +316,11 @@ export const AdminReportsPanel: React.FC<{ refreshKey?: number }> = ({ refreshKe
   };
 
   const visibleReportCount = REPORTS.filter(({ key }) => selected[key]).length;
+
+  const formatDailyCell = (row: AdminReportDailyRow, key: keyof AdminReportDailyRow): string => {
+    if (key === 'report_date') return formatDateBR(row.report_date);
+    return formatValue(String(key), row[key]);
+  };
 
   const applyPreset = (days: 7 | 30 | 90 | 366) => {
     setDateFrom(getBusinessDateOnly(-(days - 1)));
@@ -254,12 +444,57 @@ export const AdminReportsPanel: React.FC<{ refreshKey?: number }> = ({ refreshKe
                       <tbody className="divide-y divide-slate-100">
                         {section.rows.map((row, index) => (
                           <tr key={`${String(row.label)}-${index}`}>
-                            <th className="px-3 py-2 font-bold text-slate-800">{String(row.label || '—')}</th>
+                            <th className="px-3 py-2 font-bold text-slate-800">{row.label ? translateReportText(String(row.label)) : '—'}</th>
                             {Object.entries(row).filter(([key]) => key !== 'label').map(([key, value]) => <td key={key} className="px-3 py-2 text-right font-semibold text-slate-700">{formatValue(key, value)}</td>)}
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+                {dailyData && (
+                  <div className="mt-4 rounded-2xl border border-slate-100">
+                    <div className="border-b border-slate-100 bg-slate-50 px-3 py-2">
+                      <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-600">Visão diária</h4>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-[680px] text-left text-xs">
+                        <thead className="bg-white text-[10px] font-black uppercase tracking-wider text-slate-500">
+                          <tr>
+                            <th className="whitespace-nowrap px-3 py-2">Dia</th>
+                            {DAILY_COLUMNS_BY_REPORT[definition.key].map((column) => <th key={column.key} className="whitespace-nowrap px-3 py-2 text-right">{column.title}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {dailyData.daily.map((row) => (
+                            <tr key={`${definition.key}-${row.report_date}`}>
+                              <th className="whitespace-nowrap px-3 py-2 font-bold text-slate-800">{formatDailyCell(row, 'report_date')}</th>
+                              {DAILY_COLUMNS_BY_REPORT[definition.key].map((column) => <td key={column.key} className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-700">{formatDailyCell(row, column.key)}</td>)}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                {definition.key === 'cancellations' && dailyData && (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">Cancelamentos após pagamento</p>
+                      <p className="mt-1 text-lg font-black text-slate-900">{dailyData.payment_outcomes.cancellations_after_paid.toLocaleString('pt-BR')}</p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">Reembolsos pós-pagamento</p>
+                      <p className="mt-1 text-lg font-black text-slate-900">{formatValue('cancellation_refunds_cents', dailyData.payment_outcomes.cancellation_refunds_cents)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">Desistências de pagamento</p>
+                      <p className="mt-1 text-lg font-black text-slate-900">{dailyData.payment_outcomes.payment_abandonments.toLocaleString('pt-BR')}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">Valor das desistências</p>
+                      <p className="mt-1 text-lg font-black text-slate-900">{formatValue('payment_abandonment_amount_cents', dailyData.payment_outcomes.payment_abandonment_amount_cents)}</p>
+                    </div>
                   </div>
                 )}
                 {!hasData && (

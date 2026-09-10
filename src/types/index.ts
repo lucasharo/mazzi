@@ -1116,6 +1116,57 @@ export interface AdminReportsResponse {
   reports: Record<AdminReportKey, AdminReportSection | Record<string, unknown>>;
 }
 
+export interface AdminReportDailyRow {
+  report_date: string;
+  bookings_created: number;
+  bookings_completed: number;
+  bookings_cancelled: number;
+  instant_bookings: number;
+  cancellations_after_paid: number;
+  cancellation_refunds_cents: number;
+  payment_abandonments: number;
+  payment_abandonment_amount_cents: number;
+  gross_volume_cents: number;
+  paid_volume_cents: number;
+  refunds_cents: number;
+  payouts_cents: number;
+  providers_created: number;
+  vehicles_created: number;
+  offerings_created: number;
+  provider_searches: number;
+  provider_profile_views: number;
+  available_slots_views: number;
+  checkout_started: number;
+  searches_without_result: number;
+  new_users: number;
+  students_created: number;
+  instructors_created: number;
+  school_admins_created: number;
+  compliance_submitted: number;
+  compliance_approved: number;
+  compliance_pending: number;
+  compliance_rejected: number;
+  disputes_opened: number;
+  disputes_resolved: number;
+  notifications_created: number;
+  notifications_unread: number;
+  emails_created: number;
+  emails_sent: number;
+  emails_failed: number;
+}
+
+export interface AdminReportPaymentOutcomes {
+  cancellations_after_paid: number;
+  cancellation_refunds_cents: number;
+  payment_abandonments: number;
+  payment_abandonment_amount_cents: number;
+}
+
+export interface AdminReportDailyResponse {
+  daily: AdminReportDailyRow[];
+  payment_outcomes: AdminReportPaymentOutcomes;
+}
+
 export interface ProviderAnalyticsSummary {
   period: AnalyticsPeriod;
   provider_contexts: number;

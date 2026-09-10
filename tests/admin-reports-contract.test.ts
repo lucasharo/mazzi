@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const migration = readFileSync(join(process.cwd(), 'supabase/migrations/20260910001206_admin_reports.sql'), 'utf8');
+const dailyMigration = readFileSync(join(process.cwd(), 'supabase/migrations/20260910125357_admin_reports_daily_breakdown.sql'), 'utf8');
 const panel = readFileSync(join(process.cwd(), 'src/components/admin/AdminReportsPanel.tsx'), 'utf8');
 const adminApp = readFileSync(join(process.cwd(), 'src/apps/admin/AdminApp.tsx'), 'utf8');
 
@@ -30,5 +31,16 @@ describe('admin reports contract', () => {
     expect(panel).toContain('window.print()');
     expect(adminApp).toContain("{ id: 'reports', label: 'Relatórios'");
     expect(adminApp).toContain('<AdminReportsPanel');
+  });
+
+  it('adds an admin-only daily breakdown with separate payment outcomes', () => {
+    expect(dailyMigration).toContain('create or replace function public.get_admin_report_daily');
+    expect(dailyMigration).toContain("at time zone 'America/Sao_Paulo'");
+    expect(dailyMigration).toContain('cancellations_after_paid');
+    expect(dailyMigration).toContain('payment_abandonments');
+    expect(dailyMigration).toContain('grant execute on function public.get_admin_report_daily(timestamptz, timestamptz) to authenticated');
+    expect(panel).toContain('Visão diária');
+    expect(panel).toContain('Cancelamentos após pagamento');
+    expect(panel).toContain('Desistências de pagamento');
   });
 });

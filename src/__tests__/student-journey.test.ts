@@ -2,7 +2,7 @@
 // MAZZI TESTS — SPRINT 10 STUDENT APP JOURNEY & INTEGRATION TEST SUITE
 // ============================================================================
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import {
   Provider,
   Vehicle,
@@ -33,6 +33,14 @@ describe('Sprint 10: Complete Student App Journey & Domain Rules', () => {
   let ledger: FinancialLedgerService;
   let paymentService: PaymentService;
   let originalNodeEnv: string | undefined;
+
+  beforeAll(() => {
+    vi.useFakeTimers({ now: new Date('2026-09-10T09:00:00.000Z') });
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
 
   const mockProvider: Provider = {
     id: 'prov_school_01',
