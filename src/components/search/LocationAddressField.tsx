@@ -7,7 +7,6 @@ type LocationAddressFieldProps = Omit<ConfirmableAddressAutocompleteProps, 'onCo
   onLocate: () => void;
   isLocating?: boolean;
   label?: string;
-  variant?: 'card' | 'plain';
 };
 
 /** Complete location field shared by search, schedule and instant-lesson flows. */
@@ -15,11 +14,10 @@ export const LocationAddressField: React.FC<LocationAddressFieldProps> = ({
   onLocate,
   isLocating = false,
   label = 'Localização',
-  variant = 'card',
   className = '',
   ...autocompleteProps
 }) => (
-  <div className={`${variant === 'card' ? 'mazzi-card p-3 sm:p-4 focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)] focus-within:ring-offset-2' : 'relative'} transition-all ${className}`}>
+  <div className={`mazzi-card p-3 sm:p-4 transition-all focus-within:ring-2 focus-within:ring-[var(--mazzi-yellow)] focus-within:ring-offset-2 ${className}`}>
     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 sm:gap-3">
       <LocationButton onClick={onLocate} isLoading={isLocating} />
       <div className="min-w-0">

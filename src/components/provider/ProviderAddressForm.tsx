@@ -117,7 +117,10 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       onLocate={useCurrentAddress}
       isLocating={isLocatingAddress}
       label="Endereço"
-      inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm"
+      placeholder="Digite um endereço, bairro ou local"
+      dropdownAlignment="viewport"
+      showTriggerClearButton={false}
+      inputClassName="min-h-[32px] bg-transparent pr-7 text-sm font-extrabold text-[var(--mazzi-text)] outline-none placeholder:text-slate-400 focus:outline-none"
     />}
     {!isMapPin && <div>
       <label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-cep`}>CEP *</label>
