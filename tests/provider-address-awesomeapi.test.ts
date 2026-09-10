@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AwesomeApiCepProvider, maskPostalCode, normalizePostalCode } from '../src/domain/maps/awesomeapi-cep';
 import { GeoapifyGeocodingProvider } from '../src/domain/maps/geocoding-provider';
 import { isProviderAddressConfirmed, resolveProviderAddress } from '../src/domain/maps/provider-address-resolution';
-import { buildProviderAddressPayload, validateProviderAddressForm } from '../src/domain/maps/provider-address-payload';
+import { applyProviderAddressSuggestion, buildProviderAddressPayload, validateProviderAddressForm } from '../src/domain/maps/provider-address-payload';
 
 describe('Brazilian provider address flow', () => {
   beforeEach(() => vi.restoreAllMocks());
@@ -46,6 +46,25 @@ describe('Brazilian provider address flow', () => {
     const provider = new GeoapifyGeocodingProvider('test-key');
     const result = await resolveProviderAddress({ street: 'Rua Icavetá', houseNumber: '143', postalCode: '04459300', city: 'São Paulo', stateCode: 'SP', countryCode: 'br' }, provider);
     expect(result).toMatchObject({ street: 'Rua Icaveta', houseNumber: '143', postalCode: '04459-300', city: 'São Paulo', stateCode: 'SP', source: 'GEOAPIFY' });
+  });
+
+  it('replaces the old house number when a new address is selected', () => {
+    const next = applyProviderAddressSuggestion({
+      addressLine1: 'Rua Ilha Bela', houseNumber: '102', complement: 'Sala 12, bloco B',
+      postalCode: '04459310', neighborhood: 'Jardim Apurá', city: 'São Paulo', state: 'SP',
+      locationMode: 'STANDARD_ADDRESS',
+    }, {
+      formattedAddress: 'Rua Icaveta 143, Pedreira, São Paulo - SP, 04459-300, Brasil',
+      addressLine1: 'Rua Icaveta 143', street: 'Rua Icaveta', houseNumber: '143',
+      neighborhood: 'Pedreira', city: 'São Paulo', state: 'Sudeste', stateCode: 'SP',
+      postalCode: '04459-300', latitude: -23.695757, longitude: -46.672569,
+      country: 'Brasil', countryCode: 'br', source: 'GEOAPIFY',
+    });
+
+    expect(next.houseNumber).toBe('143');
+    expect(next.address?.houseNumber).toBe('143');
+    expect(next.addressLine1).toBe('Rua Icaveta');
+    expect(next.postalCode).toBe('04459300');
   });
 
   it('omits housenumber for a no-house-number street lookup', async () => {

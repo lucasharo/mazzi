@@ -6,7 +6,7 @@ import { Modal } from '../ui/Modal';
 import { ConfirmableAddressAutocomplete } from '../search/ConfirmableAddressAutocomplete';
 import { awesomeApiCepProvider, maskPostalCode, normalizePostalCode, BrazilianPostalAddress } from '../../domain/maps/awesomeapi-cep';
 import { activeGeocodingProvider, LocationSuggestion } from '../../domain/maps/geocoding-provider';
-import { isArtificialHouseNumber, ProviderAddressFormValue, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
+import { applyProviderAddressSuggestion, isArtificialHouseNumber, ProviderAddressFormValue, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
 import { LocationPinPicker } from '../maps/LocationPinPicker';
 
@@ -54,7 +54,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
   }, [value.postalCode]);
 
   const selectManualAddress = (suggestion: LocationSuggestion) => {
-    onChange({ ...value, addressLine1: suggestion.street || suggestion.addressLine1 || suggestion.formattedAddress, neighborhood: suggestion.neighborhood, city: suggestion.city, state: suggestion.stateCode || suggestion.state, postalCode: normalizePostalCode(suggestion.postalCode || value.postalCode), address: { formatted: suggestion.formattedAddress, addressLine1: suggestion.addressLine1, addressLine2: suggestion.addressLine2, street: suggestion.street, houseNumber: suggestion.houseNumber, neighborhood: suggestion.neighborhood, city: suggestion.city, state: suggestion.state, stateCode: suggestion.stateCode, postalCode: normalizePostalCode(suggestion.postalCode || value.postalCode), country: suggestion.country, countryCode: suggestion.countryCode, latitude: suggestion.latitude, longitude: suggestion.longitude, placeId: suggestion.placeId, source: 'GEOAPIFY' } });
+    onChange(applyProviderAddressSuggestion(value, suggestion));
     setManualSearch(false);
   };
 

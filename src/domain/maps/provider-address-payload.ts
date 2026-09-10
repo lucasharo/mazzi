@@ -1,4 +1,5 @@
 import { normalizePostalCode } from './awesomeapi-cep';
+import type { LocationSuggestion } from './geocoding-provider';
 import type { ProviderAddress } from '../../types';
 
 export interface ProviderAddressFormValue {
@@ -23,6 +24,46 @@ export interface ProviderAddressPayload {
   address: Record<string, unknown> | null;
   latitude: number | null;
   longitude: number | null;
+}
+
+/**
+ * Copies one confirmed geocoding result into the provider form.
+ * The selected result is authoritative, including its house number; an
+ * older value must never survive a new address selection.
+ */
+export function applyProviderAddressSuggestion(value: ProviderAddressFormValue, suggestion: LocationSuggestion): ProviderAddressFormValue {
+  const postalCode = normalizePostalCode(suggestion.postalCode || value.postalCode);
+  const houseNumber = suggestion.houseNumber?.trim() || '';
+  const addressLine1 = suggestion.street || suggestion.addressLine1 || suggestion.formattedAddress;
+
+  return {
+    ...value,
+    locationMode: houseNumber ? 'STANDARD_ADDRESS' : value.locationMode || 'STANDARD_ADDRESS',
+    addressLine1,
+    houseNumber,
+    neighborhood: suggestion.neighborhood || value.neighborhood,
+    city: suggestion.city || value.city,
+    state: suggestion.stateCode || suggestion.state || value.state,
+    postalCode,
+    address: {
+      formatted: suggestion.formattedAddress,
+      addressLine1: suggestion.addressLine1,
+      addressLine2: suggestion.addressLine2,
+      street: suggestion.street,
+      houseNumber,
+      neighborhood: suggestion.neighborhood,
+      city: suggestion.city,
+      state: suggestion.state,
+      stateCode: suggestion.stateCode,
+      postalCode,
+      country: suggestion.country,
+      countryCode: suggestion.countryCode,
+      latitude: suggestion.latitude,
+      longitude: suggestion.longitude,
+      placeId: suggestion.placeId,
+      source: 'GEOAPIFY',
+    },
+  };
 }
 
 export function isArtificialHouseNumber(value: string): boolean {
