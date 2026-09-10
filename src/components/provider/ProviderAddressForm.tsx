@@ -106,8 +106,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
 
   const addressSearchValue = value.address?.formatted || [value.addressLine1, value.houseNumber].filter(Boolean).join(', ');
   const validation = validateProviderAddressForm(value);
-  return <fieldset className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-slate-50/60 p-4">
-    <legend className="px-1 text-sm font-bold text-[var(--mazzi-dark)]">Endereço operacional</legend>
+  return <div className="space-y-3">
     {!isMapPin && <LocationAddressField
       id={`${idPrefix}-street`}
       value={addressSearchValue}
@@ -118,7 +117,6 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       onLocate={useCurrentAddress}
       isLocating={isLocatingAddress}
       label="Endereço"
-      variant="plain"
       inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm"
     />}
     {!isMapPin && <div>
@@ -159,5 +157,5 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       <p className="mb-4 text-xs leading-relaxed text-slate-600">Confira o ponto sugerido para o endereço informado e confirme a localização operacional.</p>
       <LocationPinPicker latitude={value.address?.latitude || value.approximateLatitude} longitude={value.address?.longitude || value.approximateLongitude} onConfirm={(lat, lng) => { void confirmPin(lat, lng); setIsMapModalOpen(false); }} />
     </Modal>
-  </fieldset>;
+  </div>;
 };
