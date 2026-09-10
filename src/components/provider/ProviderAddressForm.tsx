@@ -98,7 +98,23 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       {cepMessage && <p className="mt-1 text-xs text-rose-700" role="alert">{cepMessage}</p>}
     </div>}
     {!isMapPin && <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
-      <div><label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-street`}>Logradouro *</label><Input id={`${idPrefix}-street`} value={value.addressLine1} readOnly={normalizePostalCode(value.postalCode).length === 8 && !manualSearch} onChange={(event) => onChange({ ...value, addressLine1: event.target.value, address: undefined })} className="rounded-2xl" /></div>
+      <div>
+        <label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-street`}>Logradouro *</label>
+        {manualSearch ? <ConfirmableAddressAutocomplete
+          id={`${idPrefix}-street`}
+          value={value.addressLine1}
+          ariaLabel="Buscar endereço manualmente"
+          onChange={(addressLine1) => onChange({ ...value, addressLine1, address: undefined })}
+          onConfirm={(suggestion) => { if (suggestion) selectManualAddress(suggestion); }}
+          inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm"
+        /> : <Input
+          id={`${idPrefix}-street`}
+          value={value.addressLine1}
+          readOnly={normalizePostalCode(value.postalCode).length === 8}
+          onChange={(event) => onChange({ ...value, addressLine1: event.target.value, address: undefined })}
+          className="rounded-2xl"
+        />}
+      </div>
       <div><label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-number`}>Número {isNoNumber ? '' : '*'}</label>{!isNoNumber && <><Input id={`${idPrefix}-number`} value={value.houseNumber} onChange={(event) => onChange({ ...value, houseNumber: event.target.value, address: undefined })} placeholder="123" className="rounded-2xl" />{isArtificialHouseNumber(value.houseNumber) && <p className="mt-1 text-xs text-rose-700" role="alert">Se o local não possui número, marque “Sem número”.</p>}</>}</div>
     </div>}
     {!isMapPin && <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700">
@@ -113,7 +129,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
     </label>}
     <div><label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-complement`}>Complemento (opcional)</label><Input id={`${idPrefix}-complement`} value={value.complement} onChange={(event) => onChange({ ...value, complement: event.target.value })} placeholder="Sala 12, bloco B" className="rounded-2xl" /></div>
     {!isMapPin && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3"><div><label className="mazzi-field-label mb-1 block">Bairro</label><Input value={value.neighborhood} readOnly={!manualSearch} onChange={(event) => onChange({ ...value, neighborhood: event.target.value, address: undefined })} className="rounded-2xl" /></div><div><label className="mazzi-field-label mb-1 block">Cidade</label><Input value={value.city} readOnly={!manualSearch} onChange={(event) => onChange({ ...value, city: event.target.value, address: undefined })} className="rounded-2xl" /></div><div><label className="mazzi-field-label mb-1 block">UF</label><Input value={value.state} readOnly={!manualSearch} maxLength={2} onChange={(event) => onChange({ ...value, state: event.target.value.toUpperCase(), address: undefined })} className="rounded-2xl" /></div></div>}
-    {value.address && validation.valid ? <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800"><CheckCircle2 className="h-4 w-4 shrink-0" /> {isMapPin ? 'Localização confirmada no mapa' : isNoNumber ? 'Endereço da rua localizado' : `Endereço localizado: ${value.address.formatted || value.address.addressLine1 || 'endereço confirmado'}`}</div> : <ButtonBase type="button" className="text-left text-xs font-bold text-[var(--mazzi-dark)] underline" onClick={() => setManualSearch(true)}>Buscar endereço manualmente</ButtonBase>}
+    {value.address && validation.valid ? <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800"><CheckCircle2 className="h-4 w-4 shrink-0" /> {isMapPin ? 'Localização confirmada no mapa' : isNoNumber ? 'Endereço da rua localizado' : `Endereço localizado: ${value.address.formatted || value.address.addressLine1 || 'endereço confirmado'}`}</div> : !manualSearch && <ButtonBase type="button" className="text-left text-xs font-bold text-[var(--mazzi-dark)] underline" onClick={() => setManualSearch(true)}>Buscar endereço manualmente</ButtonBase>}
     <div className="flex flex-wrap gap-2">
       {(isNoNumber || isMapPin) && (value.postalCode.trim() || value.addressLine1.trim()) && <ButtonBase type="button" className="text-xs font-bold text-[var(--mazzi-dark)] underline" onClick={() => { setIsMapModalOpen(true); }}><MapPin className="mr-1 inline h-3.5 w-3.5" /> Confirmar localização no mapa</ButtonBase>}
     </div>
@@ -130,6 +146,5 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       <p className="mb-4 text-xs leading-relaxed text-slate-600">Confira o ponto sugerido para o endereço informado e confirme a localização operacional.</p>
       <LocationPinPicker latitude={value.address?.latitude || value.approximateLatitude} longitude={value.address?.longitude || value.approximateLongitude} onConfirm={(lat, lng) => { void confirmPin(lat, lng); setIsMapModalOpen(false); }} />
     </Modal>
-    {manualSearch && <ConfirmableAddressAutocomplete id={`${idPrefix}-manual-address`} value={value.addressLine1} ariaLabel="Buscar endereço manualmente" onChange={(addressLine1) => onChange({ ...value, addressLine1, address: undefined })} onConfirm={(suggestion) => { if (suggestion) selectManualAddress(suggestion); }} inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm" />}
   </fieldset>;
 };
