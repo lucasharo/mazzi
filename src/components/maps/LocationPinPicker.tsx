@@ -13,6 +13,13 @@ interface LocationPinPickerProps {
 
 const FALLBACK: L.LatLngExpression = [-23.5505, -46.6333];
 
+const createMazziPinIcon = () => L.divIcon({
+  className: 'custom-mazzi-marker',
+  html: '<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="#FFC700" stroke="#020617" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5.5-8 12-8 12S4 15.5 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3" fill="#FFFFFF"/></svg>',
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+});
+
 export const LocationPinPicker: React.FC<LocationPinPickerProps> = ({ latitude, longitude, onConfirm, onLocate }) => {
   const elementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -36,7 +43,7 @@ export const LocationPinPicker: React.FC<LocationPinPickerProps> = ({ latitude, 
     const map = L.map(elementRef.current, { center: initial, zoom: 15, attributionControl: true });
     const tileProvider = getActiveMapTileProvider();
     L.tileLayer(tileProvider.urlTemplate, { maxZoom: tileProvider.maxZoom, attribution: tileProvider.attribution }).addTo(map);
-    const marker = L.marker(initial, { draggable: true }).addTo(map);
+    const marker = L.marker(initial, { draggable: true, icon: createMazziPinIcon(), title: 'Ponto selecionado', alt: 'Ponto selecionado' }).addTo(map);
     marker.on('dragend', () => { const pos = marker.getLatLng(); setPin(pos.lat, pos.lng); });
     map.on('click', (event) => setPin(event.latlng.lat, event.latlng.lng));
     mapRef.current = map;

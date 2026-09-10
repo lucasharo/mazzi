@@ -14,4 +14,10 @@ describe('Location pin picker feedback', () => {
     expect(source).toContain('disabled={isLocating}');
     expect(source).toContain('setIsLocating(false)');
   });
+
+  it('uses the MAZZI yellow pin for the selected map point', () => {
+    expect(source).toContain('createMazziPinIcon');
+    expect(source).toContain('fill="#FFC700"');
+    expect(source).toContain('icon: createMazziPinIcon()');
+  });
 });
