@@ -739,7 +739,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           />}
 
           <BookingPaymentSummary
-            items={[{ label: 'Valor da aula prática', amount: formatCentsToBRL(snapshot.priceInCents) }]}
+            items={[
+              { label: 'Valor da aula prática', amount: formatCentsToBRL(snapshot.priceInCents) },
+              ...(booking.refundAmountInCents !== undefined && booking.refundAmountInCents > 0
+                ? [{ label: 'Valor do reembolso', amount: formatCentsToBRL(booking.refundAmountInCents) }]
+                : []),
+            ]}
             total={formatCentsToBRL(snapshot.totalInCents)}
           />
 

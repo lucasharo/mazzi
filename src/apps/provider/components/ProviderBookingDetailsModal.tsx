@@ -618,6 +618,9 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             items={[
               { label: 'Valor líquido', amount: formatCentsToBRL(netAmountInCents) },
               { label: 'Taxa de Serviço MAZZI', amount: formatCentsToBRL(platformFeeInCents) },
+              ...(booking.refundAmountInCents !== undefined && booking.refundAmountInCents > 0
+                ? [{ label: 'Valor do reembolso', amount: formatCentsToBRL(booking.refundAmountInCents) }]
+                : []),
             ]}
             total={formatCentsToBRL(bookingTotalInCents)}
           />
