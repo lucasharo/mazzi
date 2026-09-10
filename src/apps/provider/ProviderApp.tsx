@@ -2124,28 +2124,6 @@ export const ProviderApp: React.FC = () => {
     const resolvedState = cleanState || addressState.trim().toUpperCase();
     const cleanBio = profileForm.bio.trim();
     let profileFormForSave = profileForm;
-    if (profileForm.locationMode === 'NO_HOUSE_NUMBER'
-      && profileForm.addressLine1.trim()
-      && cleanCity
-      && resolvedState
-      && (!profileForm.address || profileForm.address.confirmationMethod !== 'GEOAPIFY')) {
-      try {
-        const streetAddress = await resolveProviderAddress({
-          street: profileForm.addressLine1.trim(),
-          houseNumber: null,
-          postalCode: profileForm.postalCode.replace(/\D/g, ''),
-          city: cleanCity,
-          stateCode: resolvedState,
-          countryCode: 'br'
-        });
-        profileFormForSave = {
-          ...profileForm,
-          address: { ...streetAddress, locationMode: 'NO_HOUSE_NUMBER', noHouseNumber: true, locationConfirmed: true, confirmationMethod: 'GEOAPIFY' }
-        };
-      } catch {
-        // The normal validation below reports the missing address clearly.
-      }
-    }
     const addressValidation = validateProviderAddressForm(profileFormForSave);
     const hasStandardAddressInput = addressValidation.mode === 'STANDARD_ADDRESS'
       && profileForm.addressLine1.trim()

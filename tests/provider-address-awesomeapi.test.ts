@@ -67,22 +67,22 @@ describe('Brazilian provider address flow', () => {
     expect(next.postalCode).toBe('04459300');
   });
 
-  it('omits housenumber for a no-house-number street lookup', async () => {
+  it('keeps legacy street lookup data but rejects providers without a house number', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ results: [{ formatted: 'Rua Icaveta, Pedreira, São Paulo', address_line1: 'Rua Icaveta', street: 'Rua Icaveta', postcode: '04459-300', suburb: 'Pedreira', city: 'São Paulo', state_code: 'SP', country_code: 'br', lat: -23.6959, lon: -46.6723, result_type: 'street' }] }), { status: 200 }));
     const provider = new GeoapifyGeocodingProvider('test-key');
     const result = await resolveProviderAddress({ street: 'Rua Icavetá', houseNumber: null, postalCode: '04459300', city: 'São Paulo', stateCode: 'SP', countryCode: 'br' }, provider);
     const url = new URL(String(fetchMock.mock.calls[0][0]));
     expect(url.searchParams.has('housenumber')).toBe(false);
     expect(result).toMatchObject({ locationMode: 'NO_HOUSE_NUMBER', noHouseNumber: true, locationConfirmed: true, confirmationMethod: 'GEOAPIFY', latitude: -23.6959 });
-    expect(isProviderAddressConfirmed(result)).toBe(true);
-    expect(validateProviderAddressForm({ addressLine1: 'Rua Icavetá', houseNumber: '', complement: '', postalCode: '04459-300', neighborhood: 'Pedreira', city: 'São Paulo', state: 'SP', locationMode: 'NO_HOUSE_NUMBER', address: result }).valid).toBe(true);
+    expect(isProviderAddressConfirmed(result)).toBe(false);
+    expect(validateProviderAddressForm({ addressLine1: 'Rua Icavetá', houseNumber: '', complement: '', postalCode: '04459-300', neighborhood: 'Pedreira', city: 'São Paulo', state: 'SP', locationMode: 'NO_HOUSE_NUMBER', address: result })).toMatchObject({ valid: false, reason: 'Selecione um endereço com número real.' });
   });
 
   it('treats artificial house numbers as invalid and keeps map pins private in the payload', () => {
     const pin = { latitude: -23.6959, longitude: -46.6723, source: 'MAP_PIN' as const, locationMode: 'MAP_PIN' as const, locationConfirmed: true, confirmationMethod: 'MAP_PIN' as const, houseNumber: '143' };
-    expect(validateProviderAddressForm({ addressLine1: '', houseNumber: 'NA', complement: 'Portão azul', postalCode: '', neighborhood: '', city: '', state: '', locationMode: 'MAP_PIN', address: pin }).valid).toBe(true);
+    expect(validateProviderAddressForm({ addressLine1: '', houseNumber: 'NA', complement: 'Portão azul', postalCode: '', neighborhood: '', city: '', state: '', locationMode: 'MAP_PIN', address: pin }).valid).toBe(false);
     expect(validateProviderAddressForm({ addressLine1: 'Rua A', houseNumber: 'S/N', complement: '', postalCode: '00000000', neighborhood: 'Centro', city: 'São Paulo', state: 'SP', locationMode: 'STANDARD_ADDRESS', address: { source: 'GEOAPIFY', latitude: -23, longitude: -46 } }).valid).toBe(false);
-    expect(isProviderAddressConfirmed(pin)).toBe(true);
+    expect(isProviderAddressConfirmed(pin)).toBe(false);
     expect(buildProviderAddressPayload({ addressLine1: '', houseNumber: '143', complement: 'Portão azul', postalCode: '', neighborhood: '', city: '', state: '', locationMode: 'MAP_PIN', address: pin }).address).not.toHaveProperty('houseNumber');
   });
 });

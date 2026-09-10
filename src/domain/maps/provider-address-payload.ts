@@ -73,10 +73,9 @@ export function isArtificialHouseNumber(value: string): boolean {
 export function validateProviderAddressForm(value: ProviderAddressFormValue): { valid: boolean; reason?: string; mode: NonNullable<ProviderAddressFormValue['locationMode']> } {
   const mode = value.locationMode || 'STANDARD_ADDRESS';
   const hasCoordinates = Number.isFinite(value.address?.latitude) && Number.isFinite(value.address?.longitude);
-  if (mode === 'MAP_PIN') return { valid: Boolean(value.address?.locationConfirmed && hasCoordinates), reason: 'Confirme a localização no mapa.', mode };
+  if (mode !== 'STANDARD_ADDRESS') return { valid: false, reason: 'Selecione um endereço com número real.', mode };
   if (!value.addressLine1.trim() || !value.city.trim() || !value.state.trim()) return { valid: false, reason: 'Preencha o logradouro, cidade e UF.', mode };
-  if (mode === 'NO_HOUSE_NUMBER') return { valid: Boolean(value.address?.locationConfirmed && hasCoordinates && !value.houseNumber.trim()), reason: 'Informe um CEP ou logradouro válido.', mode };
-  return { valid: Boolean(value.houseNumber.trim() && !isArtificialHouseNumber(value.houseNumber) && value.address?.source === 'GEOAPIFY' && hasCoordinates), reason: 'Use um número real ou marque “Sem número”.', mode };
+  return { valid: Boolean(value.houseNumber.trim() && !isArtificialHouseNumber(value.houseNumber) && value.address?.source === 'GEOAPIFY' && hasCoordinates), reason: 'Selecione um endereço com número real.', mode };
 }
 
 export function buildProviderAddressPayload(value: ProviderAddressFormValue): ProviderAddressPayload {

@@ -2,6 +2,11 @@ import { activeGeocodingProvider, LocationSuggestion, StructuredGeocodingAddress
 import { normalizePostalCode } from './awesomeapi-cep';
 import { ProviderAddress } from '../../types';
 
+function hasRealHouseNumber(value: string | undefined): boolean {
+  const normalized = value?.trim() || '';
+  return Boolean(normalized) && !/^(?:NA|N\/A|SN|S\/N|SEM\s+N[UÚ]MERO)$/i.test(normalized.replace(/[.-]/g, ' '));
+}
+
 function normalize(value: string | undefined): string {
   return (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\b(av|avenida|r|rua)\.?\s+/g, '').replace(/\s+/g, ' ').trim();
 }
@@ -49,8 +54,6 @@ export async function resolveProviderAddress(input: StructuredGeocodingAddress, 
 }
 
 export function isProviderAddressConfirmed(address?: ProviderAddress): boolean {
-  if (!address || !Number.isFinite(address.latitude) || !Number.isFinite(address.longitude)) return false;
-  if (address.locationMode === 'MAP_PIN') return address.locationConfirmed === true && address.confirmationMethod === 'MAP_PIN';
-  if (address.locationMode === 'NO_HOUSE_NUMBER') return address.locationConfirmed === true && (address.confirmationMethod === 'GEOAPIFY' || address.confirmationMethod === 'MAP_PIN');
-  return address.locationConfirmed === true || address.source === 'GEOAPIFY';
+  if (!address || !hasRealHouseNumber(address.houseNumber) || !Number.isFinite(address.latitude) || !Number.isFinite(address.longitude)) return false;
+  return address.locationMode === 'STANDARD_ADDRESS' && (address.locationConfirmed === true || address.source === 'GEOAPIFY');
 }
