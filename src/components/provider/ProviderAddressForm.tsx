@@ -3,7 +3,7 @@ import { CheckCircle2, LoaderCircle, MapPin } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { ButtonBase } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { ConfirmableAddressAutocomplete } from '../search/ConfirmableAddressAutocomplete';
+import { LocationAddressField } from '../search/LocationAddressField';
 import { awesomeApiCepProvider, maskPostalCode, normalizePostalCode, BrazilianPostalAddress } from '../../domain/maps/awesomeapi-cep';
 import { activeGeocodingProvider, LocationSuggestion } from '../../domain/maps/geocoding-provider';
 import { applyProviderAddressSuggestion, isArtificialHouseNumber, ProviderAddressFormValue, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
@@ -25,6 +25,7 @@ function applyCep(value: ProviderAddressFormValue, cep: BrazilianPostalAddress):
 export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix }) => {
   const [isLookingUpCep, setIsLookingUpCep] = useState(false);
   const [cepMessage, setCepMessage] = useState<string | null>(null);
+  const [isLocatingAddress, setIsLocatingAddress] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const requestRef = useRef(0);
   const modeRequestRef = useRef(0);
@@ -36,6 +37,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
   useEffect(() => {
     const normalized = normalizePostalCode(value.postalCode);
     if (normalized.length !== 8) { setCepMessage(null); return; }
+    if (value.address?.source === 'GEOAPIFY' || value.address?.source === 'MAP_PIN') { setIsLookingUpCep(false); return; }
     const requestId = ++requestRef.current;
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -54,6 +56,24 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
 
   const selectManualAddress = (suggestion: LocationSuggestion) => {
     onChange(applyProviderAddressSuggestion(value, suggestion));
+  };
+
+  const useCurrentAddress = () => {
+    if (isLocatingAddress || !navigator.geolocation) {
+      setCepMessage('A localização do dispositivo não está disponível. Pesquise o endereço manualmente.');
+      return;
+    }
+    setIsLocatingAddress(true);
+    setCepMessage(null);
+    navigator.geolocation.getCurrentPosition(({ coords }) => {
+      void activeGeocodingProvider.reverseGeocode(coords.latitude, coords.longitude)
+        .then((suggestion) => onChange(applyProviderAddressSuggestion(value, suggestion)))
+        .catch(() => setCepMessage('Não foi possível identificar o endereço atual. Pesquise o endereço manualmente.'))
+        .finally(() => setIsLocatingAddress(false));
+    }, () => {
+      setCepMessage('Permita o acesso à localização ou pesquise o endereço manualmente.');
+      setIsLocatingAddress(false);
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   };
 
   const setMode = async (nextMode: ProviderAddressFormValue['locationMode']) => {
@@ -88,29 +108,28 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
   const validation = validateProviderAddressForm(value);
   return <fieldset className="space-y-3 rounded-2xl border border-[var(--mazzi-border)] bg-slate-50/60 p-4">
     <legend className="px-1 text-sm font-bold text-[var(--mazzi-dark)]">Endereço operacional</legend>
+    {!isMapPin && <LocationAddressField
+      id={`${idPrefix}-street`}
+      value={addressSearchValue}
+      ariaLabel="Buscar endereço operacional"
+      onChange={() => { /* The confirmed suggestion is applied atomically below. */ }}
+      onClear={() => onChange({ ...value, addressLine1: '', houseNumber: '', neighborhood: '', city: '', state: '', postalCode: '', address: undefined })}
+      onConfirm={(suggestion) => { if (suggestion) selectManualAddress(suggestion); }}
+      onLocate={useCurrentAddress}
+      isLocating={isLocatingAddress}
+      label="Endereço"
+      className="!border-0 !bg-transparent !p-0 !shadow-none focus-within:!ring-0"
+      inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm"
+    />}
     {!isMapPin && <div>
       <label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-cep`}>CEP *</label>
       <div className="relative">
-        <Input id={`${idPrefix}-cep`} inputMode="numeric" maxLength={9} value={maskPostalCode(value.postalCode)} onChange={(event) => onChange({ ...value, postalCode: normalizePostalCode(event.target.value), address: undefined })} placeholder="00000-000" className="rounded-2xl pr-10" />
+        <Input id={`${idPrefix}-cep`} inputMode="numeric" maxLength={9} value={maskPostalCode(value.postalCode)} readOnly className="rounded-2xl pr-10" />
         {isLookingUpCep && <LoaderCircle className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[var(--mazzi-muted)]" aria-label="Consultando CEP" />}
       </div>
       {cepMessage && <p className="mt-1 text-xs text-rose-700" role="alert">{cepMessage}</p>}
     </div>}
-    {!isMapPin && <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
-      <div>
-        <label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-street`}>Endereço *</label>
-        <ConfirmableAddressAutocomplete
-          id={`${idPrefix}-street`}
-          value={addressSearchValue}
-          ariaLabel="Buscar endereço operacional"
-          onChange={() => { /* The confirmed suggestion is applied atomically below. */ }}
-          onClear={() => onChange({ ...value, addressLine1: '', houseNumber: '', neighborhood: '', city: '', state: '', postalCode: '', address: undefined })}
-          onConfirm={(suggestion) => { if (suggestion) selectManualAddress(suggestion); }}
-          inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm"
-        />
-      </div>
-      <div><label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-number`}>Número {isNoNumber ? '' : '*'}</label>{!isNoNumber && <><Input id={`${idPrefix}-number`} value={value.houseNumber} onChange={(event) => onChange({ ...value, houseNumber: event.target.value, address: undefined })} placeholder="123" className="rounded-2xl" />{isArtificialHouseNumber(value.houseNumber) && <p className="mt-1 text-xs text-rose-700" role="alert">Se o local não possui número, marque “Sem número”.</p>}</>}</div>
-    </div>}
+    {!isMapPin && <div><label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-number`}>Número {isNoNumber ? '' : '*'}</label>{!isNoNumber && <><Input id={`${idPrefix}-number`} value={value.houseNumber} readOnly placeholder="123" className="rounded-2xl" />{isArtificialHouseNumber(value.houseNumber) && <p className="mt-1 text-xs text-rose-700" role="alert">Se o local não possui número, marque “Sem número”.</p>}</>}</div>}
     {!isMapPin && <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700">
       <input
         type="checkbox"
