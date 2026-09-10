@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../components/auth/AuthContext';
 import {
-  AlertTriangle, BarChart3, Calendar, Car, CreditCard, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, ShieldAlert, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
+  AlertTriangle, BarChart3, Calendar, Car, CreditCard, FileBarChart, LayoutDashboard, LogOut, Pencil, ScrollText, Settings, ShieldCheck, ShieldAlert, UserCheck, UserRound, Users, WalletCards, RefreshCw, } from 'lucide-react';
 import { Button, ButtonBase } from '../../components/ui/Button';
 import { dbService } from '../../lib/db-service';
 import {
@@ -44,6 +44,7 @@ import {
   AdminDisputesPanel,
 } from './AdminComponents';
 import { AdminAnalyticsPanel } from '../../components/analytics/AnalyticsPanels';
+import { AdminReportsPanel } from '../../components/admin/AdminReportsPanel';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
 import { ProfileAvatar } from '../../components/profile/ProfileAvatar';
 import { getMyProfileAvatar } from '../../lib/profile-avatar';
@@ -63,6 +64,7 @@ const getAdminSkeletonMode = (tab: string): ContentSkeletonMode => {
   if (tab === 'dashboard') return 'dashboard';
   if (tab === 'bookings' || tab === 'financial') return 'split';
   if (tab === 'analytics') return 'analytics';
+  if (tab === 'reports') return 'analytics';
   if (tab === 'settings') return 'form';
   if (tab === 'profile') return 'object';
   return 'list';
@@ -109,7 +111,7 @@ export const AdminApp: React.FC = () => {
   };
 
   // Navigation State
-  const [activeTab, setActiveTab] = useMobileAppRoute('admin', 'dashboard', ['dashboard', 'providers', 'compliance', 'vehicles', 'bookings', 'financial', 'disputes', 'analytics', 'users', 'audit', 'settings', 'profile']);
+  const [activeTab, setActiveTab] = useMobileAppRoute('admin', 'dashboard', ['dashboard', 'providers', 'compliance', 'vehicles', 'bookings', 'financial', 'disputes', 'analytics', 'reports', 'users', 'audit', 'settings', 'profile']);
   const activeSkeletonMode = getAdminSkeletonMode(activeTab);
 
   const navigateAdminTab = (tab: string) => {
@@ -453,6 +455,7 @@ export const AdminApp: React.FC = () => {
     bookings: 'Reservas',
     financial: 'Financeiro',
     analytics: 'Analítico',
+    reports: 'Relatórios',
     users: 'Usuários & Papéis',
     audit: 'Auditoria',
     settings: 'Configurações',
@@ -494,6 +497,7 @@ export const AdminApp: React.FC = () => {
           { id: 'financial', label: 'Financeiro', icon: WalletCards },
           { id: 'disputes', label: 'Contestações', icon: ShieldAlert },
           { id: 'analytics', label: 'Analítico', icon: BarChart3 },
+          { id: 'reports', label: 'Relatórios', icon: FileBarChart },
           { id: 'users', label: 'Usuários & Papéis', icon: Users },
           { id: 'audit', label: 'Auditoria', icon: ScrollText },
           { id: 'settings', label: 'Configurações', icon: Settings },
@@ -626,6 +630,10 @@ export const AdminApp: React.FC = () => {
 
         {activeTab === 'analytics' && (
           <AdminAnalyticsPanel refreshKey={contentRefreshKey} />
+        )}
+
+        {activeTab === 'reports' && (
+          <AdminReportsPanel refreshKey={contentRefreshKey} />
         )}
 
         {activeTab === 'users' && (

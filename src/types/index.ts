@@ -1093,6 +1093,29 @@ export interface AdminAnalyticsSummary {
   };
 }
 
+export type AdminReportKey =
+  | 'executive'
+  | 'bookings'
+  | 'revenue'
+  | 'payouts'
+  | 'supply'
+  | 'demand'
+  | 'users'
+  | 'compliance'
+  | 'cancellations'
+  | 'communications';
+
+export interface AdminReportSection {
+  summary: Record<string, number | string | null>;
+  rows: Array<Record<string, number | string | null>>;
+}
+
+export interface AdminReportsResponse {
+  period: AnalyticsPeriod;
+  generated_at: string;
+  reports: Record<AdminReportKey, AdminReportSection | Record<string, unknown>>;
+}
+
 export interface ProviderAnalyticsSummary {
   period: AnalyticsPeriod;
   provider_contexts: number;

@@ -24,6 +24,7 @@ import {
   Notification,
   NotificationType,
   AdminAnalyticsSummary,
+  AdminReportsResponse,
   ProviderAnalyticsSummary,
   ProviderEarningsSummary,
   ProviderPayoutDetail,
@@ -1892,6 +1893,16 @@ export const dbService = {
         checkout_cancelled: Number(cancelledData || 0),
       },
     };
+  },
+
+  async getAdminReports(dateFrom: string, dateTo: string): Promise<AdminReportsResponse> {
+    const { data, error } = await sp.rpc('get_admin_reports', {
+      p_date_from: `${dateFrom}T00:00:00-03:00`,
+      p_date_to: `${dateTo}T00:00:00-03:00`,
+    });
+    if (error) throw error;
+    if (!data) throw new Error('ADMIN_REPORTS_UNAVAILABLE');
+    return data as AdminReportsResponse;
   },
 
   async getProviderAnalyticsSummary(days: AnalyticsPeriodPreset = 30): Promise<ProviderAnalyticsSummary> {
