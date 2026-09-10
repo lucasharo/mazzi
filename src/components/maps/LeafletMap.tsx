@@ -110,7 +110,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     mapInstanceRef.current = map;
     const pauseFollowing = () => { followingRef.current = false; };
     map.on('dragstart zoomstart', pauseFollowing);
-    map.whenReady(() => onReadyRef.current?.());
+    if (typeof map.whenReady === 'function') {
+      map.whenReady(() => onReadyRef.current?.());
+    } else {
+      onReadyRef.current?.();
+    }
 
     } catch (error) {
       dispose();

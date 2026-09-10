@@ -2,7 +2,12 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-vi.mock('../src/components/maps/UniversalMap', () => ({ UniversalMap: () => <div data-testid="meeting-map" /> }));
+vi.mock('../src/components/maps/UniversalMap', () => ({
+  UniversalMap: ({ onReady }: { onReady?: () => void }) => {
+    React.useEffect(() => onReady?.(), [onReady]);
+    return <div data-testid="meeting-map" />;
+  },
+}));
 vi.mock('../src/domain/maps/meeting-point-address', () => ({
   needsMeetingPointAddress: (address: string) => !address.trim() || /^(minha|sua) localização( atual)?$/i.test(address.trim()),
   resolveMeetingPointAddress: async () => 'Rua GPS, 2',
