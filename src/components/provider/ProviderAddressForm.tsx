@@ -118,7 +118,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
       onLocate={useCurrentAddress}
       isLocating={isLocatingAddress}
       label="Endereço"
-      className="!border-0 !bg-transparent !p-0 !shadow-none focus-within:!ring-0"
+      variant="plain"
       inputClassName="min-h-11 rounded-2xl border border-[var(--mazzi-border)] px-3.5 py-2.5 text-sm"
     />}
     {!isMapPin && <div>
