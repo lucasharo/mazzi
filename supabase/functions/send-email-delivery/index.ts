@@ -140,7 +140,7 @@ async function payoutData(service: any, payoutId: string, context: any) {
       bankName: `Banco ${bank.bank_code}`,
       bankBranchLast2: branch.slice(-2),
       bankAccountLast4: account.slice(-4),
-      providerFirstName: context.canonical.providerFirstName,
+      providerFirstName: context.booking.providerFirstName,
     },
   });
 }
