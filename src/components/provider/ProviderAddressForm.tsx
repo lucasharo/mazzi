@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, LoaderCircle, MapPin } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { CheckCircle2, MapPin } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { ButtonBase } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { LocationAddressField } from '../search/LocationAddressField';
-import { awesomeApiCepProvider, maskPostalCode, normalizePostalCode, BrazilianPostalAddress } from '../../domain/maps/awesomeapi-cep';
+import { maskPostalCode, normalizePostalCode } from '../../domain/maps/awesomeapi-cep';
 import { activeGeocodingProvider, LocationSuggestion } from '../../domain/maps/geocoding-provider';
 import { applyProviderAddressSuggestion, isArtificialHouseNumber, ProviderAddressFormValue, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
@@ -18,41 +18,14 @@ interface Props {
   idPrefix: string;
 }
 
-function applyCep(value: ProviderAddressFormValue, cep: BrazilianPostalAddress): ProviderAddressFormValue {
-  return { ...value, locationMode: value.locationMode === 'MAP_PIN' ? 'MAP_PIN' : value.locationMode || 'STANDARD_ADDRESS', postalCode: normalizePostalCode(cep.postalCode), addressLine1: cep.street, neighborhood: cep.neighborhood, city: cep.city, state: cep.stateCode, approximateLatitude: cep.approximateLatitude, approximateLongitude: cep.approximateLongitude, address: undefined };
-}
-
 export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix }) => {
-  const [isLookingUpCep, setIsLookingUpCep] = useState(false);
-  const [cepMessage, setCepMessage] = useState<string | null>(null);
+  const [addressMessage, setAddressMessage] = useState<string | null>(null);
   const [isLocatingAddress, setIsLocatingAddress] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const requestRef = useRef(0);
   const modeRequestRef = useRef(0);
-  const abortRef = useRef<AbortController | null>(null);
   const mode = value.locationMode || 'STANDARD_ADDRESS';
   const isNoNumber = mode === 'NO_HOUSE_NUMBER';
   const isMapPin = mode === 'MAP_PIN';
-
-  useEffect(() => {
-    const normalized = normalizePostalCode(value.postalCode);
-    if (normalized.length !== 8) { setCepMessage(null); return; }
-    if (value.address?.source === 'GEOAPIFY' || value.address?.source === 'MAP_PIN') { setIsLookingUpCep(false); return; }
-    const requestId = ++requestRef.current;
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setIsLookingUpCep(true);
-    setCepMessage(null);
-    awesomeApiCepProvider.lookupPostalCode(normalized, controller.signal)
-      .then((cep) => { if (requestId === requestRef.current) onChange(applyCep(value, cep)); })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted || requestId !== requestRef.current) return;
-        setCepMessage(error instanceof Error && error.message === 'CEP_NOT_FOUND' ? 'Não encontramos esse CEP.' : 'Não foi possível consultar o CEP agora.');
-      })
-      .finally(() => { if (requestId === requestRef.current) setIsLookingUpCep(false); });
-    return () => controller.abort();
-  }, [value.postalCode]);
 
   const selectManualAddress = (suggestion: LocationSuggestion) => {
     onChange(applyProviderAddressSuggestion(value, suggestion));
@@ -60,18 +33,18 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
 
   const useCurrentAddress = () => {
     if (isLocatingAddress || !navigator.geolocation) {
-      setCepMessage('A localização do dispositivo não está disponível. Pesquise o endereço manualmente.');
+      setAddressMessage('A localização do dispositivo não está disponível. Pesquise o endereço manualmente.');
       return;
     }
     setIsLocatingAddress(true);
-    setCepMessage(null);
+    setAddressMessage(null);
     navigator.geolocation.getCurrentPosition(({ coords }) => {
       void activeGeocodingProvider.reverseGeocode(coords.latitude, coords.longitude)
         .then((suggestion) => onChange(applyProviderAddressSuggestion(value, suggestion)))
-        .catch(() => setCepMessage('Não foi possível identificar o endereço atual. Pesquise o endereço manualmente.'))
+        .catch(() => setAddressMessage('Não foi possível identificar o endereço atual. Pesquise o endereço manualmente.'))
         .finally(() => setIsLocatingAddress(false));
     }, () => {
-      setCepMessage('Permita o acesso à localização ou pesquise o endereço manualmente.');
+      setAddressMessage('Permita o acesso à localização ou pesquise o endereço manualmente.');
       setIsLocatingAddress(false);
     }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   };
@@ -85,7 +58,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
         const streetResult = await resolveProviderAddress({ street: nextValue.addressLine1.trim(), houseNumber: null, postalCode: normalizePostalCode(nextValue.postalCode), city: nextValue.city.trim(), stateCode: nextValue.state.trim().toUpperCase(), countryCode: 'br' });
         if (modeRequestId !== modeRequestRef.current) return;
         onChange({ ...nextValue, address: { ...streetResult, locationMode: 'NO_HOUSE_NUMBER', noHouseNumber: true, locationConfirmed: true, confirmationMethod: 'GEOAPIFY' } });
-      } catch { /* map can still start from AwesomeAPI coordinates or the regional fallback */ }
+      } catch { /* the map can still be used to confirm the street location */ }
     }
   };
   const confirmPin = async (latitude: number, longitude: number) => {
@@ -125,11 +98,10 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
     {!isMapPin && <div>
       <label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-cep`}>CEP *</label>
       <div className="relative">
-        <Input id={`${idPrefix}-cep`} inputMode="numeric" maxLength={9} value={maskPostalCode(value.postalCode)} readOnly className="rounded-2xl pr-10" />
-        {isLookingUpCep && <LoaderCircle className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[var(--mazzi-muted)]" aria-label="Consultando CEP" />}
+        <Input id={`${idPrefix}-cep`} inputMode="numeric" maxLength={9} value={maskPostalCode(value.postalCode)} readOnly className="rounded-2xl" />
       </div>
-      {cepMessage && <p className="mt-1 text-xs text-rose-700" role="alert">{cepMessage}</p>}
     </div>}
+    {addressMessage && <p className="text-xs text-rose-700" role="alert">{addressMessage}</p>}
     {!isMapPin && <div><label className="mazzi-field-label mb-1.5 block" htmlFor={`${idPrefix}-number`}>Número {isNoNumber ? '' : '*'}</label>{!isNoNumber && <><Input id={`${idPrefix}-number`} value={value.houseNumber} readOnly placeholder="123" className="rounded-2xl" />{isArtificialHouseNumber(value.houseNumber) && <p className="mt-1 text-xs text-rose-700" role="alert">Se o local não possui número, marque “Sem número”.</p>}</>}</div>}
     {!isMapPin && <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700">
       <input
