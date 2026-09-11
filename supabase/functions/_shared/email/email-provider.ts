@@ -9,7 +9,7 @@ export interface SendEmailRequest {
 
 export interface EmailSendResult {
   accepted: boolean;
-  provider: 'noop' | 'resend';
+  provider: 'noop' | 'resend' | 'sendgrid';
   providerMessageId?: string;
   reason?: string;
 }
@@ -48,6 +48,14 @@ export interface ResendEmailProviderOptions {
   fetchImpl?: typeof fetch;
 }
 
+export interface SendGridEmailProviderOptions {
+  apiKey?: string;
+  from?: string;
+  endpoint?: string;
+  timeoutMs?: number;
+  fetchImpl?: typeof fetch;
+}
+
 function normalizeRecipients(to: SendEmailRequest['to']): string[] {
   const recipients = Array.isArray(to) ? [...to] : [to];
   if (recipients.length === 0 || recipients.some((recipient) => typeof recipient !== 'string' || !recipient.trim())) {
@@ -66,6 +74,29 @@ function normalizeProviderError(status: number, payload: unknown): EmailProvider
     safeMessage ? `O provedor de e-mail recusou a mensagem: ${safeMessage}` : `O provedor de e-mail retornou HTTP ${status}.`,
     status === 408 || status === 425 || status === 429 || status >= 500,
   );
+}
+
+function normalizeSendGridProviderError(status: number, payload: unknown): EmailProviderError {
+  const errors = typeof payload === 'object' && payload !== null && Array.isArray((payload as { errors?: unknown }).errors)
+    ? (payload as { errors: Array<{ message?: unknown }> }).errors
+    : [];
+  const providerMessage = errors.map((item) => String(item?.message || '').trim()).filter(Boolean).join(' ');
+  const safeMessage = providerMessage.slice(0, 240);
+  return new EmailProviderError(
+    `SENDGRID_HTTP_${status}`,
+    safeMessage ? `O provedor de e-mail recusou a mensagem: ${safeMessage}` : `O provedor de e-mail retornou HTTP ${status}.`,
+    status === 408 || status === 425 || status === 429 || status >= 500,
+  );
+}
+
+function parseFromAddress(value: string): { email: string; name?: string } {
+  const match = value.match(/^\s*(.*?)\s*<([^<>]+)>\s*$/);
+  const email = (match?.[2] || value).trim();
+  const name = match?.[1]?.trim().replace(/^['"]|['"]$/g, '');
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    throw new EmailProviderError('SENDGRID_FROM_INVALID', 'SENDGRID_FROM_EMAIL inválido.', false);
+  }
+  return name ? { email, name } : { email };
 }
 
 export class ResendEmailProvider implements EmailProvider {
@@ -130,6 +161,73 @@ export class ResendEmailProvider implements EmailProvider {
   }
 }
 
+export class SendGridEmailProvider implements EmailProvider {
+  private readonly apiKey: string;
+  private readonly from: { email: string; name?: string };
+  private readonly endpoint: string;
+  private readonly timeoutMs: number;
+  private readonly fetchImpl: typeof fetch;
+
+  constructor(options: SendGridEmailProviderOptions = {}) {
+    this.apiKey = (options.apiKey || '').trim();
+    const from = (options.from || '').trim();
+    if (!from) throw new EmailProviderError('SENDGRID_FROM_MISSING', 'SENDGRID_FROM_EMAIL não configurado.', false);
+    this.from = parseFromAddress(from);
+    this.endpoint = (options.endpoint || 'https://api.sendgrid.com/v3/mail/send').trim();
+    this.timeoutMs = Math.max(1000, Math.min(options.timeoutMs || 10000, 30000));
+    this.fetchImpl = options.fetchImpl || fetch;
+
+    if (!this.apiKey) throw new EmailProviderError('SENDGRID_API_KEY_MISSING', 'SENDGRID_API_KEY não configurada.', false);
+  }
+
+  async send(request: SendEmailRequest): Promise<EmailSendResult> {
+    const recipients = normalizeRecipients(request.to);
+    if (!request.subject.trim() || !request.html.trim()) {
+      throw new EmailProviderError('EMAIL_CONTENT_REQUIRED', 'Assunto e HTML do e-mail são obrigatórios.', false);
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const response = await this.fetchImpl(this.endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: recipients.map((email) => ({ email })) }],
+          from: this.from,
+          subject: request.subject,
+          content: [
+            { type: 'text/html', value: request.html },
+            ...(request.text ? [{ type: 'text/plain', value: request.text }] : []),
+          ],
+          ...(request.replyTo ? { reply_to: { email: request.replyTo } } : {}),
+          ...(request.idempotencyKey ? { custom_args: { mazzi_idempotency_key: request.idempotencyKey } } : {}),
+        }),
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw normalizeSendGridProviderError(response.status, payload);
+
+      return {
+        accepted: true,
+        provider: 'sendgrid',
+        providerMessageId: response.headers.get('x-message-id') || undefined,
+      };
+    } catch (error) {
+      if (error instanceof EmailProviderError) throw error;
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new EmailProviderError('SENDGRID_TIMEOUT', 'O provedor de e-mail excedeu o tempo limite.', true);
+      }
+      throw new EmailProviderError('SENDGRID_NETWORK_ERROR', 'Não foi possível alcançar o provedor de e-mail.', true);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+}
+
 export function createEmailProvider(): EmailProvider {
   return new NoopEmailProvider();
 }
@@ -139,4 +237,18 @@ export function createResendEmailProviderFromEnv(env: Record<string, string | un
     apiKey: env.RESEND_API_KEY,
     from: env.RESEND_FROM_EMAIL,
   });
+}
+
+export function createSendGridEmailProviderFromEnv(env: Record<string, string | undefined>): SendGridEmailProvider {
+  return new SendGridEmailProvider({
+    apiKey: env.SENDGRID_API_KEY,
+    from: env.SENDGRID_FROM_EMAIL,
+  });
+}
+
+export function createEmailProviderFromEnv(env: Record<string, string | undefined>): EmailProvider {
+  const provider = (env.MAZZI_EMAIL_PROVIDER || 'sendgrid').trim().toLowerCase();
+  if (provider === 'sendgrid') return createSendGridEmailProviderFromEnv(env);
+  if (provider === 'resend') return createResendEmailProviderFromEnv(env);
+  throw new EmailProviderError('EMAIL_PROVIDER_UNSUPPORTED', 'Provedor de e-mail não suportado.', false);
 }

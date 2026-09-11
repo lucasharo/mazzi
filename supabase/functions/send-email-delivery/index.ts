@@ -1,7 +1,7 @@
 // @ts-nocheck -- Deno types are supplied by the Supabase Edge runtime.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { createResendEmailProviderFromEnv } from "../_shared/email/email-provider.ts";
+import { createEmailProviderFromEnv } from "../_shared/email/email-provider.ts";
 import {
   buildProBookingConfirmedEmailData,
   buildProPayoutCompletedEmailData,
@@ -256,7 +256,10 @@ Deno.serve(async (request) => {
   const serviceRoleKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
   if (!supabaseUrl || !serviceRoleKey) return reply(503, { message: "Delivery de e-mail não configurado." });
   let provider;
-  try { provider = createResendEmailProviderFromEnv({
+  try { provider = createEmailProviderFromEnv({
+    MAZZI_EMAIL_PROVIDER: Deno.env.get("MAZZI_EMAIL_PROVIDER") || "sendgrid",
+    SENDGRID_API_KEY: Deno.env.get("SENDGRID_API_KEY"),
+    SENDGRID_FROM_EMAIL: Deno.env.get("SENDGRID_FROM_EMAIL"),
     RESEND_API_KEY: Deno.env.get("RESEND_API_KEY"),
     RESEND_FROM_EMAIL: Deno.env.get("RESEND_FROM_EMAIL"),
   }); } catch { return reply(503, { message: "Provedor de e-mail não configurado." }); }

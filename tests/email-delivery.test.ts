@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import {
   ResendEmailProvider,
+  SendGridEmailProvider,
   EmailProviderError,
   type EmailProvider,
 } from '../supabase/functions/_shared/email/email-provider';
@@ -188,6 +189,28 @@ describe('MAZZI email delivery infrastructure', () => {
     const provider = new ResendEmailProvider({ apiKey: 'secret-test-key', from: 'MAZZI <noreply@example.com>', fetchImpl });
     await expect(provider.send({ to: 'dev@example.com', subject: 'Teste', html: '<p>ok</p>', idempotencyKey: 'delivery-key' })).resolves.toEqual({ accepted: true, provider: 'resend', providerMessageId: 're_test_123' });
     expect(fetchImpl).toHaveBeenCalledWith('https://api.resend.com/emails', expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer secret-test-key', 'Idempotency-Key': 'delivery-key' }) }));
+  });
+
+  it('sends through SendGrid with a verified single-sender address', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, {
+      status: 202,
+      headers: { 'x-message-id': 'sg_test_123' },
+    }));
+    const provider = new SendGridEmailProvider({
+      apiKey: 'SG.secret-test-key',
+      from: 'MAZZI <sender@gmail.com>',
+      fetchImpl,
+    });
+    await expect(provider.send({
+      to: 'dev@example.com',
+      subject: 'Teste',
+      html: '<p>ok</p>',
+      idempotencyKey: 'delivery-key',
+    })).resolves.toEqual({ accepted: true, provider: 'sendgrid', providerMessageId: 'sg_test_123' });
+    const requestBody = JSON.parse(fetchImpl.mock.calls[0][1].body as string);
+    expect(requestBody.from).toEqual({ name: 'MAZZI', email: 'sender@gmail.com' });
+    expect(requestBody.personalizations[0].to).toEqual([{ email: 'dev@example.com' }]);
+    expect(requestBody.custom_args).toEqual({ mazzi_idempotency_key: 'delivery-key' });
   });
 
   it('keeps the migration protected, unique and independent from automatic event wiring', () => {
