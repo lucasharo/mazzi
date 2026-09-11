@@ -200,8 +200,8 @@ export class SendGridEmailProvider implements EmailProvider {
           from: this.from,
           subject: request.subject,
           content: [
-            { type: 'text/html', value: request.html },
             ...(request.text ? [{ type: 'text/plain', value: request.text }] : []),
+            { type: 'text/html', value: request.html },
           ],
           ...(request.replyTo ? { reply_to: { email: request.replyTo } } : {}),
           ...(request.idempotencyKey ? { custom_args: { mazzi_idempotency_key: request.idempotencyKey } } : {}),

@@ -214,11 +214,16 @@ describe('MAZZI email delivery infrastructure', () => {
       to: 'dev@example.com',
       subject: 'Teste',
       html: '<p>ok</p>',
+      text: 'Texto de teste',
       idempotencyKey: 'delivery-key',
     })).resolves.toEqual({ accepted: true, provider: 'sendgrid', providerMessageId: 'sg_test_123' });
     const requestBody = JSON.parse(fetchImpl.mock.calls[0][1].body as string);
     expect(requestBody.from).toEqual({ name: 'MAZZI', email: 'sender@gmail.com' });
     expect(requestBody.personalizations[0].to).toEqual([{ email: 'dev@example.com' }]);
+    expect(requestBody.content).toEqual([
+      { type: 'text/plain', value: 'Texto de teste' },
+      { type: 'text/html', value: '<p>ok</p>' },
+    ]);
     expect(requestBody.custom_args).toEqual({ mazzi_idempotency_key: 'delivery-key' });
   });
 

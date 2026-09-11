@@ -4,10 +4,10 @@ export const studentPaymentConfirmedEmailTemplate = String.raw`<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="x-apple-disable-message-reformatting">
-  <title>Pagamento confirmado - MAZZI</title>
+  <title>Pagamento confirmado - MAZZI | Novo layout v2</title>
 </head>
 
-<body style="margin: 0;padding: 0;background-color: #1f2128;color: #ffffff;font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+<body data-mazzi-template="student-payment-confirmed-inline-v2" style="margin: 0;padding: 0;background-color: #1f2128;color: #ffffff;font-family: Inter, ui-sans-serif, system-ui, -apple-system,
         BlinkMacSystemFont, &quot;Segoe UI&quot;, Arial, sans-serif;">
   <div style="
     display:none;
@@ -34,6 +34,7 @@ export const studentPaymentConfirmedEmailTemplate = String.raw`<!doctype html>
                   <td valign="middle" style="padding-left:12px;">
                     <div style="color:#2c2f38;font-size:18px;line-height:20px;font-weight:900;letter-spacing:-0.4px;">MAZZI</div>
                     <div style="margin-top:3px;color:#2c2f38;font-size:11px;line-height:15px;font-weight:600;opacity:.72;">Sua jornada, no seu ritmo.</div>
+                    <div style="display:inline-block;margin-top:8px;padding:3px 7px;background-color:#2c2f38;border-radius:999px;color:#f6c945;font-size:9px;line-height:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;">Novo layout · v2</div>
                   </td>
                 </tr>
               </table>
