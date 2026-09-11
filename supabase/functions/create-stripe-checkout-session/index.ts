@@ -39,7 +39,8 @@ function resolveReturnOrigin(request: Request, requestedOrigin: unknown) {
       const isMazziPage = url.hostname === "mazzi-aluno-dev.pages.dev";
       const isQuickTunnel = url.protocol === "https:"
         && (url.hostname === "trycloudflare.com" || url.hostname.endsWith(".trycloudflare.com"));
-      if ((url.protocol === "http:" && isLocal) || (url.protocol === "https:" && (isMazziPage || isQuickTunnel))) {
+      const isNativeStripeReturn = url.protocol === "mazzi:" && url.hostname === "stripe-return";
+      if (isNativeStripeReturn || (url.protocol === "http:" && isLocal) || (url.protocol === "https:" && (isMazziPage || isQuickTunnel))) {
         return url.origin;
       }
     } catch {

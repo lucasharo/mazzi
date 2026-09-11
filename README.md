@@ -65,6 +65,10 @@ cd android
 
 O APK gerado fica em `android/app/build/outputs/apk/debug/app-debug.apk`.
 
+Para push nativo no Android, o repositório precisa do arquivo `google-services.json`
+da aplicação Android do Firebase. No GitHub Actions, configure-o como o secret
+`FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64` em Base64; ele não deve ser commitado.
+
 ---
 
 ## 📚 Documentação Técnica

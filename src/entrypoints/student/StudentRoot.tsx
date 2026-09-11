@@ -9,6 +9,7 @@ import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget }
 import { clearPendingNotificationTarget, readPendingNotificationTarget, storePendingNotificationTarget } from '../../lib/pending-navigation';
 import { registerServiceWorker } from '../../registerServiceWorker';
 import { MazziQueryProvider } from '../../components/query/MazziQueryProvider';
+import { installNativeBackButtonHandler, installNativeUrlHandler } from '../../lib/native-platform';
 
 function isStripeCancellationReturn(): boolean {
   if (typeof window === 'undefined') return false;
@@ -100,9 +101,35 @@ const StudentGate: React.FC = () => {
 };
 
 export const StudentRoot: React.FC = () => (
-  <MazziQueryProvider>
-    <AuthProvider>
-      <StudentGate />
-    </AuthProvider>
-  </MazziQueryProvider>
+  <StudentNativeShell />
 );
+
+const StudentNativeShell: React.FC = () => {
+  React.useEffect(() => {
+    let removeBackButton = () => undefined;
+    void installNativeBackButtonHandler().then((cleanup) => { removeBackButton = cleanup; });
+    let removeUrlHandler = () => undefined;
+    void installNativeUrlHandler((url) => {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'mazzi:' || parsed.hostname !== 'stripe-return') return;
+        const current = new URL(window.location.href);
+        current.search = parsed.search;
+        current.hash = '#/student/home';
+        window.history.replaceState(window.history.state, '', `${current.pathname}${current.search}${current.hash}`);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      } catch {
+        // Ignore URLs that are not MAZZI deep links.
+      }
+    }).then((cleanup) => { removeUrlHandler = cleanup; });
+    return () => { removeBackButton(); removeUrlHandler(); };
+  }, []);
+
+  return (
+    <MazziQueryProvider>
+      <AuthProvider>
+        <StudentGate />
+      </AuthProvider>
+    </MazziQueryProvider>
+  );
+};

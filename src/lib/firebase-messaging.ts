@@ -8,6 +8,8 @@ import {
   type Messaging,
 } from 'firebase/messaging';
 import type { NotificationAppContext, NotificationType } from '../types';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 import {
   validateNotificationNavigationTarget,
   type NotificationNavigationTarget,
@@ -170,6 +172,12 @@ export function normalizeFirebasePushMessage(payload: MessagePayload): FirebaseP
 export async function subscribeToFirebaseForegroundMessages(
   listener: (message: FirebasePushMessage) => void,
 ): Promise<() => void> {
+  if (Capacitor.isNativePlatform()) {
+    const handle = await PushNotifications.addListener('pushNotificationReceived', (payload) => {
+      emit(normalizeFirebasePushMessage({ data: payload.data } as MessagePayload));
+    });
+    return () => { void handle.remove(); };
+  }
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return () => undefined;
 
   const seenNotificationIds = new Set<string>();

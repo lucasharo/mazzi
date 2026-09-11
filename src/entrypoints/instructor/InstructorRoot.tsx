@@ -7,6 +7,7 @@ import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget }
 import { clearPendingNotificationTarget, readPendingNotificationTarget, storePendingNotificationTarget } from '../../lib/pending-navigation';
 import { registerServiceWorker } from '../../registerServiceWorker';
 import { MazziQueryProvider } from '../../components/query/MazziQueryProvider';
+import { installNativeBackButtonHandler } from '../../lib/native-platform';
 
 function isStripeOnboardingReturn(): boolean {
   if (typeof window === 'undefined') return false;
@@ -74,9 +75,21 @@ const InstructorGate: React.FC = () => {
 };
 
 export const InstructorRoot: React.FC = () => (
-  <MazziQueryProvider>
-    <AuthProvider>
-      <InstructorGate />
-    </AuthProvider>
-  </MazziQueryProvider>
+  <InstructorNativeShell />
 );
+
+const InstructorNativeShell: React.FC = () => {
+  React.useEffect(() => {
+    let removeBackButton = () => undefined;
+    void installNativeBackButtonHandler().then((cleanup) => { removeBackButton = cleanup; });
+    return () => removeBackButton();
+  }, []);
+
+  return (
+    <MazziQueryProvider>
+      <AuthProvider>
+        <InstructorGate />
+      </AuthProvider>
+    </MazziQueryProvider>
+  );
+};

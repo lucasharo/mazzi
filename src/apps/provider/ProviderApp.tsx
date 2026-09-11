@@ -81,6 +81,7 @@ import type { NotificationNavigationTarget } from '../../lib/notification-naviga
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
 import { disableStoredPushDevice, registerPushDevice } from '../../lib/push-device-registry';
+import { getCurrentPositionCompat } from '../../lib/native-platform';
 import { dismissInitialSplash, signalInitialNavigationReady } from '../../lib/initial-splash';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
 import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
@@ -1045,18 +1046,16 @@ export const ProviderApp: React.FC = () => {
 
   const refreshInstantProviderLocation = useCallback((): Promise<void> => {
     const currentInstructorIsOnline = instantInstructorStatuses.some((status) => status.providerId === currentProvider?.id && status.instructorId === user?.id && isInstantInstructorAvailabilityActive(status));
-    if (!currentProvider?.id || !user?.id || !navigator.geolocation || !currentInstructorIsOnline) {
+    if (!currentProvider?.id || !user?.id || !currentInstructorIsOnline) {
       return Promise.resolve();
     }
     if (instantLocationRefreshInFlightRef.current) return instantLocationRefreshInFlightRef.current;
 
     setInstantLocationStatus('UPDATING');
-    const request = new Promise<GeolocationPosition>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: false,
-        timeout: 12000,
-        maximumAge: 15000,
-      });
+    const request = getCurrentPositionCompat({
+      enableHighAccuracy: false,
+      timeout: 12000,
+      maximumAge: 15000,
     })
       .then(async (position) => {
         await dbService.upsertMyInstantLocation(
@@ -1198,14 +1197,8 @@ export const ProviderApp: React.FC = () => {
       // availability. Only the instructor can publish the instructor's GPS.
       if (online && user?.id === instructorId) {
         setInstantLocationStatus('UPDATING');
-        await new Promise<void>((resolve, reject) => {
-          if (!navigator.geolocation) { reject(new Error('LOCATION_UNAVAILABLE')); return; }
-          navigator.geolocation.getCurrentPosition(
-            (position) => void dbService.upsertMyInstantLocation(currentProvider.id, user.id, position.coords.latitude, position.coords.longitude).then(resolve).catch(reject),
-            reject,
-            { enableHighAccuracy: false, timeout: 12000, maximumAge: 15000 },
-          );
-        });
+        const position = await getCurrentPositionCompat({ enableHighAccuracy: false, timeout: 12000, maximumAge: 15000 });
+        await dbService.upsertMyInstantLocation(currentProvider.id, user.id, position.coords.latitude, position.coords.longitude);
         setInstantLocationStatus('READY');
       }
       const savedStatus = await dbService.setMyInstantInstructorOnline(currentProvider.id, instructorId, online);

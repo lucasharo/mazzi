@@ -5,6 +5,7 @@ import { ButtonBase } from '../ui/Button';
 import { LocationButton } from '../ui/LocationButton';
 import { Modal } from '../ui/Modal';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import { getCurrentPositionCompat, isNativeApp } from '../../lib/native-platform';
 
 export interface ConfirmableAddressAutocompleteProps {
   id?: string;
@@ -100,14 +101,14 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
 
   const handleUseCurrentLocation = () => {
     if (isLocating) return;
-    if (!navigator.geolocation) {
+    if (!navigator.geolocation && !isNativeApp()) {
       setLocationError('A localização do dispositivo não está disponível.');
       return;
     }
 
     setIsLocating(true);
     setLocationError(null);
-    navigator.geolocation.getCurrentPosition(
+    void getCurrentPositionCompat({ enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }).then(
       ({ coords }) => {
         void (async () => {
           try {
@@ -126,7 +127,6 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
         setLocationError('Permita o acesso à localização para usar este botão.');
         setIsLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
   };
 

@@ -3,6 +3,8 @@ import { Camera, ImagePlus, Loader2, Trash2, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Button, ButtonBase } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { Camera as NativeCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { isNativeApp } from '../../lib/native-platform';
 
 interface ProfilePhotoPickerProps {
   value?: string;
@@ -39,6 +41,31 @@ export const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({ value, n
 
   const openCamera = async () => {
     setError(null);
+    if (isNativeApp()) {
+      setIsUploading(true);
+      try {
+        const photo = await NativeCamera.getPhoto({
+          quality: 85,
+          width: 1024,
+          height: 1024,
+          correctOrientation: true,
+          source: CameraSource.Camera,
+          resultType: CameraResultType.DataUrl,
+        });
+        if (!photo.dataUrl) throw new Error('CAMERA_EMPTY_RESULT');
+        const response = await fetch(photo.dataUrl);
+        const blob = await response.blob();
+        const publicUrl = await uploadBlobToStorage(blob);
+        onChange(publicUrl);
+      } catch (cameraError: any) {
+        if (cameraError?.message !== 'User cancelled photos app') {
+          setError(cameraError?.message || 'NÃ£o foi possÃ­vel acessar a cÃ¢mera.');
+        }
+      } finally {
+        setIsUploading(false);
+      }
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setError('A câmera não está disponível neste navegador.');
       return;

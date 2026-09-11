@@ -4,6 +4,7 @@ import { AppLogin } from '../../components/auth/AppLogin';
 import { AccessDenied } from '../../components/auth/AccessDenied';
 import { AdminApp } from '../../apps/admin/AdminApp';
 import { dismissInitialSplash } from '../../lib/initial-splash';
+import { installNativeBackButtonHandler } from '../../lib/native-platform';
 
 const AdminGate: React.FC = () => {
   const auth = useAuth();
@@ -22,7 +23,19 @@ const AdminGate: React.FC = () => {
 };
 
 export const AdminRoot: React.FC = () => (
-  <AuthProvider>
-    <AdminGate />
-  </AuthProvider>
+  <AdminNativeShell />
 );
+
+const AdminNativeShell: React.FC = () => {
+  React.useEffect(() => {
+    let removeBackButton = () => undefined;
+    void installNativeBackButtonHandler().then((cleanup) => { removeBackButton = cleanup; });
+    return () => removeBackButton();
+  }, []);
+
+  return (
+    <AuthProvider>
+      <AdminGate />
+    </AuthProvider>
+  );
+};

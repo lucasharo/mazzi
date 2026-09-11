@@ -63,6 +63,7 @@ import type { NotificationNavigationTarget } from '../../lib/notification-naviga
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
 import { disableStoredPushDevice, registerPushDevice } from '../../lib/push-device-registry';
+import { getCurrentPositionCompat } from '../../lib/native-platform';
 import { StudentProMigrationCard } from './components/StudentProMigrationCard';
 import { InstantLessonModal } from './components/InstantLessonModal';
 import { InstantLessonAvailabilityNotice } from '../../components/instant/InstantLessonAvailabilityNotice';
@@ -470,21 +471,17 @@ export const StudentApp: React.FC = () => {
       return Promise.resolve(userLocation);
     }
     if (locationRequestInFlightRef.current) return locationRequestInFlightRef.current;
-    if (!navigator.geolocation) {
-      setLocationStatus('UNAVAILABLE');
-      return Promise.reject(new Error('GEOLOCATION_UNAVAILABLE'));
-    }
-
     setLocationStatus('RESOLVING');
     const request = new Promise<StudentLocation>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(
+      void getCurrentPositionCompat(
+        { enableHighAccuracy: false, timeout: STUDENT_LOCATION_TIMEOUT_MS, maximumAge: 300_000 },
+      ).then(
         ({ coords }) => {
           const location = { lat: coords.latitude, lng: coords.longitude };
           if (isValidStudentLocation(location.lat, location.lng)) resolve(location);
           else reject(new Error('GEOLOCATION_INVALID'));
         },
         reject,
-        { enableHighAccuracy: false, timeout: STUDENT_LOCATION_TIMEOUT_MS, maximumAge: 300_000 },
       );
     }).then((location) => {
       setUserLocation(location);

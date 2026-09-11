@@ -10,6 +10,7 @@ import {
 } from '../../lib/push-device-registry';
 import { isFirebaseMessagingConfigured } from '../../lib/firebase-messaging';
 import { Button } from '../ui/Button';
+import { isNativeApp } from '../../lib/native-platform';
 
 type PushOptInStatus = 'idle' | 'loading' | 'active' | 'disabled' | 'unsupported' | 'error' | 'not-configured';
 
@@ -26,7 +27,7 @@ function statusFromPermission(permission: PushPermissionState): PushOptInStatus 
 }
 
 function getInitialStatus(appContext: PushNotificationOptInProps['appContext'], userId?: string): PushOptInStatus {
-  if (!isFirebaseMessagingConfigured()) return 'not-configured';
+  if (!isFirebaseMessagingConfigured() && !isNativeApp()) return 'not-configured';
   const capability = getPushCapability();
   if (capability.permission === 'granted' && hasStoredPushDevice(appContext, userId)) return 'active';
   return statusFromPermission(capability.permission);
@@ -37,7 +38,7 @@ export const PushNotificationOptIn: React.FC<PushNotificationOptInProps> = ({ ap
 
   useEffect(() => {
     const capability = getPushCapability();
-    if (!isFirebaseMessagingConfigured()) {
+    if (!isFirebaseMessagingConfigured() && !isNativeApp()) {
       setStatus('not-configured');
       return;
     }
@@ -47,7 +48,7 @@ export const PushNotificationOptIn: React.FC<PushNotificationOptInProps> = ({ ap
   }, [appContext, userId]);
 
   const activate = async () => {
-    if (!isFirebaseMessagingConfigured()) {
+    if (!isFirebaseMessagingConfigured() && !isNativeApp()) {
       setStatus('not-configured');
       return;
     }

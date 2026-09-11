@@ -28,6 +28,7 @@ import { StripeHostedCheckout } from './StripeHostedCheckout';
 import { ConfirmableAddressAutocomplete } from '../../../components/search/ConfirmableAddressAutocomplete';
 import { activeGeocodingProvider, LocationSuggestion } from '../../../domain/maps/geocoding-provider';
 import { LocationButton } from '../../../components/ui/LocationButton';
+import { getCurrentPositionCompat, isNativeApp } from '../../../lib/native-platform';
 import type { PublicPlatformConfiguration } from '../../../domain/platform-config';
 
 export interface CheckoutModalProps {
@@ -191,13 +192,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [isStudentAddressLocating, setIsStudentAddressLocating] = useState(false);
 
   const handleUseStudentCurrentLocation = async () => {
-    if (isStudentAddressLocating || !navigator.geolocation) return;
+    if (isStudentAddressLocating) return;
     setIsStudentAddressLocating(true);
     setStudentAddress('');
     setStudentAddressLocation(null);
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+        void getCurrentPositionCompat({ enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }).then(resolve, reject);
       });
       const suggestion = await activeGeocodingProvider.reverseGeocode(position.coords.latitude, position.coords.longitude);
       const savedAddress = toStudentSavedAddress(suggestion);
@@ -959,7 +960,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         activePayment.id,
         activePaymentMethod,
         user.email,
-        window.location.origin,
+        isNativeApp() ? 'mazzi://stripe-return' : window.location.origin,
       );
       setPayment((current) => current ? {
         ...current,

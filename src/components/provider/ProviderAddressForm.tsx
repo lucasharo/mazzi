@@ -5,6 +5,7 @@ import { ToastContainer, ToastMessage } from '../ui/Toast';
 import { maskPostalCode } from '../../domain/maps/awesomeapi-cep';
 import { activeGeocodingProvider, LocationSuggestion } from '../../domain/maps/geocoding-provider';
 import { applyProviderAddressSuggestion, isArtificialHouseNumber, ProviderAddressFormValue } from '../../domain/maps/provider-address-payload';
+import { getCurrentPositionCompat } from '../../lib/native-platform';
 
 export type { ProviderAddressFormValue } from '../../domain/maps/provider-address-payload';
 
@@ -36,13 +37,13 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
   };
 
   const useCurrentAddress = () => {
-    if (isLocatingAddress || !navigator.geolocation) {
+    if (isLocatingAddress) {
       showAddressError('A localização do dispositivo não está disponível. Pesquise o endereço manualmente.');
       return;
     }
     setIsLocatingAddress(true);
     clearAddressToasts();
-    navigator.geolocation.getCurrentPosition(({ coords }) => {
+    void getCurrentPositionCompat({ enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }).then(({ coords }) => {
       void activeGeocodingProvider.reverseGeocode(coords.latitude, coords.longitude)
         .then((suggestion) => {
           if (!suggestion.houseNumber?.trim() || isArtificialHouseNumber(suggestion.houseNumber)) {
@@ -57,7 +58,7 @@ export const ProviderAddressForm: React.FC<Props> = ({ value, onChange, idPrefix
     }, () => {
       showAddressError('Permita o acesso à localização ou pesquise o endereço manualmente.');
       setIsLocatingAddress(false);
-    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+    });
   };
 
   const addressSearchValue = value.address?.formatted || [value.addressLine1, value.houseNumber].filter(Boolean).join(', ');

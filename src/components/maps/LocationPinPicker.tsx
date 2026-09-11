@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { Button } from '../ui/Button';
 import { LocateFixed, MapPin } from 'lucide-react';
 import { getActiveMapTileProvider } from '../../domain/maps/map-tile-provider';
+import { getCurrentPositionCompat, isNativeApp } from '../../lib/native-platform';
 
 interface LocationPinPickerProps {
   latitude?: number;
@@ -56,13 +57,13 @@ export const LocationPinPicker: React.FC<LocationPinPickerProps> = ({ latitude, 
 
   const useCurrentLocation = () => {
     if (isLocating) return;
-    if (!navigator.geolocation) {
+    if (!navigator.geolocation && !isNativeApp()) {
       setLocationError('A localização do dispositivo não está disponível. Escolha o ponto no mapa.');
       return;
     }
     setLocationError(null);
     setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(({ coords }) => {
+    void getCurrentPositionCompat({ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }).then(({ coords }) => {
       setPin(coords.latitude, coords.longitude);
       mapRef.current?.setView([coords.latitude, coords.longitude], 16, { animate: true });
       onLocate?.(coords.latitude, coords.longitude);
@@ -70,7 +71,7 @@ export const LocationPinPicker: React.FC<LocationPinPickerProps> = ({ latitude, 
     }, () => {
       setLocationError('Não foi possível obter sua localização. Confirme a permissão ou escolha o ponto no mapa.');
       setIsLocating(false);
-    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    });
   };
 
   return <div className="space-y-3">
