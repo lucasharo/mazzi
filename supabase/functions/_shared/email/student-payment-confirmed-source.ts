@@ -1,0 +1,160 @@
+export const studentPaymentConfirmedEmailTemplate = String.raw`<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>Pagamento confirmado - MAZZI</title>
+</head>
+
+<body style="margin: 0;padding: 0;background-color: #1f2128;color: #ffffff;font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+        BlinkMacSystemFont, &quot;Segoe UI&quot;, Arial, sans-serif;">
+  <div style="
+    display:none;
+    max-height:0;
+    overflow:hidden;
+    opacity:0;
+    color:transparent;
+    visibility:hidden;
+  ">
+    Seu pagamento foi confirmado e sua aula já está agendada no MAZZI.
+  </div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #1f2128;border-collapse: collapse;border-spacing: 0;">
+    <tr>
+      <td align="center" class="outer-padding" style="padding:40px 20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="container" style="width: 100%;max-width: 600px;background-color: #2c2f38;border-radius: 18px;overflow: hidden;border-collapse: collapse;border-spacing: 0;margin: 0 auto;">
+          <tr>
+            <td style="padding:22px 28px;background-color:#f6c945;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;border-spacing: 0;">
+                <tr>
+                  <td width="52" valign="middle" style="width:52px;">
+                    <img src="{{mazzi_logo_src}}" width="48" height="48" alt="MAZZI" style="width: 48px;height: 48px;display: block;border: 0;outline: none;text-decoration: none;">
+                  </td>
+                  <td valign="middle" style="padding-left:12px;">
+                    <div style="color:#2c2f38;font-size:18px;line-height:20px;font-weight:900;letter-spacing:-0.4px;">MAZZI</div>
+                    <div style="margin-top:3px;color:#2c2f38;font-size:11px;line-height:15px;font-weight:600;opacity:.72;">Sua jornada, no seu ritmo.</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" class="content-padding" style="padding:42px 48px 16px 48px;">
+              <div style="width:54px;height:54px;line-height:54px;margin:0 auto 20px auto;background-color:#f6c945;border-radius:16px;color:#2c2f38;font-size:25px;font-weight:900;text-align:center;">✓</div>
+              <h1 style="margin:0;color:#ffffff;font-size:28px;line-height:32px;font-weight:800;letter-spacing:-1px;">Pagamento confirmado</h1>
+              <p style="margin:12px 0 0 0;color:#b8b7b2;font-size:16px;line-height:24px;font-weight:400;">Olá, {{student_name}}! Seu pagamento foi aprovado e sua aula já está confirmada.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:12px 20px 34px 20px;">
+              <div style="margin-bottom:4px;color:#b8b7b2;font-size:12px;line-height:18px;font-weight:500;">Total pago</div>
+              <div class="amount" style="color:#f6c945;font-size:38px;line-height:42px;font-weight:800;letter-spacing:-1.6px;">{{total_paid}}</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="content-padding" style="padding:0 48px 24px 48px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width: 100%;background-color: #33363f;border-radius: 16px;border-collapse: collapse;border-spacing: 0;">
+                <tr>
+                  <td style="padding:24px;">
+                    <div style="margin-bottom:20px;color:#f6c945;font-size:10px;line-height:13px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">Sua aula</div>
+                    <div style="margin-bottom:4px;color:#aaa9a4;font-size:12px;line-height:18px;font-weight:500;">Profissional</div>
+                    <div style="margin-bottom:24px;color:#ffffff;font-size:20px;line-height:24px;font-weight:800;letter-spacing:-0.5px;">{{provider_name}}</div>
+
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;border-spacing: 0;">
+                      <tr>
+                        <td style="width:34%;padding:0 0 14px 0;color:#aaa9a4;font-size:13px;line-height:19px;">Data</td>
+                        <td align="right" style="padding:0 0 14px 12px;color:#ffffff;font-size:14px;line-height:19px;font-weight:600;">{{lesson_date}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 0 14px 0;color:#aaa9a4;font-size:13px;line-height:19px;">Horário</td>
+                        <td align="right" style="padding:0 0 14px 12px;color:#ffffff;font-size:14px;line-height:19px;font-weight:600;">{{lesson_start_time}} às {{lesson_end_time}}</td>
+                      </tr>
+                      <tr>
+                        <td style="color:#aaa9a4;font-size:13px;line-height:19px;">Categoria</td>
+                        <td align="right" style="padding-left:12px;color:#f6c945;font-size:14px;line-height:19px;font-weight:700;">Categoria {{license_category}}</td>
+                      </tr>
+                    </table>
+
+                    <div style="height:22px;line-height:22px;">&nbsp;</div>
+
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width: 100%;background-color: #24262d;border-radius: 14px;border-collapse: collapse;border-spacing: 0;">
+                      <tr>
+                        <td style="padding:18px;">
+                          <div style="margin-bottom:9px;color:#f6c945;font-size:10px;line-height:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Veículo da aula</div>
+                          <div style="margin-bottom:16px;color:#ffffff;font-size:16px;line-height:21px;font-weight:800;">{{vehicle_brand}} {{vehicle_model}}</div>
+
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;border-spacing: 0;">
+                            <tr>
+                              <td style="padding:0 0 9px 0;color:#aaa9a4;font-size:12px;line-height:18px;">Ano</td>
+                              <td align="right" style="padding:0 0 9px 12px;color:#ffffff;font-size:13px;line-height:18px;font-weight:600;">{{vehicle_year}}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding:0 0 9px 0;color:#aaa9a4;font-size:12px;line-height:18px;">Câmbio</td>
+                              <td align="right" style="padding:0 0 9px 12px;color:#ffffff;font-size:13px;line-height:18px;font-weight:600;">{{vehicle_transmission}}</td>
+                            </tr>
+                            <tr>
+                              <td style="color:#aaa9a4;font-size:12px;line-height:18px;">Cor</td>
+                              <td align="right" style="padding-left:12px;color:#ffffff;font-size:13px;line-height:18px;font-weight:600;">{{vehicle_color}}</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="content-padding" style="padding:8px 48px 30px 48px;">
+              <div style="margin-bottom:17px;color:#ffffff;font-size:18px;line-height:22px;font-weight:800;">Resumo do pagamento</div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;border-spacing: 0;">
+                <tr>
+                  <td style="padding:11px 0;color:#aaa9a4;border-bottom:1px solid #454851;font-size:13px;line-height:19px;">Valor da aula</td>
+                  <td align="right" style="padding:11px 0;color:#ffffff;border-bottom:1px solid #454851;font-size:14px;line-height:19px;font-weight:600;">{{lesson_amount}}</td>
+                </tr>
+                <tr>
+                  <td style="padding:15px 0 0 0;color:#ffffff;font-size:14px;line-height:20px;font-weight:700;">Total pago</td>
+                  <td align="right" style="padding:15px 0 0 0;color:#f6c945;font-size:16px;line-height:20px;font-weight:800;">{{total_paid}}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" class="content-padding" style="padding:4px 48px 38px 48px;">
+              <a href="{{lesson_url}}" class="button" style="display:inline-block;padding:16px 28px;background-color:#f6c945;border-radius:14px;color:#2c2f38;text-decoration:none;font-size:14px;line-height:18px;font-weight:800;">Ver minha aula</a>
+              <p style="margin:17px 0 0 0;color:#999991;font-size:12px;line-height:18px;">Você também pode acompanhar todos os detalhes pelo aplicativo MAZZI Aluno.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:20px 30px;background-color:#24262d;">
+              <div style="color:#999991;font-size:10px;line-height:14px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;">Identificação do pagamento</div>
+              <div style="margin-top:5px;color:#ffffff;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace;font-size:11px;line-height:16px;font-weight:500;">{{payment_reference}}</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:28px 30px 31px 30px;background-color:#191b20;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="border-collapse: collapse;border-spacing: 0;">
+                <tr>
+                  <td valign="middle"><img src="{{mazzi_logo_src}}" width="34" height="34" alt="MAZZI" style="width: 34px;height: 34px;display: block;border: 0;outline: none;text-decoration: none;"></td>
+                  <td valign="middle" style="padding-left:10px;color:#ffffff;font-size:16px;line-height:18px;font-weight:900;">MAZZI</td>
+                </tr>
+              </table>
+              <p style="margin:16px 0 0 0;color:#b8b7b2;font-size:11px;line-height:17px;">Este é um e-mail automático relacionado a uma transação realizada no MAZZI.</p>
+              <p style="margin:6px 0 0 0;color:#77766f;font-size:10px;line-height:16px;">Nunca solicitaremos sua senha, código de acesso ou dados completos de pagamento por e-mail.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
