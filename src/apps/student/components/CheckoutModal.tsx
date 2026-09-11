@@ -182,6 +182,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedPix, setCopiedPix] = useState(false);
   const [meetingPointType, setMeetingPointType] = useState<'PROVIDER' | 'STUDENT'>('PROVIDER');
@@ -1009,9 +1010,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const handleCancelPendingBooking = async () => {
     const pendingBooking = booking || resumeBooking;
-    if (!pendingBooking || isProcessing) return;
+    if (!pendingBooking || isProcessing || isCancelling) return;
 
-    setIsProcessing(true);
+    setIsCancelling(true);
     setErrorMessage(null);
     try {
       await dbService.cancelPendingBooking(pendingBooking.id);
@@ -1032,7 +1033,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     } catch (error) {
       setErrorMessage(friendlyCheckoutError(error, 'Não foi possível cancelar esta reserva. Tente novamente.'));
     } finally {
-      setIsProcessing(false);
+      setIsCancelling(false);
     }
   };
 
@@ -1048,9 +1049,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const durationLabel = typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) && durationMinutes > 0
     ? ` (${durationMinutes} min)`
     : '';
+  const isCheckoutBusy = isProcessing || isCancelling;
   const checkoutFormValid = Boolean(
     displayQuote &&
-    !isProcessing &&
+    !isCheckoutBusy &&
     (isInstantLesson ? instantMeetingPoint.trim() : meetingPointType === 'PROVIDER' || studentAddress.trim()),
   );
   const quotePreviewFooter = step === 'QUOTE_PREVIEW' ? (
@@ -1063,8 +1065,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           className="w-fit shrink-0 font-bold"
           leftIcon={<XCircle className="h-4 w-4 shrink-0" aria-hidden="true" />}
           showDefaultIcon={false}
-          isLoading={isProcessing}
-          disabled={isProcessing || stripePaymentPending}
+          isLoading={isCancelling}
+          disabled={isCheckoutBusy || stripePaymentPending}
           onClick={() => { void handleCancelPendingBooking(); }}
           aria-label="Cancelar"
         >
@@ -1594,8 +1596,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               variant="outline"
               size="sm"
               className="w-full min-h-11 font-extrabold text-[var(--mazzi-text)]"
-              isLoading={isProcessing}
-              disabled={isProcessing || stripePaymentPending}
+              isLoading={isCancelling}
+              disabled={isCheckoutBusy || stripePaymentPending}
               onClick={() => { void handleCancelPendingBooking(); }}
               aria-label={isInstantLesson ? 'Cancelar aula agora' : 'Cancelar a reserva e escolher outro horário'}
             >

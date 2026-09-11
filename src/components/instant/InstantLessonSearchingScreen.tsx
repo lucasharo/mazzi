@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X } from 'lucide-react';
+import { CircleX, Search } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface InstantLessonSearchingScreenProps {
@@ -25,7 +25,7 @@ export const InstantLessonSearchingScreen: React.FC<InstantLessonSearchingScreen
       type="button"
       variant="outline"
       className="min-h-12 w-full border-slate-600 bg-transparent text-white hover:border-slate-400 hover:bg-white/10 active:bg-white/15"
-      leftIcon={<X className="h-4 w-4" aria-hidden="true" />}
+      leftIcon={<CircleX className="h-4 w-4" aria-hidden="true" />}
       onClick={onCancel}
       isLoading={isCancelling}
     >

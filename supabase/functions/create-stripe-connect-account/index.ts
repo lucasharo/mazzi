@@ -244,6 +244,23 @@ async function stripeGet(path: string, secret: string) {
   return payload;
 }
 
+async function configureAutomaticDailyPayout(accountId: string, secret: string) {
+  const body = new URLSearchParams();
+  body.set("payments[payouts][schedule][interval]", "daily");
+  const response = await fetch("https://api.stripe.com/v1/balance_settings", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      "Stripe-Account": accountId,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(String(payload?.error?.message || `Stripe HTTP ${response.status}`));
+  return payload;
+}
+
 function getMaskedExternalAccount(stripeAccount: any) {
   const externalAccounts = Array.isArray(stripeAccount?.external_accounts?.data)
     ? stripeAccount.external_accounts.data
@@ -389,6 +406,10 @@ Deno.serve(async (request) => {
         console.warn("could not synchronize merchant sector", error);
       });
     }
+
+    // The MAZZI safety period is enforced locally. The connected account then
+    // sends its available balance to the external bank on a daily schedule.
+    await configureAutomaticDailyPayout(account.external_account_id, stripeSecretKey);
 
     if (openOnboarding) {
       // O link só é criado depois do pré-preenchimento para que o Stripe já

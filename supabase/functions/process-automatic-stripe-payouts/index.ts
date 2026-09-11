@@ -104,14 +104,12 @@ Deno.serve(async (request) => {
         continue;
       }
 
-      const { error: finalizeError } = await service.rpc("finalize_stripe_payout", {
+      const { error: finalizeError } = await service.rpc("record_stripe_transfer", {
         p_payout_id: payout.payout_id,
-        p_external_transfer_id: stripePayload.id,
-        p_success: true,
-        p_failure_reason: null,
+        p_stripe_transfer_id: stripePayload.id,
       });
       if (finalizeError) throw finalizeError;
-      results.push({ payoutId: payout.payout_id, success: true, transferId: stripePayload.id });
+      results.push({ payoutId: payout.payout_id, success: true, transferId: stripePayload.id, status: "PROCESSING" });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       await service.rpc("finalize_stripe_payout", {

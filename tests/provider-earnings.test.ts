@@ -76,7 +76,7 @@ describe('PRO Ganhos — navigation and deterministic insights', () => {
     await screen.findByText('Nota em formação');
     expect(screen.queryByText('4.5 / 5')).toBeNull();
     expect(screen.getByText('A nota ficará disponível após avaliações de 10 alunos diferentes.')).toBeTruthy();
-    expect(getSummary).toHaveBeenCalledWith(30);
+    expect(getSummary).toHaveBeenCalledWith(7);
   });
 
   it('ignores null dimensions and resolves ties in a stable order', () => {
@@ -116,13 +116,13 @@ describe('PRO Ganhos — navigation and deterministic insights', () => {
     expect(processor).toContain('STRIPE_SOURCE_TRANSACTION_NOT_FOUND');
   });
 
-  it('uses 30 days by default, exposes the period controls and does not render zero while loading', async () => {
+  it('uses 7 days by default, exposes the period controls and does not render zero while loading', async () => {
     const getSummary = vi.spyOn(dbService, 'getProviderEarningsSummary').mockResolvedValue(earningsSummary);
     render(React.createElement(ProviderEarningsTab));
 
     expect(screen.queryByText('R$ 0,00')).toBeNull();
     await screen.findByText('Ganhos líquidos');
-    expect(getSummary).toHaveBeenCalledWith(30);
+    expect(getSummary).toHaveBeenCalledWith(7);
     expect(screen.getByRole('button', { name: '7 dias' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '14 dias' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '30 dias' })).toBeTruthy();

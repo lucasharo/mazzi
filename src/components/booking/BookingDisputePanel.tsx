@@ -269,9 +269,7 @@ export const BookingDisputePanel: React.FC<BookingDisputePanelProps> = ({ bookin
 
   return (
     <>
-      <section className="mazzi-compact-card rounded-2xl border border-slate-200 bg-white p-4">
-        <Button type="button" variant="dangerSoft" size="sm" className="min-h-11 w-full" onClick={() => setIsOpening(true)} leftIcon={<AlertTriangle className="h-4 w-4" aria-hidden="true" />}>Informar problema com a aula</Button>
-      </section>
+      <Button type="button" variant="dangerSoft" size="sm" className="min-h-11 w-full" onClick={() => setIsOpening(true)} leftIcon={<AlertTriangle className="h-4 w-4" aria-hidden="true" />}>Informar problema com a aula</Button>
 
       <Modal
         id={`open-booking-dispute-${booking.id}`}

@@ -3,7 +3,7 @@ import { Search, Calendar as CalendarIcon, LayoutDashboard, User, UserPen, Penci
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { LessonWizardHeader } from '../../components/ui/LessonWizardHeader';
-import { Check, X, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Check, X, CircleX, ArrowLeft, ChevronRight } from 'lucide-react';
 import { instantOptionClassName } from '../../components/instant/instant-option-style';
 import {
   Provider, Booking, SearchRequest, PublicSearchProviderResult, SearchResultResponse, Vehicle, ServiceOffering, StudentSavedAddress, InstantLessonPriceOption, InstantLessonRequest, InstantLessonOffer, InstantLessonTracking, TransmissionType, VehicleCategory, } from '../../types';
@@ -2036,19 +2036,19 @@ function applyStrictProviderFilters(
                 </section>
               )}
 
-              <section className="mazzi-card rounded-2xl p-4 shadow-sm" aria-labelledby="student-schedule-lesson-title">
+              <section className="mazzi-compact-card rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" aria-labelledby="student-schedule-lesson-title">
                 <div className="flex items-start gap-3">
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--mazzi-yellow)] text-[var(--mazzi-dark)]">
                     <CalendarIcon className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p id="student-schedule-lesson-title" className="font-extrabold text-[var(--mazzi-dark)]">Agendar Aula</p>
-                    <p className="mt-1 text-xs font-semibold leading-relaxed text-[var(--mazzi-muted)]">Pesquise profissionais, veja horários e agende sua próxima aula.</p>
+                    <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-600">Pesquise profissionais, veja horários e agende sua próxima aula.</p>
                   </div>
                 </div>
-                <div className="mt-4">
-                  <Button type="button" variant="primary" size="sm" className="w-full" onClick={() => openBookingSearch()} leftIcon={<Search className="h-4 w-4" aria-hidden="true" />}>
-                    Buscar profissionais
+                <div className="mt-3 border-t border-slate-200 pt-3">
+                  <Button type="button" variant="primary" size="sm" className="w-full" onClick={() => openBookingSearch()} leftIcon={<CalendarIcon className="h-4 w-4" aria-hidden="true" />}>
+                    Agendar aula
                   </Button>
                 </div>
               </section>
@@ -2754,7 +2754,7 @@ function applyStrictProviderFilters(
           ariaLabel="Escolha o instrutor"
           footerVariant="wizard"
           className="instant-light"
-          footer={<div className="flex w-full items-center gap-3"><Button type="button" variant="outline" className="shrink-0" leftIcon={<X className="h-4 w-4" aria-hidden="true" />} onClick={closeBookingWizard}>Fechar</Button><Button type="button" className="min-w-0 flex-1" leftIcon={pickedInstructorContext && groupBookingContextsByVehicle(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 && uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 ? <CalendarIcon className="h-4 w-4" aria-hidden="true" /> : <Car className="h-4 w-4" aria-hidden="true" />} disabled={!pickedInstructorContext} onClick={() => {
+          footer={<div className="flex w-full items-center gap-3"><Button type="button" variant="outline" className="shrink-0" leftIcon={<CircleX className="h-4 w-4" aria-hidden="true" />} onClick={closeBookingWizard}>Fechar</Button><Button type="button" className="min-w-0 flex-1" leftIcon={pickedInstructorContext && groupBookingContextsByVehicle(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 && uniqueBookingOfferingContexts(filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!)).length === 1 ? <CalendarIcon className="h-4 w-4" aria-hidden="true" /> : <Car className="h-4 w-4" aria-hidden="true" />} disabled={!pickedInstructorContext} onClick={() => {
             if (!pickedInstructorContext) return;
             const contexts = filterBookingContextsByInstructor(bookingContextsForSelection, pickedInstructorId!);
             const vehicles = groupBookingContextsByVehicle(contexts);

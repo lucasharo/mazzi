@@ -2808,7 +2808,7 @@ status: 'IN_REVIEW',
               <div className="mt-4 space-y-3 border-t border-[var(--mazzi-border)] pt-4 text-sm">
                 <div className="flex items-start gap-3">
                   <CalendarIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#e9a918]" aria-hidden="true" />
-                  <div><p className="text-xs text-[var(--mazzi-muted)]">Previsão de repasse</p><p className="font-bold text-[var(--mazzi-text)]">{formatDateBR(selectedPayoutDetail.scheduled_release_at)} às {formatTimeBR(selectedPayoutDetail.scheduled_release_at)}</p></div>
+                  <div><p className="text-xs text-[var(--mazzi-muted)]">Previsão de repasse</p><p className="font-bold text-[var(--mazzi-text)]">{formatDateBR(selectedPayoutDetail.arrival_date || selectedPayoutDetail.scheduled_release_at)} às {formatTimeBR(selectedPayoutDetail.arrival_date || selectedPayoutDetail.scheduled_release_at)}</p></div>
                 </div>
                 {selectedPayoutDetail.processed_at && <div className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />

@@ -293,7 +293,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const lessonStartTimestamp = getBookingStartTimestamp(booking);
   const arrivalWindowOpen = checkInWindowBeforeMinutes !== null && lessonStartTimestamp > 0
     && (checkInAvailability.opensAt === null || checkInNow.getTime() >= checkInAvailability.opensAt.getTime());
-  const canShowTravelActions = arrivalWindowOpen && !hasScheduleConflict;
+  const canShowTravelActions = !isCancelled && arrivalWindowOpen && !hasScheduleConflict;
 
   const handleCheckIn = async (): Promise<boolean> => {
     if (!onCheckIn || isCheckingIn) return false;

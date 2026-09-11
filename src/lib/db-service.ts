@@ -76,6 +76,7 @@ function mapProviderPayoutDetail(data: any): ProviderPayoutDetail {
     status: data.status,
     amount_in_cents: Number(data.amount_in_cents),
     scheduled_release_at: data.scheduled_release_at,
+    arrival_date: data.arrival_date || null,
     released_at: data.released_at || null,
     processed_at: data.processed_at || null,
     failure_reason: data.failure_reason || null,
@@ -1945,6 +1946,16 @@ export const dbService = {
     });
     if (error) throw error;
     if (!data) throw new Error('EARNINGS_SUMMARY_UNAVAILABLE');
+    let refundedCanceledSummary: any = null;
+    try {
+      const { data: refundData, error: refundError } = await sp.rpc('get_provider_refunded_canceled_summary', {
+        p_date_from: `${dateFromOnly}T00:00:00-03:00`,
+        p_date_to: `${dateToOnly}T00:00:00-03:00`,
+      });
+      if (!refundError && refundData) refundedCanceledSummary = refundData;
+    } catch {
+      // Keep the earnings screen available if the additive summary RPC is unavailable.
+    }
     let upcomingDetails: any[] | null = null;
     try {
       const { data: detailData, error: detailError } = await sp.rpc('get_my_provider_upcoming_payouts');
@@ -1967,6 +1978,7 @@ export const dbService = {
       to_receive_cents: Number(metrics?.to_receive_cents || 0),
       blocked_cents: Number(metrics?.blocked_cents || 0),
       failed_cents: Number(metrics?.failed_cents || 0),
+      refunded_canceled_cents: Number(metrics?.refunded_canceled_cents || 0),
       lessons_completed: Number(metrics?.lessons_completed || 0),
       lessons_with_earnings: Number(metrics?.lessons_with_earnings ?? metrics?.lessons_completed ?? 0),
       average_ticket_cents: metrics?.average_ticket_cents == null ? null : Number(metrics.average_ticket_cents),
@@ -1985,8 +1997,8 @@ export const dbService = {
     });
     return {
       period: data.period,
-      current: normalizeMetrics(data.current),
-      previous: normalizeMetrics(data.previous),
+      current: { ...normalizeMetrics(data.current), refunded_canceled_cents: Number(refundedCanceledSummary?.current?.refunded_canceled_cents || 0) },
+      previous: { ...normalizeMetrics(data.previous), refunded_canceled_cents: Number(refundedCanceledSummary?.previous?.refunded_canceled_cents || 0) },
       series: Array.isArray(data.series) ? data.series.map((point: any) => ({
         date: point.date,
         net_earned_cents: Number(point.net_earned_cents || 0),
@@ -1996,6 +2008,8 @@ export const dbService = {
       upcoming_payouts: (upcomingDetails || (Array.isArray(data.upcoming_payouts) ? data.upcoming_payouts : [])).map((item: any) => ({
         id: item.id || undefined,
         date: item.date,
+        arrival_date: item.arrival_date || null,
+        date_source: item.date_source === 'STRIPE' ? 'STRIPE' : 'MAZZI_FORECAST',
         amount_in_cents: Number(item.amount_in_cents || 0),
         payout_count: Number(item.payout_count || 1),
         status: item.status || undefined,

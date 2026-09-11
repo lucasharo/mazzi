@@ -310,6 +310,34 @@ Deno.serve(async (request) => {
     return reply(500, { message: "Não foi possível registrar o webhook." });
   }
 
+  if (eventType.startsWith("payout.")) {
+    const localPayoutId = String(object.metadata?.mazzi_payout_id || "");
+    const stripePayoutStatus = String(object.status || "pending");
+    if (!localPayoutId) {
+      await service.from("payment_webhook_events").update({
+        status: "IGNORED",
+        error_message: "Payout Stripe sem vínculo local.",
+        processed_at: new Date().toISOString(),
+      }).eq("id", webhookEvent.id);
+      return reply(200, { received: true, ignored: true });
+    }
+    const { error: payoutError } = await service.rpc("record_stripe_payout_status", {
+      p_payout_id: localPayoutId,
+      p_stripe_payout_id: String(object.id || ""),
+      p_stripe_transfer_id: typeof object.metadata?.stripe_transfer_id === "string" ? object.metadata.stripe_transfer_id : null,
+      p_stripe_status: stripePayoutStatus,
+      p_failure_reason: object.failure_message || object.failure_code || null,
+      p_arrival_date: Number.isFinite(Number(object.arrival_date)) ? new Date(Number(object.arrival_date) * 1000).toISOString() : null,
+    });
+    await service.from("payment_webhook_events").update({
+      status: payoutError ? "FAILED" : "PROCESSED",
+      error_message: payoutError?.message || null,
+      processed_at: new Date().toISOString(),
+    }).eq("id", webhookEvent.id);
+    if (payoutError) return reply(500, { message: "Não foi possível atualizar o status do repasse." });
+    return reply(200, { received: true, payout: true, status: stripePayoutStatus });
+  }
+
   const paymentIdFromMetadata = String(
     object.metadata?.mazzi_payment_id ||
       object.metadata?.payment_id ||

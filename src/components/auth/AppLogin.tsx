@@ -317,6 +317,35 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
     setScreen('signup_otp');
   }, [contextError, dismissedUnconfirmedEmail, email, screen]);
 
+  useEffect(() => {
+    if (screen !== 'signup_otp' || signupOtpOrigin !== 'login' || !otpEmail.trim()) return;
+
+    let cancelled = false;
+    setIsSubmitting(true);
+    setFeedback(null);
+    setErrors({});
+
+    void resendSignupOtp(otpEmail.trim())
+      .then(() => {
+        if (cancelled) return;
+        setResendCooldown(AUTH_OTP_RESEND_COOLDOWN_SECONDS);
+      })
+      .catch((caught: unknown) => {
+        if (cancelled) return;
+        setFeedback({
+          tone: 'error',
+          message: formatAuthError(caught instanceof Error ? caught.message : 'NÃ£o foi possÃ­vel reenviar o cÃ³digo.'),
+        });
+      })
+      .finally(() => {
+        if (!cancelled) setIsSubmitting(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [otpEmail, screen, signupOtpOrigin]);
+
   // Countdown timer for OTP resend cooldown
   useEffect(() => {
     if (resendCooldown <= 0) return;

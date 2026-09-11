@@ -25,7 +25,7 @@ export interface StudentPaymentConfirmedParams {
 }
 
 export interface StudentCancellationRefundParams {
-  mazzi_logo_src: string;
+  mazzi_logo_src?: string;
   student_name: string;
   provider_name: string;
   lesson_date: string;
@@ -46,7 +46,7 @@ export interface StudentCancellationRefundParams {
 export interface StudentRefundCompletedParams extends StudentCancellationRefundParams {}
 
 export interface ProBookingConfirmedParams {
-  mazzi_logo_src: string;
+  mazzi_logo_src?: string;
   provider_first_name: string;
   student_name: string;
   lesson_date: string;
@@ -66,7 +66,7 @@ export interface ProBookingConfirmedParams {
 }
 
 export interface ProPayoutCompletedParams {
-  mazzi_logo_src: string;
+  mazzi_logo_src?: string;
   provider_first_name: string;
   payout_amount: string;
   payout_date: string;
@@ -102,34 +102,34 @@ export const EMAIL_TEMPLATE_CONTRACTS: Record<EmailTemplateName, {
   },
   'student-cancellation-refund': {
     required: [
-      'mazzi_logo_src', 'student_name', 'provider_name', 'lesson_date', 'lesson_start_time', 'lesson_end_time',
+      'student_name', 'provider_name', 'lesson_date', 'lesson_start_time', 'lesson_end_time',
       'license_category', 'vehicle_brand', 'vehicle_model', 'vehicle_year', 'vehicle_transmission', 'vehicle_color',
       'amount_paid', 'refund_amount', 'payment_reference', 'refund_details_url',
     ],
-    urls: ['mazzi_logo_src', 'refund_details_url'],
+    urls: ['refund_details_url'],
   },
   'student-refund-completed': {
     required: [
-      'mazzi_logo_src', 'student_name', 'provider_name', 'lesson_date', 'lesson_start_time', 'lesson_end_time',
+      'student_name', 'provider_name', 'lesson_date', 'lesson_start_time', 'lesson_end_time',
       'license_category', 'vehicle_brand', 'vehicle_model', 'vehicle_year', 'vehicle_transmission', 'vehicle_color',
       'amount_paid', 'refund_amount', 'payment_reference', 'refund_details_url',
     ],
-    urls: ['mazzi_logo_src', 'refund_details_url'],
+    urls: ['refund_details_url'],
   },
   'pro-booking-confirmed': {
     required: [
-      'mazzi_logo_src', 'provider_first_name', 'student_name', 'lesson_date', 'lesson_start_time', 'lesson_end_time',
+      'provider_first_name', 'student_name', 'lesson_date', 'lesson_start_time', 'lesson_end_time',
       'license_category', 'vehicle_brand', 'vehicle_model', 'vehicle_year', 'vehicle_transmission', 'vehicle_color',
       'lesson_amount', 'mazzi_fee_amount', 'provider_expected_amount', 'booking_reference', 'lesson_url',
     ],
-    urls: ['mazzi_logo_src', 'lesson_url'],
+    urls: ['lesson_url'],
   },
   'pro-payout-completed': {
     required: [
-      'mazzi_logo_src', 'provider_first_name', 'payout_amount', 'payout_date', 'payout_method', 'bank_name',
-      'bank_branch_last2', 'bank_account_last4', 'gross_amount', 'mazzi_fee_amount', 'payout_reference', 'earnings_url',
+      'provider_first_name', 'payout_amount', 'payout_date', 'payout_method', 'bank_name',
+      'bank_account_last4', 'gross_amount', 'mazzi_fee_amount', 'payout_reference', 'earnings_url',
     ],
-    urls: ['mazzi_logo_src', 'earnings_url'],
+    urls: ['earnings_url'],
   },
 };
 

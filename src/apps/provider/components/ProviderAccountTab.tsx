@@ -38,7 +38,7 @@ export const ProviderAccountTab: React.FC<ProviderAccountTabProps> = ({
         />
       )}
 
-      <section className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-5 shadow-xs">
+      <section className="mazzi-compact-card rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         {onboardingError && (
           <div role="alert" className="mazzi-compact-card mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold leading-5 text-rose-800">
             <p className="font-extrabold">Não foi possível abrir o cadastro na Stripe.</p>
@@ -46,7 +46,7 @@ export const ProviderAccountTab: React.FC<ProviderAccountTabProps> = ({
           </div>
         )}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--mazzi-yellow-soft)] text-amber-700">
             <Building2 className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
@@ -54,10 +54,10 @@ export const ProviderAccountTab: React.FC<ProviderAccountTabProps> = ({
             <p className="mt-0.5 text-xs text-[var(--mazzi-muted)]">Configure onde você receberá seus repasses.</p>
           </div>
         </div>
-        <div className="mazzi-compact-card mt-4 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
+        <div className="mazzi-compact-card mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex flex-col gap-4">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[var(--mazzi-text)]">
+              <div className="flex items-start gap-2 text-sm font-semibold text-[var(--mazzi-text)]">
                 <CheckCircle2 className={`h-4 w-4 ${isReady ? 'text-emerald-600' : 'text-[var(--mazzi-muted)]'}`} aria-hidden="true" />
                 <span>{isReady ? 'Recebimentos habilitados' : hasConnectedAccount ? 'Cadastro de recebimentos pendente' : 'Cadastro de recebimentos não iniciado'}</span>
               </div>
@@ -65,17 +65,17 @@ export const ProviderAccountTab: React.FC<ProviderAccountTabProps> = ({
                 Seus dados bancários são informados com segurança no cadastro de recebimentos e não ficam armazenados no MAZZI.
               </p>
             </div>
-            <div className="w-full">
+            <div className="w-full border-t border-slate-200 pt-3">
               <Button type="button" variant="primary" size="sm" className="w-full" onClick={onOpenPayoutOnboarding} isLoading={isOpeningPayoutOnboarding} leftIcon={<ExternalLink className="h-4 w-4" aria-hidden="true" />}>
                 {isReady ? 'Atualizar dados' : 'Configurar recebimentos'}
               </Button>
             </div>
           </div>
         </div>
-        {hasConnectedAccount && <div className={`mazzi-compact-card mt-3 rounded-2xl border p-3 text-xs font-semibold ${isReady ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+        {hasConnectedAccount && <div className={`mazzi-compact-card mt-3 rounded-xl border px-3 py-2.5 text-xs font-semibold leading-5 ${isReady ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
           {isReady ? 'Cadastro concluído. Os repasses automáticos estão habilitados.' : 'Há informações pendentes. Abra o cadastro de recebimentos para continuar.'}
         </div>}
-        {maskedAccount && <div className="mazzi-compact-card mt-3 rounded-2xl border border-[var(--mazzi-border)] bg-white px-4 py-3">
+        {maskedAccount && <div className="mazzi-compact-card mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-xs">
           <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--mazzi-muted)]">Conta cadastrada</p>
           <p className="mt-1 text-sm font-semibold text-[var(--mazzi-text)]">{maskedAccountLabel}</p>
           {maskedAccountDetails && <p className="mt-0.5 text-xs text-[var(--mazzi-muted)]">{maskedAccountDetails}</p>}

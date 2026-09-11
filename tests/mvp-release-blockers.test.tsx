@@ -119,7 +119,7 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
       await waitFor(() => {
         expect(screen.getByText('Confirmadas')).toBeTruthy();
         expect(screen.getByText('Concluídas')).toBeTruthy();
-        expect(screen.getByText('Recebido DEV')).toBeTruthy();
+        expect(screen.getByText('Recebido no ambiente de teste')).toBeTruthy();
         expect(screen.getByText('Avaliação')).toBeTruthy();
         expect(screen.getByText('Veículos ativos')).toBeTruthy();
         expect(screen.getByText('Ofertas ativas')).toBeTruthy();

@@ -5,6 +5,8 @@ import {
   AdminAnalyticsSummary, AnalyticsPeriodPreset, ProviderAnalyticsSummary, } from '../../types';
 import { ButtonBase } from '../ui/Button';
 import { formatCentsToBRL } from '../../domain/money';
+import { translateAdminReportText } from '../../lib/admin-report-presentation';
+import { getFriendlyAdminError } from '../../domain/status-presentation';
 
 const PERIODS: AnalyticsPeriodPreset[] = [7, 30, 90];
 
@@ -83,7 +85,7 @@ export const AdminAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refresh
     try {
       setSummary(await dbService.getAdminAnalyticsSummary(period));
     } catch (err: any) {
-      setError(err?.message || 'Falha ao carregar dados analíticos reais.');
+      setError(getFriendlyAdminError(err, 'Não foi possível carregar os dados analíticos. Tente novamente em instantes.'));
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +136,7 @@ export const AdminAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refresh
             <MetricCard label="Alunos ativos" value={summary.users.active_students} helper="Base ativa total" icon={<Users className="w-4 h-4" />} />
             <MetricCard label="Prestadores ativos" value={summary.supply.active_providers} helper={`${summary.supply.active_individual_providers} instrutores · ${summary.supply.active_driving_schools} CFCs`} icon={<Car className="w-4 h-4" />} />
             <MetricCard label="Reservas confirmadas" value={summary.bookings.confirmed} helper={`${summary.bookings.created} criadas no período`} icon={<CalendarIcon className="w-4 h-4" />} />
-            <MetricCard label="Volume DEV pago" value={formatCentsToBRL(summary.financial_dev.paid_volume_cents)} helper={summary.financial_dev.label} icon={<CreditCard className="w-4 h-4" />} dark />
+            <MetricCard label="Volume pago no ambiente de teste" value={formatCentsToBRL(summary.financial_dev.paid_volume_cents)} helper={translateAdminReportText(summary.financial_dev.label)} icon={<CreditCard className="w-4 h-4" />} dark />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -165,9 +167,9 @@ export const AdminAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refresh
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <MetricCard label="Buscas" value={summary.engagement.provider_searches} icon={<BarChart3 className="w-4 h-4" />} />
                 <MetricCard label="Perfis vistos" value={summary.engagement.provider_profile_views} icon={<Users className="w-4 h-4" />} />
-                <MetricCard label="Checkouts iniciados" value={summary.engagement.checkout_started} icon={<CreditCard className="w-4 h-4" />} />
-                <MetricCard label="Checkouts cancelados" value={summary.engagement.checkout_cancelled} icon={<CreditCard className="w-4 h-4" />} />
-                <MetricCard label="Avaliação média" value={summary.quality.rating_average ?? '—'} helper={`${summary.quality.reviews_created} reviews`} icon={<Star className="w-4 h-4" />} />
+                <MetricCard label="Pagamentos iniciados" value={summary.engagement.checkout_started} icon={<CreditCard className="w-4 h-4" />} />
+                <MetricCard label="Pagamentos abandonados" value={summary.engagement.checkout_cancelled} icon={<CreditCard className="w-4 h-4" />} />
+                <MetricCard label="Avaliação média" value={summary.quality.rating_average ?? '—'} helper={`${summary.quality.reviews_created} avaliações`} icon={<Star className="w-4 h-4" />} />
               </div>
             </div>
           </div>
@@ -189,7 +191,7 @@ export const ProviderAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refr
     try {
       setSummary(await dbService.getProviderAnalyticsSummary(period));
     } catch (err: any) {
-      setError(err?.message || 'Falha ao carregar seu desempenho.');
+      setError(getFriendlyAdminError(err, 'Não foi possível carregar seu desempenho. Tente novamente em instantes.'));
     } finally {
       setIsLoading(false);
     }
@@ -220,7 +222,7 @@ export const ProviderAnalyticsPanel: React.FC<{ refreshKey?: number }> = ({ refr
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <MetricCard label="Confirmadas" value={summary.bookings.confirmed} helper={`${summary.bookings.upcoming} próximas`} icon={<CalendarIcon className="w-4 h-4" />} />
           <MetricCard label="Concluídas" value={summary.bookings.completed} helper={`${summary.bookings.cancelled} canceladas`} icon={<TrendingUp className="w-4 h-4" />} />
-          <MetricCard label="Recebido DEV" value={formatCentsToBRL(summary.financial_dev.paid_volume_cents)} helper={summary.financial_dev.label} icon={<CreditCard className="w-4 h-4" />} dark />
+          <MetricCard label="Recebido no ambiente de teste" value={formatCentsToBRL(summary.financial_dev.paid_volume_cents)} helper={translateAdminReportText(summary.financial_dev.label)} icon={<CreditCard className="w-4 h-4" />} dark />
           <MetricCard label="Avaliação" value={summary.quality.rating_average ?? '—'} helper={`${summary.quality.reviews_count} avaliações`} icon={<Star className="w-4 h-4" />} />
           <MetricCard label="Veículos ativos" value={summary.supply.active_vehicles} icon={<Car className="w-4 h-4" />} />
           <MetricCard label="Ofertas ativas" value={summary.supply.active_offerings} icon={<BarChart3 className="w-4 h-4" />} />

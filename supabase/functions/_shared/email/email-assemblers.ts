@@ -67,9 +67,19 @@ export interface EmailAssemblerContext {
 
 function transmissionLabel(value: string): string {
   const normalized = value.trim().toUpperCase();
-  if (normalized === 'AUTOMATIC' || normalized === 'AUTOMÁTICO') return 'Automático';
+  if (normalized === 'AUTOMATIC' || normalized === 'AUTOM\u00c1TICO') return 'Autom\u00e1tico';
   if (normalized === 'MANUAL') return 'Manual';
   return value.trim();
+}
+
+function repairMojibake(value: string): string {
+  if (!/[\u00c3\u00c2\u00e2]/.test(value)) return value;
+  try {
+    const bytes = [...value].map((character) => `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`).join('');
+    return decodeURIComponent(bytes);
+  } catch {
+    return value;
+  }
 }
 
 function vehicleParams(vehicle: CanonicalVehicleEmailData) {
@@ -78,7 +88,7 @@ function vehicleParams(vehicle: CanonicalVehicleEmailData) {
     vehicle_model: vehicle.model.trim(),
     vehicle_year: String(vehicle.year),
     vehicle_transmission: transmissionLabel(vehicle.transmission),
-    vehicle_color: vehicle.color.trim(),
+    vehicle_color: repairMojibake(vehicle.color.trim()),
   };
 }
 
@@ -169,8 +179,9 @@ export function buildProPayoutCompletedEmailData(input: {
 }): ProPayoutCompletedParams {
   const { payout, config } = input;
   const urls = buildEmailUrls(config, { payoutReference: payout.publicReference });
-  const bankFragmentsUnavailable = payout.bankBranchLast2 === 'não informado' && payout.bankAccountLast4 === 'não informado';
-  if (!bankFragmentsUnavailable && (!/^\d{2}$/.test(payout.bankBranchLast2) || !/^\d{4}$/.test(payout.bankAccountLast4))) {
+  const branchUnavailable = payout.bankBranchLast2 === 'n\u00e3o informado';
+  const accountUnavailable = payout.bankAccountLast4 === 'n\u00e3o informado';
+  if ((!branchUnavailable && !/^\d{2}$/.test(payout.bankBranchLast2)) || (!accountUnavailable && !/^\d{4}$/.test(payout.bankAccountLast4))) {
     throw new Error('EMAIL_BANK_FRAGMENT_INVALID');
   }
   return {

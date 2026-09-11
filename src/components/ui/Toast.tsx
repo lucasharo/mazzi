@@ -20,7 +20,7 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-1/2 z-[130] flex w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 flex-col gap-2.5 pointer-events-none sm:left-auto sm:right-5 sm:w-full sm:translate-x-0">
+    <div className="fixed left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-[130] flex w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 flex-col gap-2.5 pointer-events-none">
       {toasts.map((toast) => {
         const config = {
           success: {
@@ -44,7 +44,7 @@ export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto p-4 rounded-2xl border shadow-xl flex items-start gap-3 animate-in slide-in-from-right duration-200 ${config.bg} text-left`}
+            className={`pointer-events-auto p-4 rounded-2xl border shadow-xl flex items-start gap-3 animate-in slide-in-from-top duration-200 ${config.bg} text-left`}
           >
             {config.icon}
             <div className="flex-1 text-xs">

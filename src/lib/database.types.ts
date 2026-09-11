@@ -205,6 +205,7 @@ export interface Database {
           amount_in_cents: number;
           status: PayoutStatus;
           scheduled_release_at: string;
+          stripe_arrival_date: string | null;
           released_at: string | null;
           external_payout_id: string | null;
           idempotency_key: string;

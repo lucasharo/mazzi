@@ -1216,6 +1216,7 @@ export interface ProviderEarningsMetrics {
   to_receive_cents: number;
   blocked_cents: number;
   failed_cents: number;
+  refunded_canceled_cents?: number;
   lessons_completed: number;
   lessons_with_earnings?: number;
   average_ticket_cents?: number | null;
@@ -1231,6 +1232,8 @@ export interface ProviderEarningsSeriesPoint {
 export interface ProviderUpcomingPayout {
   id?: string;
   date: string;
+  arrival_date?: string | null;
+  date_source?: 'STRIPE' | 'MAZZI_FORECAST';
   amount_in_cents: number;
   payout_count: number;
   status?: PayoutStatus;
@@ -1256,6 +1259,7 @@ export interface ProviderPayoutDetail {
   status: PayoutStatus;
   amount_in_cents: number;
   scheduled_release_at: string;
+  arrival_date?: string | null;
   released_at?: string | null;
   processed_at?: string | null;
   failure_reason?: string | null;

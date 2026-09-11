@@ -42,13 +42,27 @@ function assertUrl(value: string, parameterName: string): void {
 }
 
 function assertSensitivePayoutFragment(value: string, parameterName: string): void {
-  if (value === 'não informado') return;
+  if (value === 'n\u00e3o informado') return;
   if (parameterName === 'bank_branch_last2' && !/^\d{2}$/.test(value)) {
     throw new Error('EMAIL_BANK_BRANCH_LAST2_REQUIRED');
   }
   if (parameterName === 'bank_account_last4' && !/^\d{4}$/.test(value)) {
     throw new Error('EMAIL_BANK_ACCOUNT_LAST4_REQUIRED');
   }
+}
+
+function repairMojibake(value: string): string {
+  if (!/[\u00c3\u00c2\u00e2]/.test(value)) return value;
+  try {
+    const bytes = [...value].map((character) => `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`).join('');
+    return decodeURIComponent(bytes);
+  } catch {
+    return value;
+  }
+}
+
+function encodeNonAsciiAsHtmlEntities(value: string): string {
+  return value.replace(/[^\x00-\x7F]/g, (character) => `&#${character.codePointAt(0)};`);
 }
 
 function validateContract(templateName: EmailTemplateName, source: string): string[] {
@@ -88,7 +102,7 @@ export function renderTemplate<T extends EmailTemplateName>(
   if (RESIDUAL_PLACEHOLDER_PATTERN.test(rendered)) throw new Error('EMAIL_RESIDUAL_PLACEHOLDER');
   // Keep this explicit so a future template cannot silently lose a declared field.
   if (placeholders.some((name) => rendered.includes(`{{${name}}}`))) throw new Error('EMAIL_RESIDUAL_PLACEHOLDER');
-  return rendered;
+  return encodeNonAsciiAsHtmlEntities(repairMojibake(rendered));
 }
 
 export async function loadEmailTemplate(templateName: EmailTemplateName): Promise<string> {

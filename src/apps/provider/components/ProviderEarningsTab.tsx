@@ -7,6 +7,7 @@ import {
   Clock3,
   LockKeyhole,
   RefreshCw,
+  RotateCcw,
   Star,
   TrendingUp,
   Wallet,
@@ -62,11 +63,12 @@ function PeriodSelector({ period, onChange, disabled = false }: { period: Provid
   );
 }
 
-function MetricCard({ label, value, helper, icon, tone = 'light' }: { label: string; value: string; helper?: string; icon: React.ReactNode; tone?: 'light' | 'warning' | 'danger' }) {
+function MetricCard({ label, value, helper, icon, tone = 'light' }: { label: string; value: string; helper?: string; icon: React.ReactNode; tone?: 'light' | 'warning' | 'danger' | 'dark' }) {
   const styles = {
     light: 'border-slate-200 bg-white text-[var(--mazzi-dark)]',
     warning: 'border-amber-200 bg-amber-50 text-amber-950',
     danger: 'border-rose-200 bg-rose-50 text-rose-950',
+    dark: 'border-[var(--mazzi-dark)] bg-[var(--mazzi-dark)] text-white',
   }[tone];
   return (
     <div className={`mazzi-compact-card rounded-2xl border p-4 shadow-2xs ${styles}`}>
@@ -74,8 +76,8 @@ function MetricCard({ label, value, helper, icon, tone = 'light' }: { label: str
         <span className="text-[10px] font-black uppercase tracking-[0.12em] opacity-70">{label}</span>
         <span className="text-amber-600" aria-hidden="true">{icon}</span>
       </div>
-      <p className="mt-2 text-xl font-black tracking-tight">{value}</p>
-      {helper && <p className="mt-1 text-[11px] font-semibold opacity-70">{helper}</p>}
+      <p className="mt-2 text-right text-xl font-black tracking-tight">{value}</p>
+      {helper && <p className="mt-1 text-right text-[11px] font-semibold opacity-70">{helper}</p>}
     </div>
   );
 }
@@ -147,7 +149,7 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
           <h2 id="provider-upcoming-payouts-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
                   <CalendarIcon className="h-4 w-4 text-amber-500" aria-hidden="true" /> Próximos repasses
           </h2>
-          <p className="mt-1 text-xs font-medium text-slate-500">Previsão dos próximos 7 dias e repasses pendentes.</p>
+          <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">A data oficial é informada pelo serviço de pagamentos quando o repasse bancário é criado.</p>
         </div>
         <span className="text-sm font-black text-slate-900">{formatMoney(summary.upcoming_total_cents)}</span>
       </div>
@@ -155,16 +157,19 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
           <p className="mazzi-compact-card mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Nenhum repasse previsto ou pendente.</p>
       ) : (
         <div
-          className="mt-4 max-h-64 divide-y divide-slate-100 overflow-y-auto overscroll-contain pr-2 scrollbar-thin"
-          aria-label="Lista de repasses realizados"
+          className="mt-4 max-h-[18rem] divide-y divide-slate-100 overflow-y-auto overscroll-contain pr-1"
+          aria-label="Lista de próximos repasses"
         >
           {summary.upcoming_payouts.map((item) => (
             <div key={item.id || `${item.date}-${item.status || 'scheduled'}`} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
               <div className="flex items-center gap-2">
                 <Clock3 className="h-4 w-4 text-slate-400" aria-hidden="true" />
                 <div>
-                  <p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p>
+                  {item.date_source === 'STRIPE' && <p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p>}
                   <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'} · {statusLabel(item.status, item.is_overdue)}</p>
+                  <p className={`mt-0.5 text-[10px] font-semibold ${item.date_source === 'STRIPE' ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {item.date_source === 'STRIPE' ? 'Prazo oficial do serviço de pagamento' : 'Aguardando prazo oficial do serviço de pagamento'}
+                  </p>
                 </div>
               </div>
               <span className={`text-sm font-black ${item.status === 'BLOCKED' ? 'text-rose-700' : 'text-emerald-700'}`}>{formatMoney(item.amount_in_cents)}</span>
@@ -193,7 +198,7 @@ function CompletedPayouts({ summary }: { summary: ProviderEarningsSummary }) {
       {payouts.length === 0 ? (
         <p className="mazzi-compact-card mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Nenhum repasse realizado ainda.</p>
       ) : (
-        <div className="mt-4 divide-y divide-slate-100">
+        <div className="mt-4 max-h-[18rem] divide-y divide-slate-100 overflow-y-auto overscroll-contain pr-1">
           {payouts.map((item) => (
             <div key={item.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
               <div className="min-w-0">
@@ -277,7 +282,7 @@ function EmptyEarningsState() {
 }
 
 export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKey?: number; providerId?: string; userId?: string }> = ({ refreshKey = 0, focusReviewsKey = 0, providerId, userId }) => {
-  const [period, setPeriod] = useState<ProviderEarningsPeriodPreset>(30);
+  const [period, setPeriod] = useState<ProviderEarningsPeriodPreset>(7);
   const [summary, setSummary] = useState<ProviderEarningsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -351,11 +356,12 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
 
           {(summary.current.lessons_with_earnings ?? summary.current.lessons_completed) === 0 && summary.current.net_earned_cents === 0 && <EmptyEarningsState />}
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 max-lg:[&>*:last-child:nth-child(odd)]:col-span-2 lg:grid-cols-5">
             <MetricCard label="Recebido" value={formatMoney(summary.current.received_cents, false)} helper="Repasses pagos" icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />} />
             <MetricCard label="A receber" value={formatMoney(summary.current.to_receive_cents, false)} helper="Pendente, disponível ou em transferência" icon={<Clock3 className="h-4 w-4" aria-hidden="true" />} />
             <MetricCard label="Bloqueado" value={formatMoney(summary.current.blocked_cents, false)} helper="Aguardando análise ou liberação" icon={<LockKeyhole className="h-4 w-4" aria-hidden="true" />} tone="warning" />
-            <MetricCard label="Ticket médio líquido" value={formatMoney(summary.current.average_ticket_cents, false)} helper="Por aula com ganho" icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />} />
+            <MetricCard label="Devolvido/cancelado" value={formatMoney(summary.current.refunded_canceled_cents, false)} helper="Valores devolvidos ao aluno" icon={<RotateCcw className="h-4 w-4" aria-hidden="true" />} tone="danger" />
+            <MetricCard label="Ticket médio líquido" value={formatMoney(summary.current.average_ticket_cents, false)} helper="Por aula com ganho" icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />} tone="dark" />
           </div>
 
           {summary.current.failed_cents > 0 && <div className="mazzi-compact-card rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-900"><span className="font-black">Requer atenção:</span> existem {formatMoney(summary.current.failed_cents)} em repasses que falharam.</div>}

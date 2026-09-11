@@ -3,7 +3,7 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-const { auth, verifyRecoveryOtp, updatePassword, requestPasswordReset } = vi.hoisted(() => ({
+const { auth, resendSignupOtp, verifyRecoveryOtp, updatePassword, requestPasswordReset } = vi.hoisted(() => ({
   auth: {
     signIn: vi.fn(),
     signUpStudent: vi.fn(),
@@ -15,6 +15,7 @@ const { auth, verifyRecoveryOtp, updatePassword, requestPasswordReset } = vi.hoi
   verifyRecoveryOtp: vi.fn(),
   updatePassword: vi.fn(),
   requestPasswordReset: vi.fn().mockResolvedValue(undefined),
+  resendSignupOtp: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../src/components/auth/AuthContext', () => ({
@@ -23,7 +24,7 @@ vi.mock('../src/components/auth/AuthContext', () => ({
 
 vi.mock('../src/lib/auth-service', () => ({
   requestPasswordReset,
-  resendSignupOtp: vi.fn(),
+  resendSignupOtp,
   updatePassword,
   verifyEmailOtp: vi.fn(),
   verifyRecoveryOtp,
@@ -47,6 +48,7 @@ describe('TASK-064 — password recovery isolation', () => {
     verifyRecoveryOtp.mockReset();
     updatePassword.mockReset();
     requestPasswordReset.mockResolvedValue(undefined);
+    resendSignupOtp.mockResolvedValue(undefined);
     auth.completePasswordRecovery.mockResolvedValue(undefined);
     auth.error = null;
   });
@@ -118,6 +120,7 @@ describe('TASK-064 — password recovery isolation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
 
     await screen.findByRole('heading', { name: 'Confirme seu e-mail' });
+    await waitFor(() => expect(resendSignupOtp).toHaveBeenCalledWith('student@example.com'));
     expect(screen.getByLabelText('Código de confirmação').getAttribute('maxLength')).toBe('6');
     expect(screen.queryByText('Confirme o código de 6 dígitos enviado para o seu e-mail.')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Voltar para o login' }));

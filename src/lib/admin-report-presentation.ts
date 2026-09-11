@@ -1,0 +1,247 @@
+const REPORT_LABELS: Record<string, string> = {
+  created: 'Criados',
+  confirmed: 'Confirmadas',
+  completed: 'Concluídas',
+  cancelled: 'Canceladas',
+  expired: 'Expiradas',
+  instant_lesson: 'Aulas Agora',
+  payments_created: 'Pagamentos criados',
+  payments_paid: 'Pagamentos pagos',
+  payments_failed: 'Pagamentos não aprovados',
+  new_users: 'Novos usuários',
+  new_providers: 'Novos prestadores',
+  new_vehicles: 'Novos veículos',
+  new_offerings: 'Novas ofertas',
+  active_users: 'Usuários ativos',
+  students: 'Alunos',
+  instructors: 'Instrutores',
+  school_admins: 'Administradores de autoescola',
+  blocked_or_inactive: 'Bloqueados ou inativos',
+  submitted: 'Enviados',
+  approved: 'Aprovados',
+  pending: 'Pendentes',
+  rejected: 'Rejeitados',
+  expiring_in_30_days: 'Vencendo em 30 dias',
+  cancelled_bookings: 'Reservas canceladas',
+  student_cancelled: 'Canceladas pelo aluno',
+  provider_cancelled: 'Canceladas pelo profissional',
+  disputes_opened: 'Contestações abertas',
+  disputes_resolved: 'Contestações resolvidas',
+  notifications_created: 'Notificações criadas',
+  notifications_unread: 'Notificações não lidas',
+  emails_created: 'E-mails criados',
+  emails_sent: 'E-mails enviados',
+  emails_failed: 'E-mails não enviados',
+  profile_views: 'Perfis vistos',
+  provider_profile_views: 'Perfis de profissionais vistos',
+  provider_searches: 'Buscas por profissional',
+  available_slots_views: 'Consultas de horários',
+  checkout_started: 'Pagamentos iniciados',
+  checkout_cancelled: 'Pagamentos abandonados',
+  searches_without_result: 'Buscas sem resultado',
+  pending_cents: 'Repasses pendentes',
+  paid_cents: 'Repasses pagos',
+  failed_count: 'Falhas',
+  failed: 'Não processados',
+  no_show: 'Não comparecimentos',
+  upcoming: 'Próximas',
+  active_students: 'Alunos ativos',
+  active_instructor_users: 'Instrutores ativos',
+  active_school_admin_users: 'Administradores de autoescola ativos',
+  active_users_total: 'Usuários ativos',
+  active_providers: 'Prestadores ativos',
+  active_individual_providers: 'Instrutores individuais ativos',
+  active_driving_schools: 'Autoescolas ativas',
+  active_vehicles: 'Veículos ativos',
+  active_offerings: 'Ofertas ativas',
+  provider_contexts: 'Contextos autorizados',
+  quote_to_booking_rate: 'Conversão de cotação para reserva',
+  booking_to_paid_rate: 'Conversão de reserva para pagamento',
+  paid_volume_cents: 'Volume pago',
+  platform_fee_volume_cents: 'Taxas MAZZI',
+  refund_volume_cents: 'Reembolsos',
+  payout_pending_cents: 'Repasses pendentes',
+  payout_paid_cents: 'Repasses pagos',
+  gross_volume_cents: 'Volume bruto',
+  gateway_fee_cents: 'Taxas do meio de pagamento',
+  platform_fee_cents: 'Taxas da plataforma',
+  amount_cents: 'Valor',
+  refunds_cents: 'Reembolsos',
+  cancellation_refunds_cents: 'Reembolsos de cancelamentos',
+  cancellations_after_paid: 'Cancelamentos após pagamento',
+  payment_abandonments: 'Pagamentos abandonados',
+  payment_abandonment_amount_cents: 'Valor de pagamentos abandonados',
+  compliance_submitted: 'Documentos enviados',
+  compliance_approved: 'Documentos aprovados',
+  compliance_pending: 'Documentos pendentes',
+  compliance_rejected: 'Documentos rejeitados',
+  rating_average: 'Avaliação média',
+  rating_count: 'Quantidade de avaliações',
+  reviews_created: 'Avaliações criadas',
+  reviews_count: 'Quantidade de avaliações',
+  count: 'Quantidade',
+  total: 'Total',
+  report_date: 'Dia',
+  generated_at: 'Gerado em',
+  timezone: 'Fuso horário',
+  period: 'Período',
+  label: 'Categoria',
+};
+
+const TEXT_TRANSLATIONS: Record<string, string> = {
+  UNKNOWN: 'Não informado',
+  SEM_MOTIVO_INFORMADO: 'Sem motivo informado',
+  CONFIRMED: 'Confirmada',
+  COMPLETED: 'Concluída',
+  CANCELLED: 'Cancelada',
+  CANCELLED_BY_STUDENT: 'Cancelada pelo aluno',
+  CANCELLED_BY_PROVIDER: 'Cancelada pelo profissional',
+  EXPIRED: 'Expirada',
+  PENDING: 'Pendente',
+  PENDING_PAYMENT: 'Aguardando pagamento',
+  PENDING_REVIEW: 'Aguardando análise',
+  IN_PROGRESS: 'Em andamento',
+  NO_SHOW: 'Não comparecimento',
+  NO_SHOW_STUDENT: 'Aluno não compareceu',
+  NO_SHOW_PROVIDER: 'Profissional não compareceu',
+  PAID: 'Pago',
+  FAILED: 'Não aprovado',
+  PROCESSING: 'Em processamento',
+  RELEASED: 'Liberado',
+  AVAILABLE: 'Disponível',
+  REJECTED: 'Rejeitado',
+  APPROVED: 'Aprovado',
+  IN_REVIEW: 'Em análise',
+  UNDER_REVIEW: 'Em análise',
+  ACTIVE: 'Ativo',
+  INACTIVE: 'Inativo',
+  BLOCKED: 'Bloqueado',
+  SUSPENDED: 'Suspenso',
+  OPEN: 'Aberta',
+  DISPUTED: 'Em contestação',
+  AWAITING_STUDENT_RESPONSE: 'Aguardando resposta do aluno',
+  AWAITING_PROVIDER_RESPONSE: 'Aguardando resposta do profissional',
+  STUDENT: 'Aluno',
+  INSTRUCTOR: 'Instrutor',
+  SCHOOL_ADMIN: 'Administrador de autoescola',
+  PLATFORM_ADMIN: 'Administrador da plataforma',
+  SUPPORT: 'Suporte',
+  DRIVING_SCHOOL: 'Autoescola',
+  MANUAL: 'Manual',
+  AUTOMATIC: 'Automático',
+  REFUNDED: 'Reembolsado',
+  PARTIALLY_REFUNDED: 'Reembolso parcial',
+  SCHEDULED: 'Agendada',
+  AUTHORIZED: 'Autorizado',
+  CHARGEBACK: 'Contestação de pagamento',
+  ERROR: 'Erro',
+  SENT: 'Enviado',
+  PROCESSING_FAILED: 'Falha no processamento',
+  AULA_AGORA: 'Aula Agora',
+  INSTANT: 'Aula Agora',
+  AGENDA: 'Agenda',
+  PROVIDER_SEARCH: 'Busca por profissional',
+  PROVIDER_PROFILE_VIEW: 'Visualização de perfil profissional',
+  AVAILABLE_SLOTS_VIEW: 'Consulta de horários disponíveis',
+  CHECKOUT_STARTED: 'Pagamento iniciado',
+  PAYMENT_CONFIRMED: 'Pagamento confirmado',
+  CANCELLATION_REFUND_REQUESTED: 'Reembolso de cancelamento solicitado',
+  REFUND_COMPLETED: 'Reembolso concluído',
+  PRO_BOOKING_CONFIRMED: 'Reserva do profissional confirmada',
+  PRO_PAYOUT_COMPLETED: 'Repasse do profissional concluído',
+  STUDENT_CHANGED_MIND: 'Aluno desistiu',
+  PROVIDER_PERSONAL_EMERGENCY: 'Emergência pessoal do profissional',
+  VEHICLE_ISSUE: 'Problema no veículo',
+  PERSONAL_EMERGENCY: 'Emergência pessoal',
+  SCHEDULE_CONFLICT: 'Conflito de agenda',
+  WEATHER_OR_SAFETY: 'Clima ou segurança',
+  OPERATIONAL_ISSUE: 'Problema operacional',
+  OTHER: 'Outro',
+  DEMO: 'Demonstração',
+  REAL: 'Real',
+};
+
+const FALLBACK_WORDS: Record<string, string> = {
+  active: 'ativos',
+  amount: 'valor',
+  average: 'média',
+  available: 'disponíveis',
+  booking: 'reserva',
+  bookings: 'reservas',
+  cancelled: 'canceladas',
+  cancellation: 'cancelamento',
+  cancellations: 'cancelamentos',
+  completed: 'concluídas',
+  count: 'quantidade',
+  created: 'criados',
+  days: 'dias',
+  failed: 'falhas',
+  fee: 'taxa',
+  fees: 'taxas',
+  gross: 'bruto',
+  inactive: 'inativos',
+  new: 'novos',
+  notifications: 'notificações',
+  paid: 'pagos',
+  payment: 'pagamento',
+  payments: 'pagamentos',
+  payout: 'repasse',
+  payouts: 'repasses',
+  pending: 'pendentes',
+  profile: 'perfil',
+  provider: 'prestador',
+  providers: 'prestadores',
+  refund: 'reembolso',
+  refunds: 'reembolsos',
+  rejected: 'rejeitados',
+  reviews: 'avaliações',
+  search: 'busca',
+  searches: 'buscas',
+  submitted: 'enviados',
+  total: 'total',
+  unread: 'não lidas',
+  users: 'usuários',
+  vehicles: 'veículos',
+  views: 'visualizações',
+  volume: 'volume',
+};
+
+function normalizeToken(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+function codeKey(value: string): string {
+  return normalizeToken(value).toUpperCase().replace(/[\s-]+/g, '_');
+}
+
+function humanizeUnknownKey(value: string): string {
+  return value
+    .replace(/[.]+/g, '_')
+    .split('_')
+    .filter(Boolean)
+    .map((word) => FALLBACK_WORDS[word.toLowerCase()] || word)
+    .join(' ')
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+export function getAdminReportLabel(key: string): string {
+  const finalKey = key.split('.').at(-1) || key;
+  return REPORT_LABELS[finalKey] || humanizeUnknownKey(finalKey);
+}
+
+export function translateAdminReportText(value: string): string {
+  const normalized = normalizeToken(value);
+  if (!normalized) return 'Não informado';
+  if (normalized.includes(' / ')) {
+    return normalized.split(' / ').map((part) => translateAdminReportText(part)).join(' / ');
+  }
+
+  const translated = TEXT_TRANSLATIONS[normalized] || TEXT_TRANSLATIONS[codeKey(normalized)];
+  if (translated) return translated;
+
+  return normalized
+    .replace(/\bNo-show\b/gi, 'Não comparecimento')
+    .replace(/\bCheckouts?\b/gi, (match) => match.toLowerCase().endsWith('s') ? 'pagamentos' : 'pagamento')
+    .replace(/\bReviews?\b/gi, 'avaliações')
+    .replace(/\bGateway\b/gi, 'meio de pagamento');
+}

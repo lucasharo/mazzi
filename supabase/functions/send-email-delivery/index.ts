@@ -71,7 +71,7 @@ async function bookingContext(service: any, bookingId: string) {
         model: vehicle.model,
         year: vehicle.year,
         transmission: vehicle.transmission || offering.transmission,
-        color: String(vehicle.color || snapshotVehicle.color || snapshot.vehicleColor || "Não informado"),
+        color: String(vehicle.color || snapshotVehicle.color || snapshot.vehicleColor || "N\u00e3o informado"),
       },
     },
   };
@@ -125,9 +125,21 @@ async function payoutData(service: any, payoutId: string, context: any) {
     .limit(1)
     .maybeSingle();
   if (bankError) throw new Error("EMAIL_BANK_ACCOUNT_LOOKUP_FAILED");
+  const { data: paymentAccount, error: paymentAccountError } = await service
+    .from("provider_payment_accounts")
+    .select("metadata")
+    .eq("provider_id", payout.provider_id)
+    .eq("status", "ACTIVE")
+    .maybeSingle();
+  if (paymentAccountError) throw new Error("EMAIL_PAYMENT_ACCOUNT_LOOKUP_FAILED");
+  const maskedPayoutAccount = paymentAccount?.metadata?.masked_payout_account;
+  const maskedBankLast4 = typeof maskedPayoutAccount?.last4 === "string" ? digits(maskedPayoutAccount.last4) : "";
+  const maskedBankName = typeof maskedPayoutAccount?.bankName === "string" ? maskedPayoutAccount.bankName : "";
   const branch = digits(bank?.branch_number);
   const account = digits(bank?.account_number);
   const hasBankFragments = branch.length >= 2 && account.length >= 4;
+  const resolvedBranchLast2 = hasBankFragments ? branch.slice(-2) : "n\u00e3o informado";
+  const resolvedAccountLast4 = hasBankFragments ? account.slice(-4) : maskedBankLast4.length >= 4 ? maskedBankLast4.slice(-4) : "n\u00e3o informado";
   return buildProPayoutCompletedEmailData({
     config: context.config,
     payout: {
@@ -136,10 +148,10 @@ async function payoutData(service: any, payoutId: string, context: any) {
       grossAmountInCents: payout.gross_amount_in_cents ?? context.booking.totalInCents,
       platformFeeInCents: payout.platform_fee_in_cents ?? context.booking.platformFeeInCents,
       releasedAt: payout.released_at || payout.processed_at || payout.created_at,
-      method: payout.transfer_method || "Conta bancária",
-      bankName: hasBankFragments ? `Banco ${bank.bank_code}` : "Conta cadastrada no MAZZI",
-      bankBranchLast2: hasBankFragments ? branch.slice(-2) : "não informado",
-      bankAccountLast4: hasBankFragments ? account.slice(-4) : "não informado",
+      method: payout.transfer_method || "Conta banc\u00e1ria",
+      bankName: hasBankFragments ? `Banco ${bank.bank_code}` : maskedBankName || "Conta cadastrada no MAZZI",
+      bankBranchLast2: resolvedBranchLast2,
+      bankAccountLast4: resolvedAccountLast4,
       providerFirstName: context.booking.providerFirstName,
     },
   });

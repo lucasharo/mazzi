@@ -6,6 +6,8 @@ import { formatDateBR, getBusinessDateOnly } from '../../lib/date-format';
 import { AdminReportDailyResponse, AdminReportDailyRow, AdminReportKey, AdminReportsResponse } from '../../types';
 import { Button, ButtonBase } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { getAdminReportLabel, translateAdminReportText } from '../../lib/admin-report-presentation';
+import { getFriendlyAdminError } from '../../domain/status-presentation';
 
 const REPORTS: Array<{ key: AdminReportKey; title: string; description: string }> = [
   { key: 'executive', title: 'Resumo executivo', description: 'Visão consolidada de usuários, oferta, reservas, funil, financeiro e qualidade.' },
@@ -13,9 +15,9 @@ const REPORTS: Array<{ key: AdminReportKey; title: string; description: string }
   { key: 'revenue', title: 'Receita e pagamentos', description: 'Volume transacionado, taxas, pagamentos pagos e falhas.' },
   { key: 'payouts', title: 'Repasses aos profissionais', description: 'Valores criados, pendentes, pagos e falhos.' },
   { key: 'supply', title: 'Oferta de profissionais', description: 'Prestadores, veículos e ofertas ativas e criadas no período.' },
-  { key: 'demand', title: 'Demanda e liquidez', description: 'Busca, visualização de agenda, checkout e buscas sem resultado.' },
+  { key: 'demand', title: 'Demanda e liquidez', description: 'Buscas, visualização de agenda, pagamentos iniciados e buscas sem resultado.' },
   { key: 'users', title: 'Usuários e ativação', description: 'Novos usuários, distribuição por papel e status.' },
-  { key: 'compliance', title: 'Compliance', description: 'Documentos enviados, aprovados, pendentes, rejeitados e próximos do vencimento.' },
+  { key: 'compliance', title: 'Conformidade documental', description: 'Documentos enviados, aprovados, pendentes, rejeitados e próximos do vencimento.' },
   { key: 'cancellations', title: 'Cancelamentos e contestações', description: 'Cancelamentos, disputas, resoluções e valores de reembolso.' },
   { key: 'communications', title: 'Notificações e e-mails', description: 'Notificações geradas e entregas de e-mail por status.' },
 ];
@@ -184,7 +186,7 @@ const DAILY_COLUMNS_BY_REPORT: Record<AdminReportKey, Array<{ key: keyof AdminRe
     { key: 'provider_searches', title: 'Buscas' },
     { key: 'provider_profile_views', title: 'Perfis vistos' },
     { key: 'available_slots_views', title: 'Agendas consultadas' },
-    { key: 'checkout_started', title: 'Checkouts iniciados' },
+    { key: 'checkout_started', title: 'Pagamentos iniciados' },
     { key: 'searches_without_result', title: 'Buscas sem resultado' },
   ],
   users: [
@@ -219,13 +221,11 @@ const DAILY_COLUMNS_BY_REPORT: Record<AdminReportKey, Array<{ key: keyof AdminRe
 };
 
 function labelFor(key: string): string {
-  return LABELS[key] || key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return getAdminReportLabel(key);
 }
 
 function translateReportText(value: string): string {
-  const normalized = value.trim();
-  if (normalized.includes(' / ')) return normalized.split(' / ').map((part) => translateReportText(part)).join(' / ');
-  return TEXT_TRANSLATIONS[normalized] || TEXT_TRANSLATIONS[normalized.toUpperCase()] || (normalized.includes('_') ? labelFor(normalized) : normalized);
+  return translateAdminReportText(value);
 }
 
 function isMoneyKey(key: string): boolean {
@@ -300,7 +300,7 @@ export const AdminReportsPanel: React.FC<{ refreshKey?: number }> = ({ refreshKe
       setData(reports);
       setDailyData(daily);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível carregar os relatórios.');
+      setError(getFriendlyAdminError(err, 'Não foi possível carregar os relatórios. Tente novamente em instantes.'));
     } finally {
       setIsLoading(false);
     }

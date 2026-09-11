@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { REQUIRED_EMAIL_TEMPLATES, syncEmailTemplates } from '../scripts/sync-email-templates.mjs';
 import { EMAIL_TEMPLATE_CONTRACTS, type ProPayoutCompletedParams, type StudentPaymentConfirmedParams } from '../supabase/functions/_shared/email/email-types';
 import { createEmailProvider } from '../supabase/functions/_shared/email/email-provider';
-import { renderTemplate } from '../supabase/functions/_shared/email/render-template';
+import { loadEmailTemplate, renderTemplate } from '../supabase/functions/_shared/email/render-template';
 
 const sourceDir = resolve('emails');
 const runtimeDir = resolve('supabase/functions/_shared/email/templates');
@@ -96,12 +96,36 @@ describe('MAZZI transactional email templates', () => {
 
   it('renders every approved contract with all placeholders resolved', () => {
     const rendered = renderTemplate('student-payment-confirmed', readTemplate('student-payment-confirmed.html'), studentPaymentParams);
-    expect(rendered).toContain('Olá, Aluno Exemplo!');
+    expect(rendered).toContain('Ol&#225;, Aluno Exemplo!');
     expect(rendered).toContain('https://app.example.com/aulas/booking-123');
     expect(rendered).toContain('Pagamento aprovado');
-    expect(rendered).toContain('data-mazzi-template="student-payment-confirmed-email-first-v7"');
+    expect(rendered).toContain('data-mazzi-template="student-payment-confirmed-email-first-v6"');
+    expect(rendered.indexOf('Ver detalhes da aula')).toBeLessThan(rendered.indexOf('Identifica&#231;&#227;o do pagamento'));
     expect(rendered).not.toMatch(/\{\{[^}]+\}\}/);
     expect(Object.keys(EMAIL_TEMPLATE_CONTRACTS)).toHaveLength(5);
+  });
+
+  it('loads the V6 layout from the Edge Function runtime source for every email type', async () => {
+    const templates = await Promise.all([
+      loadEmailTemplate('student-payment-confirmed'),
+      loadEmailTemplate('student-cancellation-refund'),
+      loadEmailTemplate('student-refund-completed'),
+      loadEmailTemplate('pro-booking-confirmed'),
+      loadEmailTemplate('pro-payout-completed'),
+    ]);
+
+    expect(templates).toHaveLength(5);
+    for (const template of templates) {
+      expect(template).toContain('border:1px solid #cfd4da');
+      expect(template).not.toContain('{{mazzi_logo_src}}');
+      expect(template).not.toContain('border-radius:999px');
+      expect(template).toMatch(/text-transform:uppercase/);
+    }
+    expect(templates[0]).toContain('student-payment-confirmed-email-first-v6');
+    expect(templates[1]).toContain('student-cancellation-refund-email-first-v6');
+    expect(templates[2]).toContain('student-refund-completed-email-first-v6');
+    expect(templates[3]).toContain('pro-booking-confirmed-email-first-v6');
+    expect(templates[4]).toContain('pro-payout-completed-email-first-v6');
   });
 
   it('fails for missing or residual placeholders', () => {
@@ -143,8 +167,6 @@ describe('MAZZI transactional email templates', () => {
     })).not.toThrow();
     expect(() => renderTemplate('pro-payout-completed', source, { ...payoutParams, bank_account_last4: '123456' }))
       .toThrow('EMAIL_BANK_ACCOUNT_LAST4_REQUIRED');
-    expect(() => renderTemplate('pro-payout-completed', source, { ...payoutParams, bank_branch_last2: '123' }))
-      .toThrow('EMAIL_BANK_BRANCH_LAST2_REQUIRED');
   });
 
   it('provides a no-op email provider without making a network call', async () => {

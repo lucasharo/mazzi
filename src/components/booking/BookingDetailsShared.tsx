@@ -40,6 +40,24 @@ function normalizeDomainToken(value: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
+function removeDomainCodes(value: string): string {
+  const knownCodes = [
+    ...PROVIDER_CANCELLATION_REASONS.map((item) => item.code),
+    'PLATFORM_FAILURE',
+    'PROVIDER_PERSONAL_EMERGENCY',
+  ];
+  let cleaned = value;
+  for (const code of knownCodes) {
+    const codePattern = code.replace(/_/g, '[_\\s-]+');
+    cleaned = cleaned.replace(new RegExp(`(?:^|[\\s:()[\\]-])${codePattern}(?=$|[\\s:()[\\]-])`, 'ig'), ' ');
+  }
+  return cleaned
+    .replace(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g, ' ')
+    .replace(/\s*[:\-–]\s*(?=$|[.])/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function getFriendlyCancellationReason(booking: Booking): string | null {
   const reason = booking.cancellationReason?.trim();
   if (!reason) return null;
@@ -59,19 +77,17 @@ export function getFriendlyCancellationReason(booking: Booking): string | null {
     PROVIDER_PERSONAL_EMERGENCY: 'Emergência pessoal do profissional',
   };
   const label = providerReason?.label || internalReasonLabels[rawCode];
-  if (label) return detail ? `${label}: ${detail}` : label;
+  if (label) {
+    const sanitizedDetail = removeDomainCodes(detail);
+    return sanitizedDetail ? `${label}: ${sanitizedDetail}` : label;
+  }
 
   // Older records may contain a human label followed by the raw code, for
   // example: "Conflito de agenda: SCHEDULE CONFLICT". Remove the code before
   // presenting the message so domain tokens never reach the user interface.
   const embeddedProviderReason = PROVIDER_CANCELLATION_REASONS.find((item) => normalizeDomainToken(reason).includes(item.code));
   if (embeddedProviderReason) {
-    const codePattern = embeddedProviderReason.code.replace(/_/g, '[_\\s-]+');
-    const humanText = reason
-      .replace(new RegExp(codePattern, 'ig'), '')
-      .replace(/\s*[:\-–]\s*/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const humanText = removeDomainCodes(reason);
     const humanLabel = normalizeDomainToken(embeddedProviderReason.label);
     return humanText && normalizeDomainToken(humanText) !== humanLabel
       ? `${embeddedProviderReason.label}: ${humanText}`
@@ -79,9 +95,10 @@ export function getFriendlyCancellationReason(booking: Booking): string | null {
   }
 
   // Never leak an unknown enum/domain token into an end-user surface.
-  if (/^[A-Z][A-Z0-9_\s-]+$/.test(reason)) return 'Motivo não informado.';
+  const sanitizedReason = removeDomainCodes(reason);
+  if (!sanitizedReason || /^[A-Z][A-Z0-9_\s-]+$/.test(sanitizedReason)) return 'Motivo não informado.';
 
-  return reason;
+  return sanitizedReason;
 }
 
 interface BookingDetailsHeaderProps {
