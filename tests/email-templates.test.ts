@@ -27,7 +27,6 @@ function readTemplate(name: string): string {
 }
 
 const studentPaymentParams: StudentPaymentConfirmedParams = {
-  mazzi_logo_src: 'https://assets.example.com/mazzi-logo.png',
   student_name: 'Aluno Exemplo',
   total_paid: 'R$ 100,00',
   lesson_amount: 'R$ 90,00',

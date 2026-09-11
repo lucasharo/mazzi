@@ -105,7 +105,6 @@ export function buildStudentPaymentConfirmedEmailData(context: EmailAssemblerCon
     paymentReference: payment.publicReference,
   });
   return {
-    mazzi_logo_src: config.logoUrl,
     student_name: booking.studentName.trim(),
     total_paid: formatCurrencyBRL(booking.totalInCents),
     lesson_amount: formatCurrencyBRL(booking.priceInCents),

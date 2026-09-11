@@ -6,7 +6,7 @@ export type EmailTemplateName =
   | 'pro-payout-completed';
 
 export interface StudentPaymentConfirmedParams {
-  mazzi_logo_src: string;
+  mazzi_logo_src?: string;
   student_name: string;
   total_paid: string;
   lesson_amount: string;
@@ -94,11 +94,11 @@ export const EMAIL_TEMPLATE_CONTRACTS: Record<EmailTemplateName, {
 }> = {
   'student-payment-confirmed': {
     required: [
-      'mazzi_logo_src', 'student_name', 'total_paid', 'lesson_amount', 'payment_reference',
+      'student_name', 'total_paid', 'lesson_amount', 'payment_reference',
       'provider_name', 'lesson_date', 'lesson_start_time', 'lesson_end_time', 'license_category',
       'vehicle_brand', 'vehicle_model', 'vehicle_year', 'vehicle_transmission', 'vehicle_color', 'lesson_url',
     ],
-    urls: ['mazzi_logo_src', 'lesson_url'],
+    urls: ['lesson_url'],
   },
   'student-cancellation-refund': {
     required: [
