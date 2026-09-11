@@ -134,6 +134,12 @@ describe('MAZZI transactional email templates', () => {
     const source = readTemplate('pro-payout-completed.html');
     expect(source).not.toMatch(/bank_(?:branch|account)(?!_last(?:2|4))/);
     expect(() => renderTemplate('pro-payout-completed', source, payoutParams)).not.toThrow();
+    expect(() => renderTemplate('pro-payout-completed', source, {
+      ...payoutParams,
+      bank_name: 'Conta cadastrada no MAZZI',
+      bank_branch_last2: 'não informado',
+      bank_account_last4: 'não informado',
+    })).not.toThrow();
     expect(() => renderTemplate('pro-payout-completed', source, { ...payoutParams, bank_account_last4: '123456' }))
       .toThrow('EMAIL_BANK_ACCOUNT_LAST4_REQUIRED');
     expect(() => renderTemplate('pro-payout-completed', source, { ...payoutParams, bank_branch_last2: '123' }))

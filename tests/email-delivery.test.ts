@@ -151,6 +151,15 @@ describe('MAZZI email delivery infrastructure', () => {
     } }).bank_account_last4).toBe('4821');
   });
 
+  it('allows payout emails when the completed transfer has no bank fragments', () => {
+    expect(buildProPayoutCompletedEmailData({ config, payout: {
+      publicReference: 'MAZZI-PAYOUT-7K2M4P91', amountInCents: 8000, grossAmountInCents: 10000,
+      platformFeeInCents: 2000, releasedAt: '2026-09-08T18:00:00.000Z', method: 'Stripe Connect',
+      bankName: 'Conta cadastrada no MAZZI', bankBranchLast2: 'não informado', bankAccountLast4: 'não informado',
+      providerFirstName: 'Instrutor',
+    } }).bank_account_last4).toBe('não informado');
+  });
+
   it('formats currency and São Paulo dates consistently', () => {
     expect(formatCurrencyBRL(9500)).toBe('R$ 95,00');
     expect(formatDatePtBR('2026-09-08T02:00:00.000Z')).toBe('07/09/2026');

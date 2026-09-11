@@ -170,7 +170,8 @@ export function buildProPayoutCompletedEmailData(input: {
 }): ProPayoutCompletedParams {
   const { payout, config } = input;
   const urls = buildEmailUrls(config, { payoutReference: payout.publicReference });
-  if (!/^\d{2}$/.test(payout.bankBranchLast2) || !/^\d{4}$/.test(payout.bankAccountLast4)) {
+  const bankFragmentsUnavailable = payout.bankBranchLast2 === 'não informado' && payout.bankAccountLast4 === 'não informado';
+  if (!bankFragmentsUnavailable && (!/^\d{2}$/.test(payout.bankBranchLast2) || !/^\d{4}$/.test(payout.bankAccountLast4))) {
     throw new Error('EMAIL_BANK_FRAGMENT_INVALID');
   }
   return {

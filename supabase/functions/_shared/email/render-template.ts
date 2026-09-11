@@ -37,6 +37,7 @@ function assertUrl(value: string, parameterName: string): void {
 }
 
 function assertSensitivePayoutFragment(value: string, parameterName: string): void {
+  if (value === 'não informado') return;
   if (parameterName === 'bank_branch_last2' && !/^\d{2}$/.test(value)) {
     throw new Error('EMAIL_BANK_BRANCH_LAST2_REQUIRED');
   }
