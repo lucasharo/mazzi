@@ -51,6 +51,20 @@ O deploy dos quatro apps é feito pelo GitHub Actions no Cloudflare Pages. Pushe
 
 O ambiente atual usa exclusivamente GitHub Actions e Cloudflare Pages.
 
+### APK Android
+
+O App Aluno também pode ser empacotado como APK por GitHub Actions. O workflow
+`.github/workflows/android-apk.yml` gera um APK debug e publica o arquivo como
+artefato da execução. Localmente, o fluxo equivalente é:
+
+```bash
+npm run cap:sync:android
+cd android
+./gradlew assembleDebug
+```
+
+O APK gerado fica em `android/app/build/outputs/apk/debug/app-debug.apk`.
+
 ---
 
 ## 📚 Documentação Técnica

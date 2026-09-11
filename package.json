@@ -16,6 +16,9 @@
     "build:admin": "vite build --mode=admin",
     "build:landing": "vite build --mode=landing",
     "build:all": "npm run build:student && npm run build:instructor && npm run build:admin && npm run build:landing",
+    "build:android:web": "npm run build:student",
+    "cap:sync:android": "npm run build:android:web && cap sync android",
+    "cap:open:android": "cap open android",
     "sync:email-templates": "node scripts/sync-email-templates.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
@@ -24,6 +27,9 @@
     "test:integration:live": "vitest run --dir tests/live"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@google/genai": "^2.4.0",
     "@stripe/stripe-js": "8.7.0",
     "@supabase/supabase-js": "^2.112.3",
