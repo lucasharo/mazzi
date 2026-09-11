@@ -138,7 +138,7 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(studentBookingDetails).toContain('meetingPoint={visibleMeetingPoint}');
     expect(studentBookingDetails).toContain('meetingPointNotice={meetingPointNotice}');
     expect(studentBookingDetails).toContain('visibleMapPoint');
-    expect(studentBookingDetails).toContain('showNavigation={isProviderAddress && !shouldHideProviderLocation && Boolean(mapPoint)}');
+    expect(studentBookingDetails).toContain('showNavigation={isProviderAddress && !shouldHideMeetingPoint && Boolean(mapPoint)}');
     expect(bookingDetailsShared).toContain('showNavigation?: boolean;');
     expect(bookingDetailsShared).toContain('Abrir navegação');
   });
@@ -372,19 +372,20 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(providerInstantPanel).toContain('visiblePendingPaymentInstantBookings');
   });
 
-  it('opens the existing payment confirmation and returns to the Aula Agora map after payment', () => {
+  it('opens the existing payment confirmation and keeps the student on the return screen after payment', () => {
     expect(instantModal).toContain('onPayBooking?: (bookingId: string) => void');
     expect(instantModal).toContain('Confirmar pagamento');
     expect(studentApp).toContain('openInstantBookingCheckout');
     expect(studentApp).toContain("setIsInstantLessonOpen(false);");
     expect(studentApp).toContain("setResumeBooking(booking);");
     expect(studentApp).toContain("confirmedBooking?.snapshot?.source === 'AULA_AGORA'");
-    expect(studentApp).toContain("setIsInstantLessonOpen(true);");
     expect(studentApp).toContain('INSTANT_PAYMENT_BOOKING_STORAGE_KEY');
+    expect(studentApp).not.toContain('handleInstantSuccessComplete');
+    expect(studentApp).not.toContain('instantReturnToMapBookingIdRef');
     expect(instantPaymentMapGateMigration).toContain("b.status IN ('CONFIRMED', 'IN_PROGRESS')");
     expect(instantPaymentMapGateMigration).not.toContain("b.status IN ('PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS')");
-    expect(stripeReturnScreen).toContain('onSuccessComplete?: () => void');
-    expect(stripeReturnScreen).toContain('if (isSuccess) onSuccessComplete?.();');
+    expect(stripeReturnScreen).not.toContain('onSuccessComplete?: () => void');
+    expect(stripeReturnScreen).not.toContain('if (isSuccess) onSuccessComplete?.();');
   });
 
   it('creates the instant booking hold with the matched student context', () => {

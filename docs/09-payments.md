@@ -103,21 +103,29 @@ export interface PaymentGateway {
 - Taxa de Plataforma MAZZI (`platform_fee_in_cents`): Percentual configurável administrativamente via backend.
 - **Comissão MAZZI:** Percentual configurável pelo Admin, limitado pelo teto combinado de taxas.
 - Total Pago pelo Aluno (`total_in_cents`): valor final congelado na cotação/reserva.
-- Repasse Líquido ao Fornecedor: total bruto menos taxa do Stripe e comissão MAZZI efetiva, com limite combinado configurável.
+- Repasse Líquido ao Fornecedor: total pago menos eventual reembolso e a retenção total da MAZZI.
+  A retenção total da MAZZI já contempla o custo do meio de pagamento; esse custo não pode
+  ser abatido novamente do repasse.
+
+### Visibilidade financeira por audiência
+
+- O App Aluno não exibe `platform_fee_in_cents`, comissão MAZZI ou `gateway_fee_in_cents` em checkout, resumo ou detalhe de pagamento.
+- Para o aluno, a interface mostra o total pago e, quando aplicável, o valor do reembolso em uma seção própria.
+- O detalhamento da retenção da MAZZI e dos custos de gateway fica restrito às superfícies autorizadas do PRO/Admin.
 
 ### Taxa real do checkout e comissão efetiva da MAZZI
 
 - A taxa da empresa de checkout não é calculada pelo percentual estimado da configuração. Após a confirmação, o webhook do Stripe consulta a tarifa real da cobrança no `balance_transaction` e grava o valor em `payments.gateway_fee_in_cents`.
+- `platform_fee_in_cents` é a retenção comercial total congelada na reserva e já inclui a taxa real ou estimada do meio de pagamento. `gateway_fee_in_cents` permanece como informação de auditoria e conciliação, mas não gera uma segunda dedução.
 - O teto combinado continua sendo o percentual configurado em `max_total_fee_percentage` (10% no padrão de desenvolvimento).
-- A comissão efetiva da MAZZI é calculada em centavos como `teto combinado - taxa real do checkout`, respeitando também a comissão congelada na reserva:
+- Para o repasse do PRO, a regra canônica é. Em reembolso integral (`refund_amount_in_cents >= total_in_cents`), a retenção MAZZI é zero:
 
 ```text
-taxa_mazzi_efetiva = min(
-  platform_fee_in_cents,
-  max(0, total_in_cents × max_total_fee_percentage / 100 - gateway_fee_in_cents)
-)
-líquido_prestador = total_in_cents - gateway_fee_in_cents - taxa_mazzi_efetiva
+retenção_mazzi_total = platform_fee_in_cents
+líquido_prestador = total_in_cents - refund_amount_in_cents - retenção_mazzi_total
 ```
+
+Quando o reembolso é integral, aplique `retenção_mazzi_total = 0` antes do cálculo. Em reembolsos parciais, a retenção congelada da reserva permanece aplicável conforme a política comercial.
 
 O frontend não exibe a taxa estimada como se fosse a taxa real. Enquanto o gateway ainda não retornar a tarifa, o detalhamento informa que o valor será definido após o pagamento.
 

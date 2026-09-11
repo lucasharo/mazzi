@@ -65,7 +65,7 @@ import {
   LessonSession,
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
-import { BLOCKING_BOOKING_STATUSES, getBookingStartTimestamp, getStudentBookingSection, hasTimeIntervalOverlap, isPendingPaymentHoldActive, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { BLOCKING_BOOKING_STATUSES, CANCELLED_BOOKING_STATUSES, getBookingStartTimestamp, getStaleConfirmedBookings, getStudentBookingSection, hasTimeIntervalOverlap, isPendingPaymentHoldActive, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
 import { getInstantOfferSecondsLeft, INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS, isInstantInstructorAvailabilityActive } from '../../domain/instant-lesson';
 import { DEFAULT_PLATFORM_CONFIGURATION, toPublicPlatformConfiguration, type PublicPlatformConfiguration } from '../../domain/platform-config';
 import { buildFullDayBlockRange, formatDateBR, formatTimeBR, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
@@ -86,6 +86,17 @@ import { resolveProviderAddress } from '../../domain/maps/provider-address-resol
 import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
 import { isProviderPaymentAccountReady } from '../../domain/payments/provider-payment-readiness';
 
+const isProviderTodayVisibleBooking = (booking: Booking) =>
+  (TODAY_BOOKING_STATUSES.includes(booking.status) || CANCELLED_BOOKING_STATUSES.includes(booking.status)) &&
+  !UNPAID_BOOKING_STATUSES.includes(booking.status) &&
+  isBookingTodayInSaoPaulo(booking);
+
+const isStripeOnboardingReturnNavigation = () => {
+  if (typeof window === 'undefined') return false;
+  const onboardingState = new URLSearchParams(window.location.search).get('stripe_onboarding');
+  return onboardingState === 'return' || onboardingState === 'refresh';
+};
+
 import { ProviderHeader } from './components/ProviderHeader';
 import { ProviderBottomNav, ProviderTabId } from './components/ProviderBottomNav';
 import { ProviderDashboardTab } from './components/ProviderDashboardTab';
@@ -93,6 +104,7 @@ import { ProviderScheduleTab } from './components/ProviderScheduleTab';
 import { ProviderBookingsTab } from './components/ProviderBookingsTab';
 import { ProviderManagementTab } from './components/ProviderManagementTab';
 import { ProviderProfileTab } from './components/ProviderProfileTab';
+import { StaleConfirmedBookingsModal } from '../../components/booking/StaleConfirmedBookingsModal';
 import { ProviderEarningsTab } from './components/ProviderEarningsTab';
 import { ProviderInstantLessonPanel } from './components/ProviderInstantLessonPanel';
 import { ProviderCancellationModal } from './components/ProviderCancellationModal';
@@ -177,6 +189,10 @@ export const ProviderApp: React.FC = () => {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [complianceDocs, setComplianceDocs] = useState<ComplianceDocument[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [staleConfirmedBookings, setStaleConfirmedBookings] = useState<Booking[]>([]);
+  const dismissedStaleConfirmedSignatureRef = useRef<string | null>(null);
+  const suppressStaleConfirmedReminderRef = useRef(isStripeOnboardingReturnNavigation());
+  const staleConfirmedReminderShownRef = useRef(false);
   const [bookingClockMs, setBookingClockMs] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setBookingClockMs(Date.now()), 10_000);
@@ -276,7 +292,6 @@ export const ProviderApp: React.FC = () => {
   // Selected Booking Details Modal State
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedBookingForChat, setSelectedBookingForChat] = useState<Booking | null>(null);
-  const [bookingActionError, setBookingActionError] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -510,7 +525,6 @@ export const ProviderApp: React.FC = () => {
   const [providerCancelReasonCode, setProviderCancelReasonCode] = useState<ProviderCancellationReasonCode>('SCHEDULE_CONFLICT');
   const [providerCustomReason, setProviderCustomReason] = useState('');
   const [isCancellingBooking, setIsCancellingBooking] = useState(false);
-  const [providerCancelError, setProviderCancelError] = useState<string | null>(null);
 
   // Slot Generator Simulator State
   const [simOfferingId, setSimOfferingId] = useState<string>('');
@@ -633,6 +647,10 @@ export const ProviderApp: React.FC = () => {
   const loadWorkspace = async (providerId: string, options?: { silent?: boolean }) => {
     const isSilent = options?.silent === true;
     if (!isSilent) {
+      // A full workspace load establishes the baseline. The initial hydration
+      // must not be presented as a new booking update in the navigation.
+      bookingSnapshotRef.current = null;
+      setBookingUpdatesCount(0);
       setWorkspaceLoading(true);
       setWorkspaceError(null);
       setUnifiedCalendarError(null);
@@ -829,13 +847,26 @@ export const ProviderApp: React.FC = () => {
     }
     if (!shouldAutoSelectTodayRef.current || workspaceLoading) return;
 
-    const hasTodayBooking = bookings.some((booking) =>
-      TODAY_BOOKING_STATUSES.includes(booking.status) && !UNPAID_BOOKING_STATUSES.includes(booking.status) &&
-      isBookingTodayInSaoPaulo(booking),
-    );
+    const hasTodayBooking = bookings.some(isProviderTodayVisibleBooking);
     setBookingFilterTab(hasTodayBooking ? 'today' : 'upcoming');
     shouldAutoSelectTodayRef.current = false;
   }, [activeTab, bookings, bookingClockMs, workspaceLoading]);
+
+  useEffect(() => {
+    if (!user?.id || workspaceLoading || bookings.length === 0 || typeof window === 'undefined') return;
+    if (staleConfirmedReminderShownRef.current || suppressStaleConfirmedReminderRef.current) return;
+
+    const candidates = getStaleConfirmedBookings(bookings, bookingClockMs);
+    if (candidates.length === 0) return;
+
+    staleConfirmedReminderShownRef.current = true;
+    setStaleConfirmedBookings(candidates);
+  }, [bookingClockMs, bookings, user?.id, workspaceLoading]);
+
+  const dismissStaleConfirmedBookings = () => {
+    dismissedStaleConfirmedSignatureRef.current = staleConfirmedBookings.map((booking) => booking.id).sort().join('|');
+    setStaleConfirmedBookings([]);
+  };
 
   useEffect(() => {
     setOfferingForm((previous) => ({ ...previous, instructorId: '' }));
@@ -887,6 +918,13 @@ export const ProviderApp: React.FC = () => {
   // Fallback para ambientes em que a publicação do Realtime ainda não foi
   // atualizada: detecta qualquer alteração na lista enquanto outra tela está aberta.
   useEffect(() => {
+    if (workspaceLoading) {
+      // Ignore the transition from the empty initial state to the first
+      // server response. Only later changes can create the navigation badge.
+      bookingSnapshotRef.current = null;
+      return;
+    }
+
     const snapshot = JSON.stringify(
       [...bookings]
         .sort((a, b) => a.id.localeCompare(b.id))
@@ -906,7 +944,7 @@ export const ProviderApp: React.FC = () => {
       setBookingUpdatesCount((count) => Math.min(count + 1, 99));
     }
     bookingSnapshotRef.current = snapshot;
-  }, [activeTab, bookings]);
+  }, [activeTab, bookings, workspaceLoading]);
 
   useEffect(() => {
     if (!isRealSupabase || !user?.id || !activeProviderId || activeTab === 'bookings') return;
@@ -1507,8 +1545,7 @@ export const ProviderApp: React.FC = () => {
 
     if (bookingFilterTab === 'today') {
       return (
-        TODAY_BOOKING_STATUSES.includes(b.status) &&
-        isBookingTodayInSaoPaulo(b) && (bookingQuickFilter === 'all' || (bookingQuickFilter === 'confirmed' && b.status === 'CONFIRMED') || (bookingQuickFilter === 'in_progress' && b.status === 'IN_PROGRESS'))
+        isProviderTodayVisibleBooking(b) && (bookingQuickFilter === 'all' || (bookingQuickFilter === 'confirmed' && b.status === 'CONFIRMED') || (bookingQuickFilter === 'in_progress' && b.status === 'IN_PROGRESS') || (bookingQuickFilter === 'cancelled' && CANCELLED_BOOKING_STATUSES.includes(b.status)))
       );
     }
     if (bookingFilterTab === 'upcoming') {
@@ -1546,7 +1583,6 @@ export const ProviderApp: React.FC = () => {
   const handleCheckIn = async (b: Booking) => {
     if (checkInRequestInFlightRef.current) return;
     checkInRequestInFlightRef.current = true;
-    setBookingActionError(null);
     try {
       const location = await requestCheckInLocation();
       const res = await dbService.providerCheckInBooking(b.id, location);
@@ -1567,8 +1603,8 @@ export const ProviderApp: React.FC = () => {
       return;
     } catch (err: any) {
       const message = mapFriendlyErrorMessage(err, 'Não foi possível realizar o check-in.');
-      setBookingActionError(message);
-      return message;
+      showProviderFeedback('error', 'Check-in não realizado', message);
+      return;
     } finally {
       checkInRequestInFlightRef.current = false;
     }
@@ -1577,7 +1613,6 @@ export const ProviderApp: React.FC = () => {
   const handleStartLesson = async (b: Booking): Promise<boolean> => {
     if (startingLessonBookingIdRef.current === b.id) return false;
     startingLessonBookingIdRef.current = b.id;
-    setBookingActionError(null);
     try {
       const res = await dbService.providerStartLesson(b.id);
       if (!res?.lesson_started_at) {
@@ -1594,7 +1629,7 @@ export const ProviderApp: React.FC = () => {
       showProviderFeedback('success', 'Aula iniciada!', 'Acompanhe a execução e finalize ao término.');
       return true;
     } catch (err: any) {
-      setBookingActionError(mapFriendlyErrorMessage(err, 'Não foi possível iniciar a aula.'));
+      showProviderFeedback('error', 'Aula não iniciada', mapFriendlyErrorMessage(err, 'Não foi possível iniciar a aula.'));
       return false;
     } finally {
       if (startingLessonBookingIdRef.current === b.id) {
@@ -1606,7 +1641,6 @@ export const ProviderApp: React.FC = () => {
   const handleCompleteLesson = async (b: Booking) => {
     if (isCompleting) return;
     setIsCompleting(true);
-    setBookingActionError(null);
     try {
       const idempotencyKey = `complete_btn_${b.id}`;
       const res = await dbService.providerCompleteLesson(b.id, idempotencyKey);
@@ -1624,7 +1658,7 @@ export const ProviderApp: React.FC = () => {
       if (activeProviderId && user?.id) void invalidateProviderBookingQueries(activeProviderId, user.id, b.id);
       showProviderFeedback('success', 'Aula finalizada com sucesso!');
     } catch (err: any) {
-      setBookingActionError(mapFriendlyErrorMessage(err, 'Não foi possível concluir a aula.'));
+      showProviderFeedback('error', 'Aula não concluída', mapFriendlyErrorMessage(err, 'Não foi possível concluir a aula.'));
     } finally {
       setIsCompleting(false);
     }
@@ -1633,11 +1667,10 @@ export const ProviderApp: React.FC = () => {
   const handleConfirmProviderCancel = async () => {
     if (!selectedBookingForCancel) return;
     if (providerCancelReasonCode === 'OTHER' && !providerCustomReason.trim()) {
-      setProviderCancelError('A descrição textual é obrigatória para a opção "Outro motivo".');
+      showProviderFeedback('warning', 'Informe o motivo', 'Descreva a justificativa para escolher “Outro motivo”.');
       return;
     }
     setIsCancellingBooking(true);
-    setProviderCancelError(null);
     try {
       const finalReason = providerCancelReasonCode === 'OTHER'
         ? providerCustomReason.trim()
@@ -1677,7 +1710,7 @@ export const ProviderApp: React.FC = () => {
       showProviderFeedback('success', 'Agendamento cancelado.', 'Reembolso integral de 100% será processado para o aluno.');
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') console.error('Error in provider cancellation:', err);
-      setProviderCancelError(err?.message || 'Erro ao cancelar agendamento.');
+      showProviderFeedback('error', 'Cancelamento não concluído', mapFriendlyErrorMessage(err, 'Não foi possível cancelar a aula agora. Tente novamente em instantes.'));
     } finally {
       setIsCancellingBooking(false);
     }
@@ -2508,7 +2541,6 @@ status: 'IN_REVIEW',
             bookingQuickFilter={bookingQuickFilter}
             onQuickFilterChange={(filter) => setBookingQuickFilter(filter)}
             filteredBookings={orderedFilteredBookings}
-            actionErrorMessage={bookingActionError}
             onSelectBooking={setSelectedBooking}
             onOpenChat={(b) => setSelectedBookingForChat(b)}
             onCheckIn={handleCheckIn}
@@ -2590,6 +2622,7 @@ status: 'IN_REVIEW',
             userBirthDate={user?.birthDate ? formatDateMask(user.birthDate) : undefined}
             currentUserId={user?.id}
             providerVehicles={vehicles}
+            offerings={offerings}
             paymentAccount={paymentAccount}
             schoolInstructors={schoolInstructors}
             schoolInstructorSummary={schoolInstructorSummary}
@@ -2687,6 +2720,18 @@ status: 'IN_REVIEW',
             otherBooking.scheduledEndAt,
           )
         ))}
+        onShowFeedback={showProviderFeedback}
+      />
+
+      <StaleConfirmedBookingsModal
+        isOpen={staleConfirmedBookings.length > 0}
+        audience="provider"
+        bookings={staleConfirmedBookings}
+        onClose={dismissStaleConfirmedBookings}
+        onOpenBooking={(booking) => {
+          dismissStaleConfirmedBookings();
+          window.setTimeout(() => setSelectedBooking(booking), 0);
+        }}
       />
 
       {/* Provider Cancellation Modal (DEC-013) */}
@@ -2700,7 +2745,6 @@ status: 'IN_REVIEW',
         onCustomReasonChange={setProviderCustomReason}
         onConfirmCancel={handleConfirmProviderCancel}
         isProcessing={isCancellingBooking}
-        errorMessage={providerCancelError}
       />
 
       {/* Chat Panel Modal */}

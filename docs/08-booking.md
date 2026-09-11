@@ -62,6 +62,14 @@ O navegador não é a fonte de confirmação: o retorno do checkout é apenas in
 
 Quando o prazo de pagamento termina sem confirmação, `EXPIRED` é o status interno usado para liberar o horário. Na interface, essa situação é apresentada como **Pagamento não realizado**.
 
+### Apresentação de motivos de cancelamento
+
+Os códigos internos de domínio (`reason_code`), como `SCHEDULE_CONFLICT` e `STUDENT_REQUEST`, não podem ser exibidos nas telas do Aluno ou do PRO, mesmo quando estiverem concatenados a uma descrição humana (por exemplo, `Conflito de agenda: SCHEDULE CONFLICT`). O frontend deve sanitizar a mensagem na borda de apresentação, converter cada código para sua descrição em pt-BR e preservar somente texto amigável para o usuário. Os códigos brutos permanecem disponíveis apenas no backend, auditoria e superfícies técnicas autorizadas.
+
+### Reserva confirmada após o horário previsto
+
+Uma reserva com status CONFIRMED cujo horário final já passou não deve ser encerrada automaticamente apenas pela passagem do tempo. Aluno e PRO recebem, sempre que abrirem o aplicativo enquanto houver aulas atrasadas, um modal informativo com as reservas pendentes de encerramento. Para resolver essas aulas antigas, Aluno ou PRO podem iniciar uma contestação diretamente pelo aviso ou pelos detalhes da aula. Uma reserva `CONFIRMED` sem `lesson_started_at` também pode ser cancelada pelo participante autorizado, inclusive depois do horário previsto, com reembolso integral ao aluno quando o cancelamento partir do PRO. Se já houver início real registrado, o cancelamento comercial permanece bloqueado e a aula deve seguir pelo fluxo de conclusão, no-show ou disputa. O backend aceita reservas `COMPLETED` dentro da janela configurada e reservas antigas `CONFIRMED` enquanto ainda estiverem sem resolução e com o horário final já passado, preservando a autorização dos participantes e bloqueando o repasse quando aplicável. O modal permite abrir os detalhes da aula ou escolher **Lembrar depois**; essa dispensa vale apenas para a sessão atual e não impede o aviso em uma nova abertura do app. O modal não altera o status nem cria repasse por conta própria. A conclusão, cancelamento, no-show ou disputa continua dependendo do fluxo autorizado e da fonte de verdade do backend.
+
 ---
 
 ## 3. Garantias de Segurança e Proteção Anti-Double Booking

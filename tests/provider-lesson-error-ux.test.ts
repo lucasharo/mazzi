@@ -115,4 +115,48 @@ describe('TASK-051 — Provider Lesson Lifecycle Error Mapping & UX Unit Tests',
     );
     expect(friendly).toBe('Para sua segurança, aguarde 9 segundos antes de tentar novamente.');
   });
+
+  it('M. Edge Function transport errors use the operation fallback instead of technical text', () => {
+    const friendly = mapFriendlyErrorMessage(
+      { message: 'Edge Function returned a non-2xx status code' },
+      'Não foi possível cancelar a aula agora. Tente novamente em instantes.',
+    );
+    expect(friendly).toBe('Não foi possível cancelar a aula agora. Tente novamente em instantes.');
+    expect(friendly).not.toContain('non-2xx');
+  });
+
+  it('N. Stripe synchronization errors explain the next action in Portuguese', () => {
+    const friendly = mapFriendlyErrorMessage(
+      { message: 'O Stripe confirmou o estorno, mas o MAZZI ainda está sincronizando o cancelamento.' },
+      'Não foi possível cancelar a aula agora.',
+    );
+    expect(friendly).toBe('O estorno foi confirmado. Estamos finalizando o cancelamento da aula; tente novamente em instantes.');
+  });
+
+  it('O. BOOKING_NOT_COMPLETED explains that legacy lessons can only be disputed after their scheduled end', () => {
+    const friendly = mapFriendlyErrorMessage(
+      { code: '22000', message: 'BOOKING_NOT_COMPLETED' },
+      'Não foi possível abrir a contestação.',
+    );
+    expect(friendly).toBe('A contestação só pode ser aberta depois que o horário da aula terminar.');
+    expect(friendly).not.toContain('BOOKING_NOT_COMPLETED');
+  });
+
+  it('P. DISPUTE_WINDOW_EXPIRED explains that the completed lesson dispute deadline ended', () => {
+    const friendly = mapFriendlyErrorMessage(
+      { code: '22000', message: 'DISPUTE_WINDOW_EXPIRED' },
+      'Não foi possível abrir a contestação.',
+    );
+    expect(friendly).toBe('O prazo para contestar uma aula concluída já terminou.');
+    expect(friendly).not.toContain('DISPUTE_WINDOW_EXPIRED');
+  });
+
+  it('Q. CANCELLATION_WINDOW_CLOSED explains the resolution path without exposing the domain code', () => {
+    const friendly = mapFriendlyErrorMessage(
+      { code: '42204', message: 'CANCELLATION_WINDOW_CLOSED: O horário de início da aula já passou.' },
+      'Não foi possível cancelar a aula agora.',
+    );
+    expect(friendly).toBe('Esta aula já começou. Para resolver o agendamento, use o fluxo de conclusão, no-show ou contestação.');
+    expect(friendly).not.toContain('CANCELLATION_WINDOW_CLOSED');
+  });
 });

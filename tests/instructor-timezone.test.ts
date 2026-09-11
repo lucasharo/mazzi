@@ -6,6 +6,7 @@ import {
   isLessonEnded,
   getCanonicalTimestamp,
 } from '../src/lib/date-format';
+import { CANCELLED_BOOKING_STATUSES } from '../src/domain/booking';
 
 describe('INSTRUCTOR TIMEZONE & TEMPORAL CLASSIFICATION (America/Sao_Paulo)', () => {
   it('getTodayInSaoPaulo returns YYYY-MM-DD in America/Sao_Paulo timezone', () => {
@@ -56,5 +57,11 @@ describe('INSTRUCTOR TIMEZONE & TEMPORAL CLASSIFICATION (America/Sao_Paulo)', ()
     };
     expect(isLessonEnded(booking, new Date('2026-08-28T11:30:00-03:00'))).toBe(false);
     expect(isLessonEnded(booking, new Date('2026-08-28T11:50:00-03:00'))).toBe(true);
+  });
+
+  it('keeps cancelled bookings eligible for the provider Today tab by their scheduled date', () => {
+    expect(CANCELLED_BOOKING_STATUSES).toEqual(['CANCELLED_BY_STUDENT', 'CANCELLED_BY_PROVIDER']);
+    const cancelledToday = { status: 'CANCELLED_BY_STUDENT', scheduledStartAt: '2026-08-19T18:00:00.000Z' };
+    expect(isBookingTodayInSaoPaulo(cancelledToday, new Date('2026-08-19T15:00:00.000Z'))).toBe(true);
   });
 });

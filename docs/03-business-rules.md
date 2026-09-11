@@ -47,13 +47,15 @@
   | Cancelamento Aluno | < 6h | 0% | Cancelamento tardio (0% reembolso) |
   | Cancelamento Prestador | Qualquer | 100% | Reembolso integral ao aluno; motivo obrigatório |
   | No-Show do Aluno | — | 0% | Sem reembolso |
-  | No-Show do Prestador | — | 100% | Reembolso integral ao aluno |
+   | No-Show do Prestador | — | 100% | Reembolso integral ao aluno |
+
+- **Apresentação de motivos:** `reason_code`, enums e outros códigos internos nunca são exibidos ao Aluno ou ao PRO. Isso vale também para mensagens compostas, como `Conflito de agenda: SCHEDULE_CONFLICT`; a camada de apresentação deve remover o código e exibir apenas a descrição amigável em pt-BR.
 
 ## 6. Disputas e Repasse Automático (DEC-014)
 
 - O repasse ao prestador é agendado na conclusão da aula e executado automaticamente após o prazo configurado no Admin.
 - O padrão de produção é **72 horas** após a conclusão. Ambientes de teste podem usar **0 hora**.
-- Aluno ou prestador podem abrir uma disputa somente enquanto a janela de retenção estiver ativa.
+- Aluno ou prestador podem abrir uma disputa somente enquanto a janela de retenção estiver ativa para aulas `COMPLETED`. Reservas antigas `CONFIRMED` cujo horário final já passou permanecem elegíveis enquanto estiverem sem resolução, para que aulas pendentes não expirem sem tratamento. Se não houver `lesson_started_at`, o participante autorizado também pode cancelar a reserva antiga; se houver início real registrado, o cancelamento comercial não é permitido e a resolução deve ocorrer por conclusão, no-show ou disputa.
 - Uma disputa ativa muda a reserva para `DISPUTED` e bloqueia atomicamente qualquer repasse ainda não pago.
 - Sem disputa ativa, o processador idempotente cria uma transferência Stripe Connect após o vencimento, sem ação do Admin.
 - A outra parte pode responder à disputa; o prazo operacional inicial de resposta é 48 horas.

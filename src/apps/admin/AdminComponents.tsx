@@ -686,7 +686,7 @@ export const ProvidersTab: React.FC<{
               <Button
                 variant="primary"
                 size="sm"
-                className={actionType === 'BLOCK' ? 'bg-[var(--mazzi-dark)] text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'}
+                className={actionType === 'BLOCK' ? 'bg-[var(--mazzi-dark)] text-white' : 'bg-[var(--mazzi-danger)] hover:bg-[var(--mazzi-danger-hover)] text-white'}
                 onClick={handleConfirmAction}
                 disabled={!reasonText.trim()}
               >
@@ -966,7 +966,7 @@ export const ComplianceTab: React.FC<{
                       />}
                     </div>
                     <div className="flex items-center gap-2">
-                  <Button variant="primary" size="sm" className="bg-rose-600 hover:bg-rose-700" onClick={handleReject} disabled={!rejectionReason.trim()}>
+                  <Button variant="primary" size="sm" className="bg-[var(--mazzi-danger)] hover:bg-[var(--mazzi-danger-hover)]" onClick={handleReject} disabled={!rejectionReason.trim()}>
                         Confirmar Rejeição
                       </Button>
                   <Button variant="dangerSoft" size="sm" onClick={() => { setIsRejecting(false); setRejectionReason(''); }}>
@@ -1231,7 +1231,7 @@ const [filterStatus, setFilterStatus] = useState<string>('AWAITING_REVIEW');
           footer={(
             <>
               <Button variant="dangerSoft" size="sm" onClick={() => setActionType(null)}>Cancelar</Button>
-              <Button variant="primary" size="sm" className="bg-rose-600 hover:bg-rose-700 text-white" onClick={handleConfirmAction} disabled={!reason.trim()}>Confirmar</Button>
+              <Button variant="primary" size="sm" className="bg-[var(--mazzi-danger)] hover:bg-[var(--mazzi-danger-hover)] text-white" onClick={handleConfirmAction} disabled={!reason.trim()}>Confirmar</Button>
             </>
           )}
         >
@@ -1772,7 +1772,7 @@ export const FinancialTab: React.FC<{
                   <Button
                     variant="primary"
                     size="sm"
-                    className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                    className="w-full bg-[var(--mazzi-danger)] hover:bg-[var(--mazzi-danger-hover)] text-white font-bold"
                     onClick={() => handleRefund(selectedBooking)}
                   >
                     {isStripeGateway ? 'Solicitar estorno' : 'Simular estorno'}

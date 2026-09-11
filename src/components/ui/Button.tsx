@@ -84,7 +84,7 @@ export const Button: React.FC<ButtonProps> = ({
     dangerSoft:
       'border border-rose-200/80 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100 active:bg-rose-200 font-bold shadow-2xs !min-h-11',
     danger:
-      'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 font-bold shadow-xs',
+      'bg-[var(--mazzi-danger)] text-white hover:bg-[var(--mazzi-danger-hover)] active:bg-[var(--mazzi-danger-active)] font-bold shadow-xs',
   };
 
   return (

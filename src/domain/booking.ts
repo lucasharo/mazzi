@@ -175,6 +175,17 @@ export function isBookingEnded(booking: Booking, nowMs = Date.now()): boolean {
   return endTs > 0 && endTs <= nowMs;
 }
 
+/** Confirmed lessons whose scheduled window ended without lifecycle closure. */
+export function getStaleConfirmedBookings(bookings: Booking[], nowMs = Date.now()): Booking[] {
+  return bookings
+    .filter((booking) => booking.status === 'CONFIRMED')
+    .filter((booking) => {
+      const endTimestamp = getBookingEndTimestamp(booking);
+      return endTimestamp > 0 && endTimestamp <= nowMs;
+    })
+    .sort((a, b) => getBookingEndTimestamp(b) - getBookingEndTimestamp(a));
+}
+
 export class BookingDomainError extends Error {
   constructor(
     public readonly code: string,

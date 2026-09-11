@@ -13,10 +13,10 @@ const providerModal = readFileSync(
 
 describe('refund amount in booking details', () => {
   it('shows the persisted refund amount in both detail views', () => {
-    for (const source of [studentModal, providerModal]) {
-      expect(source).toContain("label: 'Valor do reembolso'");
-      expect(source).toContain('booking.refundAmountInCents');
-      expect(source).toContain('formatCentsToBRL(booking.refundAmountInCents)');
-    }
+    expect(studentModal).toContain('Reembolso ao aluno');
+    expect(studentModal).toContain('getBookingRefundAmountInCents(booking)');
+    expect(studentModal).not.toContain("label: 'Taxa de Serviço MAZZI'");
+    expect(providerModal).toContain("label: 'Reembolso ao aluno'");
+    expect(providerModal).toContain('getBookingRefundAmountInCents(booking)');
   });
 });

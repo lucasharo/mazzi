@@ -222,6 +222,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
     isInstructorOnboarding,
     beginPasswordRecovery,
     completePasswordRecovery,
+    clearError: clearAuthError = () => {},
     logout,
     error: contextError,
     isLoading: isContextLoading,
@@ -360,6 +361,7 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
   };
 
   const goTo = (next: Screen) => {
+    clearAuthError();
     setFeedback(null);
     setErrors({});
     setOtp('');
@@ -688,6 +690,25 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
       await resendSignupOtp(otpEmail);
       setResendCooldown(AUTH_OTP_RESEND_COOLDOWN_SECONDS);
       setFeedback({ tone: 'success', message: 'Novo código de confirmação enviado para seu e-mail.' });
+    } catch (caught: any) {
+      setFeedback({
+        tone: 'error',
+        message: formatAuthError(caught instanceof Error ? caught.message : 'Não foi possível reenviar o código.'),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendRecoveryOtp = async () => {
+    if (resendCooldown > 0 || isSubmitting || !otpEmail.trim()) return;
+    setFeedback(null);
+    setErrors({});
+    setIsSubmitting(true);
+    try {
+      await requestPasswordReset(otpEmail.trim());
+      setResendCooldown(AUTH_OTP_RESEND_COOLDOWN_SECONDS);
+      setFeedback({ tone: 'success', message: 'Novo código de recuperação enviado para seu e-mail.' });
     } catch (caught: any) {
       setFeedback({
         tone: 'error',
@@ -1114,7 +1135,21 @@ export const AppLogin: React.FC<{ kind: AppLoginKind; initialScreen?: Screen }> 
             {isLoading ? 'Validando…' : 'Validar código'}
           </PrimaryButton>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col items-center gap-3">
+            {resendCooldown > 0 ? (
+              <CountdownTimer secondsRemaining={resendCooldown} label="Reenviar código em" />
+            ) : (
+              <ButtonBase
+                type="button"
+                onClick={handleResendRecoveryOtp}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1.5 py-1 text-xs font-bold text-amber-700 transition hover:text-amber-800 disabled:cursor-not-allowed disabled:text-slate-400 cursor-pointer"
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                Reenviar código por e-mail
+              </ButtonBase>
+            )}
+
             <SecondaryButton
               type="button"
               size="sm"

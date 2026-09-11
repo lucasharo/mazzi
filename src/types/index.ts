@@ -530,6 +530,7 @@ export interface Booking {
   paymentPublicReference?: string;
   paymentStatus?: MazziPaymentStatus;
   paymentPaidAt?: string;
+  providerPayout?: ProviderBookingPayout;
   totalInCents: number;
   createdAt: string;
   updatedAt?: string;
@@ -584,6 +585,15 @@ export interface ProviderMaskedPayoutAccount {
   country?: string;
   currency?: string;
   status?: string;
+}
+
+export interface ProviderBookingPayout {
+  id: string;
+  amountInCents: number;
+  status: PayoutStatus;
+  scheduledReleaseAt: string;
+  releasedAt?: string;
+  failureReason?: string;
 }
 
 export type InstantLessonRequestStatus =
@@ -1207,6 +1217,7 @@ export interface ProviderEarningsMetrics {
   blocked_cents: number;
   failed_cents: number;
   lessons_completed: number;
+  lessons_with_earnings?: number;
   average_ticket_cents?: number | null;
 }
 
@@ -1214,6 +1225,7 @@ export interface ProviderEarningsSeriesPoint {
   date: string;
   net_earned_cents: number;
   lessons_completed: number;
+  lessons_with_earnings?: number;
 }
 
 export interface ProviderUpcomingPayout {
@@ -1222,8 +1234,21 @@ export interface ProviderUpcomingPayout {
   amount_in_cents: number;
   payout_count: number;
   status?: PayoutStatus;
+  is_overdue?: boolean;
   payout_ids?: string[];
   failure_reason?: string | null;
+}
+
+export interface ProviderCompletedPayout {
+  id: string;
+  booking_id: string;
+  booking_reference?: string;
+  amount_in_cents: number;
+  status: 'PAID';
+  released_at: string;
+  scheduled_release_at?: string;
+  lesson_scheduled_at?: string;
+  booking_status?: BookingStatus;
 }
 
 export interface ProviderPayoutDetail {
@@ -1252,6 +1277,7 @@ export interface ProviderEarningsSummary {
   series: ProviderEarningsSeriesPoint[];
   upcoming_payouts: ProviderUpcomingPayout[];
   upcoming_total_cents: number;
+  completed_payouts?: ProviderCompletedPayout[];
   reviews: ProviderEarningsReviews;
   generated_at: string;
 }

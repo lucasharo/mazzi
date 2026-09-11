@@ -414,6 +414,7 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
     });
 
     it('Exibe no modal o erro retornado pelo check-in do instrutor', async () => {
+      const onShowFeedback = vi.fn();
       const booking = {
         id: 'bk_checkin_error',
         providerId: 'p_private_checkin',
@@ -432,13 +433,20 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
           {...defaultModalProps}
           booking={booking}
           onCheckIn={vi.fn().mockResolvedValue('O check-in ainda não está disponível.')}
+          onShowFeedback={onShowFeedback}
           canCancelBooking={() => false}
         />
       );
 
       fireEvent.click(screen.getByRole('button', { name: 'Fazer check-in na aula' }));
 
-      expect((await screen.findByRole('alert')).textContent).toContain('O check-in ainda não está disponível.');
+      await waitFor(() => {
+        expect(onShowFeedback).toHaveBeenCalledWith(
+          'error',
+          'Check-in não realizado',
+          'O check-in ainda não está disponível.',
+        );
+      });
     });
 
     it('mantém os horários dos check-ins no detalhe após a aula ser concluída', () => {

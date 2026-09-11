@@ -18,11 +18,12 @@ import { formatCentsToBRL } from '../../../domain/money';
 import { calculateLessonDurationMinutes, formatTransmissionLabel, formatTimeBR } from '../../../lib/date-format';
 import { mapFriendlyErrorMessage } from '../../../lib/error-mapper';
 import { getCheckInAvailability } from '../../../domain/checkin';
-import { CANCELLED_BOOKING_STATUSES, getBookingStartTimestamp, getEffectiveBookingHoldExpiresAt } from '../../../domain/booking';
+import { CANCELLED_BOOKING_STATUSES, getBookingEndTimestamp, getBookingStartTimestamp, getEffectiveBookingHoldExpiresAt, UNPAID_BOOKING_STATUSES } from '../../../domain/booking';
 import { BookingDisputePanel } from '../../../components/booking/BookingDisputePanel';
 import { ExternalNavigationModal } from '../../../components/instant/ExternalNavigationModal';
 import { CountdownTimer } from '../../../components/ui/CountdownTimer';
-import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices } from '../../../components/booking/BookingDetailsShared';
+import type { ToastMessage } from '../../../components/ui/Toast';
+import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices, getBookingRefundAmountInCents } from '../../../components/booking/BookingDetailsShared';
 
 const BOOKING_DETAIL_REFRESH_INTERVAL_MS = 3_000;
 
@@ -44,6 +45,7 @@ export interface ProviderBookingDetailsModalProps {
   etaMinutes?: number | null;
   onOpenNavigation?: () => void;
   onSetOnTheWay?: (bookingId: string) => Promise<void>;
+  onShowFeedback?: (type: 'success' | 'warning' | 'error' | 'info', title: string, description?: string) => void;
   hasScheduleConflict?: boolean;
   checkInWindowBeforeMinutes?: number | null;
   instantLessonExpirationMinutes?: number;
@@ -69,6 +71,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   etaMinutes,
   onOpenNavigation,
   onSetOnTheWay,
+  onShowFeedback,
   hasScheduleConflict = false,
   checkInWindowBeforeMinutes,
   instantLessonExpirationMinutes,
@@ -81,7 +84,6 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const [submittingDisplacement, setSubmittingDisplacement] = useState(false);
   const [hasStartedDisplacement, setHasStartedDisplacement] = useState(false);
   const [hasArrivedState, setHasArrivedState] = useState(false);
-  const [checkInError, setCheckInError] = useState<string | null>(null);
   const [checkInNow, setCheckInNow] = useState(() => new Date());
   const [navModalOpen, setNavModalOpen] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
@@ -142,6 +144,11 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   if (!booking) return null;
 
   const isWaitingPayment = isWaitingPaymentProp || booking.status === 'PENDING_PAYMENT';
+  const isPaymentNotCompleted = isWaitingPayment || UNPAID_BOOKING_STATUSES.includes(booking.status);
+  const canOpenChat = !isPaymentNotCompleted;
+  const onDisputeToast = onShowFeedback
+    ? (toast: Omit<ToastMessage, 'id'>) => onShowFeedback(toast.type, toast.title, toast.description)
+    : undefined;
   const isOnTheWay = isOnTheWayProp || hasStartedDisplacement || Boolean(booking.providerOnTheWayAt);
   const isArrived = hasArrivedState || Boolean(booking.instructorCheckedIn);
 
@@ -167,6 +174,8 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const isConfirmed = booking.status === 'CONFIRMED';
   const isInProgress = booking.status === 'IN_PROGRESS';
   const isCompleted = booking.status === 'COMPLETED';
+  const isDisputed = booking.status === 'DISPUTED';
+  const isStaleConfirmed = isConfirmed && getBookingEndTimestamp(booking) > 0 && getBookingEndTimestamp(booking) <= Date.now();
   const isCancelled = CANCELLED_BOOKING_STATUSES.includes(booking.status);
   const hasPersistedCheckInData = Boolean(
     booking.studentCheckedIn
@@ -192,10 +201,13 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         (booking.fullMeetingPoint && !needsMeetingPointAddress(booking.fullMeetingPoint) ? booking.fullMeetingPoint : '') ||
         'Ponto de encontro indicado no mapa';
   const canShowMeetingPoint = !isWaitingPayment && (isOnTheWay || isProviderMeetingPoint || isCompleted);
+  const shouldHideDisputedStudentLocation = isDisputed && !isProviderMeetingPoint;
   const visibleMeetingPoint = isCancelled
     ? (isProviderMeetingPoint ? meetingPointText : '')
-    : canShowMeetingPoint ? meetingPointText : '';
-  const meetingPointNotice = isCancelled
+    : shouldHideDisputedStudentLocation ? '' : canShowMeetingPoint ? meetingPointText : '';
+  const meetingPointNotice = shouldHideDisputedStudentLocation
+    ? 'Endereço oculto enquanto a contestação estiver em análise.'
+    : isCancelled
     ? undefined
     : !canShowMeetingPoint && !isWaitingPayment
     ? 'Endereço estará disponível quando você clicar em “Estou a caminho”.'
@@ -220,7 +232,44 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const lessonPriceInCents = snapshot.priceInCents ?? booking.priceInCents ?? booking.totalInCents ?? 0;
   const platformFeeInCents = snapshot.platformFeeInCents ?? booking.platformFeeInCents ?? 0;
   const bookingTotalInCents = snapshot.totalInCents ?? booking.totalInCents ?? lessonPriceInCents;
-  const netAmountInCents = Math.max(0, bookingTotalInCents - platformFeeInCents);
+  const refundAmountInCents = getBookingRefundAmountInCents(booking);
+  const effectivePlatformFeeInCents = refundAmountInCents >= bookingTotalInCents && bookingTotalInCents > 0
+    ? 0
+    : platformFeeInCents;
+  const providerPayout = booking.providerPayout;
+  const calculatedNetAmountInCents = Math.max(
+    0,
+    bookingTotalInCents - refundAmountInCents - effectivePlatformFeeInCents,
+  );
+  const netAmountInCents = providerPayout
+    ? providerPayout.amountInCents
+    : calculatedNetAmountInCents;
+  const showNoProviderAmount = isCancelled
+    && ['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(booking.paymentStatus || '')
+    && (!providerPayout || providerPayout.amountInCents <= 0);
+  const payoutPresentation = providerPayout && providerPayout.amountInCents > 0
+    ? {
+      label: providerPayout.status === 'PAID'
+        ? 'Valor recebido'
+        : providerPayout.status === 'BLOCKED'
+          ? 'Valor bloqueado'
+          : providerPayout.status === 'FAILED'
+            ? 'Repasse com falha'
+            : 'Valor a receber',
+      helper: providerPayout.status === 'PAID'
+        ? 'Repasse confirmado'
+        : providerPayout.status === 'BLOCKED'
+          ? 'Aguardando análise ou liberação'
+          : providerPayout.status === 'FAILED'
+            ? 'O repasse precisa de atenção'
+            : `Previsão: ${formatTimeBR(providerPayout.scheduledReleaseAt)}`,
+      tone: providerPayout.status === 'PAID'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
+        : providerPayout.status === 'BLOCKED' || providerPayout.status === 'FAILED'
+          ? 'border-amber-200 bg-amber-50 text-amber-950'
+          : 'border-sky-200 bg-sky-50 text-sky-950',
+    }
+    : null;
   const effectiveHoldExpiresAt = getEffectiveBookingHoldExpiresAt(booking, instantLessonExpirationMinutes);
   const paymentSecondsLeft = effectiveHoldExpiresAt
     ? Math.max(0, Math.ceil((new Date(effectiveHoldExpiresAt).getTime() - checkInNow.getTime()) / 1_000))
@@ -249,16 +298,15 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
   const handleCheckIn = async (): Promise<boolean> => {
     if (!onCheckIn || isCheckingIn) return false;
     setIsCheckingIn(true);
-    setCheckInError(null);
     try {
       const result = await onCheckIn(booking);
       if (typeof result === 'string') {
-        setCheckInError(result);
+        onShowFeedback?.('error', 'Check-in não realizado', result);
         return false;
       }
       return true;
     } catch (error) {
-      setCheckInError(mapFriendlyErrorMessage(error, 'Não foi possível realizar o check-in. Tente novamente.'));
+      onShowFeedback?.('error', 'Check-in não realizado', mapFriendlyErrorMessage(error, 'Não foi possível realizar o check-in. Tente novamente.'));
       return false;
     } finally {
       setIsCheckingIn(false);
@@ -305,12 +353,11 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
     const checkInCompleted = await handleCheckIn();
     if (checkInCompleted) {
       setHasArrivedState(true);
-      setCheckInError(null);
     }
   };
 
   const handleCopyAddress = async () => {
-    if (isWaitingPayment || !isOnTheWay || !meetingPointText || meetingPointText === 'Ponto de encontro indicado no mapa') return;
+    if (isWaitingPayment || shouldHideDisputedStudentLocation || !isOnTheWay || !meetingPointText || meetingPointText === 'Ponto de encontro indicado no mapa') return;
     if (!navigator.clipboard?.writeText) return;
 
     try {
@@ -393,7 +440,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
               </div>
             )
           )}
-          {onOpenChat && (
+          {onOpenChat && canOpenChat && (
             <SecondaryButton
               type="button"
               size="sm"
@@ -406,20 +453,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             </SecondaryButton>
           )}
         </div>
-      ) : (
-        onOpenChat ? (
-          <SecondaryButton
-            type="button"
-            size="sm"
-            className="w-full rounded-2xl font-bold shadow-sm transition-all hover:shadow-md"
-            onClick={() => onOpenChat(booking)}
-            leftIcon={<MessageSquare className="h-4 w-4 text-white" aria-hidden="true" />}
-            aria-label="Abrir conversa no chat sobre esta aula"
-          >
-            Mensagens
-          </SecondaryButton>
-        ) : null
-      )}
+      ) : null}
     </div>
   );
 
@@ -494,7 +528,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             type="button"
             variant="dangerSoft"
             size="sm"
-            className={`${onOpenChat ? 'min-w-0 flex-1' : 'w-full'}`}
+            className={`${canOpenChat ? 'min-w-0 flex-1' : 'w-full'}`}
             onClick={() => onCancelBooking(booking)}
             aria-label="Cancelar aula"
             leftIcon={<XCircle className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />}
@@ -502,7 +536,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             Cancelar aula
           </Button>
         )}
-        {onOpenChat && (
+        {onOpenChat && canOpenChat && (
           <SecondaryButton
             type="button"
             size="sm"
@@ -514,7 +548,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             Mensagens
           </SecondaryButton>
         )}
-        {(booking.status === 'COMPLETED' || booking.status === 'DISPUTED') && <BookingDisputePanel booking={booking} currentUserId={currentUserId} display="action" />}
+        {(booking.status === 'COMPLETED' || booking.status === 'DISPUTED') && <BookingDisputePanel booking={booking} currentUserId={currentUserId} display="action" onToast={onDisputeToast} />}
       </div>
     </div>
   );
@@ -569,7 +603,6 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             visible={checkInFlowActive || isOnTheWay || hasPersistedCheckInData}
             checkInAvailability={checkInAvailability}
             canCheckInAtLocation
-            checkInError={checkInError}
             isCheckingIn={isCheckingIn}
             onCheckIn={checkInFlowActive ? handleCheckIn : undefined}
             showCheckInAction={isProviderMeetingPoint && checkInFlowActive}
@@ -589,8 +622,8 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             durationLabel={durationLabel}
             meetingPoint={visibleMeetingPoint}
             meetingPointNotice={meetingPointNotice}
-            isProviderAddress={isProviderMeetingPoint}
-            showCopyAddress={!isWaitingPayment && isOnTheWay && !isProviderMeetingPoint && !isInProgress && !isCompleted && !isCancelled}
+            isProviderAddress={isProviderMeetingPoint && !shouldHideDisputedStudentLocation}
+            showCopyAddress={!isWaitingPayment && !shouldHideDisputedStudentLocation && isOnTheWay && !isProviderMeetingPoint && !isInProgress && !isCompleted && !isCancelled}
             addressCopied={addressCopied}
             onCopyAddress={handleCopyAddress}
           />
@@ -601,12 +634,13 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker />
           )}
           {!staticLessonMap && !isCancelled && !isWaitingPayment && !canShowMeetingPoint && mapPoint && (
-             <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
+             <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={!shouldHideDisputedStudentLocation} />
           )}
           {!staticLessonMap && !isCancelled && mapPoint && canShowMeetingPoint && <BookingMapPreview
             latitude={mapPoint.lat}
             longitude={mapPoint.lng}
             title={mapPoint.title}
+            showMarker={!shouldHideDisputedStudentLocation}
             showNavigation={!isInProgress && hasExactMeetingPoint && !isProviderMeetingPoint}
             onOpenNavigation={() => {
               if (onOpenNavigation) onOpenNavigation();
@@ -615,15 +649,34 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
           />}
 
           <BookingPaymentSummary
-            items={[
-              { label: 'Valor líquido', amount: formatCentsToBRL(netAmountInCents) },
-              { label: 'Taxa de Serviço MAZZI', amount: formatCentsToBRL(platformFeeInCents) },
-              ...(booking.refundAmountInCents !== undefined && booking.refundAmountInCents > 0
-                ? [{ label: 'Valor do reembolso', amount: formatCentsToBRL(booking.refundAmountInCents) }]
-                : []),
-            ]}
-            total={formatCentsToBRL(bookingTotalInCents)}
+            items={refundAmountInCents > 0
+              ? [
+                { label: 'Total pago pelo aluno', amount: formatCentsToBRL(bookingTotalInCents) },
+                { label: 'Reembolso ao aluno', amount: `− ${formatCentsToBRL(refundAmountInCents)}` },
+                { label: 'Taxa de Serviço MAZZI', amount: `− ${formatCentsToBRL(effectivePlatformFeeInCents)}` },
+              ]
+              : [
+                { label: 'Valor bruto da aula', amount: formatCentsToBRL(bookingTotalInCents) },
+                { label: 'Taxa de Serviço MAZZI', amount: `− ${formatCentsToBRL(effectivePlatformFeeInCents)}` },
+              ]}
+            total={formatCentsToBRL(netAmountInCents)}
+            totalLabel="Líquido do PRO"
           />
+
+          {(payoutPresentation || showNoProviderAmount) && (
+            <div role="status" className={`mazzi-compact-card rounded-2xl border p-4 ${payoutPresentation?.tone || 'border-slate-200 bg-slate-50 text-slate-800'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.12em] opacity-70">Repasse do PRO</p>
+                  <p className="mt-1 text-xs font-bold">{payoutPresentation?.label || 'Sem valor a receber'}</p>
+                </div>
+                <p className="text-lg font-black">{formatCentsToBRL(providerPayout?.amountInCents || 0)}</p>
+              </div>
+              <p className="mt-1 text-[11px] font-semibold opacity-75">
+                {payoutPresentation?.helper || 'O valor pago foi totalmente destinado ao reembolso.'}
+              </p>
+            </div>
+          )}
 
           <BookingCancellationNotice booking={booking} />
           <BookingPaymentStateNotices
@@ -634,11 +687,11 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
             showCountdown={false}
           />
 
-          <BookingDisputePanel booking={booking} currentUserId={currentUserId} />
+          <BookingDisputePanel booking={booking} currentUserId={currentUserId} allowStaleConfirmed={isStaleConfirmed} onToast={onDisputeToast} />
         </div>
       </Modal>
 
-      {latitude != null && longitude != null && !staticLessonMap && !isCancelled && (
+      {latitude != null && longitude != null && !staticLessonMap && !isCancelled && !shouldHideDisputedStudentLocation && (
         <ExternalNavigationModal
           isOpen={navModalOpen}
           onClose={() => setNavModalOpen(false)}

@@ -29,7 +29,7 @@ describe('global cancellation button hierarchy', () => {
     expect(soft).toContain('border-rose-200/80');
     expect(soft).toContain('text-rose-700');
     expect(soft).toContain('lucide-circle-x');
-    expect(solid).toContain('bg-rose-600');
+    expect(solid).toContain('bg-[var(--mazzi-danger)]');
     expect(solid).toContain('text-white');
     expect(solid).toContain('lucide-circle-x');
   });

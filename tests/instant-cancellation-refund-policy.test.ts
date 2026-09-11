@@ -11,7 +11,12 @@ const adminComponents = read('src/apps/admin/AdminComponents.tsx');
 const dbService = read('src/lib/db-service.ts');
 const legacyCancellation = read('supabase/migrations/20260818000034_cancellation_flow_and_rpc.sql');
 const stripeCancellation = read('supabase/migrations/20260907220000_student_instant_stripe_cancellation.sql');
+const providerStripeCancellation = read('supabase/migrations/20260910183000_allow_provider_instant_stripe_cancellation.sql');
 const stripeCancellationFunction = read('supabase/functions/cancel-instant-booking/index.ts');
+const providerCancellationModal = read('src/apps/provider/components/ProviderCancellationModal.tsx');
+const overduePayoutMigration = read('supabase/migrations/20260910184000_include_overdue_provider_payouts.sql');
+const payoutAfterRefundMigration = read('supabase/migrations/20260910185000_process_provider_payouts_after_refund.sql');
+const dualProfileProviderCancellation = read('supabase/migrations/20260910193000_fix_provider_cancel_dual_profile_authorization.sql');
 
 describe('Aula Agora cancellation and refund policy', () => {
   it('keeps the policy backend-owned and separate from Agenda', () => {
@@ -76,5 +81,40 @@ describe('Aula Agora cancellation and refund policy', () => {
     expect(stripeCancellationFunction).toContain('https://api.stripe.com/v1/refunds');
     expect(stripeCancellationFunction).toContain('finalize_instant_booking_cancellation');
     expect(dbService).toContain("sp.functions.invoke('cancel-instant-booking'");
+  });
+
+  it('authorizes the responsible PRO in the Stripe cancellation path', () => {
+    expect(providerStripeCancellation).toContain("v_user_role = 'INSTRUCTOR'");
+    expect(providerStripeCancellation).toContain('UNAUTHORIZED_PROVIDER');
+    expect(providerStripeCancellation).toContain("v_cancelled_by := 'PROVIDER'");
+    expect(providerStripeCancellation).toContain('CANCELLED_BY_PROVIDER');
+    expect(providerStripeCancellation).toContain('Cancelamento solicitado pelo profissional, sem motivo informado.');
+  });
+
+  it('authorizes a PRO by the booking provider link even when the legacy user role is STUDENT', () => {
+    expect(dualProfileProviderCancellation).toContain("v_provider_user_id = v_uid AND v_provider_type = 'INSTRUCTOR'");
+    expect(dualProfileProviderCancellation).toContain("v_provider_user_id = p_actor_id AND v_provider_type = 'INSTRUCTOR'");
+    expect(dualProfileProviderCancellation).toContain("v_cancelled_by := 'PROVIDER'");
+    expect(dualProfileProviderCancellation).toContain("PERFORM public.assert_current_user_student();");
+  });
+
+  it('shows provider cancellation failures through the friendly toast flow', () => {
+    expect(providerApp).toContain("showProviderFeedback('error', 'Cancelamento não concluído'");
+    expect(providerApp).toContain("mapFriendlyErrorMessage(err, 'Não foi possível cancelar a aula agora. Tente novamente em instantes.')");
+    expect(providerCancellationModal).not.toContain('errorMessage');
+    expect(providerCancellationModal).not.toContain('Edge Function returned');
+  });
+
+  it('keeps overdue pending payouts visible to the PRO', () => {
+    expect(overduePayoutMigration).toContain("po.scheduled_release_at < NOW() + INTERVAL '7 days'");
+    expect(overduePayoutMigration).toContain("po.status::TEXT IN ('PENDING', 'AVAILABLE', 'PROCESSING')");
+    expect(overduePayoutMigration).toContain("'is_overdue', po.scheduled_release_at < NOW()");
+    expect(overduePayoutMigration).not.toContain("po.scheduled_release_at >= NOW()");
+  });
+
+  it('allows the payout processor to release residual earnings after a partial refund', () => {
+    expect(payoutAfterRefundMigration).toContain("'PARTIALLY_REFUNDED'");
+    expect(payoutAfterRefundMigration).toContain("'REFUNDED'");
+    expect(payoutAfterRefundMigration).toContain('claim_due_stripe_payouts');
   });
 });

@@ -5,16 +5,13 @@ import type { SchoolInstructorComplianceSummary, SchoolInvitationContext, School
 import type { ProviderPaymentAccount } from '../../../types';
 import { Button, ButtonBase } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
-import { evaluateProviderEligibility } from '../../../domain/compliance';
-import { resolveComplianceDocumentStatus } from '../../../domain/provider-compliance-presentation';
 import { ContentSkeleton } from '../../../components/ui/ContentSkeleton';
-import { ComplianceStatusAlert } from '../../../components/ui/ComplianceStatusAlert';
+import { ProviderMarketplaceStatus } from '../../../components/provider/ProviderMarketplaceStatus';
 import { ProviderEarningsDashboardCard } from './ProviderEarningsTab';
 import { Modal } from '../../../components/ui/Modal';
 import { UpcomingBookingCard, UpcomingBookingEmptyCard } from '../../../components/ui/UpcomingBookingCard';
 import { ProviderInstantLessonSummaryCard } from './ProviderInstantLessonSummaryCard';
 import { getInstantLessonAvailabilityNotice } from '../../../domain/instant-lesson';
-import { isProviderPaymentAccountReady } from '../../../domain/payments/provider-payment-readiness';
 import { canShowProviderRating } from '../../../domain/provider-earnings';
 import type { ProviderEarningsReviews } from '../../../types';
 
@@ -82,32 +79,9 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
   const [invitationAction, setInvitationAction] = React.useState<'ACCEPT' | 'DECLINE' | null>(null);
   const [providerReviews, setProviderReviews] = React.useState<ProviderEarningsReviews | null>(null);
   const canRenderProfileRating = Boolean(providerReviews && canShowProviderRating(providerReviews.distinct_students_count) && providerReviews.rating_overall != null);
-  const complianceEligibility = evaluateProviderEligibility(currentProvider, providerDocs);
-  const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility, providerDocs);
   const instantAvailabilityNotice = getInstantLessonAvailabilityNotice(bookings || confirmedBookings, nowMs);
   const dashboardBooking = activeInstantBooking || nextBooking;
   const cancelledBookings = (bookings || []).filter((booking) => booking.status.startsWith('CANCELLED')).length;
-  const marketplacePendingByInstructor = React.useMemo(() => {
-    const instructors = currentProvider.type === 'DRIVING_SCHOOL'
-      ? schoolInstructors.filter((instructor) => instructor.isActive && instructor.membershipStatus === 'ACTIVE')
-      : currentUserId
-        ? [{ id: '', userId: currentUserId, name: currentProvider.name, membershipStatus: 'ACTIVE', isActive: true }]
-        : [];
-
-    return instructors.map((instructor) => {
-      const pending: string[] = [];
-      const hasActiveVehicle = providerVehicles.some((vehicle) => vehicle.status === 'ACTIVE');
-      const compliance = currentProvider.type === 'DRIVING_SCHOOL'
-        ? schoolInstructorSummary.find((entry) => entry.membershipId === instructor.id)?.eligible === true
-        : complianceEligibility.isEligible;
-
-      if (!hasActiveVehicle) pending.push('Veículo ativo não cadastrado');
-      if (!compliance) pending.push('Compliance aprovado pendente');
-      if (!isProviderPaymentAccountReady(paymentAccount)) pending.push('Conta bancária não cadastrada');
-
-      return { instructorName: instructor.name || 'Instrutor', pending };
-    }).filter((item) => item.pending.length > 0);
-  }, [availabilityRules, complianceEligibility.isEligible, currentProvider.name, currentProvider.type, currentUserId, offerings, paymentAccount, providerVehicles, schoolInstructorSummary, schoolInstructors]);
 
   return (
     <div className="space-y-[10px] text-left">
@@ -129,10 +103,15 @@ export const ProviderDashboardTab: React.FC<ProviderDashboardTabProps> = ({
 
       {/* Compliance status: shared with the PRO profile */}
       {!isRefreshing && (
-        <ComplianceStatusAlert
-          status={complianceStatus}
-          marketplaceReady={marketplacePendingByInstructor.length === 0}
-          marketplacePending={marketplacePendingByInstructor.flatMap((item) => item.pending)}
+        <ProviderMarketplaceStatus
+          currentProvider={currentProvider}
+          providerDocs={providerDocs}
+          providerVehicles={providerVehicles}
+          offerings={offerings}
+          paymentAccount={paymentAccount}
+          currentUserId={currentUserId}
+          schoolInstructors={schoolInstructors}
+          schoolInstructorSummary={schoolInstructorSummary}
         />
       )}
 

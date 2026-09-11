@@ -27,7 +27,7 @@ describe('Student Home dashboard', () => {
 
   it('keeps the dashboard metrics backed by booking-derived state', () => {
     expect(studentApp).toContain('studentDashboardStats');
-    expect(studentApp).toContain("today: todayBookings.length");
+    expect(studentApp).toContain("today: todayBookings.filter((booking) => !CANCELLED_BOOKING_STATUSES.includes(booking.status)).length");
     expect(studentApp).toContain("completed: historyBookings.filter((booking) => booking.status === 'COMPLETED').length");
     expect(studentApp).toContain("booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER'");
     expect(homeSource).toContain('StudentStatsGrid stats={studentDashboardStats}');
@@ -75,7 +75,8 @@ describe('Student Home dashboard', () => {
   });
 
   it('keeps address selection inside the parent wizard', () => {
-    expect(confirmableAddressAutocomplete).toContain('useHistory={false}');
+    expect(confirmableAddressAutocomplete).not.toContain('useHistory={false}');
+    expect(confirmableAddressAutocomplete).toContain('layer="nested"');
     expect(confirmableAddressAutocomplete).toContain('onConfirm(suggestion, nextValue);');
   });
 });

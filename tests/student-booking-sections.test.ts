@@ -97,4 +97,16 @@ describe('Student booking sections', () => {
     expect(studentApp).toContain("getStudentBookingSection(b.status, b) === 'HISTORY'");
     expect(studentApp).toContain('Você não possui aulas confirmadas no momento.');
   });
+
+  it('includes cancelled lessons scheduled for today in the Hoje tab', () => {
+    expect(studentApp).toContain('isStudentTodayVisibleBooking');
+    expect(studentApp).toContain('CANCELLED_BOOKING_STATUSES.includes(booking.status)');
+    expect(studentApp).toContain("bookingTab === 'today'");
+    expect(studentApp).toContain("{ value: 'cancelled' as const, label: 'Canceladas' }");
+  });
+
+  it('references the stale confirmed booking reminder for overdue reservations', () => {
+    expect(studentApp).toContain('getStaleConfirmedBookings');
+    expect(studentApp).toContain('dismissedStaleConfirmedSignatureRef');
+  });
 });

@@ -171,11 +171,8 @@ export const ConfirmableAddressAutocomplete: React.FC<ConfirmableAddressAutocomp
         id={`confirmable-address-${modalId}`}
         isOpen={isOpen}
         onClose={closeModal}
-        // This picker is an internal surface of the booking wizard. Its
-        // close action must not add/remove a browser-history entry, otherwise
-        // selecting an address can be interpreted as closing the parent
-        // wizard as well.
-        useHistory={false}
+        // Keep this nested picker in the shared dialog history so the device
+        // back action closes it before returning to the parent wizard.
         ariaLabel="Confirmar endereço"
         layer="nested"
         presentation="fullscreen"

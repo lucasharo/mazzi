@@ -24,6 +24,7 @@ interface AuthContextType extends AuthSessionState {
   logout: () => Promise<void>;
   beginPasswordRecovery: () => void;
   completePasswordRecovery: () => Promise<void>;
+  clearError: () => void;
   hasPerm: (permission: AppPermission) => boolean;
 }
 
@@ -90,6 +91,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isLoading: false,
       error: null,
     });
+  };
+
+  const clearError = () => {
+    setAuthState((prev) => (prev.error ? { ...prev, error: null } : prev));
   };
 
   const hydrateSession = async (session: any) => {
@@ -485,6 +490,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         beginPasswordRecovery,
         completePasswordRecovery,
+        clearError,
         hasPerm,
       }}
     >

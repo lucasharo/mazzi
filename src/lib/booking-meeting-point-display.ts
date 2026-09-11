@@ -10,7 +10,7 @@ export function getStudentBookingMeetingPointText(
   nowMs = Date.now(),
 ): string {
   const visibility = getBookingAddressVisibility(booking, nowMs);
-  if (CANCELLED_BOOKING_STATUSES.includes(booking.status) && visibility.isProviderAddress) {
+  if ((CANCELLED_BOOKING_STATUSES.includes(booking.status) || booking.status === 'DISPUTED') && visibility.isProviderAddress) {
     return formatApproximateMeetingPoint(booking.snapshot?.meetingPoint || booking.meetingPoint || booking.fullMeetingPoint, fallback);
   }
 

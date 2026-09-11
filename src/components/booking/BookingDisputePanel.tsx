@@ -7,6 +7,7 @@ import { Textarea } from '../ui/Textarea';
 import { Select } from '../ui/Select';
 import { Modal } from '../ui/Modal';
 import { mapFriendlyErrorMessage } from '../../lib/error-mapper';
+import type { ToastMessage } from '../ui/Toast';
 
 const DISPUTES_CACHE_TTL_MS = 2_000;
 type DisputesCacheEntry = {
@@ -54,7 +55,15 @@ const reasons: Array<{ value: BookingDisputeReason; label: string }> = [
   { value: 'OTHER', label: 'Outro motivo' },
 ];
 
-export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: string; display?: 'section' | 'action' }> = ({ booking, currentUserId, display = 'section' }) => {
+type BookingDisputePanelProps = {
+  booking: Booking;
+  currentUserId?: string;
+  display?: 'section' | 'action';
+  allowStaleConfirmed?: boolean;
+  onToast?: (toast: Omit<ToastMessage, 'id'>) => void;
+};
+
+export const BookingDisputePanel: React.FC<BookingDisputePanelProps> = ({ booking, currentUserId, display = 'section', allowStaleConfirmed = false, onToast }) => {
   const [disputes, setDisputes] = useState<BookingDispute[]>([]);
   const [isOpening, setIsOpening] = useState(false);
   const [isViewing, setIsViewing] = useState(false);
@@ -68,6 +77,13 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const notifyError = (title: string, description: string) => {
+    if (onToast) {
+      onToast({ type: 'error', title, description });
+      return;
+    }
+    setError(description);
+  };
   const visibleReasons = useMemo(() => {
     if (!currentUserId) return reasons;
     return reasons.filter((item) => currentUserId === booking.studentId
@@ -115,7 +131,12 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
     setEvidenceError(null);
     void dbService.getBookingDisputeEvidence(activeDispute.id)
       .then((rows) => { if (active) setEvidence(rows); })
-      .catch((cause) => { if (active) setEvidenceError(mapFriendlyErrorMessage(cause, 'Não foi possível carregar os arquivos da contestação.')); })
+      .catch((cause) => {
+        if (!active) return;
+        const message = mapFriendlyErrorMessage(cause, 'Não foi possível carregar os arquivos da contestação.');
+        if (onToast) onToast({ type: 'error', title: 'Arquivos da contestação indisponíveis', description: message });
+        else setEvidenceError(message);
+      })
       .finally(() => { if (active) setIsLoadingEvidence(false); });
     return () => { active = false; };
   }, [activeDispute?.id]);
@@ -127,7 +148,7 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
     const invalid = incoming.find((file) => !allowedTypes.includes(file.type) || file.size > 10 * 1024 * 1024);
     if (invalid) {
-      setError('Envie imagens JPG, PNG ou WEBP, ou arquivos PDF, com até 10 MB cada.');
+      notifyError('Arquivo não aceito', 'Envie imagens JPG, PNG ou WEBP, ou arquivos PDF, com até 10 MB cada.');
       return;
     }
     setPendingFiles((current) => [...current, ...incoming].slice(0, 10));
@@ -148,7 +169,9 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
       await uploadPendingFiles(created.id);
       setIsOpening(false); setDescription('');
       notifyDisputeUpdated();
-    } catch (cause) { setError(mapFriendlyErrorMessage(cause, 'Não foi possível abrir a contestação. Verifique se o prazo ainda está ativo.')); }
+    } catch (cause) {
+      notifyError('Contestação não aberta', mapFriendlyErrorMessage(cause, 'Não foi possível abrir a contestação. Verifique se o prazo ainda está ativo.'));
+    }
     finally { setIsSaving(false); }
   };
 
@@ -167,7 +190,9 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
       setDisputes((current) => current.map((item) => item.id === updated.id ? updated : item));
       setResponse('');
       notifyDisputeUpdated();
-    } catch (cause) { setError(mapFriendlyErrorMessage(cause, 'Não foi possível enviar a resposta.')); }
+    } catch (cause) {
+      notifyError('Resposta não enviada', mapFriendlyErrorMessage(cause, 'Não foi possível enviar a resposta.'));
+    }
     finally { setIsSaving(false); }
   };
 
@@ -180,7 +205,7 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
       const opened = window.open(url, '_blank', 'noopener,noreferrer');
       if (!opened) window.location.assign(url);
     } catch (cause) {
-      setError(mapFriendlyErrorMessage(cause, 'Não foi possível abrir o arquivo.'));
+      notifyError('Arquivo não aberto', mapFriendlyErrorMessage(cause, 'Não foi possível abrir o arquivo.'));
     }
   };
 
@@ -239,7 +264,8 @@ export const BookingDisputePanel: React.FC<{ booking: Booking; currentUserId?: s
     return null;
   }
 
-  if (booking.status !== 'COMPLETED') return null;
+  const canOpenStaleConfirmedDispute = allowStaleConfirmed && booking.status === 'CONFIRMED';
+  if (booking.status !== 'COMPLETED' && !canOpenStaleConfirmedDispute) return null;
 
   return (
     <>

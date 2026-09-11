@@ -1,25 +1,22 @@
 import React from 'react';
 import { Camera, Eye, EyeOff, MapPin, Pencil, Save, ShieldCheck, UserRound } from 'lucide-react';
-import { ComplianceDocument, Provider, ProviderAddress, ProviderPaymentAccount, UserRole, Vehicle } from '../../../types';
+import { ComplianceDocument, Provider, ProviderAddress, ProviderPaymentAccount, ServiceOffering, UserRole, Vehicle } from '../../../types';
 import type { SchoolInstructorComplianceSummary, SchoolMembership } from '../../../lib/db-service';
 import { Button, PrimaryButton, ButtonBase } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
 import { ProfilePhotoPicker } from '../../../components/profile/ProfilePhotoPicker';
 import { ProfileAvatar } from '../../../components/profile/ProfileAvatar';
-import { ComplianceStatusAlert } from '../../../components/ui/ComplianceStatusAlert';
 import { ProviderAddressForm, ProviderAddressFormValue } from '../../../components/provider/ProviderAddressForm';
+import { ProviderMarketplaceStatus } from '../../../components/provider/ProviderMarketplaceStatus';
 
 import { maskBrazilianPhone, maskCpfCnpj, maskCnpj } from '../../../lib/input-masks';
 import { formatDateMask } from '../../../utils/age';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { Modal } from '../../../components/ui/Modal';
-import { evaluateProviderEligibility } from '../../../domain/compliance';
-import { resolveComplianceDocumentStatus } from '../../../domain/provider-compliance-presentation';
 import { NotificationCenterLink } from '../../../components/notifications/NotificationCenterLink';
 import { ProfileDetailsCard } from '../../../components/profile/ProfileDetailsCard';
 import { ProfileSectionHeader } from '../../../components/profile/ProfileSectionHeader';
-import { isProviderPaymentAccountReady } from '../../../domain/payments/provider-payment-readiness';
 
 interface ProviderProfileTabProps {
   currentProvider: Provider;
@@ -31,6 +28,7 @@ interface ProviderProfileTabProps {
   userBirthDate?: string;
   currentUserId?: string;
   providerVehicles?: Vehicle[];
+  offerings?: ServiceOffering[];
   paymentAccount?: ProviderPaymentAccount | null;
   schoolInstructors?: SchoolMembership[];
   schoolInstructorSummary?: SchoolInstructorComplianceSummary[];
@@ -73,6 +71,7 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
   userBirthDate,
   currentUserId,
   providerVehicles = [],
+  offerings = [],
   paymentAccount,
   schoolInstructors = [],
   schoolInstructorSummary = [],
@@ -101,28 +100,6 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
   const displayDocument = documentValue
     ? (isDocumentVisible ? formattedDocument : maskedDocument)
     : 'Não informado';
-  const complianceEligibility = evaluateProviderEligibility(currentProvider, complianceDocs);
-  const complianceStatus = resolveComplianceDocumentStatus(complianceEligibility, complianceDocs);
-  const marketplacePending = React.useMemo(() => {
-    const instructors = isSchool
-      ? schoolInstructors.filter((instructor) => instructor.isActive && instructor.membershipStatus === 'ACTIVE')
-      : currentUserId
-        ? [{ id: '', userId: currentUserId, name: currentProvider.name, membershipStatus: 'ACTIVE', isActive: true }]
-        : [];
-    const hasActiveVehicle = providerVehicles.some((vehicle) => vehicle.status === 'ACTIVE');
-    const hasPaymentAccount = isProviderPaymentAccountReady(paymentAccount);
-
-    return instructors.flatMap((instructor) => {
-      const pending: string[] = [];
-      const hasCompliance = isSchool
-        ? schoolInstructorSummary.find((summary) => summary.membershipId === instructor.id)?.eligible === true
-        : complianceEligibility.isEligible;
-      if (!hasActiveVehicle) pending.push('Veículo ativo não cadastrado');
-      if (!hasCompliance) pending.push('Compliance aprovado pendente');
-      if (!hasPaymentAccount) pending.push('Conta bancária não cadastrada');
-      return pending;
-    });
-  }, [complianceEligibility.isEligible, currentProvider.name, currentUserId, isSchool, paymentAccount, providerVehicles, schoolInstructorSummary, schoolInstructors]);
   return (
     <div className="space-y-5 text-left">
       {/* Header */}
@@ -143,10 +120,15 @@ export const ProviderProfileTab: React.FC<ProviderProfileTabProps> = ({
         <p className="mt-1 truncate text-sm text-[var(--mazzi-muted)]">{userEmail || 'E-mail não informado'}</p>
       </div>
 
-      <ComplianceStatusAlert
-        status={complianceStatus}
-        marketplaceReady={marketplacePending.length === 0}
-        marketplacePending={marketplacePending}
+      <ProviderMarketplaceStatus
+        currentProvider={currentProvider}
+        providerDocs={complianceDocs}
+        providerVehicles={providerVehicles}
+        offerings={offerings}
+        paymentAccount={paymentAccount}
+        currentUserId={currentUserId}
+        schoolInstructors={schoolInstructors}
+        schoolInstructorSummary={schoolInstructorSummary}
       />
 
       {currentRole === 'SCHOOL_STAFF' && (

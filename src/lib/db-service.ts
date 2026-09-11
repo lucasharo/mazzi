@@ -28,6 +28,7 @@ import {
   AdminReportDailyResponse,
   ProviderAnalyticsSummary,
   ProviderEarningsSummary,
+  ProviderCompletedPayout,
   ProviderPayoutDetail,
   ProviderEarningsPeriodPreset,
   ProductAnalyticsEventName,
@@ -369,6 +370,14 @@ export function mapBookingFromDb(row: any, offeringCategory?: string): Booking {
     paymentPublicReference: row.payment_public_reference || undefined,
     paymentStatus: row.payment_status || undefined,
     paymentPaidAt: row.payment_paid_at || undefined,
+    providerPayout: row.provider_payout?.id ? {
+      id: row.provider_payout.id,
+      amountInCents: Number(row.provider_payout.amount_in_cents || 0),
+      status: row.provider_payout.status,
+      scheduledReleaseAt: row.provider_payout.scheduled_release_at,
+      releasedAt: row.provider_payout.released_at || undefined,
+      failureReason: row.provider_payout.failure_reason || undefined,
+    } : undefined,
     totalInCents: row.total_in_cents,
     snapshot: normalizedSnapshot,
     meetingPoint: meetingPointLabel,
@@ -1943,6 +1952,13 @@ export const dbService = {
     } catch {
       // Keep the summary usable until the additive local migration is applied.
     }
+    let completedDetails: any[] | null = null;
+    try {
+      const { data: detailData, error: detailError } = await sp.rpc('get_my_provider_completed_payouts');
+      if (!detailError && Array.isArray(detailData)) completedDetails = detailData;
+    } catch {
+      // Keep the summary usable until the additive local migration is applied.
+    }
     // The RPC owns the calculations. This mapper only normalizes JSON numeric
     // values for the typed UI and never recalculates financial amounts.
     const normalizeMetrics = (metrics: any) => ({
@@ -1952,6 +1968,7 @@ export const dbService = {
       blocked_cents: Number(metrics?.blocked_cents || 0),
       failed_cents: Number(metrics?.failed_cents || 0),
       lessons_completed: Number(metrics?.lessons_completed || 0),
+      lessons_with_earnings: Number(metrics?.lessons_with_earnings ?? metrics?.lessons_completed ?? 0),
       average_ticket_cents: metrics?.average_ticket_cents == null ? null : Number(metrics.average_ticket_cents),
     });
     const normalizeReviews = (reviews: any) => ({
@@ -1974,6 +1991,7 @@ export const dbService = {
         date: point.date,
         net_earned_cents: Number(point.net_earned_cents || 0),
         lessons_completed: Number(point.lessons_completed || 0),
+        lessons_with_earnings: Number(point.lessons_with_earnings ?? point.lessons_completed ?? 0),
       })) : [],
       upcoming_payouts: (upcomingDetails || (Array.isArray(data.upcoming_payouts) ? data.upcoming_payouts : [])).map((item: any) => ({
         id: item.id || undefined,
@@ -1981,10 +1999,22 @@ export const dbService = {
         amount_in_cents: Number(item.amount_in_cents || 0),
         payout_count: Number(item.payout_count || 1),
         status: item.status || undefined,
+        is_overdue: item.is_overdue === true,
         payout_ids: Array.isArray(item.payout_ids) ? item.payout_ids.map(String) : undefined,
         failure_reason: item.failure_reason || null,
       })),
       upcoming_total_cents: upcomingDetails ? upcomingDetails.filter((item: any) => ['PENDING', 'AVAILABLE', 'PROCESSING'].includes(item.status)).reduce((sum: number, item: any) => sum + Number(item.amount_in_cents || 0), 0) : Number(data.upcoming_total_cents || 0),
+      completed_payouts: (completedDetails || []).map((item: any): ProviderCompletedPayout => ({
+        id: String(item.id),
+        booking_id: String(item.booking_id),
+        booking_reference: item.booking_reference || undefined,
+        amount_in_cents: Number(item.amount_in_cents || 0),
+        status: 'PAID',
+        released_at: item.released_at,
+        scheduled_release_at: item.scheduled_release_at || undefined,
+        lesson_scheduled_at: item.lesson_scheduled_at || undefined,
+        booking_status: item.booking_status || undefined,
+      })),
       reviews: normalizeReviews(data.reviews),
       generated_at: data.generated_at,
     };

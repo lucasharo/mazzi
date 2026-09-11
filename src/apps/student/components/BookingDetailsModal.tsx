@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CreditCard, MessageSquare, AlertTriangle, XCircle, AlertCircle, ArrowLeft, Navigation, Star, } from 'lucide-react';
+import { CreditCard, MessageSquare, AlertTriangle, XCircle, ArrowLeft, Navigation, Star, } from 'lucide-react';
 import { Booking, InstantCancellationQuote, InstantLessonRequest, InstantLessonTracking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { ReasonChips } from '../../../components/ui/ReasonChips';
@@ -19,7 +19,8 @@ import { BookingDisputePanel } from '../../../components/booking/BookingDisputeP
 import { ExternalNavigationModal } from '../../../components/instant/ExternalNavigationModal';
 import { InstantLessonTrackingCard } from '../../../components/instant/InstantLessonTrackingCard';
 import { CountdownTimer } from '../../../components/ui/CountdownTimer';
-import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices } from '../../../components/booking/BookingDetailsShared';
+import type { ToastMessage } from '../../../components/ui/Toast';
+import { BookingDetailsHeader, BookingPresenceCard, BookingDetailsOverview, BookingMapPreview, BookingPaymentSummary, BookingCancellationNotice, BookingPaymentStateNotices, getBookingRefundAmountInCents } from '../../../components/booking/BookingDetailsShared';
 import { INSTANT_STUDENT_TRACKING_INTERVAL_SECONDS } from '../../../domain/instant-lesson';
 
 const BOOKING_DETAIL_REFRESH_INTERVAL_MS = 3_000;
@@ -40,6 +41,7 @@ export interface BookingDetailsModalProps {
   instantLessonExpirationMinutes?: number;
   trackingPreview?: React.ReactNode;
   useHistory?: boolean;
+  onToast?: (toast: Omit<ToastMessage, 'id'>) => void;
 }
 
 const CANCEL_REASON_CHIPS = [
@@ -97,12 +99,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   instantLessonExpirationMinutes,
   trackingPreview,
   useHistory = true,
+  onToast,
 }) => {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [selectedReasonChip, setSelectedReasonChip] = useState<string>('');
   const [customReason, setCustomReason] = useState<string>('');
   const [isCancelling, setIsCancelling] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
   const [checkInNow, setCheckInNow] = useState(() => new Date());
@@ -299,6 +301,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     ? buildTrackingRequest(booking)
     : null;
   const isCompleted = booking.status === 'COMPLETED';
+  const isStaleConfirmed = booking.status === 'CONFIRMED' && Boolean(isLessonEnded);
   const isCancelled = CANCELLED_BOOKING_STATUSES.includes(booking.status);
   const isDisputed = booking.status === 'DISPUTED';
   const isPaymentNotCompleted = UNPAID_BOOKING_STATUSES.includes(booking.status);
@@ -337,9 +340,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     && !isProviderOnTheWay
     && isProviderAddress
     && !isAddressReleaseWindowOpen;
+  const shouldHideDisputedProviderLocation = isDisputed && isProviderAddress;
+  const shouldHideMeetingPoint = shouldHideProviderLocation || shouldHideDisputedProviderLocation;
   const visibleMeetingPoint = isCancelled
     ? (isProviderAddress ? '' : meetingPoint)
-    : shouldHideProviderLocation ? '' : meetingPoint;
+    : shouldHideMeetingPoint ? '' : meetingPoint;
   const hasPersistedCheckInData = Boolean(
     booking.studentCheckedIn
     || booking.instructorCheckedIn
@@ -350,7 +355,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const visibleMapPoint = shouldHideProviderLocation || isCancelled ? undefined : mapPoint;
   const staticLessonMap = ['IN_PROGRESS', 'COMPLETED'].includes(booking.status) && Boolean(mapPoint);
   const cancelledMapOnly = isCancelled && Boolean(mapPoint);
-  const meetingPointNotice = shouldHideProviderLocation
+  const meetingPointNotice = shouldHideDisputedProviderLocation
+    ? 'Endereço oculto enquanto a contestação estiver em análise.'
+    : shouldHideProviderLocation
     ? isProviderAddress && Number.isFinite(scheduledStartMs)
       ? `Endereço estará disponível a partir de ${formatTimeBR(new Date(scheduledStartMs - (60 * 60 * 1_000)).toISOString())}.`
       : 'Endereço estará disponível quando o instrutor estiver a caminho.'
@@ -388,10 +395,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     lessonPriceInCents: snapshot.priceInCents || booking.priceInCents || 0,
     platformFeeInCents: snapshot.platformFeeInCents || booking.platformFeeInCents || 0,
   });
+  const bookingTotalInCents = snapshot.totalInCents || booking.totalInCents || 0;
+  const refundAmountInCents = getBookingRefundAmountInCents(booking);
 
   const handleConfirmCancel = async () => {
     setIsCancelling(true);
-    setCancelError(null);
 
     const finalReason = [selectedReasonChip, customReason.trim()].filter(Boolean).join(': ') || undefined;
 
@@ -430,7 +438,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       onClose();
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production') console.error('Error cancelling booking:', err);
-      setCancelError(mapFriendlyErrorMessage(err, 'Não foi possível cancelar este agendamento.'));
+      onToast?.({
+        type: 'error',
+        title: 'Cancelamento não concluído',
+        description: mapFriendlyErrorMessage(err, 'Não foi possível cancelar a aula agora. Tente novamente em instantes.'),
+      });
     } finally {
       setIsCancelling(false);
     }
@@ -509,7 +521,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </Button>
         )}
 
-        {(isCompleted || isDisputed) && <BookingDisputePanel booking={booking} currentUserId={currentUserId} display="action" />}
+        {(isCompleted || isDisputed || isStaleConfirmed) && <BookingDisputePanel booking={booking} currentUserId={currentUserId} display="action" allowStaleConfirmed={isStaleConfirmed && currentUserId === booking.studentId} onToast={onToast} />}
 
         {(isUpcoming || canStudentCancel) && (
           <Button
@@ -536,11 +548,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       onClose={() => {
         if (isConfirmingCancel) {
           setIsConfirmingCancel(false);
-          setCancelError(null);
           return;
         }
         setIsConfirmingCancel(false);
-        setCancelError(null);
         setIsTrackingOpen(false);
         onClose();
       }}
@@ -653,13 +663,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             />
           </div>
 
-          {cancelError && (
-            <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{cancelError}</span>
-            </div>
-          )}
-
         </div>
       ) : (
         /* STANDARD DETAILS VIEW */
@@ -715,8 +718,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             durationLabel={durationLabel}
             meetingPoint={visibleMeetingPoint}
             meetingPointNotice={meetingPointNotice}
-            isProviderAddress={isProviderAddress && !shouldHideProviderLocation && !isCancelled}
-            showCopyAddress={isProviderAddress && !isPendingPayment && !shouldHideProviderLocation && !staticLessonMap && !isCancelled}
+            isProviderAddress={isProviderAddress && !shouldHideMeetingPoint && !isCancelled}
+            showCopyAddress={isProviderAddress && !isPendingPayment && !shouldHideMeetingPoint && !staticLessonMap && !isCancelled}
             addressCopied={isAddressCopied}
             onCopyAddress={handleCopyMeetingPoint}
           />
@@ -727,26 +730,44 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           {staticLessonMap && !isCancelled && !isPendingPayment && mapPoint && (
             <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker />
           )}
-          {!staticLessonMap && !isCancelled && !isLessonStarted && !isPendingPayment && shouldHideProviderLocation && mapPoint && (
+          {!staticLessonMap && !isCancelled && !isDisputed && !isLessonStarted && !isPendingPayment && shouldHideProviderLocation && mapPoint && (
              <BookingMapPreview latitude={mapPoint.lat} longitude={mapPoint.lng} title={mapPoint.title} showMarker={false} />
           )}
           {!staticLessonMap && !isCancelled && !isLessonStarted && !isPendingPayment && visibleMapPoint && <BookingMapPreview
             latitude={visibleMapPoint.lat}
             longitude={visibleMapPoint.lng}
             title={visibleMapPoint.title}
-            showNavigation={isProviderAddress && !shouldHideProviderLocation && Boolean(mapPoint)}
+            showMarker={!shouldHideDisputedProviderLocation}
+            showNavigation={isProviderAddress && !shouldHideMeetingPoint && Boolean(mapPoint)}
             onOpenNavigation={() => setIsNavigationOpen(true)}
           />}
 
           <BookingPaymentSummary
             items={[
               { label: 'Valor da aula prática', amount: formatCentsToBRL(snapshot.priceInCents) },
-              ...(booking.refundAmountInCents !== undefined && booking.refundAmountInCents > 0
-                ? [{ label: 'Valor do reembolso', amount: formatCentsToBRL(booking.refundAmountInCents) }]
-                : []),
             ]}
-            total={formatCentsToBRL(snapshot.totalInCents)}
+            total={formatCentsToBRL(bookingTotalInCents)}
+            totalLabel="Total pago pelo aluno"
           />
+
+          {refundAmountInCents > 0 && (
+            <div role="status" className="mazzi-compact-card rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Reembolso ao aluno</p>
+                  <p className="mt-1 text-xs font-semibold text-emerald-800">Valor confirmado para devolução</p>
+                </div>
+                <p className="text-lg font-black">{formatCentsToBRL(refundAmountInCents)}</p>
+              </div>
+            </div>
+          )}
+
+          {refundAmountInCents <= 0 && isCancelled && (
+            <div role="status" className="mazzi-compact-card rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-800">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Reembolso ao aluno</p>
+              <p className="mt-1 text-xs font-semibold">Não há reembolso aplicável a este cancelamento.</p>
+            </div>
+          )}
 
           <BookingCancellationNotice booking={booking} />
           <BookingPaymentStateNotices
@@ -757,7 +778,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             showCountdown={false}
           />
 
-          <BookingDisputePanel booking={booking} currentUserId={currentUserId} />
+          <BookingDisputePanel
+            booking={booking}
+            currentUserId={currentUserId}
+            allowStaleConfirmed={isStaleConfirmed && currentUserId === booking.studentId}
+            onToast={onToast}
+          />
 
         </div>
       )}
@@ -771,7 +797,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         size="md"
         layer="nested"
         showBackButton
-        useHistory={false}
         fillContent
       >
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">

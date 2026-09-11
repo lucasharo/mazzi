@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ArrowLeft, XCircle, Info } from 'lucide-react';
+import { ArrowLeft, XCircle, Info } from 'lucide-react';
 import { Booking } from '../../../types';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -26,7 +26,6 @@ interface ProviderCancellationModalProps {
   onCustomReasonChange: (val: string) => void;
   onConfirmCancel: () => void;
   isProcessing: boolean;
-  errorMessage: string | null;
 }
 
 export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps> = ({
@@ -39,7 +38,6 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
   onCustomReasonChange,
   onConfirmCancel,
   isProcessing,
-  errorMessage,
 }) => {
   if (!booking) return null;
 
@@ -99,14 +97,6 @@ export const ProviderCancellationModal: React.FC<ProviderCancellationModalProps>
             {booking.scheduledDate} • {booking.startTime} - {booking.endTime} (Cat. {booking.category})
           </p>
         </div>
-
-        {/* Error Feedback */}
-        {errorMessage && (
-          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
 
         {/* Reason Select */}
         <div className="space-y-2">

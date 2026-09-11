@@ -18,6 +18,7 @@ Uma única aplicação web/PWA atende tanto o instrutor autônomo quanto a autoe
 - Botões de ações de conteúdo ficam abaixo das abas, fora do header.
 - Perfil segue a composição do Aluno: avatar central, identificação, card de dados e edição no topo direito.
 - Listas vazias e ausência de próxima aula usam os componentes globais de estado vazio.
+- **Reservas pendentes:** sempre que abrir o app com aula confirmada cujo horário já terminou e ainda não foi encerrada, o PRO é avisado em modal. O aviso pode abrir os detalhes ou ser adiado na sessão atual; o modal não altera o status automaticamente.
 - Formulários, botões, fontes, cores e bordas usam os mesmos componentes e tokens dos demais apps.
 - A configuração de Aula Agora é aberta em modal a partir da tela inicial; ela não ocupa uma aba própria dentro de Gestão.
 - Aula Agora possui configuração operacional própria por instrutor + veículo (preço e raio em centavos/km); ela não reutiliza nem altera o preço da oferta da agenda. A âncora interna dessa configuração fica fora da agenda e da busca pública.

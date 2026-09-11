@@ -369,9 +369,9 @@ export const DesignSystemShowcase: React.FC = () => {
                       <span className="text-[10px] text-rose-700 block">Gatilhos destrutivos</span>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-rose-600 text-white space-y-1 shadow-xs">
+                    <div className="p-4 rounded-2xl bg-[var(--mazzi-danger)] text-white space-y-1 shadow-xs">
                       <span className="text-xs font-black block">Danger Solid</span>
-                      <span className="text-[11px] font-mono opacity-80">rose-600</span>
+                      <span className="text-[11px] font-mono opacity-80">--mazzi-danger</span>
                       <span className="text-[10px] text-white/90 block">Ações destrutivas fatais</span>
                     </div>
 

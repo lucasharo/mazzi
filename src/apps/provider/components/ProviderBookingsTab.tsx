@@ -14,7 +14,6 @@ interface ProviderBookingsTabProps {
   bookingQuickFilter: 'all' | 'confirmed' | 'in_progress' | 'completed' | 'disputed' | 'cancelled';
   onQuickFilterChange: (filter: ProviderBookingsTabProps['bookingQuickFilter']) => void;
   filteredBookings: Booking[];
-  actionErrorMessage: string | null;
   onSelectBooking: (booking: Booking) => void;
   onOpenChat: (booking: Booking) => void;
   onCheckIn: (booking: Booking) => void;
@@ -34,7 +33,6 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
   bookingQuickFilter,
   onQuickFilterChange,
   filteredBookings,
-  actionErrorMessage,
   onSelectBooking,
   onOpenChat,
   onCheckIn,
@@ -57,13 +55,6 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
         action={onRetryCalendarLoad ? <ButtonBase type="button" className="mazzi-icon-button" onClick={onRetryCalendarLoad} disabled={isRefreshing} aria-label="Atualizar aulas" title="Atualizar aulas"><RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden="true" /></ButtonBase> : undefined}
       />
 
-      {/* Action Messages */}
-      {actionErrorMessage && (
-        <div className="mazzi-compact-card flex items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-bold text-rose-900">
-          <span>{actionErrorMessage}</span>
-        </div>
-      )}
-
       <Tabs
         id="provider-booking-tabs"
         ariaLabel="Filtros de aulas"
@@ -80,7 +71,9 @@ export const ProviderBookingsTab: React.FC<ProviderBookingsTabProps> = ({
       <div className="flex flex-wrap justify-center gap-2" aria-label="Filtros rápidos de aulas">
         {(bookingFilterTab === 'history'
           ? [{ value: 'all' as const, label: 'Todas' }, { value: 'completed' as const, label: 'Concluídas' }, { value: 'disputed' as const, label: 'Em contestação' }, { value: 'cancelled' as const, label: 'Canceladas' }]
-          : [{ value: 'all' as const, label: 'Todas' }, { value: 'confirmed' as const, label: 'Confirmadas' }, { value: 'in_progress' as const, label: 'Em andamento' }]
+          : bookingFilterTab === 'today'
+            ? [{ value: 'all' as const, label: 'Todas' }, { value: 'confirmed' as const, label: 'Confirmadas' }, { value: 'in_progress' as const, label: 'Em andamento' }, { value: 'cancelled' as const, label: 'Canceladas' }]
+            : [{ value: 'all' as const, label: 'Todas' }, { value: 'confirmed' as const, label: 'Confirmadas' }, { value: 'in_progress' as const, label: 'Em andamento' }]
         ).map((option) => (
           <ButtonBase key={option.value} type="button" onClick={() => onQuickFilterChange(option.value)} aria-pressed={bookingQuickFilter === option.value} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${bookingQuickFilter === option.value ? 'bg-[var(--mazzi-dark)] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
             {option.label}

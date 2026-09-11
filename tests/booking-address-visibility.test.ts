@@ -107,4 +107,26 @@ describe('student booking address visibility', () => {
     expect(getProviderBookingMeetingPointText(providerAddressBooking)).toBe('Rua do Instrutor, 100');
     expect(getStudentBookingMeetingPointText(studentAddressBooking)).toBe('Rua do Aluno, 200');
   });
+
+  it('hides the provider address from the student while a dispute is active', () => {
+    const disputedBooking = makeBooking({ status: 'DISPUTED' });
+
+    expect(getStudentBookingMeetingPointText(disputedBooking)).toBe('Lapa, São Paulo');
+    expect(getStudentBookingMeetingPointText(disputedBooking)).not.toContain('Rua do Instrutor');
+  });
+
+  it('hides the student address from the PRO while a dispute is active', () => {
+    const disputedBooking = makeBooking({
+      status: 'DISPUTED',
+      meetingPoint: 'Rua do Aluno, 200',
+      fullMeetingPoint: 'Rua do Aluno, 200',
+      snapshot: {
+        ...makeBooking().snapshot,
+        meetingPoint: { type: 'STUDENT_ADDRESS', address: 'Rua do Aluno, 200', neighborhood: 'Lapa', city: 'São Paulo' },
+      },
+    });
+
+    expect(getProviderBookingMeetingPointText(disputedBooking)).toBe('Lapa, São Paulo');
+    expect(getProviderBookingMeetingPointText(disputedBooking)).not.toContain('Rua do Aluno');
+  });
 });

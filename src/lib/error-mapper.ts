@@ -9,6 +9,17 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
   const msg = typeof err === 'string' ? err : err.message || err.details || err.hint || '';
   const code = err.code || err.statusCode || '';
 
+  // Supabase FunctionsHttpError exposes this generic English message when an
+  // Edge Function responds with a non-2xx status. Never show it directly to
+  // the user; the operation-specific fallback is the useful feedback.
+  if (/edge function returned a non-2xx status code/i.test(msg) || /non-2xx/i.test(msg)) {
+    return fallbackMessage;
+  }
+
+  if (/Stripe confirmou o estorno/i.test(msg)) {
+    return 'O estorno foi confirmado. Estamos finalizando o cancelamento da aula; tente novamente em instantes.';
+  }
+
   // 1. Provider Lesson Lifecycle Specific Errors (TASK-051)
   if (msg.includes('IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST')) {
     return 'Esta aula já recebeu uma solicitação de conclusão diferente. Atualize os dados antes de tentar novamente.';
@@ -66,6 +77,18 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
 
   if (msg.includes('BOOKING_NOT_FOUND')) {
     return 'Este agendamento não foi encontrado ou não está mais disponível.';
+  }
+
+  if (msg.includes('BOOKING_NOT_COMPLETED')) {
+    return 'A contestação só pode ser aberta depois que o horário da aula terminar.';
+  }
+
+  if (msg.includes('DISPUTE_WINDOW_EXPIRED')) {
+    return 'O prazo para contestar uma aula concluída já terminou.';
+  }
+
+  if (msg.includes('CANCELLATION_WINDOW_CLOSED')) {
+    return 'Esta aula já começou. Para resolver o agendamento, use o fluxo de conclusão, no-show ou contestação.';
   }
 
   if (msg.includes('INVALID_STATUS')) {

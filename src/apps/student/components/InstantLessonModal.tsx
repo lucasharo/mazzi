@@ -11,6 +11,7 @@ import { InstantLessonOfferCard } from '../../../components/instant/InstantLesso
 import { InstantLessonTrackingCard } from '../../../components/instant/InstantLessonTrackingCard';
 import type { Booking } from '../../../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
+import type { ToastMessage } from '../../../components/ui/Toast';
 
 interface InstantLessonModalProps {
   isOpen: boolean;
@@ -38,9 +39,10 @@ interface InstantLessonModalProps {
   isInitialLocationLoading?: boolean;
   checkInWindowBeforeMinutes?: number | null;
   instantLessonExpirationMinutes?: number;
+  onToast?: (toast: Omit<ToastMessage, 'id'>) => void;
 }
 
-export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, onClose, onScheduleLesson, location, locationLabel, onRequestLocation, onLoadPriceOptions, onStart, activeRequest, tracking, bookingStatus, booking, currentUserId, onOpenChat, onBookingUpdated, onRefreshBooking, onPayBooking, onCancelRequest, onCancelPendingSearch, returnToPriceStep = false, onStudentCheckIn, isLoading, isInitialLocationLoading, checkInWindowBeforeMinutes, instantLessonExpirationMinutes }) => {
+export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, onClose, onScheduleLesson, location, locationLabel, onRequestLocation, onLoadPriceOptions, onStart, activeRequest, tracking, bookingStatus, booking, currentUserId, onOpenChat, onBookingUpdated, onRefreshBooking, onPayBooking, onCancelRequest, onCancelPendingSearch, returnToPriceStep = false, onStudentCheckIn, isLoading, isInitialLocationLoading, checkInWindowBeforeMinutes, instantLessonExpirationMinutes, onToast }) => {
   const [trackingOpen, setTrackingOpen] = useState(false);
   useEffect(() => { setTrackingOpen(false); }, [isOpen, booking?.id]);
   useEffect(() => {
@@ -71,10 +73,11 @@ export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, 
   const showTrackingMap = !isLessonStarted
     && (Boolean(tracking) || Boolean(activeRequest?.request.bookingId && bookingStatus === 'CONFIRMED'));
   if (showTrackingMap && !booking) {
-    return <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da aula" useHistory={false}><p role="status">Carregando informações da aula…</p></Modal>;
+    return <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da aula"><p role="status">Carregando informações da aula…</p></Modal>;
   }
   if (booking && bookingStatus !== 'PENDING_PAYMENT' && (isLessonStarted || (activeRequest && !trackingOpen))) {
-    return <BookingDetailsModal isOpen={isOpen} onClose={onClose} booking={booking} currentUserId={currentUserId} onOpenChat={onOpenChat} onBookingUpdated={onBookingUpdated} onRefreshBooking={onRefreshBooking} onStudentCheckIn={onStudentCheckIn} useHistory={false}
+    return <BookingDetailsModal isOpen={isOpen} onClose={onClose} booking={booking} currentUserId={currentUserId} onOpenChat={onOpenChat} onBookingUpdated={onBookingUpdated} onRefreshBooking={onRefreshBooking} onStudentCheckIn={onStudentCheckIn}
+      onToast={onToast}
       checkInWindowBeforeMinutes={checkInWindowBeforeMinutes}
       instantLessonExpirationMinutes={instantLessonExpirationMinutes}
       trackingPreview={showTrackingMap ? <InstantLessonTrackingCard request={activeRequest.request} tracking={tracking} providerName={activeRequest.offer?.providerName} onOpenTracking={() => setTrackingOpen(true)} /> : undefined} />;
@@ -87,11 +90,11 @@ export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, 
     const cancelSearch = activeRequest?.request.status === 'SEARCHING'
       ? () => void onCancelRequest(activeRequest.request.id)
       : onCancelPendingSearch || onClose;
-    return <Modal className="instant-searching" isOpen={isOpen} onClose={onClose} ariaLabel="Buscando profissionais" size="md" useHistory={false} fillContent>
+    return <Modal className="instant-searching" isOpen={isOpen} onClose={onClose} ariaLabel="Buscando profissionais" size="md" fillContent>
       <InstantLessonSearchingScreen onCancel={cancelSearch} isCancelling={Boolean(isLoading)} />
     </Modal>;
   }
-  return <Modal className={isSearching ? 'instant-searching' : !activeRequest ? 'instant-light' : ''} isOpen={isOpen} onClose={trackingOpen ? () => setTrackingOpen(false) : onClose} title={activeRequest ? (trackingOpen ? 'Acompanhamento do instrutor' : 'Aula Agora') : undefined} ariaLabel="Aula Agora" size="md" useHistory={false} showBackButton={trackingOpen} fillContent={showTrackingMap || !activeRequest}>
+  return <Modal className={isSearching ? 'instant-searching' : !activeRequest ? 'instant-light' : ''} isOpen={isOpen} onClose={trackingOpen ? () => setTrackingOpen(false) : onClose} title={activeRequest ? (trackingOpen ? 'Acompanhamento do instrutor' : 'Aula Agora') : undefined} ariaLabel="Aula Agora" size="md" showBackButton={trackingOpen} fillContent={showTrackingMap || !activeRequest}>
     {activeRequest ? <div className={showTrackingMap ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden' : 'space-y-4'}>
       {!showTrackingMap && <div className="shrink-0">
       <InstantLessonStatusCard request={activeRequest.request} paymentConfirmed={bookingStatus === 'CONFIRMED' || bookingStatus === 'IN_PROGRESS'} onCancel={() => void onCancelRequest(activeRequest.request.id)} isCancelling={isLoading} />

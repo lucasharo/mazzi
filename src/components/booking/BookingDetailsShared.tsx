@@ -23,8 +23,66 @@ import { UniversalMap } from '../maps/UniversalMap';
 import { CheckInAvailability } from '../../domain/checkin';
 import { formatTimeBR } from '../../lib/date-format';
 import { ProfileAvatar } from '../profile/ProfileAvatar';
+import { PROVIDER_CANCELLATION_REASONS } from '../../domain/cancellation';
 
 export type BookingDetailsAudience = 'student' | 'provider';
+
+export function getBookingRefundAmountInCents(booking: Booking): number {
+  const persistedRefund = booking.refundAmountInCents ?? booking.cancellationData?.refund_amount_in_cents;
+  const amount = Number(persistedRefund ?? 0);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
+function normalizeDomainToken(value: string): string {
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+export function getFriendlyCancellationReason(booking: Booking): string | null {
+  const reason = booking.cancellationReason?.trim();
+  if (!reason) return null;
+
+  if (reason === 'STUDENT_REQUEST' || reason === 'Cancelamento Aula Agora') {
+    return booking.status === 'CANCELLED_BY_STUDENT'
+      ? 'Cancelamento solicitado pelo aluno, sem motivo informado.'
+      : 'Cancelamento solicitado pelo profissional, sem motivo informado.';
+  }
+
+  const separatorIndex = reason.indexOf(':');
+  const rawCode = (separatorIndex >= 0 ? reason.slice(0, separatorIndex) : reason).trim().toUpperCase();
+  const detail = separatorIndex >= 0 ? reason.slice(separatorIndex + 1).trim() : '';
+  const providerReason = PROVIDER_CANCELLATION_REASONS.find((item) => item.code === rawCode);
+  const internalReasonLabels: Record<string, string> = {
+    PLATFORM_FAILURE: 'Falha operacional da plataforma',
+    PROVIDER_PERSONAL_EMERGENCY: 'Emergência pessoal do profissional',
+  };
+  const label = providerReason?.label || internalReasonLabels[rawCode];
+  if (label) return detail ? `${label}: ${detail}` : label;
+
+  // Older records may contain a human label followed by the raw code, for
+  // example: "Conflito de agenda: SCHEDULE CONFLICT". Remove the code before
+  // presenting the message so domain tokens never reach the user interface.
+  const embeddedProviderReason = PROVIDER_CANCELLATION_REASONS.find((item) => normalizeDomainToken(reason).includes(item.code));
+  if (embeddedProviderReason) {
+    const codePattern = embeddedProviderReason.code.replace(/_/g, '[_\\s-]+');
+    const humanText = reason
+      .replace(new RegExp(codePattern, 'ig'), '')
+      .replace(/\s*[:\-–]\s*/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const humanLabel = normalizeDomainToken(embeddedProviderReason.label);
+    return humanText && normalizeDomainToken(humanText) !== humanLabel
+      ? `${embeddedProviderReason.label}: ${humanText}`
+      : embeddedProviderReason.label;
+  }
+
+  // Never leak an unknown enum/domain token into an end-user surface.
+  if (/^[A-Z][A-Z0-9_\s-]+$/.test(reason)) return 'Motivo não informado.';
+
+  return reason;
+}
 
 interface BookingDetailsHeaderProps {
   status: Booking['status'];
@@ -299,9 +357,10 @@ export const BookingMapPreview: React.FC<BookingMapPreviewProps> = ({ latitude, 
 interface BookingPaymentSummaryProps {
   items: Array<{ label: string; amount: string }>;
   total: string;
+  totalLabel?: string;
 }
 
-export const BookingPaymentSummary: React.FC<BookingPaymentSummaryProps> = ({ items, total }) => (
+export const BookingPaymentSummary: React.FC<BookingPaymentSummaryProps> = ({ items, total, totalLabel = 'Total da aula' }) => (
   <div className="mazzi-compact-card space-y-2 rounded-2xl border border-[var(--mazzi-border)] bg-[var(--mazzi-surface-soft)] p-4">
     <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--mazzi-dark)]">
       <CreditCard className="h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden="true" />
@@ -314,7 +373,7 @@ export const BookingPaymentSummary: React.FC<BookingPaymentSummaryProps> = ({ it
       </div>
     ))}
     <div className="flex items-center justify-between border-t border-[var(--mazzi-border)] pt-2 text-sm font-bold text-[var(--mazzi-dark)]">
-      <span>Total da aula</span>
+      <span>{totalLabel}</span>
       <span>{total}</span>
     </div>
   </div>
@@ -327,6 +386,7 @@ interface BookingCancellationNoticeProps {
 export const BookingCancellationNotice: React.FC<BookingCancellationNoticeProps> = ({ booking }) => {
   const isCancelled = booking.status === 'CANCELLED_BY_STUDENT' || booking.status === 'CANCELLED_BY_PROVIDER';
   if (!isCancelled) return null;
+  const friendlyReason = getFriendlyCancellationReason(booking);
 
   return (
     <div role="status" className="mazzi-compact-card space-y-1 rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-900">
@@ -334,7 +394,7 @@ export const BookingCancellationNotice: React.FC<BookingCancellationNoticeProps>
         <XCircle className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
         <span>{booking.status === 'CANCELLED_BY_STUDENT' ? 'Cancelada pelo aluno' : 'Cancelada pelo profissional'}</span>
       </div>
-      {booking.cancellationReason && <p className="pl-5 text-[11px] font-medium text-rose-700">Motivo: {booking.cancellationReason}</p>}
+      {friendlyReason && <p className="pl-5 text-[11px] font-medium text-rose-700">Motivo: {friendlyReason}</p>}
     </div>
   );
 };

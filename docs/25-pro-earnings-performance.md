@@ -6,15 +6,15 @@
 
 Os valores retornados são centavos inteiros:
 
-- `net_earned_cents`: ganho líquido do payout associado a uma aula economicamente válida;
+- `net_earned_cents`: ganho líquido do payout associado a uma aula economicamente válida; isso inclui cancelamentos pagos e contestações quando ainda existe valor devido ao PRO;
 - `received_cents`: payouts `PAID`, considerados recebidos pelo timestamp de repasse;
 - `to_receive_cents`: payouts `PENDING`, `AVAILABLE` ou `PROCESSING`;
 - `blocked_cents`: payouts `BLOCKED`, exibidos separadamente;
 - `failed_cents`: payouts `FAILED`, exibidos como situação que requer atenção.
 
-Canceladas e reservas reembolsadas não entram no universo financeiro. A data econômica é `completed_at`, com fallback para `lesson_finished_at`, `scheduled_end_at` e, por último, a criação do payout. O fuso de referência é `America/Sao_Paulo`. A comparação usa o período imediatamente anterior com a mesma duração.
+Reservas canceladas ou reembolsadas só entram no universo financeiro quando existe um payout positivo para o PRO. Em cancelamentos pagos, o saldo devido é calculado depois do reembolso, da comissão e da tarifa do gateway; uma contestação ativa mantém o payout visível como `BLOCKED`. A data econômica usa `completed_at`, `lesson_finished_at`, `cancelled_at`, `scheduled_end_at` e, por último, a criação do payout. O fuso de referência é `America/Sao_Paulo`. A comparação usa o período imediatamente anterior com a mesma duração.
 
-Próximos repasses são agrupados pelo `scheduled_release_at` nos sete dias seguintes. Payouts bloqueados nunca são apresentados como data prometida.
+Próximos repasses são agrupados pelo `scheduled_release_at` nos sete dias seguintes. Payouts `PENDING`, `AVAILABLE` ou `PROCESSING` cuja data já passou continuam visíveis como **aguardando processamento**, para que um valor devido nunca desapareça da previsão. Payouts bloqueados nunca são apresentados como data prometida.
 
 ## Autorização
 

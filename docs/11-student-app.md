@@ -7,6 +7,7 @@
 - **Aulas:** abas `Hoje` e `Histórico`, sem contadores no texto; atualização local com loading/skeleton.
 - **Perfil:** avatar central, identificação, card de dados e edição pelo ícone no topo direito.
 - **Estados vazios:** componentes globais `ListEmptyState` e `ObjectEmptyState`.
+- **Reservas pendentes:** sempre que abrir o app com aula confirmada cujo horário já terminou e ainda não foi encerrada, o aluno é avisado em modal. O aviso pode abrir os detalhes ou ser adiado na sessão atual, sem expor códigos internos nem alterar o status.
 
 ## Fluxo Principal de Contratação (Golden Path)
 ```

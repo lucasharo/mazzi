@@ -19,7 +19,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
 
-import { getBookingEndTimestamp, getEffectiveBookingHoldExpiresAt, getStudentBookingSection, isBookingEnded, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { CANCELLED_BOOKING_STATUSES, getBookingEndTimestamp, getEffectiveBookingHoldExpiresAt, getStaleConfirmedBookings, getStudentBookingSection, isBookingEnded, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
 import { getInstantLessonAvailabilityNotice } from '../../domain/instant-lesson';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { DEFAULT_PLATFORM_CONFIGURATION, toPublicPlatformConfiguration, type PublicPlatformConfiguration } from '../../domain/platform-config';
@@ -30,6 +30,7 @@ import { ProviderResultCard } from '../../components/search/ProviderResultCard';
 import { MapView } from '../../components/search/MapView';
 import { ProviderPublicProfileModal } from '../../components/search/ProviderPublicProfileModal';
 import { BookingDetailsModal } from './components/BookingDetailsModal';
+import { StaleConfirmedBookingsModal } from '../../components/booking/StaleConfirmedBookingsModal';
 import { CheckoutModal } from './components/CheckoutModal';
 import { SlotSelectorModal } from './components/SlotSelectorModal';
 import { StripeCheckoutReturnScreen, StripeCheckoutReturnStatus } from './components/StripeCheckoutReturnScreen';
@@ -45,7 +46,7 @@ import { NotificationsPanel } from '../../components/notifications/Notifications
 import { NotificationCenterLink } from '../../components/notifications/NotificationCenterLink';
 import { NOTIFICATIONS_CHANGED } from '../../components/ui/NotificationIndicator';
 import { ReviewModal } from '../../components/reviews/ReviewModal';
-import { formatTimeBR, isBookingTodayInSaoPaulo } from '../../lib/date-format';
+import { formatTimeBR, getTodayInSaoPaulo, isBookingTodayInSaoPaulo } from '../../lib/date-format';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { countAdditionalStudentFilters, formatStudentResultCount } from '../../lib/student-search-ui';
 import { ProfilePhotoPicker } from '../../components/profile/ProfilePhotoPicker';
@@ -73,6 +74,9 @@ const STRIPE_CONFIRMATION_TIMEOUT_MS = 60_000;
 const STRIPE_OFFLINE_REDIRECT_DELAY_MS = 2_500;
 const STUDENT_LOCATION_TIMEOUT_MS = 20_000;
 const INSTANT_PAYMENT_BOOKING_STORAGE_KEY = 'mazzi:instant-payment-booking-id';
+
+const isStudentTodayVisibleBooking = (booking: Booking) =>
+  TODAY_BOOKING_STATUSES.includes(booking.status) || CANCELLED_BOOKING_STATUSES.includes(booking.status);
 
 type StudentLocation = { lat: number; lng: number };
 
@@ -118,6 +122,12 @@ function getInitialStripeCheckoutReturn(): { status: StripeCheckoutReturnStatus 
   if (checkoutState === 'cancelled') return null;
   if (checkoutState === 'success') return { status: 'CHECKOUT_SUCCESS' };
   return { status: 'ERROR' };
+}
+
+function isStripeCheckoutReturnNavigation(): boolean {
+  if (typeof window === 'undefined') return false;
+  const checkoutState = new URLSearchParams(window.location.search).get('stripe_checkout');
+  return checkoutState === 'success' || checkoutState === 'cancelled';
 }
 
 export const MAX_MAP_RESULTS = 50;
@@ -329,7 +339,6 @@ export const StudentApp: React.FC = () => {
   const instantRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const instantCheckoutOpeningRef = useRef<Promise<void> | null>(null);
   const instantPaymentBookingIdRef = useRef<string | null>(null);
-  const instantReturnToMapBookingIdRef = useRef<string | null>(null);
   const instantRequestIdempotencyRef = useRef<string | null>(null);
   const instantLessonStartRef = useRef<{ cancelled: boolean; completed: boolean; requestId?: string; cancelPromise?: Promise<void> } | null>(null);
 
@@ -358,6 +367,7 @@ export const StudentApp: React.FC = () => {
   const searchEndRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoSelectTodayRef = useRef(true);
   const stripeCheckoutFlowActiveRef = useRef(false);
+  const suppressStaleConfirmedReminderRef = useRef(isStripeCheckoutReturnNavigation());
   const pendingNotificationTargetRef = useRef<NotificationNavigationTarget | null>(null);
   const publicEmailNavigationRef = useRef<string | null>(null);
   const notificationNavigationTimeoutRef = useRef<number | null>(null);
@@ -513,7 +523,9 @@ export const StudentApp: React.FC = () => {
         if (booking.status !== 'PENDING_PAYMENT') return;
 
         window.sessionStorage.setItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY, booking.id);
-        setIsInstantLessonOpen(false);
+        // Keep Aula Agora mounted underneath the checkout. This makes payment
+        // a nested step in the same journey and prevents its history cleanup
+        // from closing the checkout and returning to Home.
         setResumeBooking(booking);
       })
       .finally(() => {
@@ -1027,7 +1039,6 @@ export const StudentApp: React.FC = () => {
 
       if (isInstantLesson) {
         instantPaymentBookingIdRef.current = bookingId;
-        instantReturnToMapBookingIdRef.current = bookingId;
         try { window.sessionStorage.removeItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY); } catch { /* storage unavailable */ }
         clearStripeCheckoutReturnParams();
         stripeCheckoutFlowActiveRef.current = false;
@@ -1130,21 +1141,6 @@ export const StudentApp: React.FC = () => {
       if (offlineRedirectTimer !== undefined) window.clearTimeout(offlineRedirectTimer);
     };
   }, [user?.id, isRealSupabase, loadActiveInstantLesson, loadBookingsData, loadCheckoutPaymentStatus, verifyCheckoutSession]);
-
-  // The Stripe cancellation return reopens the held booking in CheckoutModal.
-  // Release the document splash only after that summary has been committed,
-  // preventing the home screen from flashing between the redirect and modal.
-  const handleInstantSuccessComplete = useCallback(() => {
-    const bookingId = instantReturnToMapBookingIdRef.current;
-    if (!bookingId) return;
-    instantReturnToMapBookingIdRef.current = null;
-    clearStripeCheckoutReturnParams();
-    void loadActiveInstantLesson().finally(() => {
-      setStripeCheckoutReturn(null);
-      openBookingSearch();
-      setIsInstantLessonOpen(true);
-    });
-  }, [loadActiveInstantLesson]);
 
   useEffect(() => {
     if (resumeBooking) dismissInitialSplash();
@@ -1398,6 +1394,9 @@ function applyStrictProviderFilters(
 
   // Modal States
   const [selectedBookingForDetails, setSelectedBookingForDetails] = useState<Booking | null>(null);
+  const [staleConfirmedBookings, setStaleConfirmedBookings] = useState<Booking[]>([]);
+  const dismissedStaleConfirmedSignatureRef = useRef<string | null>(null);
+  const staleConfirmedReminderShownRef = useRef(false);
   const [selectedBookingForChat, setSelectedBookingForChat] = useState<Booking | null>(null);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
 
@@ -1635,6 +1634,22 @@ function applyStrictProviderFilters(
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (!user?.id || bookingsLoading || confirmedBookings.length === 0 || typeof window === 'undefined') return;
+    if (staleConfirmedReminderShownRef.current || suppressStaleConfirmedReminderRef.current) return;
+
+    const candidates = getStaleConfirmedBookings(confirmedBookings, nowMs);
+    if (candidates.length === 0) return;
+
+    staleConfirmedReminderShownRef.current = true;
+    setStaleConfirmedBookings(candidates);
+  }, [bookingsLoading, confirmedBookings, nowMs, user?.id]);
+
+  const dismissStaleConfirmedBookings = () => {
+    dismissedStaleConfirmedSignatureRef.current = staleConfirmedBookings.map((booking) => booking.id).sort().join('|');
+    setStaleConfirmedBookings([]);
+  };
+
   // Automatic transition timer: re-evaluate the lists when the next lesson ends.
   useEffect(() => {
     const futureEnds = confirmedBookings
@@ -1710,12 +1725,12 @@ function applyStrictProviderFilters(
 
   const todayBookings = useMemo(
     () => sortBookingsForToday(confirmedBookings
-      .filter((booking) => TODAY_BOOKING_STATUSES.includes(booking.status) && isBookingTodayInSaoPaulo(booking)), nowMs),
+      .filter((booking) => isStudentTodayVisibleBooking(booking) && isBookingTodayInSaoPaulo(booking)), nowMs),
     [confirmedBookings, nowMs],
   );
 
   const studentDashboardStats = useMemo<StudentDashboardStats>(() => ({
-    today: todayBookings.length,
+    today: todayBookings.filter((booking) => !CANCELLED_BOOKING_STATUSES.includes(booking.status)).length,
     upcoming: upcomingBookings.length,
     completed: historyBookings.filter((booking) => booking.status === 'COMPLETED').length,
     cancelled: historyBookings.filter((booking) => (
@@ -1730,12 +1745,20 @@ function applyStrictProviderFilters(
         { value: 'disputed' as const, label: 'Em contestação' },
         { value: 'cancelled' as const, label: 'Canceladas' },
       ]
-    : [
-        { value: 'all' as const, label: 'Todas' },
-        { value: 'confirmed' as const, label: 'Confirmadas' },
-        { value: 'pending' as const, label: 'Pendentes' },
-        { value: 'in_progress' as const, label: 'Em andamento' },
-      ], [bookingTab]);
+    : bookingTab === 'today'
+      ? [
+          { value: 'all' as const, label: 'Todas' },
+          { value: 'confirmed' as const, label: 'Confirmadas' },
+          { value: 'pending' as const, label: 'Pendentes' },
+          { value: 'in_progress' as const, label: 'Em andamento' },
+          { value: 'cancelled' as const, label: 'Canceladas' },
+        ]
+      : [
+          { value: 'all' as const, label: 'Todas' },
+          { value: 'confirmed' as const, label: 'Confirmadas' },
+          { value: 'pending' as const, label: 'Pendentes' },
+          { value: 'in_progress' as const, label: 'Em andamento' },
+        ], [bookingTab]);
 
   const filterBookingsByQuickFilter = (bookings: Booking[]) => bookings.filter((booking) => {
     if (bookingQuickFilter === 'all') return true;
@@ -1915,10 +1938,14 @@ function applyStrictProviderFilters(
     }
   }, []);
 
-  const showNotificationFeedback = (description: string) => {
-    const id = `notification-${Date.now()}`;
-    setNotificationToasts((current) => [...current, { id, type: 'warning', title: 'Conteúdo indisponível', description }]);
+  const showStudentToast = (toast: Omit<ToastMessage, 'id'>) => {
+    const id = `student-toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setNotificationToasts((current) => [...current, { id, ...toast }]);
     window.setTimeout(() => setNotificationToasts((current) => current.filter((toast) => toast.id !== id)), 5000);
+  };
+
+  const showNotificationFeedback = (description: string) => {
+    showStudentToast({ type: 'warning', title: 'Conteúdo indisponível', description });
   };
 
   useEffect(() => {
@@ -2628,6 +2655,7 @@ function applyStrictProviderFilters(
         bookingStatus={activeInstantBooking?.status}
         booking={activeInstantBooking}
         currentUserId={user?.id}
+        onToast={showStudentToast}
         onOpenChat={(booking) => setSelectedBookingForChat(booking)}
         onRefreshBooking={refreshBookingForDetails}
         onBookingUpdated={(updated) => {
@@ -2656,6 +2684,7 @@ function applyStrictProviderFilters(
         onClose={() => setSelectedBookingForDetails(null)}
         booking={selectedBookingForDetails}
         currentUserId={user?.id}
+        onToast={showStudentToast}
         onBookingUpdated={(updated) => {
           setConfirmedBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
           setBookingsRefreshKey((k) => k + 1);
@@ -2679,6 +2708,17 @@ function applyStrictProviderFilters(
         onStudentCheckIn={handleStudentCheckIn}
         checkInWindowBeforeMinutes={isRealSupabase ? platformConfiguration?.checkInWindowBeforeMinutes ?? null : platformConfiguration?.checkInWindowBeforeMinutes}
         instantLessonExpirationMinutes={platformConfiguration?.instantLessonExpirationMinutes}
+      />
+
+      <StaleConfirmedBookingsModal
+        isOpen={staleConfirmedBookings.length > 0}
+        audience="student"
+        bookings={staleConfirmedBookings}
+        onClose={dismissStaleConfirmedBookings}
+        onOpenBooking={(booking) => {
+          dismissStaleConfirmedBookings();
+          window.setTimeout(() => setSelectedBookingForDetails(booking), 0);
+        }}
       />
 
       <Modal
@@ -2871,8 +2911,8 @@ function applyStrictProviderFilters(
             setBookingsRefreshKey((k) => k + 1);
             setResumeBooking(null);
             if (updatedBooking.snapshot?.source === 'AULA_AGORA') {
+              setIsInstantLessonOpen(false);
               instantPaymentBookingIdRef.current = updatedBooking.id;
-              instantReturnToMapBookingIdRef.current = updatedBooking.id;
               try { window.sessionStorage.removeItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY); } catch { /* storage unavailable */ }
               void loadActiveInstantLesson();
               setStripeCheckoutReturn({ status: 'SUCCESS', booking: updatedBooking });
@@ -2891,7 +2931,6 @@ function applyStrictProviderFilters(
           status={stripeCheckoutReturn.status}
           booking={stripeCheckoutReturn.booking}
           message={stripeCheckoutReturn.message}
-          onSuccessComplete={handleInstantSuccessComplete}
           onViewBookings={() => {
             stripeCheckoutFlowActiveRef.current = false;
             clearStripeCheckoutReturnParams();

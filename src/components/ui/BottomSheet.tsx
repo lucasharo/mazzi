@@ -75,7 +75,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const content = (
     <div
       id={id || 'mazzi-bottom-sheet'}
-      className="fixed inset-0 z-[120] flex items-end justify-center bg-[var(--mazzi-dark)]/40 backdrop-blur-xs animate-in fade-in duration-300 ease-out"
+      className="fixed inset-0 z-[120] flex items-end justify-center bg-[var(--mazzi-dark)]/[.97] backdrop-blur-xs animate-in fade-in duration-300 ease-out"
       onClick={(e) => {
         if (closeOnBackdrop && e.target === e.currentTarget) onClose();
       }}

@@ -82,6 +82,7 @@ function MetricCard({ label, value, helper, icon, tone = 'light' }: { label: str
 
 function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
   const points = summary.series;
+  const lessonsWithEarnings = summary.current.lessons_with_earnings ?? summary.current.lessons_completed;
   const max = Math.max(...points.map((point) => point.net_earned_cents), 1);
   const chartWidth = 320;
   const chartHeight = 132;
@@ -105,7 +106,7 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
           </h2>
           <p className="mt-1 text-xs font-medium text-slate-500">Ganhos líquidos por dia no período.</p>
         </div>
-        <Badge variant="default">{summary.current.lessons_completed} aulas no período</Badge>
+        <Badge variant="default">{lessonsWithEarnings} aulas com ganhos</Badge>
       </div>
       <div className="mt-4 flex min-w-0 gap-2" role="img" aria-label="Gráfico de linha da quantidade de aulas concluídas por dia">
         <div className="flex w-12 shrink-0 flex-col justify-between pb-7 pt-1 text-right text-[9px] font-semibold leading-none text-slate-400" aria-hidden="true">
@@ -136,7 +137,9 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
 }
 
 function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
-  const statusLabel = (status?: string) => status === 'AVAILABLE' ? 'Disponível' : status === 'PROCESSING' ? 'Em transferência' : status === 'BLOCKED' ? 'Bloqueado' : 'Agendado';
+  const statusLabel = (status?: string, isOverdue = false) => isOverdue
+    ? 'Aguardando processamento'
+    : status === 'AVAILABLE' ? 'Disponível' : status === 'PROCESSING' ? 'Em transferência' : status === 'BLOCKED' ? 'Bloqueado' : 'Agendado';
   return (
     <section className="mazzi-compact-card min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-upcoming-payouts-title">
       <div className="flex items-start justify-between gap-3">
@@ -144,21 +147,24 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
           <h2 id="provider-upcoming-payouts-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
                   <CalendarIcon className="h-4 w-4 text-amber-500" aria-hidden="true" /> Próximos repasses
           </h2>
-          <p className="mt-1 text-xs font-medium text-slate-500">Previsão dos próximos 7 dias.</p>
+          <p className="mt-1 text-xs font-medium text-slate-500">Previsão dos próximos 7 dias e repasses pendentes.</p>
         </div>
         <span className="text-sm font-black text-slate-900">{formatMoney(summary.upcoming_total_cents)}</span>
       </div>
       {summary.upcoming_payouts.length === 0 ? (
-        <p className="mazzi-compact-card mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Nenhum repasse previsto para os próximos 7 dias.</p>
+          <p className="mazzi-compact-card mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Nenhum repasse previsto ou pendente.</p>
       ) : (
-        <div className="mt-4 divide-y divide-slate-100">
+        <div
+          className="mt-4 max-h-64 divide-y divide-slate-100 overflow-y-auto overscroll-contain pr-2 scrollbar-thin"
+          aria-label="Lista de repasses realizados"
+        >
           {summary.upcoming_payouts.map((item) => (
             <div key={item.id || `${item.date}-${item.status || 'scheduled'}`} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
               <div className="flex items-center gap-2">
                 <Clock3 className="h-4 w-4 text-slate-400" aria-hidden="true" />
                 <div>
                   <p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p>
-                  <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'} · {statusLabel(item.status)}</p>
+                  <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'} · {statusLabel(item.status, item.is_overdue)}</p>
                 </div>
               </div>
               <span className={`text-sm font-black ${item.status === 'BLOCKED' ? 'text-rose-700' : 'text-emerald-700'}`}>{formatMoney(item.amount_in_cents)}</span>
@@ -167,6 +173,38 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
         </div>
       )}
       <p className="mt-4 break-words text-[11px] font-medium leading-relaxed text-slate-500">Repasses bloqueados não aparecem como previsão até a situação ser resolvida.</p>
+    </section>
+  );
+}
+
+function CompletedPayouts({ summary }: { summary: ProviderEarningsSummary }) {
+  const payouts = summary.completed_payouts || [];
+  return (
+    <section className="mazzi-compact-card min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-completed-payouts-title">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 id="provider-completed-payouts-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" aria-hidden="true" /> Repasses recebidos
+          </h2>
+          <p className="mt-1 text-xs font-medium text-slate-500">Valores já enviados para você.</p>
+        </div>
+        <Badge variant="success">{payouts.length}</Badge>
+      </div>
+      {payouts.length === 0 ? (
+        <p className="mazzi-compact-card mt-5 rounded-2xl bg-slate-50 p-4 text-xs font-semibold text-slate-500">Nenhum repasse realizado ainda.</p>
+      ) : (
+        <div className="mt-4 divide-y divide-slate-100">
+          {payouts.map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800">{formatDateBR(item.released_at)}</p>
+                <p className="truncate text-[11px] font-medium text-slate-500">{item.booking_reference || 'Repasse de aula'}</p>
+              </div>
+              <span className="shrink-0 text-sm font-black text-emerald-700">{formatMoney(item.amount_in_cents)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -233,7 +271,7 @@ function EmptyEarningsState() {
     <div className="mazzi-compact-card rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
       <Wallet className="mx-auto h-6 w-6 text-slate-400" aria-hidden="true" />
       <p className="mt-2 text-sm font-black text-slate-700">Sem ganhos no período</p>
-      <p className="mt-1 text-xs font-medium text-slate-500">Quando uma aula concluída gerar um payout, ela aparecerá aqui.</p>
+      <p className="mt-1 text-xs font-medium text-slate-500">Aulas concluídas, canceladas ou contestadas com valor devido ao PRO aparecem aqui.</p>
     </div>
   );
 }
@@ -304,14 +342,14 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--mazzi-yellow)]">Ganhos líquidos</p>
                 <h2 id="provider-earnings-main-title" className="mt-2 text-3xl font-black tracking-tight">{formatMoney(summary.current.net_earned_cents)}</h2>
-                <p className="mt-1 text-xs font-semibold text-slate-300">{summary.current.lessons_completed} aulas concluídas nos últimos {period} dias</p>
+                <p className="mt-1 text-xs font-semibold text-slate-300">{summary.current.lessons_with_earnings ?? summary.current.lessons_completed} aulas com ganhos nos últimos {period} dias</p>
               </div>
               <Wallet className="h-7 w-7 text-[var(--mazzi-yellow)]" aria-hidden="true" />
             </div>
             {comparison && <p className="mt-4 border-t border-white/10 pt-3 text-xs font-semibold text-slate-300">{comparison}</p>}
           </section>
 
-          {summary.current.lessons_completed === 0 && summary.current.net_earned_cents === 0 && <EmptyEarningsState />}
+          {(summary.current.lessons_with_earnings ?? summary.current.lessons_completed) === 0 && summary.current.net_earned_cents === 0 && <EmptyEarningsState />}
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <MetricCard label="Recebido" value={formatMoney(summary.current.received_cents, false)} helper="Repasses pagos" icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />} />
@@ -322,7 +360,8 @@ export const ProviderEarningsTab: React.FC<{ refreshKey?: number; focusReviewsKe
 
           {summary.current.failed_cents > 0 && <div className="mazzi-compact-card rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-900"><span className="font-black">Requer atenção:</span> existem {formatMoney(summary.current.failed_cents)} em repasses que falharam.</div>}
 
-          <div className="grid gap-5 lg:grid-cols-2"><UpcomingPayouts summary={summary} /><EarningsSeries summary={summary} /></div>
+          <div className="grid gap-5 lg:grid-cols-2"><UpcomingPayouts summary={summary} /><CompletedPayouts summary={summary} /></div>
+          <EarningsSeries summary={summary} />
           <ReviewsCard summary={summary} />
         </>
       )}
