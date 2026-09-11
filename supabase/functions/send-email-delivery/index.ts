@@ -124,10 +124,10 @@ async function payoutData(service: any, payoutId: string, context: any) {
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (bankError || !bank) throw new Error("EMAIL_BANK_ACCOUNT_NOT_FOUND");
-  const branch = digits(bank.branch_number);
-  const account = digits(bank.account_number);
-  if (branch.length < 2 || account.length < 4) throw new Error("EMAIL_BANK_ACCOUNT_FRAGMENT_INVALID");
+  if (bankError) throw new Error("EMAIL_BANK_ACCOUNT_LOOKUP_FAILED");
+  const branch = digits(bank?.branch_number);
+  const account = digits(bank?.account_number);
+  const hasBankFragments = branch.length >= 2 && account.length >= 4;
   return buildProPayoutCompletedEmailData({
     config: context.config,
     payout: {
@@ -137,9 +137,9 @@ async function payoutData(service: any, payoutId: string, context: any) {
       platformFeeInCents: payout.platform_fee_in_cents ?? context.booking.platformFeeInCents,
       releasedAt: payout.released_at || payout.processed_at || payout.created_at,
       method: payout.transfer_method || "Conta bancária",
-      bankName: `Banco ${bank.bank_code}`,
-      bankBranchLast2: branch.slice(-2),
-      bankAccountLast4: account.slice(-4),
+      bankName: hasBankFragments ? `Banco ${bank.bank_code}` : "Conta cadastrada no MAZZI",
+      bankBranchLast2: hasBankFragments ? branch.slice(-2) : "não informado",
+      bankAccountLast4: hasBankFragments ? account.slice(-4) : "não informado",
       providerFirstName: context.booking.providerFirstName,
     },
   });
