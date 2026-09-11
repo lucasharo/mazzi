@@ -99,7 +99,7 @@ describe('MAZZI transactional email templates', () => {
     expect(rendered).toContain('Olá, Aluno Exemplo!');
     expect(rendered).toContain('https://app.example.com/aulas/booking-123');
     expect(rendered).toContain('Pagamento aprovado');
-    expect(rendered).toContain('data-mazzi-template="student-payment-confirmed-email-first-v3"');
+    expect(rendered).toContain('data-mazzi-template="student-payment-confirmed-email-first-v7"');
     expect(rendered).not.toMatch(/\{\{[^}]+\}\}/);
     expect(Object.keys(EMAIL_TEMPLATE_CONTRACTS)).toHaveLength(5);
   });
