@@ -17,7 +17,7 @@ import { invalidateProviderEarningsQueries, serverState } from '../../../lib/ser
 import { formatCentsToBRL } from '../../../domain/money';
 import { formatDateBR } from '../../../lib/date-format';
 import { buildProviderEarningsInsights, canShowProviderRating, PROVIDER_INSIGHTS_MINIMUM_STUDENTS, PROVIDER_RATING_MINIMUM_STUDENTS } from '../../../domain/provider-earnings';
-import type { ProviderEarningsPeriodPreset, ProviderEarningsReviews, ProviderEarningsSummary } from '../../../types';
+import type { ProviderEarningsPeriodPreset, ProviderEarningsReviews, ProviderEarningsSummary, ProviderUpcomingPayout } from '../../../types';
 import { AppPageHeader } from '../../../components/ui/AppPageHeader';
 import { Badge } from '../../../components/ui/Badge';
 import { Button, ButtonBase } from '../../../components/ui/Button';
@@ -138,6 +138,14 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
   );
 }
 
+function payoutStageLabel(item: ProviderUpcomingPayout): string {
+  if (item.status === 'BLOCKED') return 'Bloqueado';
+  if (item.date_source === 'STRIPE_ARRIVAL') return 'Chegada bancária prevista';
+  if (item.date_source === 'STRIPE_AVAILABLE' || item.status === 'AVAILABLE') return 'Saldo disponível no Stripe';
+  if (item.external_payout_id || item.status === 'PROCESSING') return 'Aguardando payout bancário';
+  return 'Liberação programada pela MAZZI';
+}
+
 function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
   const statusLabel = (status?: string, isOverdue = false) => isOverdue
     ? 'Aguardando processamento'
@@ -166,7 +174,7 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
                 <Clock3 className="h-4 w-4 text-slate-400" aria-hidden="true" />
                 <div>
                   {item.date && <p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p>}
-                  <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'} · {statusLabel(item.status, item.is_overdue)}</p>
+                  <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'} · {payoutStageLabel(item)}</p>
                   <p className={`mt-0.5 text-[10px] font-semibold ${item.date_source?.startsWith('STRIPE') ? 'text-emerald-700' : 'text-slate-400'}`}>
                     {item.date_source === 'STRIPE_ARRIVAL' ? 'Previsão de chegada bancária informada pelo Stripe' : item.date_source === 'STRIPE_AVAILABLE' ? 'Saldo disponível no Stripe; aguardando payout automático' : 'Liberação programada pela MAZZI'}
                   </p>
