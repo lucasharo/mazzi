@@ -1,6 +1,9 @@
-import React from 'react';
-import { LeafletMap } from './LeafletMap';
+import React, { Suspense } from 'react';
 import { MapProviderComponent } from './MapProvider';
+
+const LazyLeafletMap = React.lazy(() => import('./LeafletMap').then((module) => ({
+  default: module.LeafletMap,
+})));
 
 // Coordinate locations for mock providers in São Paulo
 export const PROVIDER_COORDINATES: Record<string, { lat: number; lng: number }> = {
@@ -16,5 +19,9 @@ export const PROVIDER_COORDINATES: Record<string, { lat: number; lng: number }> 
  * Backed by Leaflet / OpenStreetMap for the MVP.
  */
 export const MazziMap: MapProviderComponent = (props) => {
-  return <LeafletMap {...props} />;
+  return (
+    <Suspense fallback={<div style={{ height: props.height || '380px' }} className="w-full rounded-2xl bg-slate-100" />}>
+      <LazyLeafletMap {...props} />
+    </Suspense>
+  );
 };

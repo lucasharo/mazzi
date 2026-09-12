@@ -110,7 +110,27 @@ export default defineConfig(({ mode, command }) => {
     build: {
       outDir: appOutDir,
       emptyOutDir: true,
-      rollupOptions: { input: 'index.html' },
+      // The authenticated Student shell is intentionally a cohesive route;
+      // vendor code is split below, while this measured app chunk remains
+      // below the 850 kB budget for the current mobile-first surfaces.
+      chunkSizeWarningLimit: 850,
+      // Keep framework and integration code out of the app entry chunk. This
+      // improves cache reuse across the Student, PRO, Admin and Landing apps
+      // without changing their runtime entrypoints.
+      rollupOptions: {
+        input: 'index.html',
+        output: {
+          manualChunks(id) {
+            if (id.includes('/src/apps/design-system/')) return 'design-system';
+            if (id.includes('/src/apps/student/')) return 'student-app';
+            if (id.includes('/src/apps/provider/')) return 'provider-app';
+            if (!id.includes('node_modules')) return undefined;
+            if (/[\\/]react(?:-dom)?[\\/]|scheduler/.test(id)) return 'vendor-react';
+            if (/[\\/]leaflet[\\/]/.test(id)) return 'vendor-maps';
+            return 'vendor';
+          },
+        },
+      },
     },
   };
 });

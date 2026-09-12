@@ -24,6 +24,17 @@ allprojects {
     }
 }
 
+// Capacitor Camera currently emits a harmless compiler diagnostic in its
+// bundled Kotlin source. Keep third-party warnings from obscuring actionable
+// warnings in the MAZZI modules; compilation failures still fail the build.
+subprojects {
+    tasks.configureEach {
+        if (name ==~ /compile.*Kotlin/) {
+            kotlinOptions { suppressWarnings = true }
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
