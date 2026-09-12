@@ -29,7 +29,7 @@ describe('TASK-087 FCM dispatcher contract', () => {
     expect(fcm).toContain('data: params.data');
     expect(dispatcher).toContain('notificationId: notification.id');
     expect(dispatcher).toContain('entityType: notification.entity_type');
-    expect(dispatcher).toContain('notification: {');
+    expect(dispatcher).toContain('notification: notification.type === "INSTANT_LESSON_OFFER" ? undefined : {');
     expect(dispatcher).toContain('title: String(notification.title');
     expect(dispatcher).toContain('body: String(notification.body');
     expect(fcm).toContain('notification?: { title: string; body: string }');

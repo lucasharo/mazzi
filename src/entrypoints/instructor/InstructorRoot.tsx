@@ -106,6 +106,15 @@ const InstructorNativeShell: React.FC = () => {
     void installNativeUrlHandler((url) => {
       try {
         const parsed = new URL(url);
+        if (parsed.protocol === 'mazzi:' && parsed.hostname === 'instant-offer-action') {
+          const offerId = parsed.searchParams.get('offer_id');
+          const action = parsed.searchParams.get('action');
+          if (offerId && (action === 'ACCEPT' || action === 'DECLINE')) {
+            try { window.sessionStorage.setItem('mazzi:instant-offer-action', JSON.stringify({ offerId, action })); } catch { /* storage unavailable */ }
+            window.dispatchEvent(new CustomEvent('mazzi:instant-offer-action', { detail: { offerId, action } }));
+          }
+          return;
+        }
         if (parsed.protocol !== 'mazzi:' || parsed.hostname !== 'stripe-return') return;
         void Browser.close();
         const current = new URL(window.location.href);

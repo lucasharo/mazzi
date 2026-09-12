@@ -106,13 +106,15 @@ Deno.serve(async (request) => {
 
     const result = await sendFcmDataMessage({
       token: device.endpoint,
-      notification: {
+      notification: notification.type === "INSTANT_LESSON_OFFER" ? undefined : {
         title: String(notification.title || "MAZZI"),
         body: String(notification.body || "Você tem uma nova atualização."),
       },
       data: {
         notificationId: notification.id,
         eventType: notification.type,
+        title: String(notification.title || "MAZZI"),
+        body: String(notification.body || "VocÃª tem uma nova atualizaÃ§Ã£o."),
         appContext: notification.app_context,
         version: "1",
         entityType: notification.entity_type,

@@ -135,6 +135,7 @@ export async function sendFcmDataMessage(params: {
       message: {
         token: params.token,
         data: params.data,
+        android: { priority: "high" },
         ...(params.notification ? {
           notification: {
             title: repairMojibake(params.notification.title),

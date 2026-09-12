@@ -1433,6 +1433,25 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const consumeAction = (detail?: { offerId?: string; action?: string }) => {
+      let pending = detail;
+      if (!pending) {
+        try {
+          const raw = window.sessionStorage.getItem('mazzi:instant-offer-action');
+          if (raw) pending = JSON.parse(raw) as { offerId?: string; action?: string };
+        } catch { pending = undefined; }
+      }
+      if (!pending?.offerId || (pending.action !== 'ACCEPT' && pending.action !== 'DECLINE')) return;
+      try { window.sessionStorage.removeItem('mazzi:instant-offer-action'); } catch { /* storage unavailable */ }
+      void handleRespondInstantOffer(pending.offerId, pending.action);
+    };
+    const onAction = (event: Event) => consumeAction((event as CustomEvent<{ offerId?: string; action?: string }>).detail);
+    window.addEventListener('mazzi:instant-offer-action', onAction);
+    consumeAction();
+    return () => window.removeEventListener('mazzi:instant-offer-action', onAction);
+  }, [handleRespondInstantOffer]);
+
   const handleNotificationTarget = async (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'PRO') return;
