@@ -1234,7 +1234,10 @@ export interface ProviderUpcomingPayout {
   id?: string;
   date: string;
   arrival_date?: string | null;
-  date_source?: 'STRIPE' | 'MAZZI_FORECAST';
+  stripe_available_on?: string | null;
+  stripe_payout_status?: string | null;
+  external_payout_id?: string | null;
+  date_source?: 'STRIPE_ARRIVAL' | 'STRIPE_AVAILABLE' | 'MAZZI_RELEASE' | 'STRIPE' | 'MAZZI_FORECAST';
   amount_in_cents: number;
   payout_count: number;
   status?: PayoutStatus;
@@ -1250,6 +1253,9 @@ export interface ProviderCompletedPayout {
   amount_in_cents: number;
   status: 'PAID';
   released_at: string;
+  stripe_paid_at?: string;
+  stripe_arrival_date?: string | null;
+  stripe_available_on?: string | null;
   scheduled_release_at?: string;
   lesson_scheduled_at?: string;
   booking_status?: BookingStatus;
@@ -1261,6 +1267,10 @@ export interface ProviderPayoutDetail {
   amount_in_cents: number;
   scheduled_release_at: string;
   arrival_date?: string | null;
+  stripe_available_on?: string | null;
+  stripe_arrival_date?: string | null;
+  stripe_payout_status?: string | null;
+  stripe_paid_at?: string | null;
   released_at?: string | null;
   processed_at?: string | null;
   failure_reason?: string | null;

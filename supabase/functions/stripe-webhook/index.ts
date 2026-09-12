@@ -86,17 +86,41 @@ function asNonNegativeCents(value: unknown) {
   return Number.isSafeInteger(cents) && cents >= 0 ? cents : null;
 }
 
-async function getStripeJson(stripeSecretKey: string, path: string, params?: URLSearchParams) {
+async function getStripeJson(stripeSecretKey: string, path: string, params?: URLSearchParams, connectedAccount?: string) {
   const query = params?.toString();
   try {
     const response = await fetch(`https://api.stripe.com/v1/${path}${query ? `?${query}` : ""}`, {
-      headers: { Authorization: `Bearer ${stripeSecretKey}` },
+      headers: { Authorization: `Bearer ${stripeSecretKey}`, ...(connectedAccount ? { "Stripe-Account": connectedAccount } : {}) },
     });
     const body = await response.json().catch(() => ({}));
     return response.ok ? asObject(body) : null;
   } catch {
     return null;
   }
+}
+
+async function reconcileConnectedPayout(service: any, stripeSecretKey: string, connectedAccount: string, stripePayoutId: string) {
+  if (!/^acct_[A-Za-z0-9]+$/.test(connectedAccount) || !/^po_[A-Za-z0-9]+$/.test(stripePayoutId)) return null;
+  const params = new URLSearchParams({ payout: stripePayoutId, limit: "100" });
+  const balanceTransactions = await getStripeJson(stripeSecretKey, "balance_transactions", params, connectedAccount);
+  const transactions = Array.isArray(balanceTransactions?.data) ? balanceTransactions.data : [];
+  if (transactions.length === 0) return null;
+  const { data: candidates, error } = await service.from("payouts")
+    .select("id,booking_id,transfer_reference,destination_key")
+    .eq("destination_key", connectedAccount)
+    .not("transfer_reference", "is", null)
+    .limit(1000);
+  if (error) throw error;
+  const matched = (candidates || []).map((payout: any) => {
+    const transaction = transactions.find((item: any) => item?.source === payout.transfer_reference);
+    return transaction ? { payout, transaction } : null;
+  }).find(Boolean);
+  if (!matched) {
+    console.info("STRIPE_CONNECTED_PAYOUT_UNMATCHED", { connectedAccount, stripePayoutId, balanceTransactionCount: transactions.length });
+    return null;
+  }
+  console.info("STRIPE_CONNECTED_PAYOUT_RECONCILED", { connectedAccount, stripePayoutId, payoutId: matched.payout.id, transferId: matched.payout.transfer_reference, balanceTransactionId: matched.transaction.id });
+  return matched;
 }
 
 async function getStripeGatewayFeeInCents(
@@ -298,9 +322,10 @@ Deno.serve(async (request) => {
   }
 
   if (eventType.startsWith("payout.")) {
-    const localPayoutId = String(object.metadata?.mazzi_payout_id || "");
+    const connectedAccount = String(event.account || "");
+    const stripePayoutId = String(object.id || "");
     const stripePayoutStatus = String(object.status || "pending");
-    if (!localPayoutId) {
+    if (!/^acct_[A-Za-z0-9]+$/.test(connectedAccount) || !/^po_[A-Za-z0-9]+$/.test(stripePayoutId)) {
       await service.from("payment_webhook_events").update({
         status: "IGNORED",
         error_message: "Payout Stripe sem vínculo local.",
@@ -308,13 +333,29 @@ Deno.serve(async (request) => {
       }).eq("id", webhookEvent.id);
       return reply(200, { received: true, ignored: true });
     }
+    let match: any = null;
+    try { match = await reconcileConnectedPayout(service, stripeSecretKey, connectedAccount, stripePayoutId); } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await service.from("payment_webhook_events").update({ status: "FAILED", error_message: message, processed_at: new Date().toISOString() }).eq("id", webhookEvent.id);
+      return reply(500, { message: "Não foi possível reconciliar o payout Stripe." });
+    }
+    if (!match) {
+      await service.from("payment_webhook_events").update({ status: "IGNORED", error_message: "Payout Stripe sem Balance Transaction vinculada a uma Transfer MAZZI.", processed_at: new Date().toISOString() }).eq("id", webhookEvent.id);
+      return reply(200, { received: true, payout: true, ignored: true });
+    }
     const { error: payoutError } = await service.rpc("record_stripe_payout_status", {
-      p_payout_id: localPayoutId,
-      p_stripe_payout_id: String(object.id || ""),
-      p_stripe_transfer_id: typeof object.metadata?.stripe_transfer_id === "string" ? object.metadata.stripe_transfer_id : null,
+      p_payout_id: match.payout.id,
+      p_stripe_payout_id: stripePayoutId,
+      p_stripe_transfer_id: match.payout.transfer_reference,
       p_stripe_status: stripePayoutStatus,
-      p_failure_reason: object.failure_message || object.failure_code || null,
+      p_failure_code: object.failure_code || null,
+      p_failure_message: object.failure_message || null,
       p_arrival_date: Number.isFinite(Number(object.arrival_date)) ? new Date(Number(object.arrival_date) * 1000).toISOString() : null,
+      p_stripe_account_id: connectedAccount,
+      p_balance_transaction_id: match.transaction.id,
+      p_stripe_available_on: Number.isFinite(Number(match.transaction.available_on)) ? new Date(Number(match.transaction.available_on) * 1000).toISOString() : null,
+      p_payout_created_at: Number.isFinite(Number(object.created)) ? new Date(Number(object.created) * 1000).toISOString() : null,
+      p_stripe_paid_at: eventType === "payout.paid" ? new Date(Number(event.created || Math.floor(Date.now() / 1000)) * 1000).toISOString() : null,
     });
     await service.from("payment_webhook_events").update({
       status: payoutError ? "FAILED" : "PROCESSED",

@@ -141,7 +141,7 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
 function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
   const statusLabel = (status?: string, isOverdue = false) => isOverdue
     ? 'Aguardando processamento'
-    : status === 'AVAILABLE' ? 'Disponível' : status === 'PROCESSING' ? 'Em transferência' : status === 'BLOCKED' ? 'Bloqueado' : 'Agendado';
+    : status === 'AVAILABLE' ? 'Disponível no Stripe' : status === 'PROCESSING' ? 'Em processamento bancário' : status === 'BLOCKED' ? 'Bloqueado' : 'Liberação programada';
   return (
     <section className="mazzi-compact-card min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs" aria-labelledby="provider-upcoming-payouts-title">
       <div className="flex items-start justify-between gap-3">
@@ -165,10 +165,10 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
               <div className="flex items-center gap-2">
                 <Clock3 className="h-4 w-4 text-slate-400" aria-hidden="true" />
                 <div>
-                  {item.date_source === 'STRIPE' && <p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p>}
+                  {item.date && <p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p>}
                   <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'} · {statusLabel(item.status, item.is_overdue)}</p>
-                  <p className={`mt-0.5 text-[10px] font-semibold ${item.date_source === 'STRIPE' ? 'text-emerald-700' : 'text-slate-400'}`}>
-                    {item.date_source === 'STRIPE' ? 'Prazo oficial do serviço de pagamento' : 'Aguardando prazo oficial do serviço de pagamento'}
+                  <p className={`mt-0.5 text-[10px] font-semibold ${item.date_source?.startsWith('STRIPE') ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {item.date_source === 'STRIPE_ARRIVAL' ? 'Previsão de chegada bancária informada pelo Stripe' : item.date_source === 'STRIPE_AVAILABLE' ? 'Saldo disponível no Stripe; aguardando payout automático' : 'Liberação programada pela MAZZI'}
                   </p>
                 </div>
               </div>
