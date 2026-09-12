@@ -508,22 +508,30 @@ export const StudentApp: React.FC = () => {
   const openInstantBookingCheckout = useCallback((bookingId: string): Promise<void> => {
     if (instantCheckoutOpeningRef.current) return instantCheckoutOpeningRef.current;
 
+    // The matched request is no longer an actionable search surface. Close it
+    // before loading the authoritative booking so its overlay cannot flash or
+    // intercept taps while the payment checkout is being mounted.
+    setIsInstantLessonOpen(false);
     const request = loadBookingsData()
       .then((bookings) => {
         const booking = bookings.find((candidate) => candidate.id === bookingId);
-        if (!booking) return;
+        if (!booking) {
+          setIsInstantLessonOpen(true);
+          return;
+        }
 
         // Remember the matched booking even after payment. This prevents the
         // Aula Agora polling loop from reopening the checkout when the map is
         // already authorized for a confirmed lesson.
         instantPaymentBookingIdRef.current = booking.id;
         setConfirmedBookings(bookings);
-        if (booking.status !== 'PENDING_PAYMENT') return;
+        if (booking.status !== 'PENDING_PAYMENT') {
+          setIsInstantLessonOpen(true);
+          return;
+        }
 
         window.sessionStorage.setItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY, booking.id);
-        // Keep Aula Agora mounted underneath the checkout. This makes payment
-        // a nested step in the same journey and prevents its history cleanup
-        // from closing the checkout and returning to Home.
+        // The checkout is now the only active surface in the journey.
         setResumeBooking(booking);
       })
       .finally(() => {
@@ -845,6 +853,7 @@ export const StudentApp: React.FC = () => {
   const [stripeCheckoutReturn, setStripeCheckoutReturn] = useState<{
     status: StripeCheckoutReturnStatus;
     booking?: Booking | null;
+    isInstantBooking?: boolean;
     message?: string;
   } | null>(() => getInitialStripeCheckoutReturn());
   const [stripeReturnRevision, setStripeReturnRevision] = useState(0);
@@ -1046,7 +1055,7 @@ export const StudentApp: React.FC = () => {
         if (!active) return;
         setIsCheckoutOpen(false);
         setResumeBooking(null);
-        setStripeCheckoutReturn({ status: 'SUCCESS', booking: confirmedBooking || null });
+        setStripeCheckoutReturn({ status: 'SUCCESS', booking: confirmedBooking || null, isInstantBooking: true });
         return;
       }
 
@@ -1403,6 +1412,16 @@ function applyStrictProviderFilters(
   const staleConfirmedReminderShownRef = useRef(false);
   const [selectedBookingForChat, setSelectedBookingForChat] = useState<Booking | null>(null);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
+
+  useEffect(() => {
+    if (!selectedBookingForDetails && !selectedBookingForChat && !selectedBookingForReview) return;
+
+    // Booking surfaces must be the only active base layer. If the student
+    // returns from the PRO app on the same device while an "Aula Agora"
+    // wizard is still mounted, that wizard can sit above the details footer
+    // and swallow taps on "Avaliar instrutor".
+    setIsInstantLessonOpen(false);
+  }, [selectedBookingForChat, selectedBookingForDetails, selectedBookingForReview]);
 
   const refreshBookingForDetails = useCallback(async (bookingId: string): Promise<Booking | null> => {
     if (user?.id) await invalidateStudentBookingQueries(user.id, bookingId);
@@ -2937,7 +2956,7 @@ function applyStrictProviderFilters(
               instantPaymentBookingIdRef.current = updatedBooking.id;
               try { window.sessionStorage.removeItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY); } catch { /* storage unavailable */ }
               void loadActiveInstantLesson();
-              setStripeCheckoutReturn({ status: 'SUCCESS', booking: updatedBooking });
+              setStripeCheckoutReturn({ status: 'SUCCESS', booking: updatedBooking, isInstantBooking: true });
             }
           }}
           onGoToBookings={() => {
@@ -2952,6 +2971,7 @@ function applyStrictProviderFilters(
         <StripeCheckoutReturnScreen
           status={stripeCheckoutReturn.status}
           booking={stripeCheckoutReturn.booking}
+          isInstantBooking={stripeCheckoutReturn.isInstantBooking}
           message={stripeCheckoutReturn.message}
           onViewBookings={() => {
             stripeCheckoutFlowActiveRef.current = false;

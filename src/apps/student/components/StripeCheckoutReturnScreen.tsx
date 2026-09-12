@@ -14,6 +14,7 @@ const SUCCESS_TRANSITION_DURATION_MS = 2_000;
 interface Props {
   status: StripeCheckoutReturnStatus;
   booking?: Booking | null;
+  isInstantBooking?: boolean;
   message?: string;
   onViewBookings: () => void;
   onViewBooking?: (booking: Booking) => void;
@@ -23,6 +24,7 @@ interface Props {
 export const StripeCheckoutReturnScreen: React.FC<Props> = ({
   status,
   booking,
+  isInstantBooking: isInstantBookingOverride,
   message,
   onViewBookings,
   onViewBooking,
@@ -35,8 +37,8 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
   const isSuccess = status === 'SUCCESS';
   const isCheckoutSuccess = status === 'CHECKOUT_SUCCESS';
   const isSuccessPresentation = isSuccess || isCheckoutSuccess;
-  const isInstantBooking = booking?.snapshot?.source === 'AULA_AGORA'
-    || (booking as any)?.snapshot_data?.source === 'AULA_AGORA';
+  const isInstantBooking = isInstantBookingOverride ?? (booking?.snapshot?.source === 'AULA_AGORA'
+    || (booking as any)?.snapshot_data?.source === 'AULA_AGORA');
   const isCancelled = status === 'CANCELLED';
   const isOffline = status === 'OFFLINE';
   const [successTransitionComplete, setSuccessTransitionComplete] = React.useState(!isSuccessPresentation);
