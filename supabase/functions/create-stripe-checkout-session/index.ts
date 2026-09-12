@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const headers = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Content-Type": "application/json",
+  "Content-Type": "application/json; charset=utf-8",
 };
 
 const reply = (status: number, body: Record<string, unknown>) =>
@@ -128,7 +128,12 @@ Deno.serve(async (request) => {
   const existingSessionId = typeof metadata.stripe_checkout_session_id === "string"
     ? metadata.stripe_checkout_session_id
     : "";
-  const returnOrigin = resolveReturnOrigin(request, payload.returnOrigin);
+  const requestedReturnOrigin = typeof payload.returnOrigin === "string"
+    ? payload.returnOrigin.trim()
+    : "";
+  const returnOrigin = requestedReturnOrigin === "mazzi://stripe-return"
+    ? `${supabaseUrl}/functions/v1/stripe-mobile-return`
+    : resolveReturnOrigin(request, requestedReturnOrigin);
   if (existingSessionId && String(metadata.stripe_payment_method || "") === method) {
     const { response, data } = await stripeRequest(
       stripeSecretKey,

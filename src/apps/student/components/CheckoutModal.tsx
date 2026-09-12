@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Browser } from '@capacitor/browser';
 import { ShieldCheck, CreditCard, QrCode, Clock, AlertCircle, CheckCircle2, XCircle, Copy, Check, Building2, Car, UserCheck, Calendar, Lock, Sparkles, ArrowLeft, KeyRound, MapPin, AlertTriangle, DollarSign, } from 'lucide-react';
 import {
   Provider, Vehicle, ServiceOffering, Quote, Booking, Payment, PaymentMethodType, StudentSavedAddress, } from '../../../types';
@@ -29,6 +30,7 @@ import { ConfirmableAddressAutocomplete } from '../../../components/search/Confi
 import { activeGeocodingProvider, LocationSuggestion } from '../../../domain/maps/geocoding-provider';
 import { LocationButton } from '../../../components/ui/LocationButton';
 import { getCurrentPositionCompat, isNativeApp } from '../../../lib/native-platform';
+import { getPushCapabilityAsync, registerPushDevice, requestPushPermission } from '../../../lib/push-device-registry';
 import type { PublicPlatformConfiguration } from '../../../domain/platform-config';
 
 export interface CheckoutModalProps {
@@ -172,6 +174,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const checkoutGatewayProvider = getCheckoutGatewayProvider();
   const stripeEnvironment = getStripeEnvironment(getStripePublishableKey());
   const showTestCopy = checkoutGatewayProvider === 'fake' || stripeEnvironment === 'test';
+
+  useEffect(() => {
+    if (!isOpen || !user?.id) return undefined;
+    let active = true;
+
+    void (async () => {
+      const capability = await getPushCapabilityAsync();
+      if (!active || !capability.supported || capability.permission === 'denied' || capability.permission === 'unsupported') return;
+
+      const permission = capability.permission === 'granted'
+        ? 'granted'
+        : await requestPushPermission();
+      if (!active || permission !== 'granted') return;
+
+      await registerPushDevice({ appContext: 'STUDENT', userId: user.id });
+    })();
+
+    return () => { active = false; };
+  }, [isOpen, user?.id]);
 
   const [step, setStep] = useState<CheckoutStep>('QUOTE_PREVIEW');
   const [successAnimationPhase, setSuccessAnimationPhase] = useState<'LOADING' | 'TRANSITION' | 'COMPLETE'>('LOADING');
@@ -960,6 +981,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         activePayment.id,
         activePaymentMethod,
         user.email,
+        // Stripe receives an HTTPS bridge URL in native mode; that endpoint
+        // redirects back to the Android deep link after Checkout completes.
         isNativeApp() ? 'mazzi://stripe-return' : window.location.origin,
       );
       setPayment((current) => current ? {
@@ -975,7 +998,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       } : current);
       setStripePaymentPending(true);
       redirected = true;
-      window.location.assign(session.checkoutUrl);
+      if (isNativeApp()) {
+        await Browser.open({ url: session.checkoutUrl });
+      } else {
+        window.location.assign(session.checkoutUrl);
+      }
     } catch (error) {
       setErrorMessage(friendlyCheckoutError(error, 'Não foi possível abrir o Checkout Stripe. Tente novamente.'));
     } finally {
@@ -1139,7 +1166,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       <div className="space-y-4 text-left">
         {step === 'SUCCESS' && successAnimationPhase !== 'COMPLETE' && (
           <div
-            className={`fixed inset-0 z-[95] flex items-center justify-center bg-emerald-500 px-6 text-center text-white transition-opacity duration-500 ${
+            className={`pointer-events-none fixed inset-0 z-[95] flex items-center justify-center bg-emerald-500 px-6 text-center text-white transition-opacity duration-500 ${
               successAnimationPhase === 'TRANSITION' ? 'opacity-0' : 'opacity-100'
             }`}
             role="status"

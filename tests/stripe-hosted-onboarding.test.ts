@@ -18,7 +18,7 @@ describe('Stripe hosted onboarding contract', () => {
       'utf8',
     );
     const migration = fs.readFileSync(
-      path.join(root, 'supabase/migrations/20260902090000_stripe_hosted_onboarding_without_local_bank_data.sql'),
+      path.join(root, 'supabase/migrations/20260903010748_stripe_hosted_onboarding_without_local_bank_data.sql'),
       'utf8',
     );
 
@@ -65,8 +65,12 @@ describe('Stripe hosted onboarding contract', () => {
     expect(dbService).toContain('data.onboarding_url');
     expect(dbService).toContain('openProviderPayoutOnboarding');
     expect(dbService).toContain('maskedPayoutAccount');
+    expect(dbService).toContain('body: { native_app: isNativeApp() }');
+    expect(dbService).toContain("url.hostname !== 'connect.stripe.com'");
+    expect(providerApp).toContain('await Browser.open({ url: result.onboardingUrl })');
+    expect(providerApp).toContain('setIsConnectingStripe(false);');
     expect(providerApp).toContain("window.location.assign(result.onboardingUrl)");
-    expect(providerApp).toContain('Keep the button loading while the browser leaves MAZZI');
+    expect(providerApp).toContain('Keep the button loading while the hosted Stripe page is prepared');
     expect(providerApp).not.toContain('finally {\n      setIsConnectingStripe(false);');
     expect(providerApp).toContain("params.get('stripe_onboarding')");
     expect(providerApp).toContain('syncMyStripePaymentAccount()');
@@ -74,6 +78,13 @@ describe('Stripe hosted onboarding contract', () => {
     expect(providerApp).toContain('requestAnimationFrame');
     expect(instructorRoot).toContain('isStripeOnboardingReturn');
     expect(instructorRoot).toContain('!isStripeOnboardingReturn()');
+    expect(instructorRoot).toContain('void Browser.close();');
+    expect(instructorRoot).toContain("parsed.protocol !== 'mazzi:' || parsed.hostname !== 'stripe-return'");
+    expect(edgeFunction).toContain('native_app === true');
+    expect(edgeFunction).toContain('"https://localhost"');
+    expect(edgeFunction).toContain('"capacitor://localhost"');
+    expect(edgeFunction).toContain('/functions/v1/stripe-mobile-return?stripe_onboarding=');
+    expect(edgeFunction).toContain('could not configure automatic payout schedule');
     expect(accountTab).toContain('não ficam armazenados no MAZZI');
     expect(accountTab).toContain('Conta cadastrada');
     expect(accountTab).not.toContain('bankAccount');
@@ -92,7 +103,7 @@ describe('Stripe hosted onboarding contract', () => {
     expect(serviceWorkerRegistration).toContain('isLocalFcmDev');
 
     const identityPrefillMigration = fs.readFileSync(
-      path.join(root, 'supabase/migrations/20260903013436_stripe_connect_identity_prefill.sql'),
+      path.join(root, 'supabase/migrations/20260903013735_stripe_connect_identity_prefill.sql'),
       'utf8',
     );
     expect(identityPrefillMigration).toContain("'user_email'");

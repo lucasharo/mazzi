@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const migration = fs.readFileSync(
-  path.resolve('supabase/migrations/20260828050000_expire_pending_payment_bookings.sql'),
+  path.resolve('supabase/migrations/20260828043321_expire_pending_payment_bookings.sql'),
   'utf8'
 );
 

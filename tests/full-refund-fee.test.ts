@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const providerModal = fs.readFileSync(path.join(process.cwd(), 'src/apps/provider/components/ProviderBookingDetailsModal.tsx'), 'utf8');
-const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260910195000_zero_platform_fee_on_full_refund.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260910184043_zero_platform_fee_on_full_refund.sql'), 'utf8');
 
 describe('Full refund fee policy', () => {
   it('shows zero MAZZI fee when the refund covers the total booking amount', () => {

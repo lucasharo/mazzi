@@ -4,6 +4,8 @@
 // ============================================================================
 
 import { supabase } from './supabase';
+import { isNativeApp } from './native-platform';
+import { repairMojibake } from './text-encoding';
 import { MVP_LESSON_DURATION_MINUTES } from '../domain/vehicles-offerings';
 import {
   Provider,
@@ -548,8 +550,8 @@ export function mapNotificationFromDb(row: any): Notification {
     id: row.id,
     userId: row.user_id,
     type: row.type,
-    title: row.title,
-    body: row.body,
+    title: repairMojibake(row.title),
+    body: repairMojibake(row.body),
     entityType: row.entity_type || undefined,
     entityId: row.entity_id || undefined,
     isRead: Boolean(row.is_read),
@@ -578,6 +580,19 @@ async function fetchMyProviderBookings(providerId: string): Promise<Booking[]> {
   return rows
     .map((row: any) => mapBookingFromDb({ ...row, ...(namesByBooking.get(row.id) || {}) }, categoryByBooking.get(row.id)))
     .sort((a, b) => new Date(a.scheduledStartAt || 0).getTime() - new Date(b.scheduledStartAt || 0).getTime());
+}
+
+function assertTrustedStripeOnboardingUrl(value: unknown): string {
+  if (typeof value !== 'string') throw new Error('STRIPE_CONNECT_ONBOARDING_UNAVAILABLE');
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.hostname !== 'connect.stripe.com') {
+      throw new Error('STRIPE_CONNECT_ONBOARDING_UNAVAILABLE');
+    }
+    return url.toString();
+  } catch {
+    throw new Error('STRIPE_CONNECT_ONBOARDING_UNAVAILABLE');
+  }
 }
 
 export interface SchoolInvitationContext {
@@ -612,6 +627,18 @@ export const dbService = {
 
   // 1. PROVIDERS
   getMyProviderBookings: fetchMyProviderBookings,
+
+  async getProviderSummary(providerId: string): Promise<Provider | null> {
+    const { data, error } = await sp.from('providers').select('*').eq('id', providerId).maybeSingle();
+    if (error) throw error;
+    return data ? mapProviderFromDb(data) : null;
+  },
+
+  async getProviderComplianceDocuments(providerId: string): Promise<ComplianceDocument[]> {
+    const { data, error } = await sp.from('compliance_documents').select('*').eq('provider_id', providerId);
+    if (error) throw error;
+    return (data || []).map(mapComplianceFromDb);
+  },
 
   /**
    * Loads a provider workspace using the current browser session. Every query is
@@ -1519,12 +1546,13 @@ export const dbService = {
   },
 
   async openProviderPayoutOnboarding(): Promise<{ account: ProviderPaymentAccount; onboardingUrl: string }> {
-    const { data, error } = await sp.functions.invoke('create-stripe-connect-account', { body: {} });
+    const { data, error } = await sp.functions.invoke('create-stripe-connect-account', { body: { native_app: isNativeApp() } });
     if (error) throw error;
     if (!data?.account?.id || !data?.onboarding_url) throw new Error('STRIPE_CONNECT_ONBOARDING_UNAVAILABLE');
+    const onboardingUrl = assertTrustedStripeOnboardingUrl(data.onboarding_url);
     return {
-      account: mapProviderPaymentAccount({ ...data.account, onboarding_url: data.onboarding_url }),
-      onboardingUrl: data.onboarding_url,
+      account: mapProviderPaymentAccount({ ...data.account, onboarding_url: onboardingUrl }),
+      onboardingUrl,
     };
   },
 
@@ -1734,6 +1762,10 @@ export const dbService = {
   },
   async disableMyPushDevice(deviceId: string): Promise<void> {
     const { error } = await sp.rpc('disable_my_push_device', { p_device_id: deviceId });
+    if (error) throw error;
+  },
+  async disableMyPushDevicesForContext(appContext: NonNullable<Notification['appContext']>): Promise<void> {
+    const { error } = await sp.rpc('disable_my_push_devices_for_context', { p_app_context: appContext });
     if (error) throw error;
   },
   async getMyProviderPayoutDetail(payoutId: string): Promise<ProviderPayoutDetail> {
@@ -2576,6 +2608,7 @@ export const dbService = {
       instructorId: data.offer.instructor_id,
       vehicleId: data.offer.vehicle_id,
       providerName: data.offer.provider_name || undefined,
+      instructorName: data.offer.instructor_name || undefined,
       category: data.offer.category,
       transmission: data.offer.transmission,
       durationMinutes: Number(data.offer.duration_minutes),

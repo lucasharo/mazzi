@@ -76,11 +76,16 @@ export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, 
     return <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da aula"><p role="status">Carregando informações da aula…</p></Modal>;
   }
   if (booking && bookingStatus !== 'PENDING_PAYMENT' && (isLessonStarted || (activeRequest && !trackingOpen))) {
+    const instantProviderName = activeRequest?.offer?.instructorName
+      || activeRequest?.offer?.providerName
+      || booking.instructorName
+      || booking.providerName
+      || undefined;
     return <BookingDetailsModal isOpen={isOpen} onClose={onClose} booking={booking} currentUserId={currentUserId} onOpenChat={onOpenChat} onBookingUpdated={onBookingUpdated} onRefreshBooking={onRefreshBooking} onStudentCheckIn={onStudentCheckIn}
       onToast={onToast}
       checkInWindowBeforeMinutes={checkInWindowBeforeMinutes}
       instantLessonExpirationMinutes={instantLessonExpirationMinutes}
-      trackingPreview={showTrackingMap ? <InstantLessonTrackingCard request={activeRequest.request} tracking={tracking} providerName={activeRequest.offer?.providerName} onOpenTracking={() => setTrackingOpen(true)} /> : undefined} />;
+      trackingPreview={showTrackingMap ? <InstantLessonTrackingCard request={activeRequest.request} tracking={tracking} providerName={instantProviderName} onOpenTracking={() => setTrackingOpen(true)} /> : undefined} />;
   }
   const isSearching = activeRequest?.request.status === 'SEARCHING' || (!activeRequest && Boolean(isLoading));
   // Switch to the full-screen search surface as soon as the request starts,
@@ -102,7 +107,7 @@ export const InstantLessonModal: React.FC<InstantLessonModalProps> = ({ isOpen, 
       {activeRequest.request.status === 'SEARCHING' && <div className="overflow-hidden rounded-2xl border border-[var(--mazzi-border)]"><UniversalMap providers={[]} meetingPoint={{ lat: activeRequest.request.meetingPoint?.latitude, lng: activeRequest.request.meetingPoint?.longitude, title: activeRequest.request.meetingPoint?.formattedAddress || 'Ponto de encontro' }} height="min(45dvh, 360px)" zoom={16} showMeetingPointPopup={false} interactive={false} /></div>}
       {!showTrackingMap && activeRequest.offer && <InstantLessonOfferCard offer={activeRequest.offer} />}
       {bookingStatus === 'PENDING_PAYMENT' && activeRequest.request.status === 'MATCHED' && activeRequest.request.bookingId && <div className="mazzi-compact-card space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-semibold text-amber-950">O profissional aceitou. Confira os dados da aula e confirme o pagamento para iniciar.</p><Button type="button" variant="primary" className="w-full font-extrabold" onClick={() => onPayBooking?.(activeRequest.request.bookingId!)} disabled={!onPayBooking || isLoading}>Confirmar pagamento</Button></div>}
-      {showTrackingMap && <InstantLessonTrackingCard request={activeRequest.request} tracking={tracking} providerName={activeRequest.offer?.providerName} priceInCents={activeRequest.offer?.offeredPriceInCents} offer={activeRequest.offer} paymentConfirmed={bookingStatus === 'CONFIRMED' || bookingStatus === 'IN_PROGRESS'} />}
+      {showTrackingMap && <InstantLessonTrackingCard request={activeRequest.request} tracking={tracking} providerName={activeRequest.offer?.instructorName || activeRequest.offer?.providerName || booking?.instructorName || booking?.providerName} priceInCents={activeRequest.offer?.offeredPriceInCents} offer={activeRequest.offer} paymentConfirmed={bookingStatus === 'CONFIRMED' || bookingStatus === 'IN_PROGRESS'} />}
     </div> : <InstantLessonWizard location={location} locationLabel={locationLabel} currentUserId={currentUserId} onClose={onClose} onScheduleLesson={onScheduleLesson} onRequestLocation={onRequestLocation} onLoadPriceOptions={onLoadPriceOptions} onStart={onStart} onCancelPendingSearch={onCancelPendingSearch} returnToPriceStep={returnToPriceStep} isLoading={isLoading} isInitialLocationLoading={isInitialLocationLoading} />}
   </Modal>;
 };

@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const migrationPath = path.resolve(
   process.cwd(),
-  'supabase/migrations/20260910220000_allow_provider_cancel_stale_confirmed_booking.sql',
+  'supabase/migrations/20260911010711_allow_provider_cancel_stale_confirmed_booking.sql',
 );
 
 describe('stale confirmed booking cancellation migration', () => {
@@ -20,7 +20,7 @@ describe('stale confirmed booking cancellation migration', () => {
     const migration = fs.readFileSync(
       path.resolve(
         process.cwd(),
-        'supabase/migrations/20260910223000_reconcile_cancel_booking_role_authorization.sql',
+        'supabase/migrations/20260911011451_reconcile_cancel_booking_role_authorization.sql',
       ),
       'utf8',
     );

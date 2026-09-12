@@ -40,6 +40,7 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
   const isCancelled = status === 'CANCELLED';
   const isOffline = status === 'OFFLINE';
   const [successTransitionComplete, setSuccessTransitionComplete] = React.useState(!isSuccessPresentation);
+  const autoOpenedBookingRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!isSuccessPresentation || successTransitionComplete) return undefined;
@@ -50,6 +51,12 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
 
     return () => window.clearTimeout(timer);
   }, [isSuccessPresentation, successTransitionComplete]);
+
+  React.useEffect(() => {
+    if (status !== 'SUCCESS' || !booking || !successTransitionComplete || autoOpenedBookingRef.current) return;
+    autoOpenedBookingRef.current = true;
+    onViewBooking?.(booking);
+  }, [booking, onViewBooking, status, successTransitionComplete]);
 
   const scheduleDate = booking?.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : booking ? formatDateBR(booking.scheduledDate) : '';
   const scheduleStart = booking?.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : booking?.startTime || '';

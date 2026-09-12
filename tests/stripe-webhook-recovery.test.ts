@@ -33,4 +33,14 @@ describe('Stripe webhook confirmation recovery', () => {
     expect(webhook).toContain('eventType === "charge.succeeded"');
     expect(webhook).toContain('if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500));');
   });
+
+  it('uses individual refund events instead of the cumulative charge summary', () => {
+    expect(webhook).toContain('eventType === "refund.created"');
+    expect(webhook).toContain('eventType === "refund.updated"');
+    expect(webhook).toContain('eventType === "charge.refund.updated"');
+    expect(webhook).toContain('eventType === "charge.refunded"');
+    expect(webhook).toContain('Stripe recommends refund.created');
+    expect(webhook).not.toContain('object.amount_refunded');
+    expect(webhook).not.toContain('latest?.id || object.id');
+  });
 });

@@ -145,19 +145,6 @@ function getPaymentIntentId(eventType: string, object: Record<string, any>) {
 }
 
 function getRefundDetails(eventType: string, object: Record<string, any>) {
-  if (eventType === "charge.refunded") {
-    const refunds = Array.isArray(object.refunds?.data) ? object.refunds.data : [];
-    const latest = refunds
-      .filter((refund: Record<string, any>) => refund.status === "succeeded")
-      .sort((left: Record<string, any>, right: Record<string, any>) =>
-        Number(right.created || 0) - Number(left.created || 0)
-      )[0];
-    return {
-      id: String(latest?.id || object.id || ""),
-      amount: asCents(latest?.amount || object.amount_refunded),
-    };
-  }
-
   return {
     id: String(object.id || ""),
     amount: asCents(object.amount),
@@ -549,11 +536,13 @@ Deno.serve(async (request) => {
       .eq("id", localPayment.id)
       .in("status", ["PENDING", "AUTHORIZED"]);
     if (error) processingError = error.message;
-  } else if (eventType === "charge.refunded" || eventType === "charge.refund.updated") {
+  } else if (
+    eventType === "refund.created" ||
+    eventType === "refund.updated" ||
+    eventType === "charge.refund.updated"
+  ) {
     const refund = getRefundDetails(eventType, object);
-    const refundStatus = eventType === "charge.refund.updated"
-      ? String(object.status || "")
-      : "succeeded";
+    const refundStatus = String(object.status || "");
     if (refundStatus === "succeeded" && refund.id && refund.amount) {
       const { error } = await service.rpc("process_booking_refund", {
         p_payment_id: localPayment.id,
@@ -564,6 +553,10 @@ Deno.serve(async (request) => {
       });
       if (error) processingError = error.message;
     }
+  } else if (eventType === "charge.refunded") {
+    // This is a cumulative charge summary and does not reliably include the
+    // individual refund object. Stripe recommends refund.created for the
+    // authoritative refund id and amount, which are required for idempotency.
   } else if (eventType === "charge.dispute.created") {
     const { error } = await service
       .from("payments")

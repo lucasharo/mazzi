@@ -788,9 +788,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </div>
       )}
     </Modal>
-    {isTrackingOpen && trackingRequest && (
-      <Modal
-        isOpen={isTrackingOpen}
+    <Modal
+        isOpen={isTrackingOpen && Boolean(trackingRequest)}
         onClose={() => setIsTrackingOpen(false)}
         title="Acompanhamento da aula"
         ariaLabel="Acompanhamento do profissional"
@@ -799,17 +798,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         showBackButton
         fillContent
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-          <InstantLessonTrackingCard
-            request={trackingRequest}
-            tracking={instantTracking}
-            providerName={instructor || provider || 'Seu profissional'}
-            priceInCents={snapshot.priceInCents || booking.priceInCents}
-            paymentConfirmed={!isPendingPayment}
-          />
-        </div>
+        {trackingRequest && (
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+            <InstantLessonTrackingCard
+              request={trackingRequest}
+              tracking={instantTracking}
+              providerName={instructor || provider || 'Seu profissional'}
+              priceInCents={snapshot.priceInCents || booking.priceInCents}
+              paymentConfirmed={!isPendingPayment}
+            />
+          </div>
+        )}
       </Modal>
-    )}
     {isProviderAddress && mapPoint && !staticLessonMap && !isCancelled && (
       <ExternalNavigationModal
         isOpen={isNavigationOpen}

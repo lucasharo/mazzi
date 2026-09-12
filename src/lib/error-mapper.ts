@@ -3,10 +3,12 @@
  * Converts raw Supabase/PostgreSQL/Domain errors into clean, human-friendly Portuguese messages.
  */
 
+import { repairMojibake } from './text-encoding';
+
 export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Ocorreu um erro ao processar a operação.'): string {
   if (!err) return fallbackMessage;
 
-  const msg = typeof err === 'string' ? err : err.message || err.details || err.hint || '';
+  const msg = repairMojibake(typeof err === 'string' ? err : err.message || err.details || err.hint || '');
   const code = err.code || err.statusCode || '';
 
   // Supabase FunctionsHttpError exposes this generic English message when an

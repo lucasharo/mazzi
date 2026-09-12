@@ -6,6 +6,10 @@ const allowedOrigins = new Set([
   "http://localhost:3002",
   "http://127.0.0.1:3002",
   "http://localhost:3000",
+  // Capacitor serves bundled assets from these fixed local origins. CORS still
+  // only permits the request; the bearer token below remains authoritative.
+  "https://localhost",
+  "capacitor://localhost",
   "https://mazzi-profissional-dev.pages.dev",
 ]);
 const DEFAULT_PRODUCT_DESCRIPTION = "Serviço de autoescola.";
@@ -213,7 +217,11 @@ function isAllowedOrigin(origin: string) {
   }
 }
 
-function appReturnUrl(request: Request, state: "return" | "refresh") {
+function appReturnUrl(request: Request, state: "return" | "refresh", nativeApp = false) {
+  if (nativeApp) {
+    const supabaseUrl = (Deno.env.get("SUPABASE_URL") || "").trim();
+    if (supabaseUrl) return `${supabaseUrl}/functions/v1/stripe-mobile-return?stripe_onboarding=${state}`;
+  }
   const requestOrigin = request.headers.get("Origin") || "";
   const origin = isAllowedOrigin(requestOrigin) ? requestOrigin : "https://mazzi-profissional-dev.pages.dev";
   const url = new URL(origin);
@@ -226,7 +234,7 @@ function appReturnUrl(request: Request, state: "return" | "refresh") {
 function corsHeaders(request: Request) {
   const origin = request.headers.get("Origin") || "";
   return {
-    "Content-Type": "application/json",
+    "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": isAllowedOrigin(origin) ? origin : "https://mazzi-profissional-dev.pages.dev",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -304,6 +312,7 @@ Deno.serve(async (request) => {
   if (request.method !== "POST") return reply(request, 405, { message: "Método não permitido." });
   const requestBody = await request.json().catch(() => ({}));
   const openOnboarding = requestBody?.open_onboarding !== false;
+  const nativeApp = requestBody?.native_app === true;
   const authHeader = request.headers.get("Authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   const supabaseUrl = (Deno.env.get("SUPABASE_URL") || "").trim();
@@ -407,10 +416,6 @@ Deno.serve(async (request) => {
       });
     }
 
-    // The MAZZI safety period is enforced locally. The connected account then
-    // sends its available balance to the external bank on a daily schedule.
-    await configureAutomaticDailyPayout(account.external_account_id, stripeSecretKey);
-
     if (openOnboarding) {
       // O link só é criado depois do pré-preenchimento para que o Stripe já
       // consiga renderizar a renda mensal com a opção padrão selecionada.
@@ -426,8 +431,8 @@ Deno.serve(async (request) => {
             account_update: {
               configurations: ["recipient", "merchant"],
               collection_options: collectionOptions,
-              refresh_url: appReturnUrl(request, "refresh"),
-              return_url: appReturnUrl(request, "return"),
+              refresh_url: appReturnUrl(request, "refresh", nativeApp),
+              return_url: appReturnUrl(request, "return", nativeApp),
             },
           }
         : {
@@ -435,8 +440,8 @@ Deno.serve(async (request) => {
             account_onboarding: {
               configurations: ["recipient", "merchant"],
               collection_options: collectionOptions,
-              refresh_url: appReturnUrl(request, "refresh"),
-              return_url: appReturnUrl(request, "return"),
+              refresh_url: appReturnUrl(request, "refresh", nativeApp),
+              return_url: appReturnUrl(request, "return", nativeApp),
             },
           };
       const [accountLink] = await Promise.all([
@@ -450,6 +455,13 @@ Deno.serve(async (request) => {
     }
 
     if (sectorSyncPromise) await sectorSyncPromise;
+
+    // The MAZZI safety period is enforced locally. Configure the connected
+    // account's daily bank payout after hosted onboarding returns. This
+    // secondary synchronization must never prevent creation of the Account
+    // Link that the professional needs to finish or update the registration.
+    await configureAutomaticDailyPayout(account.external_account_id, stripeSecretKey)
+      .catch((error) => console.warn("could not configure automatic payout schedule", error));
 
     // O retorno é o momento autoritativo para ler capacidades, requisitos e
     // o resumo bancário mascarado antes de atualizar o banco local.

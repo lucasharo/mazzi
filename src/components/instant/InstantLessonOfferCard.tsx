@@ -16,19 +16,20 @@ interface InstantLessonOfferCardProps {
 }
 
 export const InstantLessonOfferCard: React.FC<InstantLessonOfferCardProps> = ({ offer, secondsLeft, onAccept, onDecline, isLoading }) => {
+  const professionalName = offer.instructorName || offer.providerName || 'profissional';
   // The backend is authoritative for the offer deadline. The local countdown
   // is informative only because a backgrounded tab can pause its timers and
   // incorrectly disable a still-pending offer.
   const actionable = offer.status === 'PENDING';
   return (
-    <article className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 shadow-sm" aria-label={`Oferta de Aula Agora de ${offer.providerName || 'profissional'}`}>
+    <article className="mazzi-compact-card rounded-2xl border border-[var(--mazzi-border)] bg-white p-4 shadow-sm" aria-label={`Oferta de Aula Agora de ${professionalName}`}>
       {secondsLeft != null && actionable && (
         <CountdownTimer secondsRemaining={secondsLeft} className="mb-3" />
       )}
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="mazzi-eyebrow text-[9px] text-amber-700">Aula Agora</p>
-          <h3 className="mt-1 text-base font-extrabold text-[var(--mazzi-dark)]">{offer.providerName || 'Nova solicitação'}</h3>
+          <h3 className="mt-1 text-base font-extrabold text-[var(--mazzi-dark)]">{professionalName === 'profissional' ? 'Nova solicitação' : professionalName}</h3>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 text-xs font-semibold text-slate-600">

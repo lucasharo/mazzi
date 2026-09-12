@@ -3,20 +3,20 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), 'utf8');
-const migration = read('supabase/migrations/20260907200000_instant_aula_agora_cancellation_refund_policy.sql');
+const migration = read('supabase/migrations/20260907211534_instant_aula_agora_cancellation_refund_policy.sql');
 const studentModal = read('src/apps/student/components/BookingDetailsModal.tsx');
 const providerApp = read('src/apps/provider/ProviderApp.tsx');
 const adminApp = read('src/apps/admin/AdminApp.tsx');
 const adminComponents = read('src/apps/admin/AdminComponents.tsx');
 const dbService = read('src/lib/db-service.ts');
 const legacyCancellation = read('supabase/migrations/20260818000034_cancellation_flow_and_rpc.sql');
-const stripeCancellation = read('supabase/migrations/20260907220000_student_instant_stripe_cancellation.sql');
-const providerStripeCancellation = read('supabase/migrations/20260910183000_allow_provider_instant_stripe_cancellation.sql');
+const stripeCancellation = read('supabase/migrations/20260910170337_student_instant_stripe_cancellation.sql');
+const providerStripeCancellation = read('supabase/migrations/20260910180828_allow_provider_instant_stripe_cancellation.sql');
 const stripeCancellationFunction = read('supabase/functions/cancel-instant-booking/index.ts');
 const providerCancellationModal = read('src/apps/provider/components/ProviderCancellationModal.tsx');
-const overduePayoutMigration = read('supabase/migrations/20260910184000_include_overdue_provider_payouts.sql');
-const payoutAfterRefundMigration = read('supabase/migrations/20260910185000_process_provider_payouts_after_refund.sql');
-const dualProfileProviderCancellation = read('supabase/migrations/20260910193000_fix_provider_cancel_dual_profile_authorization.sql');
+const overduePayoutMigration = read('supabase/migrations/20260910181904_include_overdue_provider_payouts.sql');
+const payoutAfterRefundMigration = read('supabase/migrations/20260910182218_process_provider_payouts_after_refund.sql');
+const dualProfileProviderCancellation = read('supabase/migrations/20260910182810_fix_provider_cancel_dual_profile_authorization.sql');
 
 describe('Aula Agora cancellation and refund policy', () => {
   it('keeps the policy backend-owned and separate from Agenda', () => {
