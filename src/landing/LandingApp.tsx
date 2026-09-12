@@ -15,8 +15,12 @@ import { dismissInitialSplash } from '../lib/initial-splash';
 
 const studentAppUrl = import.meta.env.VITE_STUDENT_APP_URL || 'https://mazzi-aluno-dev.pages.dev';
 const providerAppUrl = import.meta.env.VITE_PROVIDER_APP_URL || 'https://mazzi-profissional-dev.pages.dev';
-const studentApkUrl = '/downloads/mazzi-aluno.apk';
-const providerApkUrl = '/downloads/mazzi-pro.apk';
+// APKs are kept as GitHub artifacts because Cloudflare Pages rejects files
+// larger than 25 MiB. The branch URL keeps the DEV landing linked to the
+// latest version without placing the binaries in the Pages upload.
+const githubArtifactBaseUrl = 'https://raw.githubusercontent.com/lucasharo/mazzi/feature/premium-ui-v2/artifacts/downloads';
+const studentApkUrl = `${githubArtifactBaseUrl}/mazzi-aluno.apk`;
+const providerApkUrl = `${githubArtifactBaseUrl}/mazzi-pro.apk`;
 
 const benefits = [
   {
