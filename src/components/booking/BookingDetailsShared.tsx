@@ -159,7 +159,7 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
   if (!visible) return null;
 
   const studentCheckedIn = Boolean(booking.studentCheckedIn);
-  const instructorCheckedIn = Boolean(booking.instructorCheckedIn);
+  const instructorCheckedIn = Boolean(booking.instructorCheckedIn || booking.checkinInstructorAt);
   const selfCheckedIn = audience === 'student' ? studentCheckedIn : instructorCheckedIn;
   const checkInUnlocked = checkInAvailability.canCheckIn
     && (audience !== 'provider' || canCheckInAtLocation)
@@ -173,7 +173,7 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
       disabled={isCheckingIn || !onCheckIn || !checkInUnlocked}
       onClick={() => void onCheckIn?.()}
       leftIcon={<UserCheck className="h-3.5 w-3.5" aria-hidden="true" />}
-      aria-label="Fazer check-in na aula"
+      aria-label={audience === 'student' && !instructorCheckedIn ? 'Aguardando check-in do PRO' : 'Fazer check-in na aula'}
     >
       {checkInUnlocked ? 'Fazer check-in' : audience === 'student' && !instructorCheckedIn ? 'Aguardando check-in do PRO' : audience === 'provider' && !canCheckInAtLocation ? 'Realizar check-in' : 'Check-in em breve'}
     </Button>

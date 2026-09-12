@@ -690,7 +690,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             subtitle={(
               <span className="block">Aula #{booking.id.slice(0, 8)}</span>
             )}
-            instructorCheckedIn={Boolean(booking.instructorCheckedIn)}
+            instructorCheckedIn={Boolean(booking.instructorCheckedIn || booking.checkinInstructorAt)}
           />
 
           <BookingPresenceCard
@@ -702,7 +702,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             isCheckingIn={isCheckingIn}
             onCheckIn={checkInFlowActive ? handleStudentCheckInAction : undefined}
             showCheckInAction={checkInFlowActive}
-            studentCheckInUnlocked={Boolean(booking.instructorCheckedIn)}
+            studentCheckInUnlocked={Boolean(booking.instructorCheckedIn || booking.checkinInstructorAt)}
           />
 
           <BookingDetailsOverview
