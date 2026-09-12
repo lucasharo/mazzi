@@ -101,6 +101,13 @@ async function getStripeJson(stripeSecretKey: string, path: string, params?: URL
 
 async function reconcileConnectedPayout(service: any, stripeSecretKey: string, connectedAccount: string, stripePayoutId: string) {
   if (!/^acct_[A-Za-z0-9]+$/.test(connectedAccount) || !/^po_[A-Za-z0-9]+$/.test(stripePayoutId)) return null;
+  const { data: knownPayout, error: knownPayoutError } = await service.from("payouts")
+    .select("id,booking_id,transfer_reference,destination_key")
+    .eq("destination_key", connectedAccount)
+    .eq("external_payout_id", stripePayoutId)
+    .maybeSingle();
+  if (knownPayoutError) throw knownPayoutError;
+  if (knownPayout) return { payout: knownPayout, transaction: null };
   const params = new URLSearchParams({ payout: stripePayoutId, limit: "100" });
   const balanceTransactions = await getStripeJson(stripeSecretKey, "balance_transactions", params, connectedAccount);
   const transactions = Array.isArray(balanceTransactions?.data) ? balanceTransactions.data : [];
@@ -352,8 +359,8 @@ Deno.serve(async (request) => {
       p_failure_message: object.failure_message || null,
       p_arrival_date: Number.isFinite(Number(object.arrival_date)) ? new Date(Number(object.arrival_date) * 1000).toISOString() : null,
       p_stripe_account_id: connectedAccount,
-      p_balance_transaction_id: match.transaction.id,
-      p_stripe_available_on: Number.isFinite(Number(match.transaction.available_on)) ? new Date(Number(match.transaction.available_on) * 1000).toISOString() : null,
+      p_balance_transaction_id: match.transaction?.id || null,
+      p_stripe_available_on: Number.isFinite(Number(match.transaction?.available_on)) ? new Date(Number(match.transaction.available_on) * 1000).toISOString() : null,
       p_payout_created_at: Number.isFinite(Number(object.created)) ? new Date(Number(object.created) * 1000).toISOString() : null,
       p_stripe_paid_at: eventType === "payout.paid" ? new Date(Number(event.created || Math.floor(Date.now() / 1000)) * 1000).toISOString() : null,
     });

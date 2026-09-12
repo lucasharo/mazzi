@@ -32,6 +32,10 @@ describe('Stripe Connect payout reconciliation contract', () => {
     expect(webhook).toContain('eventType.startsWith("payout.")');
     expect(webhook).toContain('event.account');
   });
+  it('reuses an existing po link when a failed event has no ledger page', () => {
+    expect(webhook).toContain('eq("external_payout_id", stripePayoutId)');
+    expect(webhook).toContain('match.transaction?.id || null');
+  });
   it('reconciles payout transactions using the payout filter', () => expect(webhook).toContain('payout: stripePayoutId'));
   it('does not use amount or date heuristics', () => {
     expect(webhook).not.toContain('amount ===');
