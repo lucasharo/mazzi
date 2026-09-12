@@ -141,6 +141,7 @@ interface BookingPresenceCardProps {
   isCheckingIn?: boolean;
   onCheckIn?: () => void | Promise<void>;
   showCheckInAction?: boolean;
+  studentCheckInUnlocked?: boolean;
 }
 
 export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
@@ -153,13 +154,16 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
   isCheckingIn = false,
   onCheckIn,
   showCheckInAction = true,
+  studentCheckInUnlocked = true,
 }) => {
   if (!visible) return null;
 
   const studentCheckedIn = Boolean(booking.studentCheckedIn);
   const instructorCheckedIn = Boolean(booking.instructorCheckedIn);
   const selfCheckedIn = audience === 'student' ? studentCheckedIn : instructorCheckedIn;
-  const checkInUnlocked = checkInAvailability.canCheckIn && (audience !== 'provider' || canCheckInAtLocation);
+  const checkInUnlocked = checkInAvailability.canCheckIn
+    && (audience !== 'provider' || canCheckInAtLocation)
+    && (audience !== 'student' || studentCheckInUnlocked);
   const checkInAction = (
     <Button
       type="button"
@@ -171,7 +175,7 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
       leftIcon={<UserCheck className="h-3.5 w-3.5" aria-hidden="true" />}
       aria-label="Fazer check-in na aula"
     >
-      {checkInUnlocked ? 'Fazer check-in' : audience === 'provider' && !canCheckInAtLocation ? 'Realizar check-in' : 'Check-in em breve'}
+      {checkInUnlocked ? 'Fazer check-in' : audience === 'student' && !instructorCheckedIn ? 'Aguardando check-in do PRO' : audience === 'provider' && !canCheckInAtLocation ? 'Realizar check-in' : 'Check-in em breve'}
     </Button>
   );
 

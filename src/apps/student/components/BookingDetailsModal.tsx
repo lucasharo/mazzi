@@ -702,6 +702,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             isCheckingIn={isCheckingIn}
             onCheckIn={checkInFlowActive ? handleStudentCheckInAction : undefined}
             showCheckInAction={checkInFlowActive}
+            studentCheckInUnlocked={Boolean(booking.instructorCheckedIn)}
           />
 
           <BookingDetailsOverview

@@ -221,7 +221,7 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
       scheduledEndAt: '2026-08-20T11:00:00-03:00',
       status: 'CONFIRMED',
       studentCheckedIn: false,
-      instructorCheckedIn: false,
+      instructorCheckedIn: true,
       meetingPoint: 'Metrô Paulista',
       priceInCents: 12000,
       platformFeeInCents: 1000,
@@ -241,7 +241,6 @@ describe('TASK-058B — Close Final Regression-Test Gaps Before Migration 56 Dep
       );
 
       expect(screen.getByRole('button', { name: /Fazer check-in na aula/i })).toBeTruthy();
-      expect(screen.getByText('Aguardando check-in')).toBeTruthy();
     });
 
     it('B. Student checked -> botão some e checkinStudentAt renderiza', () => {

@@ -3,6 +3,7 @@ import {
   Calendar as CalendarIcon,
   Check,
   ChevronRight,
+  Download,
   MapPin,
   ShieldCheck,
   Sparkles,
@@ -12,6 +13,8 @@ import {
 
 const studentAppUrl = import.meta.env.VITE_STUDENT_APP_URL || 'https://mazzi-aluno-dev.pages.dev';
 const providerAppUrl = import.meta.env.VITE_PROVIDER_APP_URL || 'https://mazzi-profissional-dev.pages.dev';
+const studentApkUrl = '/downloads/mazzi-aluno.apk';
+const providerApkUrl = '/downloads/mazzi-pro.apk';
 
 const benefits = [
   {
@@ -80,6 +83,13 @@ function LandingApp() {
                   Quero encontrar uma aula <ArrowRight size={18} aria-hidden="true" />
                 </a>
                 <a className="landing-text-link" href="#como-funciona">Entenda como funciona <ChevronRight size={17} aria-hidden="true" /></a>
+              </div>
+              <div className="landing-download-card" aria-label="Downloads dos aplicativos Android">
+                <div><strong>Baixe os apps Android</strong><span>Versões DEV para testar no celular</span></div>
+                <div className="landing-download-actions">
+                  <a className="landing-download-link" href={studentApkUrl} download="mazzi-aluno.apk"><Download size={16} aria-hidden="true" /> Aluno</a>
+                  <a className="landing-download-link" href={providerApkUrl} download="mazzi-pro.apk"><Download size={16} aria-hidden="true" /> PRO</a>
+                </div>
               </div>
               <div className="landing-hero-proof">
                 <div className="landing-avatar-stack" aria-hidden="true"><span>AS</span><span>LM</span><span>BR</span></div>
