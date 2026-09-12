@@ -123,7 +123,12 @@ function recordFromUnknown(value: unknown): Record<string, unknown> | null {
 }
 
 function normalizeRawMessage(payload: MessagePayload): Record<string, unknown> | null {
-  const outer = recordFromUnknown(payload.data);
+  const payloadRecord = recordFromUnknown(payload);
+  const payloadData = recordFromUnknown(payloadRecord?.data);
+  // Capacitor can expose FCM data directly, while some Android versions wrap
+  // it once more under `data`. Accept both shapes so a notification tap never
+  // falls back to the default home route just because of the wrapper shape.
+  const outer = recordFromUnknown(payloadData?.data) || payloadData || recordFromUnknown(payloadRecord?.data);
   if (!outer) return null;
 
   const nestedTarget = recordFromUnknown(outer.target);
@@ -172,14 +177,6 @@ export function normalizeFirebasePushMessage(payload: MessagePayload): FirebaseP
 export async function subscribeToFirebaseForegroundMessages(
   listener: (message: FirebasePushMessage) => void,
 ): Promise<() => void> {
-  if (Capacitor.isNativePlatform()) {
-    const handle = await PushNotifications.addListener('pushNotificationReceived', (payload) => {
-      emit(normalizeFirebasePushMessage({ data: payload.data } as MessagePayload));
-    });
-    return () => { void handle.remove(); };
-  }
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return () => undefined;
-
   const seenNotificationIds = new Set<string>();
   const emit = (message: FirebasePushMessage | null) => {
     if (!message) return;
@@ -193,6 +190,14 @@ export async function subscribeToFirebaseForegroundMessages(
     }
     listener(message);
   };
+
+  if (Capacitor.isNativePlatform()) {
+    const handle = await PushNotifications.addListener('pushNotificationReceived', (payload) => {
+      emit(normalizeFirebasePushMessage({ data: payload.data } as MessagePayload));
+    });
+    return () => { void handle.remove(); };
+  }
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return () => undefined;
 
   const serviceWorkerListener = (event: MessageEvent) => {
     const envelope = recordFromUnknown(event.data);
@@ -213,4 +218,17 @@ export async function subscribeToFirebaseForegroundMessages(
     navigator.serviceWorker.removeEventListener('message', serviceWorkerListener);
     unsubscribeOnMessage();
   };
+}
+
+export async function subscribeToFirebaseNotificationActions(
+  listener: (target: NotificationNavigationTarget) => void,
+): Promise<() => void> {
+  if (!Capacitor.isNativePlatform()) return () => undefined;
+
+  const handle = await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+    const payload = action.notification?.data;
+    const message = normalizeFirebasePushMessage({ data: payload } as MessagePayload);
+    if (message) listener(message.target);
+  });
+  return () => { void handle.remove(); };
 }

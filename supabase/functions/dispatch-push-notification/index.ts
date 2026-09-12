@@ -3,7 +3,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isWebhookSecretValid, sendFcmDataMessage } from "../_shared/fcm-http-v1.ts";
 
-const headers = { "Content-Type": "application/json" };
+const headers = { "Content-Type": "application/json; charset=utf-8" };
 const reply = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers });
 
@@ -43,7 +43,7 @@ async function loadCanonicalNotification(
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const result = await service
       .from("notifications")
-      .select("id,user_id,type,app_context,entity_type,entity_id,navigation_action")
+      .select("id,user_id,type,app_context,entity_type,entity_id,navigation_action,title,body")
       .eq("id", notificationId)
       .maybeSingle();
     if (result.data) return result;
@@ -106,6 +106,10 @@ Deno.serve(async (request) => {
 
     const result = await sendFcmDataMessage({
       token: device.endpoint,
+      notification: {
+        title: String(notification.title || "MAZZI"),
+        body: String(notification.body || "Você tem uma nova atualização."),
+      },
       data: {
         notificationId: notification.id,
         eventType: notification.type,

@@ -668,6 +668,7 @@ export interface InstantLessonOffer {
   instructorId: string;
   vehicleId: string;
   providerName?: string;
+  instructorName?: string;
   category: VehicleCategory;
   transmission: TransmissionType;
   durationMinutes: number;

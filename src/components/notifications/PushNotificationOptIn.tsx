@@ -3,6 +3,7 @@ import { Bell, Check, ShieldAlert } from 'lucide-react';
 import type { NotificationAppContext } from '../../types';
 import {
   getPushCapability,
+  getPushCapabilityAsync,
   hasStoredPushDevice,
   registerPushDevice,
   requestPushPermission,
@@ -28,8 +29,8 @@ function statusFromPermission(permission: PushPermissionState): PushOptInStatus 
 
 function getInitialStatus(appContext: PushNotificationOptInProps['appContext'], userId?: string): PushOptInStatus {
   if (!isFirebaseMessagingConfigured() && !isNativeApp()) return 'not-configured';
+  if (hasStoredPushDevice(appContext, userId)) return 'active';
   const capability = getPushCapability();
-  if (capability.permission === 'granted' && hasStoredPushDevice(appContext, userId)) return 'active';
   return statusFromPermission(capability.permission);
 }
 
@@ -37,14 +38,19 @@ export const PushNotificationOptIn: React.FC<PushNotificationOptInProps> = ({ ap
   const [status, setStatus] = useState<PushOptInStatus>(() => getInitialStatus(appContext, userId));
 
   useEffect(() => {
-    const capability = getPushCapability();
-    if (!isFirebaseMessagingConfigured() && !isNativeApp()) {
-      setStatus('not-configured');
-      return;
-    }
-    setStatus(capability.permission === 'granted' && hasStoredPushDevice(appContext, userId)
-      ? 'active'
-      : statusFromPermission(capability.permission));
+    let active = true;
+    void (async () => {
+      if (!isFirebaseMessagingConfigured() && !isNativeApp()) {
+        if (active) setStatus('not-configured');
+        return;
+      }
+      const capability = await getPushCapabilityAsync();
+      if (!active) return;
+      setStatus(capability.permission === 'granted' && hasStoredPushDevice(appContext, userId)
+        ? 'active'
+        : statusFromPermission(capability.permission));
+    })();
+    return () => { active = false; };
   }, [appContext, userId]);
 
   const activate = async () => {

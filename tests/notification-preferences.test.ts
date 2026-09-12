@@ -3,8 +3,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { getNotificationPreferenceDefinitions } from '../src/lib/notification-preferences';
 
-const migration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260906000000_task_092_notification_preferences.sql'), 'utf8');
-const dispatchMigration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260908190000_notification_catalog_and_dispatch.sql'), 'utf8');
+const migration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260906005838_task_092_notification_preferences.sql'), 'utf8');
+const dispatchMigration = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260908192643_notification_catalog_and_dispatch.sql'), 'utf8');
 const dbService = readFileSync(resolve(process.cwd(), 'src/lib/db-service.ts'), 'utf8');
 const component = readFileSync(resolve(process.cwd(), 'src/components/notifications/NotificationPreferences.tsx'), 'utf8');
 const notificationsPanel = readFileSync(resolve(process.cwd(), 'src/components/notifications/NotificationsPanel.tsx'), 'utf8');

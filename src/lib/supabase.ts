@@ -17,6 +17,12 @@ if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error('Supabase env missing: set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local.');
 }
 
+/** Public browser credentials used by native HTTP while preserving Supabase RLS. */
+export const supabasePublicConfig = Object.freeze({
+  url: supabaseUrl,
+  publishableKey: supabasePublishableKey,
+});
+
 /**
  * 1. BROWSER CLIENT (Public Frontend)
  * Uses the Supabase publishable key with RLS enforcement. Never has elevated privileges.

@@ -43,6 +43,13 @@ export const serverState = {
     meta: { cacheClass: 'short' },
   }),
 
+  getProviderSummary: (providerId: string) => queryClient.fetchQuery({
+    queryKey: ['provider', providerId, 'summary'] as const,
+    queryFn: () => dbService.getProviderSummary(providerId),
+    ...CACHE_POLICY.short,
+    meta: { cacheClass: 'short' },
+  }),
+
   getProviderBookings: (params: { providerId: string; userId: string; isInstructor: boolean }) => {
     const scope = params.isInstructor ? `instructor:${params.userId}` : 'provider-all';
     return queryClient.fetchQuery<Booking[]>({

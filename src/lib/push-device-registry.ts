@@ -57,6 +57,26 @@ export function getPushCapability(): PushCapability {
   return { supported: true, permission, canAsk: permission === 'prompt' };
 }
 
+export async function getPushCapabilityAsync(): Promise<PushCapability> {
+  if (!Capacitor.isNativePlatform()) return getPushCapability();
+
+  try {
+    const permission = (await PushNotifications.checkPermissions()).receive;
+    const normalizedPermission: PushPermissionState = permission === 'granted'
+      ? 'granted'
+      : permission === 'denied'
+        ? 'denied'
+        : 'prompt';
+    return {
+      supported: true,
+      permission: normalizedPermission,
+      canAsk: normalizedPermission === 'prompt',
+    };
+  } catch {
+    return { supported: true, permission: 'denied', canAsk: false };
+  }
+}
+
 export async function requestPushPermission(): Promise<PushPermissionState> {
   if (Capacitor.isNativePlatform()) {
     try {
@@ -150,8 +170,26 @@ export async function disablePushDevice(deviceId: string): Promise<void> {
 export async function disableStoredPushDevice(appContext: NotificationAppContext, userId?: string): Promise<void> {
   if (!userId || typeof window === 'undefined') return;
   const key = storageKey(DEVICE_ID_PREFIX, appContext, userId);
-  const deviceId = window.localStorage.getItem(key);
-  if (!deviceId) return;
-  await disablePushDevice(deviceId);
-  window.localStorage.removeItem(key);
+  let failure: unknown;
+  try {
+    // The backend is authoritative: local storage can be missing after a
+    // reinstall, a failed registration callback or storage eviction.
+    await dbService.disableMyPushDevicesForContext(appContext);
+  } catch (error) {
+    failure = error;
+  } finally {
+    window.localStorage.removeItem(key);
+  }
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      // Deletes the FCM token and disables auto-init until the next explicit
+      // register() call, preventing delivery after the account signs out.
+      await PushNotifications.unregister();
+    } catch (error) {
+      failure ||= error;
+    }
+  }
+
+  if (failure) throw failure;
 }

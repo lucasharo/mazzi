@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 const dispatcher = fs.readFileSync('supabase/functions/dispatch-push-notification/index.ts', 'utf8');
 const fcm = fs.readFileSync('supabase/functions/_shared/fcm-http-v1.ts', 'utf8');
-const migration = fs.readFileSync('supabase/migrations/20260902153159_task_087_fcm_dispatch.sql', 'utf8');
-const webhookMigration = fs.readFileSync('supabase/migrations/20260902154300_task_087_fcm_webhook_dispatch.sql', 'utf8');
-const messageNotificationMigration = fs.readFileSync('supabase/migrations/20260908220000_fix_message_notification_targets.sql', 'utf8');
+const migration = fs.readFileSync('supabase/migrations/20260902153336_20260902153159_task_087_fcm_dispatch.sql', 'utf8');
+const webhookMigration = fs.readFileSync('supabase/migrations/20260902154300_20260902160000_task_087_fcm_webhook_dispatch.sql', 'utf8');
+const messageNotificationMigration = fs.readFileSync('supabase/migrations/20260908230149_fix_message_notification_targets.sql', 'utf8');
 
 describe('TASK-087 FCM dispatcher contract', () => {
   it('accepts only the authenticated webhook contract and canonical notification id', () => {
@@ -23,13 +23,17 @@ describe('TASK-087 FCM dispatcher contract', () => {
     expect(dispatcher).toContain('await wait(100 * (attempt + 1))');
   });
 
-  it('sends data-only allowlisted fields and binds the Firebase credential to DEV', () => {
+  it('sends canonical display content with allowlisted navigation data and binds the Firebase credential to DEV', () => {
     expect(fcm).toContain('FIREBASE_PROJECT_ID');
     expect(fcm).toContain('FCM_PROJECT_MISMATCH');
     expect(fcm).toContain('data: params.data');
     expect(dispatcher).toContain('notificationId: notification.id');
     expect(dispatcher).toContain('entityType: notification.entity_type');
-    expect(dispatcher).not.toContain('notification:');
+    expect(dispatcher).toContain('notification: {');
+    expect(dispatcher).toContain('title: String(notification.title');
+    expect(dispatcher).toContain('body: String(notification.body');
+    expect(fcm).toContain('notification?: { title: string; body: string }');
+    expect(fcm).toContain('...(params.notification ? {');
     expect(dispatcher).not.toContain('body: notification');
   });
 

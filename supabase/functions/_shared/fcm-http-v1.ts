@@ -14,6 +14,20 @@ export type FcmSendResult =
   | { ok: true; messageId: string }
   | { ok: false; kind: "invalid-token" | "transient" | "permanent"; status: number; error: string };
 
+function repairMojibake(value: unknown): string {
+  const text = typeof value === "string" ? value : String(value ?? "");
+  if (!/[ÃÂâð�]/.test(text)) return text;
+  try {
+    const bytes = Uint8Array.from(text, (character) => character.charCodeAt(0) & 0xff);
+    const repaired = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return repaired && repaired !== text && repaired.replace(/[ÃÂâð�]/g, "").length >= text.replace(/[ÃÂâð�]/g, "").length
+      ? repaired
+      : text;
+  } catch {
+    return text;
+  }
+}
+
 function base64UrlEncode(value: string | Uint8Array): string {
   const bytes = typeof value === "string" ? new TextEncoder().encode(value) : value;
   let binary = "";
@@ -103,6 +117,7 @@ function classifyFailure(status: number, body: unknown): "invalid-token" | "tran
 export async function sendFcmDataMessage(params: {
   token: string;
   data: Record<string, string>;
+  notification?: { title: string; body: string };
 }): Promise<FcmSendResult> {
   const account = readServiceAccount();
   const expectedProjectId = (Deno.env.get("FIREBASE_PROJECT_ID") || "").trim();
@@ -116,7 +131,18 @@ export async function sendFcmDataMessage(params: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ message: { token: params.token, data: params.data } }),
+    body: JSON.stringify({
+      message: {
+        token: params.token,
+        data: params.data,
+        ...(params.notification ? {
+          notification: {
+            title: repairMojibake(params.notification.title),
+            body: repairMojibake(params.notification.body),
+          },
+        } : {}),
+      },
+    }),
   });
   const body = await response.json().catch(() => ({}));
   if (response.ok && typeof body.name === "string") return { ok: true, messageId: body.name };

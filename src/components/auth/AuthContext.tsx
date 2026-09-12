@@ -5,10 +5,12 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { UserRole } from '../../types';
+import type { NotificationAppContext } from '../../types';
 import { AppPermission, resolveUserPermissions } from '../../domain/rbac';
 import { AuthSessionState } from '../../lib/auth-service';
 import { onboardDrivingSchool as onboardDrivingSchoolService, onboardInstructor as onboardInstructorService, getStudentToProMigrationStatus as getStudentToProMigrationStatusService, migrateStudentProfileToInstructor as migrateStudentProfileToInstructorService, signInWithEmail, signUpPublicAccount as signUpPublicAccountService, type DrivingSchoolOnboardingParams, type SignUpParams, type StudentToProMigrationStatus } from '../../lib/auth-service';
 import { supabase } from '../../lib/supabase';
+import { disableStoredPushDevice } from '../../lib/push-device-registry';
 
 interface AuthContextType extends AuthSessionState {
   signIn: (email: string, password: string) => Promise<void>;
@@ -50,7 +52,7 @@ function setPendingInstructorOnboarding(pending: boolean): void {
   }
 }
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode; pushAppContext?: NotificationAppContext }> = ({ children, pushAppContext }) => {
   const [authState, setAuthState] = useState<AuthSessionState>({
     user: null,
     permissions: [],
@@ -453,6 +455,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPendingInstructorOnboarding(false);
     setAuthState(prev => ({ ...prev, isLoading: true }));
     try {
+      if (pushAppContext && authState.user?.id) {
+        try {
+          await disableStoredPushDevice(pushAppContext, authState.user.id);
+        } catch (error) {
+          // Authentication logout must remain available while offline. The
+          // next registration also transfers the device away from old users.
+          console.warn('Unable to disable push devices during logout:', error);
+        }
+      }
       await supabase.auth.signOut();
     } catch (err) {
       console.error('Error signing out:', err);
