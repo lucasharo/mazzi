@@ -111,7 +111,7 @@ function clearStripeCheckoutReturnParams(): void {
   }
 }
 
-function getInitialStripeCheckoutReturn(): { status: StripeCheckoutReturnStatus } | null {
+function getInitialStripeCheckoutReturn(): { status: StripeCheckoutReturnStatus; isInstantBooking?: boolean } | null {
   if (typeof window === 'undefined') return null;
 
   const params = new URLSearchParams(window.location.search);
@@ -121,7 +121,15 @@ function getInitialStripeCheckoutReturn(): { status: StripeCheckoutReturnStatus 
   // booking must be reopened in the summary so the student can retry within
   // the original hold window or leave through the summary back action.
   if (checkoutState === 'cancelled') return null;
-  if (checkoutState === 'success') return { status: 'CHECKOUT_SUCCESS' };
+  if (checkoutState === 'success') {
+    let isInstantBooking = false;
+    try {
+      isInstantBooking = Boolean(window.sessionStorage.getItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY));
+    } catch {
+      isInstantBooking = false;
+    }
+    return { status: 'CHECKOUT_SUCCESS', isInstantBooking };
+  }
   return { status: 'ERROR' };
 }
 
@@ -1031,7 +1039,13 @@ export const StudentApp: React.FC = () => {
     // Keep the return screen mounted from the first render. A completed
     // Checkout should never briefly reveal the home screen while its status is
     // being checked authoritatively by the backend.
-    setStripeCheckoutReturn({ status: 'CHECKOUT_SUCCESS' });
+    let storedInstantBookingId: string | null = null;
+    try {
+      storedInstantBookingId = window.sessionStorage.getItem(INSTANT_PAYMENT_BOOKING_STORAGE_KEY);
+    } catch {
+      storedInstantBookingId = null;
+    }
+    setStripeCheckoutReturn({ status: 'CHECKOUT_SUCCESS', isInstantBooking: Boolean(storedInstantBookingId) });
 
     const handleAuthoritativeCheckoutSuccess = async (bookings: Booking[], bookingId: string) => {
       if (!active) return;
