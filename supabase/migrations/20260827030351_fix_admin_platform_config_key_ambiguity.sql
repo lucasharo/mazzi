@@ -70,3 +70,5 @@ $$;
 
 REVOKE ALL ON FUNCTION public.update_admin_platform_configurations(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.update_admin_platform_configurations(jsonb) TO authenticated;
+
+;

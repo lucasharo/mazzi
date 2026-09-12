@@ -1,5 +1,3 @@
--- TASK-087 — DEV-only asynchronous notification dispatch.
--- The secret is provisioned in Supabase Vault; it is never committed here.
 
 BEGIN;
 
@@ -49,3 +47,4 @@ AFTER INSERT ON public.notifications
 FOR EACH ROW EXECUTE FUNCTION public.dispatch_notification_push_webhook();
 
 COMMIT;
+;
