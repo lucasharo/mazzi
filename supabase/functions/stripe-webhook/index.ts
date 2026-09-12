@@ -108,9 +108,17 @@ async function reconcileConnectedPayout(service: any, stripeSecretKey: string, c
     .maybeSingle();
   if (knownPayoutError) throw knownPayoutError;
   if (knownPayout) return { payout: knownPayout, transaction: null };
-  const params = new URLSearchParams({ payout: stripePayoutId, limit: "100" });
-  const balanceTransactions = await getStripeJson(stripeSecretKey, "balance_transactions", params, connectedAccount);
-  const transactions = Array.isArray(balanceTransactions?.data) ? balanceTransactions.data : [];
+  const transactions: any[] = [];
+  let startingAfter = "";
+  for (let page = 0; page < 10; page += 1) {
+    const params = new URLSearchParams({ payout: stripePayoutId, limit: "100" });
+    if (startingAfter) params.set("starting_after", startingAfter);
+    const balanceTransactions = await getStripeJson(stripeSecretKey, "balance_transactions", params, connectedAccount);
+    if (Array.isArray(balanceTransactions?.data)) transactions.push(...balanceTransactions.data);
+    if (!balanceTransactions?.has_more || !balanceTransactions?.data?.length) break;
+    startingAfter = String(balanceTransactions.data[balanceTransactions.data.length - 1].id || "");
+    if (!startingAfter) break;
+  }
   if (transactions.length === 0) return null;
   const { data: candidates, error } = await service.from("payouts")
     .select("id,booking_id,transfer_reference,destination_key")
