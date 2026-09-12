@@ -8,7 +8,10 @@
     <meta name="theme-color" content="#F9C93D" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/x-icon" href="/brand/favicon/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon/favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/brand/favicon/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/brand/favicon/favicon-64x64.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/brand/pwa/icon-192x192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="MAZZI" />
@@ -17,6 +20,9 @@
     <meta property="og:description" content="Encontre, reserve e pague aulas práticas de direção em São Paulo." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      if (window.Capacitor?.isNativePlatform?.()) document.documentElement.classList.add('native-shell');
+    </script>
   </head>
   <body>
     <div id="mazzi-initial-splash" role="status" aria-label="Carregando MAZZI">
@@ -66,6 +72,9 @@
         width: 128px;
         height: 128px;
         object-fit: cover;
+      }
+      html.native-shell #mazzi-initial-splash {
+        display: none;
       }
       #mazzi-payment-return-splash {
         width: min(100%, 420px);

@@ -4,12 +4,13 @@ import { AppLogin } from '../../components/auth/AppLogin';
 import { AccessDenied } from '../../components/auth/AccessDenied';
 import { StudentApp } from '../../apps/student/StudentApp';
 import { Button } from '../../components/ui/Button';
-import { dismissInitialSplash, INITIAL_NAVIGATION_READY_EVENT } from '../../lib/initial-splash';
+import { dismissInitialSplash, INITIAL_NAVIGATION_READY_EVENT, showNativeSplashForNotification } from '../../lib/initial-splash';
 import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget } from '../../lib/mobile-app-router';
 import { clearPendingNotificationTarget, readPendingNotificationTarget, storePendingNotificationTarget } from '../../lib/pending-navigation';
 import { registerServiceWorker } from '../../registerServiceWorker';
 import { MazziQueryProvider } from '../../components/query/MazziQueryProvider';
 import { installNativeBackButtonHandler, installNativeUrlHandler } from '../../lib/native-platform';
+import { subscribeToFirebaseNotificationActions } from '../../lib/firebase-messaging';
 
 function isStripeCancellationReturn(): boolean {
   if (typeof window === 'undefined') return false;
@@ -74,6 +75,19 @@ const StudentGate: React.FC = () => {
   }, [auth.isAuthenticated, auth.isLoading]);
 
   React.useEffect(() => {
+    const handleNotificationAction = () => {
+      if (auth.isLoading || !auth.isAuthenticated) return;
+      const pending = readPendingNotificationTarget();
+      if (pending?.appContext === 'STUDENT' && navigateToNotificationTarget(pending)) {
+        setStartupNavigationPending(true);
+        clearPendingNotificationTarget();
+      }
+    };
+    window.addEventListener('mazzi:notification-action', handleNotificationAction);
+    return () => window.removeEventListener('mazzi:notification-action', handleNotificationAction);
+  }, [auth.isAuthenticated, auth.isLoading]);
+
+  React.useEffect(() => {
     const handleInitialNavigationReady = () => setStartupNavigationPending(false);
     window.addEventListener(INITIAL_NAVIGATION_READY_EVENT, handleInitialNavigationReady);
     return () => window.removeEventListener(INITIAL_NAVIGATION_READY_EVENT, handleInitialNavigationReady);
@@ -117,17 +131,26 @@ const StudentNativeShell: React.FC = () => {
         current.search = parsed.search;
         current.hash = '#/student/home';
         window.history.replaceState(window.history.state, '', `${current.pathname}${current.search}${current.hash}`);
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        // The StudentApp checkout effect is driven by React state, not only
+        // by the URL. Notify it explicitly after a native deep-link return.
+        window.dispatchEvent(new CustomEvent('mazzi:stripe-return'));
       } catch {
         // Ignore URLs that are not MAZZI deep links.
       }
     }).then((cleanup) => { removeUrlHandler = cleanup; });
-    return () => { removeBackButton(); removeUrlHandler(); };
+    let removePushAction = () => undefined;
+    void subscribeToFirebaseNotificationActions((target) => {
+      if (target.appContext !== 'STUDENT') return;
+      showNativeSplashForNotification();
+      storePendingNotificationTarget(target);
+      window.dispatchEvent(new Event('mazzi:notification-action'));
+    }).then((cleanup) => { removePushAction = cleanup; });
+    return () => { removeBackButton(); removeUrlHandler(); removePushAction(); };
   }, []);
 
   return (
     <MazziQueryProvider>
-      <AuthProvider>
+      <AuthProvider pushAppContext="STUDENT">
         <StudentGate />
       </AuthProvider>
     </MazziQueryProvider>

@@ -2,6 +2,19 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 
+const EXIT_CONFIRMATION_WINDOW_MS = 2_500;
+let exitConfirmationTimer: ReturnType<typeof setTimeout> | null = null;
+let exitConfirmationArmed = false;
+let nativeBackButtonRegistration: Promise<void> | null = null;
+let nativeBackButtonHandle: { remove: () => Promise<void> } | null = null;
+let nativeBackButtonConsumers = 0;
+
+function isMazziRootEntry(): boolean {
+  if (window.history.state?.mazziNativeRoot === true) return true;
+  if (window.history.state?.mazziModal) return false;
+  return /^#\/(student\/home|provider\/dashboard|admin\/dashboard)(?:\?|$)/.test(window.location.hash);
+}
+
 export function isNativeApp(): boolean {
   return Capacitor.isNativePlatform();
 }
@@ -33,15 +46,68 @@ export async function getCurrentPositionCompat(options: PositionOptions = {}): P
 export async function installNativeBackButtonHandler(): Promise<() => void> {
   if (!isNativeApp()) return () => undefined;
 
-  const handle = await App.addListener('backButton', () => {
-    const hasInternalHistory = window.history.length > 1;
-    if (hasInternalHistory) {
-      window.history.back();
-      return;
-    }
-    void App.minimizeApp();
-  });
-  return () => handle.remove();
+  nativeBackButtonConsumers += 1;
+  if (!nativeBackButtonRegistration) {
+    // Mark the first MAZZI entry so old WebView history cannot keep the native
+    // back button navigating past the app's own root screen.
+    window.history.replaceState(
+      { ...(window.history.state || {}), mazziNativeRoot: true },
+      '',
+      window.location.href,
+    );
+
+    nativeBackButtonRegistration = App.addListener('backButton', () => {
+      const nativeBackEvent = new Event('mazzi:native-back', { cancelable: true });
+      window.dispatchEvent(nativeBackEvent);
+      if (nativeBackEvent.defaultPrevented) {
+        exitConfirmationArmed = false;
+        if (exitConfirmationTimer) clearTimeout(exitConfirmationTimer);
+        exitConfirmationTimer = null;
+        return;
+      }
+
+      if (!isMazziRootEntry()) {
+        window.history.back();
+        return;
+      }
+
+      if (!exitConfirmationArmed) {
+        exitConfirmationArmed = true;
+        window.dispatchEvent(new Event('mazzi:back-exit-warning'));
+        exitConfirmationTimer = setTimeout(() => {
+          exitConfirmationArmed = false;
+          exitConfirmationTimer = null;
+        }, EXIT_CONFIRMATION_WINDOW_MS);
+        return;
+      }
+
+      exitConfirmationArmed = false;
+      if (exitConfirmationTimer) clearTimeout(exitConfirmationTimer);
+      exitConfirmationTimer = null;
+      void App.exitApp();
+    }).then((handle) => {
+      nativeBackButtonHandle = handle;
+    });
+
+    await nativeBackButtonRegistration;
+  } else {
+    await nativeBackButtonRegistration;
+  }
+
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    nativeBackButtonConsumers = Math.max(0, nativeBackButtonConsumers - 1);
+    if (nativeBackButtonConsumers > 0) return;
+    if (exitConfirmationTimer) clearTimeout(exitConfirmationTimer);
+    exitConfirmationTimer = null;
+    exitConfirmationArmed = false;
+    const handle = nativeBackButtonHandle;
+    nativeBackButtonHandle = null;
+    nativeBackButtonRegistration = null;
+    void handle?.remove();
+  };
 }
 
 export async function installNativeUrlHandler(onUrl: (url: string) => void): Promise<() => void> {

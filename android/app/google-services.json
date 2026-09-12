@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "440461972492",
+    "project_id": "mazzi-af65c",
+    "storage_bucket": "mazzi-af65c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:440461972492:android:788dfe7da240c511ec0a29",
+        "android_client_info": {
+          "package_name": "br.com.mazzi.aluno"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYsguDVj0IttNjLug8oS1W1uG0XCw8jQo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

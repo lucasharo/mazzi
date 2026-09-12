@@ -62,7 +62,7 @@ import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTar
 import type { NotificationNavigationTarget } from '../../lib/notification-navigation';
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
-import { disableStoredPushDevice, registerPushDevice } from '../../lib/push-device-registry';
+import { registerPushDevice } from '../../lib/push-device-registry';
 import { getCurrentPositionCompat } from '../../lib/native-platform';
 import { StudentProMigrationCard } from './components/StudentProMigrationCard';
 import { InstantLessonModal } from './components/InstantLessonModal';
@@ -347,6 +347,7 @@ export const StudentApp: React.FC = () => {
     activeInstantLessonRef.current = activeInstantLesson;
   }, [activeInstantLesson]);
   const [notificationToasts, setNotificationToasts] = useState<ToastMessage[]>([]);
+  const [nativeBackHintVisible, setNativeBackHintVisible] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
   const [searchedLocation, setSearchedLocation] = useState<{ lat: number; lng: number; label?: string } | undefined>();
   const [locationStatus, setLocationStatus] = useState<'RESOLVING' | 'RESOLVED' | 'UNAVAILABLE'>('RESOLVING');
@@ -773,11 +774,6 @@ export const StudentApp: React.FC = () => {
   }, [isRealSupabase, user?.id]);
 
   const handleLogout = async () => {
-    try {
-      await disableStoredPushDevice('STUDENT', user?.id);
-    } catch {
-      // Logout must remain available if device deactivation is temporarily offline.
-    }
     await logout();
   };
 
@@ -851,11 +847,18 @@ export const StudentApp: React.FC = () => {
     booking?: Booking | null;
     message?: string;
   } | null>(() => getInitialStripeCheckoutReturn());
+  const [stripeReturnRevision, setStripeReturnRevision] = useState(0);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [reviewsEligibilityStatus, setReviewsEligibilityStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [searchLoading, setSearchLoading] = useState(isRealSupabase);
   const [searchError, setSearchError] = useState(false);
   const initialBookingsReadySignaledRef = useRef(false);
+
+  useEffect(() => {
+    const handleNativeStripeReturn = () => setStripeReturnRevision((value) => value + 1);
+    window.addEventListener('mazzi:stripe-return', handleNativeStripeReturn);
+    return () => window.removeEventListener('mazzi:stripe-return', handleNativeStripeReturn);
+  }, []);
 
   useEffect(() => {
     async function loadBookings() {
@@ -1041,11 +1044,15 @@ export const StudentApp: React.FC = () => {
         stripeCheckoutFlowActiveRef.current = false;
         await loadActiveInstantLesson();
         if (!active) return;
+        setIsCheckoutOpen(false);
+        setResumeBooking(null);
         setStripeCheckoutReturn({ status: 'SUCCESS', booking: confirmedBooking || null });
         return;
       }
 
       clearStripeCheckoutReturnParams();
+      setIsCheckoutOpen(false);
+      setResumeBooking(null);
       setStripeCheckoutReturn({
         status: 'SUCCESS',
         booking: confirmedBooking || null,
@@ -1137,7 +1144,7 @@ export const StudentApp: React.FC = () => {
       window.removeEventListener('offline', handleOffline);
       if (offlineRedirectTimer !== undefined) window.clearTimeout(offlineRedirectTimer);
     };
-  }, [user?.id, isRealSupabase, loadActiveInstantLesson, loadBookingsData, loadCheckoutPaymentStatus, verifyCheckoutSession]);
+  }, [user?.id, isRealSupabase, loadActiveInstantLesson, loadBookingsData, loadCheckoutPaymentStatus, verifyCheckoutSession, stripeReturnRevision]);
 
   useEffect(() => {
     if (resumeBooking) dismissInitialSplash();
@@ -1941,6 +1948,16 @@ function applyStrictProviderFilters(
     window.setTimeout(() => setNotificationToasts((current) => current.filter((toast) => toast.id !== id)), 5000);
   };
 
+  useEffect(() => {
+    const handleExitWarning = () => {
+      setNativeBackHintVisible(true);
+      const timeout = window.setTimeout(() => setNativeBackHintVisible(false), 2_500);
+      return timeout;
+    };
+    window.addEventListener('mazzi:back-exit-warning', handleExitWarning);
+    return () => window.removeEventListener('mazzi:back-exit-warning', handleExitWarning);
+  }, []);
+
   const showNotificationFeedback = (description: string) => {
     showStudentToast({ type: 'warning', title: 'Conteúdo indisponível', description });
   };
@@ -1983,6 +2000,14 @@ function applyStrictProviderFilters(
 
   return (
     <div className="mazzi-app text-[var(--mazzi-text)]">
+      {nativeBackHintVisible && (
+        <div
+          role="status"
+          className="pointer-events-none fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[140] -translate-x-1/2 rounded-lg bg-black/75 px-3 py-2 text-center text-xs font-semibold text-white shadow-lg"
+        >
+          Pressione voltar novamente para fechar
+        </div>
+      )}
       <ToastContainer toasts={notificationToasts} onDismiss={(id) => setNotificationToasts((current) => current.filter((toast) => toast.id !== id))} />
         <main className="mazzi-mobile text-left">
           {/* HOME TAB — dashboard do aluno, sem resultados de busca inline */}

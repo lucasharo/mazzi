@@ -2,12 +2,15 @@ import React from 'react';
 import { AuthProvider, useAuth } from '../../components/auth/AuthContext';
 import { AppLogin } from '../../components/auth/AppLogin';
 import { ProviderApp } from '../../apps/provider/ProviderApp';
-import { dismissInitialSplash, INITIAL_NAVIGATION_READY_EVENT } from '../../lib/initial-splash';
+import { dismissInitialSplash, INITIAL_NAVIGATION_READY_EVENT, showNativeSplashForNotification } from '../../lib/initial-splash';
 import { getNotificationNavigationTargetFromHash, navigateToNotificationTarget } from '../../lib/mobile-app-router';
 import { clearPendingNotificationTarget, readPendingNotificationTarget, storePendingNotificationTarget } from '../../lib/pending-navigation';
 import { registerServiceWorker } from '../../registerServiceWorker';
 import { MazziQueryProvider } from '../../components/query/MazziQueryProvider';
-import { installNativeBackButtonHandler } from '../../lib/native-platform';
+import { installNativeBackButtonHandler, installNativeUrlHandler } from '../../lib/native-platform';
+import { subscribeToFirebaseNotificationActions } from '../../lib/firebase-messaging';
+import { stopProviderBackgroundLocation } from '../../lib/provider-background-location';
+import { Browser } from '@capacitor/browser';
 
 function isStripeOnboardingReturn(): boolean {
   if (typeof window === 'undefined') return false;
@@ -20,6 +23,11 @@ const InstructorGate: React.FC = () => {
   React.useEffect(() => {
     registerServiceWorker();
   }, []);
+  React.useEffect(() => {
+    if (!auth.isLoading && !auth.isAuthenticated) {
+      void stopProviderBackgroundLocation();
+    }
+  }, [auth.isAuthenticated, auth.isLoading]);
   React.useEffect(() => {
     if (auth.isLoading) return;
     const current = getNotificationNavigationTargetFromHash('provider');
@@ -53,6 +61,18 @@ const InstructorGate: React.FC = () => {
     setStartupNavigationPending(false);
   }, [auth.isAuthenticated, auth.isLoading]);
   React.useEffect(() => {
+    const handleNotificationAction = () => {
+      if (auth.isLoading || !auth.isAuthenticated) return;
+      const pending = readPendingNotificationTarget();
+      if (pending?.appContext === 'PRO' && navigateToNotificationTarget(pending)) {
+        setStartupNavigationPending(true);
+        clearPendingNotificationTarget();
+      }
+    };
+    window.addEventListener('mazzi:notification-action', handleNotificationAction);
+    return () => window.removeEventListener('mazzi:notification-action', handleNotificationAction);
+  }, [auth.isAuthenticated, auth.isLoading]);
+  React.useEffect(() => {
     const handleInitialNavigationReady = () => setStartupNavigationPending(false);
     window.addEventListener(INITIAL_NAVIGATION_READY_EVENT, handleInitialNavigationReady);
     return () => window.removeEventListener(INITIAL_NAVIGATION_READY_EVENT, handleInitialNavigationReady);
@@ -82,12 +102,34 @@ const InstructorNativeShell: React.FC = () => {
   React.useEffect(() => {
     let removeBackButton = () => undefined;
     void installNativeBackButtonHandler().then((cleanup) => { removeBackButton = cleanup; });
-    return () => removeBackButton();
+    let removeUrlHandler = () => undefined;
+    void installNativeUrlHandler((url) => {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'mazzi:' || parsed.hostname !== 'stripe-return') return;
+        void Browser.close();
+        const current = new URL(window.location.href);
+        current.search = parsed.search;
+        current.hash = '#/provider/management';
+        window.history.replaceState(window.history.state, '', `${current.pathname}${current.search}${current.hash}`);
+        window.dispatchEvent(new CustomEvent('mazzi:stripe-onboarding-return'));
+      } catch {
+        // Ignore unrelated deep links.
+      }
+    }).then((cleanup) => { removeUrlHandler = cleanup; });
+    let removePushAction = () => undefined;
+    void subscribeToFirebaseNotificationActions((target) => {
+      if (target.appContext !== 'PRO') return;
+      showNativeSplashForNotification();
+      storePendingNotificationTarget(target);
+      window.dispatchEvent(new Event('mazzi:notification-action'));
+    }).then((cleanup) => { removePushAction = cleanup; });
+    return () => { removeBackButton(); removeUrlHandler(); removePushAction(); };
   }, []);
 
   return (
     <MazziQueryProvider>
-      <AuthProvider>
+      <AuthProvider pushAppContext="PRO">
         <InstructorGate />
       </AuthProvider>
     </MazziQueryProvider>

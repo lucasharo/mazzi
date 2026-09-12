@@ -99,7 +99,11 @@ export function useMobileAppRoute<T extends MobileAppRoute>(
   useEffect(() => {
     const path = `#/${appKey}/${route}`;
     if (getRouteFromHash(appKey, '') !== route) {
-      window.history.replaceState({ mazziApp: appKey, mazziRoute: route }, '', `${window.location.pathname}${window.location.search}${path}`);
+      window.history.replaceState(
+        { ...(window.history.state || {}), mazziApp: appKey, mazziRoute: route },
+        '',
+        `${window.location.pathname}${window.location.search}${path}`,
+      );
     }
 
     const handleHistoryChange = () => setRoute(readRoute());

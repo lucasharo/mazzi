@@ -80,8 +80,10 @@ import { clearNotificationNavigationTargetFromHash, getNotificationNavigationTar
 import type { NotificationNavigationTarget } from '../../lib/notification-navigation';
 import { clearPendingNotificationTarget } from '../../lib/pending-navigation';
 import { subscribeToFirebaseForegroundMessages } from '../../lib/firebase-messaging';
-import { disableStoredPushDevice, registerPushDevice } from '../../lib/push-device-registry';
-import { getCurrentPositionCompat } from '../../lib/native-platform';
+import { getPushCapabilityAsync, registerPushDevice, requestPushPermission } from '../../lib/push-device-registry';
+import { getCurrentPositionCompat, isNativeApp } from '../../lib/native-platform';
+import { startProviderBackgroundLocation, stopProviderBackgroundLocation } from '../../lib/provider-background-location';
+import { Browser } from '@capacitor/browser';
 import { dismissInitialSplash, signalInitialNavigationReady } from '../../lib/initial-splash';
 import { resolveProviderAddress } from '../../domain/maps/provider-address-resolution';
 import { buildProviderAddressPayload, validateProviderAddressForm } from '../../domain/maps/provider-address-payload';
@@ -190,6 +192,7 @@ export const ProviderApp: React.FC = () => {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [complianceDocs, setComplianceDocs] = useState<ComplianceDocument[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const pushPermissionPromptInFlightRef = useRef(false);
   const [staleConfirmedBookings, setStaleConfirmedBookings] = useState<Booking[]>([]);
   const dismissedStaleConfirmedSignatureRef = useRef<string | null>(null);
   const suppressStaleConfirmedReminderRef = useRef(isStripeOnboardingReturnNavigation());
@@ -293,6 +296,7 @@ export const ProviderApp: React.FC = () => {
   // Selected Booking Details Modal State
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedBookingForChat, setSelectedBookingForChat] = useState<Booking | null>(null);
+  const pendingNotificationTargetRef = useRef<NotificationNavigationTarget | null>(null);
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -302,6 +306,37 @@ export const ProviderApp: React.FC = () => {
   // Instant Lesson Active Journey & Modal States
   const [isInstantOperationalModalOpen, setIsInstantOperationalModalOpen] = useState(false);
   const [isInstantSettingsOpen, setIsInstantSettingsOpen] = useState(false);
+  const instantSettingsHistoryRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const modalKey = 'provider-instant-settings';
+
+    if (!isInstantSettingsOpen) {
+      if (instantSettingsHistoryRef.current && window.history.state?.mazziModal === modalKey) {
+        instantSettingsHistoryRef.current = false;
+        window.history.back();
+      }
+      return undefined;
+    }
+
+    if (window.history.state?.mazziModal !== modalKey) {
+      window.history.pushState(
+        { ...(window.history.state || {}), mazziModal: modalKey },
+        '',
+        window.location.href,
+      );
+    }
+    instantSettingsHistoryRef.current = true;
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.mazziModal === modalKey) return;
+      instantSettingsHistoryRef.current = false;
+      setIsInstantSettingsOpen(false);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isInstantSettingsOpen]);
   const [isExternalNavModalOpen, setIsExternalNavModalOpen] = useState(false);
   const [isOnTheWayLoading, setIsOnTheWayLoading] = useState(false);
   const checkInWindowBeforeMinutes = platformConfiguration?.checkInWindowBeforeMinutes ?? null;
@@ -480,20 +515,64 @@ export const ProviderApp: React.FC = () => {
     void registerPushDevice({ appContext: 'PRO', userId: user.id });
   }, [isRealSupabase, user?.id]);
 
+  const promptForProviderPush = useCallback(async (promptKey: string) => {
+    if (!isRealSupabase || !isNativeApp() || !user?.id || pushPermissionPromptInFlightRef.current) return;
+    try {
+      if (window.localStorage.getItem(promptKey) === 'true') return;
+    } catch {
+      // Continue even when local storage is unavailable.
+    }
+
+    pushPermissionPromptInFlightRef.current = true;
+    try {
+      const capability = await getPushCapabilityAsync();
+      const permission = capability.permission === 'prompt'
+        ? await requestPushPermission()
+        : capability.permission;
+      if (permission === 'granted') {
+        await registerPushDevice({ appContext: 'PRO', userId: user.id });
+      }
+      try {
+        window.localStorage.setItem(promptKey, 'true');
+      } catch {
+        // The Android permission result still applies even without storage.
+      }
+    } finally {
+      pushPermissionPromptInFlightRef.current = false;
+    }
+  }, [isRealSupabase, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const promptKey = `mazzi.push.permission-prompted.PRO.${user.id}`;
+    const timer = window.setTimeout(() => {
+      void promptForProviderPush(promptKey);
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [promptForProviderPush, user?.id]);
+
+  useEffect(() => {
+    const hasFirstLesson = !workspaceLoading && bookings.some((booking) => (
+      booking.status === 'CONFIRMED' || booking.status === 'IN_PROGRESS'
+    ));
+    if (!hasFirstLesson || !user?.id) return;
+    void promptForProviderPush(`mazzi.push.permission-prompted-first-lesson.PRO.${user.id}`);
+  }, [bookings, promptForProviderPush, user?.id, workspaceLoading]);
+
   const handleLogout = async () => {
+    await stopProviderBackgroundLocation();
     // Nunca deixe a disponibilidade do instrutor persistir depois do logout.
     // O RPC é idempotente e a regra de autorização impede desligar outro usuário.
-    if (currentProvider?.type === 'INSTRUCTOR' && currentProvider.userId === user?.id) {
+    if (currentProvider?.id && user?.id && instantInstructorStatuses.some((status) => (
+      status.providerId === currentProvider.id
+      && status.instructorId === user.id
+      && status.instantOnline
+    ))) {
       try {
         await dbService.setMyInstantInstructorOnline(currentProvider.id, user.id, false);
       } catch {
         // O logout continua disponível mesmo se a rede estiver indisponível.
       }
-    }
-    try {
-      await disableStoredPushDevice('PRO', user?.id);
-    } catch {
-      // Logout must remain available if device deactivation is temporarily offline.
     }
     await logout();
   };
@@ -602,6 +681,7 @@ export const ProviderApp: React.FC = () => {
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>();
   const [paymentAccount, setPaymentAccount] = useState<ProviderPaymentAccount | null>(null);
   const [isConnectingStripe, setIsConnectingStripe] = useState(false);
+  const [stripeReturnRevision, setStripeReturnRevision] = useState(0);
   const [stripeOnboardingError, setStripeOnboardingError] = useState<string | null>(null);
 
   // Vehicle Management Modal State
@@ -802,6 +882,51 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
+  // Hydrate only what the dashboard needs to become useful. The complete
+  // workspace continues in the background and fills management-only state.
+  const loadInitialDashboard = async (providerId: string) => {
+    setWorkspaceLoading(true);
+    setWorkspaceError(null);
+    try {
+      const isInstructorUser = user?.role === 'INSTRUCTOR' || Boolean(user?.roles?.includes('INSTRUCTOR'));
+      const [provider, providerVehicles, providerOfferings, providerBookings, providerDocuments] = await Promise.all([
+        serverState.getProviderSummary(providerId),
+        serverState.getProviderVehicles(providerId),
+        serverState.getProviderOfferings(providerId),
+        serverState.getProviderBookings({ providerId, userId: user?.id || 'unknown', isInstructor: isInstructorUser }),
+        dbService.getProviderComplianceDocuments(providerId),
+      ]);
+      if (!provider) throw new Error('Nenhum prestador vinculado a esta conta foi encontrado.');
+
+      setProviders([provider]);
+      setVehicles(providerVehicles);
+      setOfferings(providerOfferings);
+      setBookings(providerBookings || []);
+      setComplianceDocs(providerDocuments);
+
+      try {
+        const [loadedInstantSettings, loadedInstructorStatuses] = await Promise.all([
+          dbService.getMyInstantSettings(provider.id, providerOfferings),
+          dbService.getMyInstantInstructorStatuses(provider.id),
+        ]);
+        setInstantSettings(loadedInstantSettings);
+        setInstantInstructorStatuses(loadedInstructorStatuses);
+      } catch (instantError) {
+        console.warn('Instant lesson dashboard state load failed:', instantError);
+        setInstantSettings([]);
+        setInstantInstructorStatuses([]);
+      }
+
+      setWorkspaceLoading(false);
+      // Secondary data must never block the first dashboard render.
+      void loadWorkspace(providerId, { silent: true });
+    } catch (err: any) {
+      console.error('Provider dashboard load failed:', err);
+      setWorkspaceError(err.message || 'Não foi possível carregar seus dados.');
+      setWorkspaceLoading(false);
+    }
+  };
+
   const refreshCurrentTab = async () => {
     if (isRefreshingCurrentTab) return;
     if (!activeProviderId && activeTab !== 'bookings' && activeTab !== 'profile') return;
@@ -833,12 +958,18 @@ export const ProviderApp: React.FC = () => {
   };
 
   useEffect(() => {
+    const handleNativeStripeReturn = () => setStripeReturnRevision((value) => value + 1);
+    window.addEventListener('mazzi:stripe-onboarding-return', handleNativeStripeReturn);
+    return () => window.removeEventListener('mazzi:stripe-onboarding-return', handleNativeStripeReturn);
+  }, []);
+
+  useEffect(() => {
     if (!user?.providerId) {
       signalInitialNavigationReady();
       return;
     }
     setActiveProviderId(user.providerId);
-    void loadWorkspace(user.providerId).finally(() => signalInitialNavigationReady());
+    void loadInitialDashboard(user.providerId).finally(() => signalInitialNavigationReady());
   }, [user?.providerId]);
 
   useEffect(() => {
@@ -1043,10 +1174,17 @@ export const ProviderApp: React.FC = () => {
     && currentProvider.userId === user?.id
     ? 'INSTRUCTOR'
     : user?.role || currentRole;
+  const ownInstantInstructorStatus = instantInstructorStatuses.find((status) => (
+    status.providerId === currentProvider?.id && status.instructorId === user?.id
+  ));
+  const ownInstantTrackingActive = Boolean(
+    ownInstantInstructorStatus
+    && isInstantInstructorAvailabilityActive(ownInstantInstructorStatus),
+  );
+  const ownInstantOnlineExpiresAt = ownInstantInstructorStatus?.onlineExpiresAt || null;
 
   const refreshInstantProviderLocation = useCallback((): Promise<void> => {
-    const currentInstructorIsOnline = instantInstructorStatuses.some((status) => status.providerId === currentProvider?.id && status.instructorId === user?.id && isInstantInstructorAvailabilityActive(status));
-    if (!currentProvider?.id || !user?.id || !currentInstructorIsOnline) {
+    if (!currentProvider?.id || !user?.id || !ownInstantTrackingActive) {
       return Promise.resolve();
     }
     if (instantLocationRefreshInFlightRef.current) return instantLocationRefreshInFlightRef.current;
@@ -1070,11 +1208,29 @@ export const ProviderApp: React.FC = () => {
       .finally(() => { instantLocationRefreshInFlightRef.current = null; });
     instantLocationRefreshInFlightRef.current = request;
     return request;
-  }, [currentProvider?.id, instantInstructorStatuses, user?.id]);
+  }, [currentProvider?.id, ownInstantTrackingActive, user?.id]);
 
   useEffect(() => {
-    if (!isRealSupabase || !currentProvider?.id || !user?.id || !instantInstructorStatuses.some((status) => status.providerId === currentProvider.id && status.instructorId === user.id && isInstantInstructorAvailabilityActive(status))) return undefined;
+    if (!isRealSupabase || !currentProvider?.id || !user?.id || !ownInstantTrackingActive || !ownInstantOnlineExpiresAt) {
+      if (isNativeApp()) void stopProviderBackgroundLocation();
+      return undefined;
+    }
+
     void refreshInstantProviderLocation();
+
+    if (isNativeApp()) {
+      void startProviderBackgroundLocation({
+        providerId: currentProvider.id,
+        instructorId: user.id,
+        onlineExpiresAt: ownInstantOnlineExpiresAt,
+        onLocationUploaded: () => setInstantLocationStatus('READY'),
+        onError: () => setInstantLocationStatus('ERROR'),
+      });
+      return () => {
+        void stopProviderBackgroundLocation();
+      };
+    }
+
     // A PRO tab may stay in the background while the student searches in
     // another tab. Keep attempting the heartbeat there; the database still
     // rejects stale locations, and visibilitychange refreshes immediately
@@ -1086,7 +1242,7 @@ export const ProviderApp: React.FC = () => {
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [currentProvider?.id, instantInstructorStatuses, isRealSupabase, refreshInstantProviderLocation, user?.id]);
+  }, [currentProvider?.id, isRealSupabase, ownInstantOnlineExpiresAt, ownInstantTrackingActive, refreshInstantProviderLocation, user?.id]);
 
   const loadInstantOffers = useCallback((): Promise<void> => {
     if (instantOffersInFlightRef.current) return instantOffersInFlightRef.current;
@@ -1181,6 +1337,10 @@ export const ProviderApp: React.FC = () => {
     if (!currentProvider) return;
     setInstantActionLoading(true);
     try {
+      if (!online && user?.id === instructorId) {
+        // Privacy first: stop publishing before waiting for the backend pause.
+        await stopProviderBackgroundLocation();
+      }
       if (online) {
         const instructorMembership = schoolInstructors.find((instructor) => instructor.userId === instructorId);
         const hasCompliance = currentProvider.type === 'DRIVING_SCHOOL'
@@ -1273,13 +1433,22 @@ export const ProviderApp: React.FC = () => {
     }
   };
 
-  const handleNotificationTarget = (target: NotificationNavigationTarget) => {
+  const handleNotificationTarget = async (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'PRO') return;
     if (target.entityType === 'booking' && target.entityId) {
-      const booking = bookings.find((item) => item.id === target.entityId);
+      let booking = bookings.find((item) => item.id === target.entityId);
+      if (!booking && activeProviderId) {
+        try {
+          const refreshedBookings = await dbService.getMyProviderBookings(activeProviderId);
+          setBookings(refreshedBookings);
+          booking = refreshedBookings.find((item) => item.id === target.entityId);
+        } catch {
+          // The workspace may still be hydrating; retry below after it settles.
+        }
+      }
       if (!booking) {
-        showProviderFeedback('warning', 'Conteúdo indisponível', 'Esta aula não está mais disponível.');
+        pendingNotificationTargetRef.current = target;
         setActiveTab('bookings');
         return;
       }
@@ -1321,9 +1490,16 @@ export const ProviderApp: React.FC = () => {
     try {
       const result = await dbService.openProviderPayoutOnboarding();
       setPaymentAccount(result.account);
-      // Keep the button loading while the browser leaves MAZZI and waits for
-      // the hosted Stripe page to become available. Reset only on failure.
-      window.location.assign(result.onboardingUrl);
+      // Keep the button loading while the hosted Stripe page is prepared.
+      if (isNativeApp()) {
+        await Browser.open({ url: result.onboardingUrl });
+        // Browser.open resolves as soon as the Custom Tab is presented. The
+        // control must be reusable if the user closes it or Stripe requests a
+        // fresh single-use link through refresh_url.
+        setIsConnectingStripe(false);
+      } else {
+        window.location.assign(result.onboardingUrl);
+      }
     } catch (error: any) {
       setIsConnectingStripe(false);
       let stripeDetail = '';
@@ -1392,12 +1568,12 @@ export const ProviderApp: React.FC = () => {
     };
     void syncReturnedAccount();
     return () => { active = false; };
-  }, [user?.id, workspaceLoading]);
+  }, [user?.id, workspaceLoading, stripeReturnRevision]);
 
   const openNotificationTarget = (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
     if (target.appContext !== 'PRO') return;
-    handleNotificationTarget(target);
+      void handleNotificationTarget(target);
     clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' ? 'management' : target.entityType === 'instant_offer' ? 'dashboard' : 'earnings');
   };
 
@@ -1405,11 +1581,18 @@ export const ProviderApp: React.FC = () => {
     if (isAuthLoading || workspaceLoading || !user) return;
     const target = getNotificationNavigationTargetFromHash('provider');
     if (!target || target.appContext !== 'PRO') return;
-    handleNotificationTarget(target);
+    void handleNotificationTarget(target);
     clearPendingNotificationTarget();
     clearNotificationNavigationTargetFromHash('provider', target.entityType === 'booking' ? 'bookings' : target.entityType === 'compliance' ? 'management' : target.entityType === 'instant_offer' ? 'dashboard' : 'earnings');
     signalInitialNavigationReady();
-  }, [bookings, isAuthLoading, user, workspaceLoading]);
+  }, [activeProviderId, bookings, isAuthLoading, user, workspaceLoading]);
+
+  useEffect(() => {
+    const target = pendingNotificationTargetRef.current;
+    if (!target || workspaceLoading || !activeProviderId || bookings.length === 0) return;
+    pendingNotificationTargetRef.current = null;
+    void handleNotificationTarget(target);
+  }, [activeProviderId, bookings, workspaceLoading]);
 
   useEffect(() => {
     if (isAuthLoading || workspaceLoading || !user) return;
@@ -1462,7 +1645,10 @@ export const ProviderApp: React.FC = () => {
     void openEmailDestination();
   }, [activeProviderId, bookings, isAuthLoading, user, workspaceLoading]);
 
-  if (isAuthLoading || workspaceLoading) {
+  // Render the shell as soon as the provider profile is available. Agenda,
+  // catalog, documents and instant-lesson data continue hydrating in the
+  // background instead of blocking the first meaningful screen.
+  if (isAuthLoading || (!currentProvider && workspaceLoading)) {
     return (
       <div className="min-h-dvh bg-[#f7f5ef] text-[#202126] font-sans">
         <div aria-busy="true" aria-label="Carregando painel do instrutor" className="mazzi-provider-content mx-auto w-full max-w-[680px] space-y-5 px-5 py-6 sm:px-7 lg:max-w-[760px]">
