@@ -49,6 +49,14 @@ export const CANCELLED_BOOKING_STATUSES: BookingStatus[] = [
   'CANCELLED_BY_PROVIDER',
 ];
 
+/** Cancellations made before any payment must not become lesson history. */
+export function isCancelledBeforePayment(booking: Booking): boolean {
+  if (!CANCELLED_BOOKING_STATUSES.includes(booking.status)) return false;
+  if (booking.paymentPaidAt) return false;
+  if (booking.paymentStatus && !['PENDING', 'FAILED', 'CANCELLED'].includes(booking.paymentStatus)) return false;
+  return !booking.refundAmountInCents;
+}
+
 /** A pending payment remains actionable only while its backend hold is valid. */
 export function isPendingPaymentHoldActive(
   booking: Booking,

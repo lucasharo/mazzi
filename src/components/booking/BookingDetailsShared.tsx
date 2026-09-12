@@ -173,9 +173,9 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
       disabled={isCheckingIn || !onCheckIn || !checkInUnlocked}
       onClick={() => void onCheckIn?.()}
       leftIcon={<UserCheck className="h-3.5 w-3.5" aria-hidden="true" />}
-      aria-label={audience === 'student' && !instructorCheckedIn ? 'Aguardando check-in do Instrutor' : 'Fazer check-in na aula'}
+      aria-label="Fazer check-in na aula"
     >
-      {checkInUnlocked ? 'Fazer check-in' : audience === 'student' && !instructorCheckedIn ? 'Aguardando check-in do Instrutor' : audience === 'provider' && !canCheckInAtLocation ? 'Realizar check-in' : 'Check-in em breve'}
+      {checkInUnlocked ? 'Fazer check-in' : audience === 'provider' && !canCheckInAtLocation ? 'Realizar check-in' : 'Check-in em breve'}
     </Button>
   );
 
@@ -188,19 +188,19 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
 
       <PresenceRow
         label={audience === 'student' ? 'Seu check-in' : 'Check-in do aluno'}
-        description={studentCheckedIn ? 'Presença confirmada no ponto de encontro' : 'Aguardando check-in do aluno'}
+        description={studentCheckedIn ? 'Presença confirmada no ponto de encontro' : ''}
         checked={studentCheckedIn}
         checkedAt={booking.checkinStudentAt}
-        statusText="Aguardando check-in"
+        statusText="Pendente"
         action={audience === 'student' && showCheckInAction ? checkInAction : undefined}
       />
 
       <PresenceRow
         label={audience === 'student' ? 'Check-in do instrutor' : 'Seu check-in'}
-        description={instructorCheckedIn ? 'Presença confirmada no ponto de encontro' : audience === 'provider' ? 'Aguardando seu check-in' : 'Aguardando check-in do profissional'}
+        description={instructorCheckedIn ? 'Presença confirmada no ponto de encontro' : ''}
         checked={instructorCheckedIn}
         checkedAt={booking.checkinInstructorAt}
-        statusText="Aguardando check-in"
+        statusText="Pendente"
         action={audience === 'provider' && showCheckInAction ? checkInAction : undefined}
       />
 
@@ -212,7 +212,7 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
       )}
       {!selfCheckedIn && !checkInAvailability.canCheckIn && checkInAvailability.opensAt && (
         <p className="border-t border-slate-100 pt-2 text-[11px] font-semibold text-slate-500">
-          Aguardando abertura do check-in · disponível a partir de {formatTimeBR(checkInAvailability.opensAt)}
+          Check-in disponível a partir de {formatTimeBR(checkInAvailability.opensAt)}
         </p>
       )}
     </div>
@@ -232,7 +232,7 @@ const PresenceRow: React.FC<PresenceRowProps> = ({ label, description, checked, 
   <div className="flex items-center justify-between gap-2 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-3">
     <div className="min-w-0">
       <span className="block text-xs font-bold text-slate-800">{label}</span>
-      <span className="block text-[11px] text-slate-500">{description}</span>
+      {description && <span className="block text-[11px] text-slate-500">{description}</span>}
     </div>
     {checked ? (
       <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800">

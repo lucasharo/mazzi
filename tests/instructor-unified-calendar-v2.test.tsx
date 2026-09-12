@@ -510,7 +510,7 @@ describe('TASK-054E — Unified Calendar Fail-Closed & Delete Error Visibility T
       );
 
       expect(screen.queryByRole('button', { name: 'Iniciar aula' })).toBeNull();
-      expect(screen.getByText('Aguardando o check-in do aluno para iniciar a aula.')).toBeTruthy();
+      expect(screen.queryByText('Aguardando o check-in do aluno para iniciar a aula.')).toBeNull();
 
       rerender(
         <ProviderBookingDetailsModal

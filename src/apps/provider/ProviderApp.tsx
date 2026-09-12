@@ -65,7 +65,7 @@ import {
   LessonSession,
 } from '../../domain/lesson-session';
 import { ProviderCancellationReasonCode } from '../../domain/cancellation';
-import { BLOCKING_BOOKING_STATUSES, CANCELLED_BOOKING_STATUSES, getBookingStartTimestamp, getStaleConfirmedBookings, getStudentBookingSection, hasTimeIntervalOverlap, isPendingPaymentHoldActive, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { BLOCKING_BOOKING_STATUSES, CANCELLED_BOOKING_STATUSES, getBookingStartTimestamp, getStaleConfirmedBookings, getStudentBookingSection, hasTimeIntervalOverlap, isCancelledBeforePayment, isPendingPaymentHoldActive, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
 import { getInstantOfferSecondsLeft, INSTANT_PROVIDER_LOCATION_INTERVAL_SECONDS, isInstantInstructorAvailabilityActive } from '../../domain/instant-lesson';
 import { DEFAULT_PLATFORM_CONFIGURATION, toPublicPlatformConfiguration, type PublicPlatformConfiguration } from '../../domain/platform-config';
 import { buildFullDayBlockRange, formatDateBR, formatTimeBR, getCanonicalTimestamp, getTodayInSaoPaulo, isLessonEnded, isBookingTodayInSaoPaulo } from '../../lib/date-format';
@@ -90,7 +90,7 @@ import { buildProviderAddressPayload, validateProviderAddressForm } from '../../
 import { isProviderPaymentAccountReady } from '../../domain/payments/provider-payment-readiness';
 
 const isProviderTodayVisibleBooking = (booking: Booking) =>
-  (TODAY_BOOKING_STATUSES.includes(booking.status) || CANCELLED_BOOKING_STATUSES.includes(booking.status)) &&
+  !isCancelledBeforePayment(booking) && (TODAY_BOOKING_STATUSES.includes(booking.status) || CANCELLED_BOOKING_STATUSES.includes(booking.status)) &&
   !UNPAID_BOOKING_STATUSES.includes(booking.status) &&
   isBookingTodayInSaoPaulo(booking);
 
@@ -1738,6 +1738,7 @@ export const ProviderApp: React.FC = () => {
   }), bookingClockMs)[0] || null;
 
   const filteredBookings = bookings.filter((b) => {
+    if (isCancelledBeforePayment(b)) return false;
     if (UNPAID_BOOKING_STATUSES.includes(b.status)) return false;
     const ended = isLessonEnded(b, new Date(bookingClockMs));
 

@@ -432,12 +432,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
                 Iniciar aula
               </Button>
             ) : (
-              <div
-                className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs font-bold text-amber-900"
-                role="status"
-              >
-                Aguardando o check-in do aluno para iniciar a aula.
-              </div>
+              <div className="h-1" aria-hidden="true" />
             )
           )}
           {onOpenChat && canOpenChat && (
@@ -515,12 +510,7 @@ export const ProviderBookingDetailsModal: React.FC<ProviderBookingDetailsModalPr
         </Button>
       )}
       {isConfirmed && isArrived && !(booking.instructorCheckedIn && booking.studentCheckedIn) && (
-        <div
-          className="mazzi-compact-card rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs font-bold text-amber-900"
-          role="status"
-        >
-          Aguardando o check-in do aluno para iniciar a aula.
-        </div>
+        <div className="h-1" aria-hidden="true" />
       )}
       <div className="flex w-full items-center gap-3">
         {canCancel && onCancelBooking && (

@@ -30,7 +30,7 @@ describe('TASK-090 check-in contract', () => {
     expect(migration).toContain('STUDENT_CHECKIN_REQUIRED');
     expect(migration).toContain("status::TEXT = 'IN_PROGRESS'");
     expect(providerModal).toContain('booking.instructorCheckedIn && booking.studentCheckedIn');
-    expect(sharedBookingDetails).toContain('Aguardando abertura do check-in · disponível a partir de');
+    expect(sharedBookingDetails).toContain('Check-in disponível a partir de');
   });
 
   it('explains that the address for scheduled and Aula Agora lessons is released after starting displacement', () => {

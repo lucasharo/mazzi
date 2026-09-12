@@ -19,7 +19,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { formatCentsToBRL } from '../../domain/money';
 
-import { CANCELLED_BOOKING_STATUSES, getBookingEndTimestamp, getEffectiveBookingHoldExpiresAt, getStaleConfirmedBookings, getStudentBookingSection, isBookingEnded, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
+import { CANCELLED_BOOKING_STATUSES, getBookingEndTimestamp, getEffectiveBookingHoldExpiresAt, getStaleConfirmedBookings, getStudentBookingSection, isBookingEnded, isCancelledBeforePayment, sortBookingsForNext, sortBookingsForToday, TODAY_BOOKING_STATUSES, UNPAID_BOOKING_STATUSES } from '../../domain/booking';
 import { getInstantLessonAvailabilityNotice } from '../../domain/instant-lesson';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '../../domain/search';
 import { DEFAULT_PLATFORM_CONFIGURATION, toPublicPlatformConfiguration, type PublicPlatformConfiguration } from '../../domain/platform-config';
@@ -77,7 +77,7 @@ const STUDENT_LOCATION_TIMEOUT_MS = 20_000;
 const INSTANT_PAYMENT_BOOKING_STORAGE_KEY = 'mazzi:instant-payment-booking-id';
 
 const isStudentTodayVisibleBooking = (booking: Booking) =>
-  TODAY_BOOKING_STATUSES.includes(booking.status) || CANCELLED_BOOKING_STATUSES.includes(booking.status);
+  !isCancelledBeforePayment(booking) && (TODAY_BOOKING_STATUSES.includes(booking.status) || CANCELLED_BOOKING_STATUSES.includes(booking.status));
 
 type StudentLocation = { lat: number; lng: number };
 
@@ -372,6 +372,16 @@ export const StudentApp: React.FC = () => {
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
   const [resumeBooking, setResumeBooking] = useState<Booking | null>(null);
+
+  const openStudentBookingDetails = useCallback((booking: Booking) => {
+    if (booking.status === 'PENDING_PAYMENT') {
+      setSelectedBookingForDetails(null);
+      setIsInstantLessonOpen(false);
+      setResumeBooking(booking);
+      return;
+    }
+    setSelectedBookingForDetails(booking);
+  }, []);
 
   const searchRequestIdRef = useRef(0);
   const searchEndRef = useRef<HTMLDivElement | null>(null);
@@ -1709,7 +1719,7 @@ function applyStrictProviderFilters(
   const upcomingBookings = useMemo(() => {
     const upcoming = confirmedBookings
       .filter((b) => {
-        if (isBookingEnded(b, nowMs)) return false;
+        if (isCancelledBeforePayment(b) || isBookingEnded(b, nowMs)) return false;
 
         if (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') return true;
 
@@ -1733,6 +1743,7 @@ function applyStrictProviderFilters(
   const confirmedLessonBookings = useMemo(() => {
     return confirmedBookings
       .filter((b) =>
+        !isCancelledBeforePayment(b) &&
         (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS' || b.status === 'PENDING_PAYMENT') &&
         !isBookingEnded(b, nowMs),
       )
@@ -1750,13 +1761,13 @@ function applyStrictProviderFilters(
     }
 
     return confirmedBookings
-      .filter((booking) => booking.snapshot?.source === 'AULA_AGORA' && ['PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS'].includes(booking.status))
+      .filter((booking) => !isCancelledBeforePayment(booking) && booking.snapshot?.source === 'AULA_AGORA' && ['PENDING_PAYMENT', 'CONFIRMED', 'IN_PROGRESS'].includes(booking.status))
       .sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a))[0];
   }, [activeInstantLesson?.request.bookingId, confirmedBookings]);
 
   const historyBookings = useMemo(() => {
     return confirmedBookings
-      .filter((b) => !UNPAID_BOOKING_STATUSES.includes(b.status) && (getStudentBookingSection(b.status, b) === 'HISTORY' || isBookingEnded(b, nowMs)))
+      .filter((b) => !isCancelledBeforePayment(b) && !UNPAID_BOOKING_STATUSES.includes(b.status) && (getStudentBookingSection(b.status, b) === 'HISTORY' || isBookingEnded(b, nowMs)))
       .sort((a, b) => bookingTimestamp(b) - bookingTimestamp(a));
   }, [confirmedBookings, nowMs]);
 
@@ -1798,6 +1809,7 @@ function applyStrictProviderFilters(
         ], [bookingTab]);
 
   const filterBookingsByQuickFilter = (bookings: Booking[]) => bookings.filter((booking) => {
+    if (isCancelledBeforePayment(booking)) return false;
     if (bookingQuickFilter === 'all') return true;
     if (bookingQuickFilter === 'confirmed') return booking.status === 'CONFIRMED';
     if (bookingQuickFilter === 'pending') return booking.status === 'PENDING_PAYMENT';
@@ -1887,7 +1899,7 @@ function applyStrictProviderFilters(
     }
     if (target.action === 'chat') setSelectedBookingForChat(booking);
     else if (target.action === 'review') setSelectedBookingForReview(booking);
-    else setSelectedBookingForDetails(booking);
+    else openStudentBookingDetails(booking);
   };
 
   useEffect(() => {
@@ -1895,7 +1907,7 @@ function applyStrictProviderFilters(
     const target = pendingNotificationTargetRef.current;
     pendingNotificationTargetRef.current = null;
     void handleNotificationTarget(target);
-  }, [bookingsLoading, confirmedBookings]);
+  }, [bookingsLoading, confirmedBookings, openStudentBookingDetails]);
 
   useEffect(() => {
     if (!user || bookingsLoading) return;
@@ -1945,12 +1957,12 @@ function applyStrictProviderFilters(
       }
 
       setActiveTab('bookings');
-      setSelectedBookingForDetails(booking);
+      openStudentBookingDetails(booking);
       signalInitialNavigationReady();
     };
 
     void openEmailDestination();
-  }, [bookingsLoading, confirmedBookings, loadBookingsData, user]);
+  }, [bookingsLoading, confirmedBookings, loadBookingsData, openStudentBookingDetails, user]);
 
   const openNotificationTarget = (target: NotificationNavigationTarget) => {
     setIsNotificationsOpen(false);
@@ -2065,7 +2077,7 @@ function applyStrictProviderFilters(
               ) : bookingsError ? (
                 <ErrorState message="Não foi possível carregar sua próxima aula." onRetry={() => setBookingsRefreshKey((value) => value + 1)} />
               ) : upcomingBookings.length > 0 ? (
-                <UpcomingBookingCard booking={upcomingBookings[0]} perspective="student" onSelect={setSelectedBookingForDetails} />
+                <UpcomingBookingCard booking={upcomingBookings[0]} perspective="student" onSelect={openStudentBookingDetails} />
               ) : (
                 <UpcomingBookingEmptyCard onViewBookings={() => setActiveTab('bookings')} />
               )}
@@ -2393,7 +2405,7 @@ function applyStrictProviderFilters(
                         booking={b}
                         variant="student"
                         onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}
-                        onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
+                        onViewDetails={openStudentBookingDetails}
                       />
                     ))
                   )}
@@ -2411,7 +2423,7 @@ function applyStrictProviderFilters(
                         booking={b}
                         variant="student"
                         onOpenChat={(bookingToChat) => setSelectedBookingForChat(bookingToChat)}
-                        onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
+                        onViewDetails={openStudentBookingDetails}
                       />
                     ))
                   )}
@@ -2429,7 +2441,7 @@ function applyStrictProviderFilters(
                         key={b.id}
                         booking={b}
                         variant="student"
-                        onViewDetails={(bookingToView) => setSelectedBookingForDetails(bookingToView)}
+                        onViewDetails={openStudentBookingDetails}
                       />
                     ))
                   )}
@@ -2772,7 +2784,7 @@ function applyStrictProviderFilters(
         onClose={dismissStaleConfirmedBookings}
         onOpenBooking={(booking) => {
           dismissStaleConfirmedBookings();
-          window.setTimeout(() => setSelectedBookingForDetails(booking), 0);
+          window.setTimeout(() => openStudentBookingDetails(booking), 0);
         }}
       />
 
