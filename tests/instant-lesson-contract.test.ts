@@ -104,6 +104,12 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(studentApp).toContain('booking={activeInstantBooking}');
   });
 
+  it('opens Aula Agora booking details after the green payment confirmation without a second CTA', () => {
+    expect(stripeReturnScreen).toContain("status === 'SUCCESS' && isInstantBooking && booking");
+    expect(stripeReturnScreen).toContain('onViewBooking?.(booking)');
+    expect(stripeReturnScreen).toContain('if (isInstantBooking && isSuccess && booking && successTransitionComplete) return null;');
+  });
+
   it('returns to the price step when the last Aula Agora offer is declined', () => {
     expect(studentApp).toContain("setInstantLessonReturnToPrice(true);");
     expect(studentApp).toContain('returnToPriceStep={instantLessonReturnToPrice}');

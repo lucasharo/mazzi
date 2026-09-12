@@ -49,16 +49,24 @@ export const StripeCheckoutReturnScreen: React.FC<Props> = ({
 
     const timer = window.setTimeout(() => {
       setSuccessTransitionComplete(true);
+      if (status === 'SUCCESS' && isInstantBooking && booking && !autoOpenedBookingRef.current) {
+        autoOpenedBookingRef.current = true;
+        onViewBooking?.(booking);
+      }
     }, SUCCESS_TRANSITION_DURATION_MS);
 
     return () => window.clearTimeout(timer);
-  }, [isSuccessPresentation, successTransitionComplete]);
+  }, [booking, isInstantBooking, isSuccessPresentation, onViewBooking, status, successTransitionComplete]);
 
   React.useEffect(() => {
     if (status !== 'SUCCESS' || !booking || !successTransitionComplete || autoOpenedBookingRef.current) return;
     autoOpenedBookingRef.current = true;
     onViewBooking?.(booking);
   }, [booking, onViewBooking, status, successTransitionComplete]);
+
+  // Aula Agora leaves the green confirmation straight into the booking detail;
+  // there is no intermediate screen with a second "Ver aula" action.
+  if (isInstantBooking && isSuccess && booking && successTransitionComplete) return null;
 
   const scheduleDate = booking?.scheduledStartAt ? formatDateBR(booking.scheduledStartAt) : booking ? formatDateBR(booking.scheduledDate) : '';
   const scheduleStart = booking?.scheduledStartAt ? formatTimeBR(booking.scheduledStartAt) : booking?.startTime || '';
