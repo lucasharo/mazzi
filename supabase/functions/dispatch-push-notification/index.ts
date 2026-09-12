@@ -88,6 +88,19 @@ Deno.serve(async (request) => {
     .order("created_at", { ascending: true });
   if (deliveriesError) return reply(500, { message: "Não foi possível carregar as entregas." });
 
+  let instantOfferExpiresInSeconds = 60;
+  if (notification.type === "INSTANT_LESSON_OFFER" && notification.entity_id) {
+    const { data: offer } = await service
+      .from("instant_lesson_offers")
+      .select("expires_at")
+      .eq("id", notification.entity_id)
+      .maybeSingle();
+    const expiresAtMs = offer?.expires_at ? Date.parse(String(offer.expires_at)) : NaN;
+    if (Number.isFinite(expiresAtMs)) {
+      instantOfferExpiresInSeconds = Math.max(1, Math.ceil((expiresAtMs - Date.now()) / 1000));
+    }
+  }
+
   const results = { sent: 0, retried: 0, failed: 0, invalidated: 0, skipped: 0 };
   for (const delivery of deliveries || []) {
     const { data: claim, error: claimError } = await service.rpc("claim_push_delivery", { p_delivery_id: delivery.id });
@@ -120,6 +133,9 @@ Deno.serve(async (request) => {
         entityType: notification.entity_type,
         entityId: notification.entity_id || "",
         action: notification.navigation_action,
+        ...(notification.type === "INSTANT_LESSON_OFFER"
+          ? { expiresInSeconds: String(instantOfferExpiresInSeconds) }
+          : {}),
       },
     }).catch(() => ({ ok: false, kind: "transient", status: 503, error: "FCM_SEND_FAILED" }));
 
