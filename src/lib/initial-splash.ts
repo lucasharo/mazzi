@@ -5,6 +5,11 @@ export const INITIAL_NAVIGATION_READY_EVENT = 'mazzi:initial-navigation-ready';
 const INITIAL_SPLASH_FAILSAFE_MS = 3000;
 const NOTIFICATION_SPLASH_ID = 'mazzi-notification-splash';
 
+// Notification taps can be delivered while the WebView is already mounted.
+// Keep this state separate from the DOM so a warm tap never places a second
+// splash over an app whose first render has already completed.
+let initialNavigationReady = false;
+
 function isNativePlatform(): boolean {
   return Capacitor.isNativePlatform();
 }
@@ -23,6 +28,7 @@ function hideNativeSplash(): void {
 /** Shows the same native splash briefly when Android resumes the app from a push tap. */
 export function showNativeSplashForNotification(): void {
   if (!isNativePlatform()) return;
+  if (initialNavigationReady) return;
   if (typeof document === 'undefined' || document.getElementById(NOTIFICATION_SPLASH_ID)) return;
   const overlay = document.createElement('div');
   overlay.id = NOTIFICATION_SPLASH_ID;
@@ -41,6 +47,7 @@ export function showNativeSplashForNotification(): void {
 
 export function signalInitialNavigationReady(): void {
   if (typeof window === 'undefined') return;
+  initialNavigationReady = true;
   removeWebSplashOnNative();
   hideNativeSplash();
 
@@ -57,6 +64,7 @@ export function signalInitialNavigationReady(): void {
 
 export function dismissInitialSplash(): void {
   if (typeof document === 'undefined') return;
+  initialNavigationReady = true;
   hideNativeSplash();
 
   const splash = document.getElementById('mazzi-initial-splash');
