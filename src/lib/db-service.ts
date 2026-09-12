@@ -2040,6 +2040,7 @@ export const dbService = {
       upcoming_payouts: (upcomingDetails || (Array.isArray(data.upcoming_payouts) ? data.upcoming_payouts : [])).map((item: any) => ({
         id: item.id || undefined,
         date: item.date,
+        scheduled_release_at: item.scheduled_release_at || null,
         arrival_date: item.arrival_date || null,
         stripe_available_on: item.stripe_available_on || null,
         stripe_payout_status: item.stripe_payout_status || null,

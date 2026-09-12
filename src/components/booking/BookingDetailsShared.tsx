@@ -173,9 +173,9 @@ export const BookingPresenceCard: React.FC<BookingPresenceCardProps> = ({
       disabled={isCheckingIn || !onCheckIn || !checkInUnlocked}
       onClick={() => void onCheckIn?.()}
       leftIcon={<UserCheck className="h-3.5 w-3.5" aria-hidden="true" />}
-      aria-label={audience === 'student' && !instructorCheckedIn ? 'Aguardando check-in do PRO' : 'Fazer check-in na aula'}
+      aria-label={audience === 'student' && !instructorCheckedIn ? 'Aguardando check-in do Instrutor' : 'Fazer check-in na aula'}
     >
-      {checkInUnlocked ? 'Fazer check-in' : audience === 'student' && !instructorCheckedIn ? 'Aguardando check-in do PRO' : audience === 'provider' && !canCheckInAtLocation ? 'Realizar check-in' : 'Check-in em breve'}
+      {checkInUnlocked ? 'Fazer check-in' : audience === 'student' && !instructorCheckedIn ? 'Aguardando check-in do Instrutor' : audience === 'provider' && !canCheckInAtLocation ? 'Realizar check-in' : 'Check-in em breve'}
     </Button>
   );
 

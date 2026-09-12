@@ -51,7 +51,7 @@ export function mapFriendlyErrorMessage(err: any, fallbackMessage: string = 'Oco
     return 'Faça seu check-in antes de iniciar a aula.';
   }
   if (msg.includes('PROVIDER_CHECKIN_REQUIRED')) {
-    return 'Aguarde o check-in do PRO para liberar seu check-in.';
+    return 'Aguarde o check-in do Instrutor para liberar seu check-in.';
   }
 
   if (msg.includes('STUDENT_CHECKIN_REQUIRED')) {

@@ -1233,6 +1233,7 @@ export interface ProviderEarningsSeriesPoint {
 export interface ProviderUpcomingPayout {
   id?: string;
   date: string;
+  scheduled_release_at?: string | null;
   arrival_date?: string | null;
   stripe_available_on?: string | null;
   stripe_payout_status?: string | null;

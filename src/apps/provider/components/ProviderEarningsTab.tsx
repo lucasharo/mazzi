@@ -175,6 +175,11 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
                 <div>
                   {item.date && <p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p>}
                   <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'} · {payoutStageLabel(item)}</p>
+                  <div className="mt-1 space-y-0.5 text-[10px] font-semibold leading-relaxed text-slate-500">
+                    {item.scheduled_release_at && <p>Liberação MAZZI: <span className="text-slate-700">{formatDateBR(item.scheduled_release_at)}</span></p>}
+                    {item.stripe_available_on && <p>Disponível no Stripe: <span className="text-emerald-700">{formatDateBR(item.stripe_available_on)}</span></p>}
+                    {item.arrival_date && <p>Chegada bancária prevista: <span className="text-emerald-700">{formatDateBR(item.arrival_date)}</span></p>}
+                  </div>
                   <p className={`mt-0.5 text-[10px] font-semibold ${item.date_source?.startsWith('STRIPE') ? 'text-emerald-700' : 'text-slate-400'}`}>
                     {item.date_source === 'STRIPE_ARRIVAL' ? 'Previsão de chegada bancária informada pelo Stripe' : item.date_source === 'STRIPE_AVAILABLE' ? 'Saldo disponível no Stripe; aguardando payout automático' : 'Liberação programada pela MAZZI'}
                   </p>
