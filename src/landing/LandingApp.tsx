@@ -10,6 +10,8 @@ import {
   Star,
   Users,
 } from 'lucide-react';
+import { useEffect } from 'react';
+import { dismissInitialSplash } from '../lib/initial-splash';
 
 const studentAppUrl = import.meta.env.VITE_STUDENT_APP_URL || 'https://mazzi-aluno-dev.pages.dev';
 const providerAppUrl = import.meta.env.VITE_PROVIDER_APP_URL || 'https://mazzi-profissional-dev.pages.dev';
@@ -53,6 +55,12 @@ function Logo() {
 }
 
 function LandingApp() {
+  useEffect(() => {
+    // The landing page is a browser surface, so it must release the shared
+    // web splash itself instead of waiting for an authenticated app gate.
+    dismissInitialSplash();
+  }, []);
+
   return (
     <div className="landing-page" id="inicio">
       <header className="landing-header">
