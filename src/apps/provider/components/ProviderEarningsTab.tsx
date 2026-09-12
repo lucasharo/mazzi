@@ -140,10 +140,10 @@ function EarningsSeries({ summary }: { summary: ProviderEarningsSummary }) {
 
 function payoutStageLabel(item: ProviderUpcomingPayout): string {
   if (item.status === 'BLOCKED') return 'Bloqueado';
-  if (item.date_source === 'STRIPE_ARRIVAL') return 'Chegada bancária prevista';
-  if (item.date_source === 'STRIPE_AVAILABLE' || item.status === 'AVAILABLE') return 'Saldo disponível no Stripe';
-  if (item.external_payout_id || item.status === 'PROCESSING') return 'Aguardando payout bancário';
-  return 'Liberação programada pela MAZZI';
+  if (item.date_source === 'STRIPE_ARRIVAL') return 'Recebimento bancário previsto';
+  if (item.date_source === 'STRIPE_AVAILABLE' || item.status === 'AVAILABLE') return 'Disponível para recebimento';
+  if (item.external_payout_id || item.status === 'PROCESSING') return 'Processamento bancário em andamento';
+  return 'Liberação em preparação';
 }
 
 function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
@@ -157,7 +157,7 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
           <h2 id="provider-upcoming-payouts-title" className="flex items-center gap-2 text-sm font-black text-slate-900">
                   <CalendarIcon className="h-4 w-4 text-amber-500" aria-hidden="true" /> Próximos repasses
           </h2>
-          <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">A data oficial é informada pelo serviço de pagamentos quando o repasse bancário é criado.</p>
+          <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">Acompanhe aqui a data prevista para receber seus valores.</p>
         </div>
         <span className="text-sm font-black text-slate-900">{formatMoney(summary.upcoming_total_cents)}</span>
       </div>
@@ -173,16 +173,8 @@ function UpcomingPayouts({ summary }: { summary: ProviderEarningsSummary }) {
               <div className="flex items-center gap-2">
                 <Clock3 className="h-4 w-4 text-slate-400" aria-hidden="true" />
                 <div>
-                  {item.date && <p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p>}
+                  {item.date && <><p className="text-[10px] font-semibold text-slate-500">Previsão de recebimento</p><p className="text-xs font-bold text-slate-800">{formatDateBR(item.date)}</p></>}
                   <p className="text-[11px] font-medium text-slate-500">{item.payout_count} {item.payout_count === 1 ? 'aula' : 'aulas'} · {payoutStageLabel(item)}</p>
-                  <div className="mt-1 space-y-0.5 text-[10px] font-semibold leading-relaxed text-slate-500">
-                    {item.scheduled_release_at && <p>Liberação MAZZI: <span className="text-slate-700">{formatDateBR(item.scheduled_release_at)}</span></p>}
-                    {item.stripe_available_on && <p>Disponível no Stripe: <span className="text-emerald-700">{formatDateBR(item.stripe_available_on)}</span></p>}
-                    {item.arrival_date && <p>Chegada bancária prevista: <span className="text-emerald-700">{formatDateBR(item.arrival_date)}</span></p>}
-                  </div>
-                  <p className={`mt-0.5 text-[10px] font-semibold ${item.date_source?.startsWith('STRIPE') ? 'text-emerald-700' : 'text-slate-400'}`}>
-                    {item.date_source === 'STRIPE_ARRIVAL' ? 'Previsão de chegada bancária informada pelo Stripe' : item.date_source === 'STRIPE_AVAILABLE' ? 'Saldo disponível no Stripe; aguardando payout automático' : 'Liberação programada pela MAZZI'}
-                  </p>
                 </div>
               </div>
               <span className={`text-sm font-black ${item.status === 'BLOCKED' ? 'text-rose-700' : 'text-emerald-700'}`}>{formatMoney(item.amount_in_cents)}</span>
