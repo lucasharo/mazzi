@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = fs.readFileSync(
-  'supabase/migrations/20260906010000_task_094_school_controls_instant_instructor_status.sql',
+  'supabase/migrations/20260906194822_task_094_school_controls_instant_instructor_status.sql',
   'utf8',
 );
 const providerApp = fs.readFileSync('src/apps/provider/ProviderApp.tsx', 'utf8');

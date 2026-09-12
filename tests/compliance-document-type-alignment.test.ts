@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const migration = fs.readFileSync(
-  path.join(__dirname, '../supabase/migrations/20260822022737_compliance_document_type_alignment.sql'),
+  path.join(__dirname, '../supabase/migrations/20260822022742_compliance_document_type_alignment.sql'),
   'utf8',
 );
 const dbService = fs.readFileSync(path.join(__dirname, '../src/lib/db-service.ts'), 'utf8');

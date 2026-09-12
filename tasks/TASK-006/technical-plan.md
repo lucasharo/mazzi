@@ -28,7 +28,7 @@ No frontend, o `useEffect` em `CheckoutModal.tsx` pode disparar `initializeQuote
 
 ## Arquivos Afetados
 
-### [NEW] `supabase/migrations/20260818000038_fix_quote_idempotency_race.sql`
+### [NEW] `supabase/migrations/20260818000038_20260818000038_fix_quote_idempotency_race.sql`
 - DROP + CREATE OR REPLACE da função `create_quote_from_offering`
 - Substitui SELECT+INSERT por INSERT...ON CONFLICT DO NOTHING RETURNING * + SELECT de fallback
 
@@ -47,7 +47,7 @@ No frontend, o `useEffect` em `CheckoutModal.tsx` pode disparar `initializeQuote
 
 ## Banco de Dados & Migrations
 
-- **Migration**: `20260818000038_fix_quote_idempotency_race.sql` (próxima sequência)
+- **Migration**: `20260818000038_20260818000038_fix_quote_idempotency_race.sql` (próxima sequência)
 - **Não cria** novas tabelas, colunas, índices ou constraints — o índice `uq_quotes_student_idempotency` já existe
 - Substitui apenas a função PL/pgSQL via `CREATE OR REPLACE FUNCTION`
 - Preserva: `SECURITY DEFINER`, `SET search_path = public, pg_temp`, grants para `authenticated`, revoke de `PUBLIC`/`anon`
@@ -115,7 +115,7 @@ O `createQuoteFromOffering` já retorna `data` diretamente. Verificar que o call
 
 ## Ordem de Implementação
 
-1. Criar migration `20260818000038_fix_quote_idempotency_race.sql`
+1. Criar migration `20260818000038_20260818000038_fix_quote_idempotency_race.sql`
 2. Aplicar migration no Supabase remoto via `supabase db push`
 3. Modificar `CheckoutModal.tsx` — single-flight ref
 4. Verificar `db-service.ts` — sem tratamento especial necessário (já funciona)
@@ -159,7 +159,7 @@ O `createQuoteFromOffering` já retorna `data` diretamente. Verificar que o call
 
 ## Instruções para o MAZZI Dev
 
-1. Criar `20260818000038_fix_quote_idempotency_race.sql` com `CREATE OR REPLACE FUNCTION public.create_quote_from_offering`
+1. Criar `20260818000038_20260818000038_fix_quote_idempotency_race.sql` com `CREATE OR REPLACE FUNCTION public.create_quote_from_offering`
 2. Usar `DECLARE v_inserted_row public.quotes%rowtype;` para capturar o resultado do `INSERT ... RETURNING *`
 3. Verificar `v_inserted_row.id IS NULL` para detectar conflito (RETURNING retorna vazio quando ON CONFLICT DO NOTHING)
 4. Adicionar `useRef<boolean>` guard em `CheckoutModal.tsx` antes do `initializeQuote()`

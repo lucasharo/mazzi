@@ -29,7 +29,7 @@
 
 ## Migrations Criadas e Aplicadas
 
-- [`20260818000038_fix_quote_idempotency_race.sql`](file:///d:/mazzi_premium_ui_v2/supabase/migrations/20260818000038_fix_quote_idempotency_race.sql) — Recria a função `create_quote_from_offering` com segurança e idempotência atômica no banco remoto.
+- [`20260818000038_20260818000038_fix_quote_idempotency_race.sql`](file:///d:/mazzi_premium_ui_v2/supabase/migrations/20260818000038_20260818000038_fix_quote_idempotency_race.sql) — Recria a função `create_quote_from_offering` com segurança e idempotência atômica no banco remoto.
 
 ---
 

@@ -39,8 +39,8 @@ Esta lista representa somente a fatia cliente FCM autorizada. Mudanças existent
 ## 3. Infraestrutura DEV Criada e Aplicada
 
 - Migration TASK-086 de base de notificações/dispositivos aplicada no Supabase DEV.
-- Migration `20260902153159_task_087_fcm_dispatch.sql` aplicada no Supabase DEV, criando ledger privado de entregas, fan-out idempotente, claim com lock e retry limitado.
-- Migration `20260902154300_task_087_fcm_webhook_dispatch.sql` versionada no repositório e aplicada no Supabase DEV, conectando `notifications` ao dispatcher via `pg_net` e secret no Vault.
+- Migration `20260902153336_20260902153159_task_087_fcm_dispatch.sql` aplicada no Supabase DEV, criando ledger privado de entregas, fan-out idempotente, claim com lock e retry limitado.
+- Migration `20260902154300_20260902160000_task_087_fcm_webhook_dispatch.sql` versionada no repositório e aplicada no Supabase DEV, conectando `notifications` ao dispatcher via `pg_net` e secret no Vault.
 - Edge Function `dispatch-push-notification` publicada no Supabase DEV com `verify_jwt=false` e autenticação por header secreto próprio.
 - Secrets server-side DEV configurados: credencial Firebase codificada, projeto Firebase esperado e segredo do webhook. Nenhuma credencial privada foi versionada.
 - O projeto Firebase usado é `mazzi-af65c`; nenhuma alteração foi feita em Production.

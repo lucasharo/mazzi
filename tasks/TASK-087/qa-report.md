@@ -88,7 +88,7 @@ Não validado em navegador nesta execução. A pendência é operacional e não 
 - `npm run build:all`: PASS para Student, Instructor, Admin e Landing; somente avisos existentes de tamanho de chunks.
 - `git diff --check`: PASS; apenas avisos de normalização LF/CRLF.
 - `tests/fcm-dispatcher.test.ts`: presente e passou como parte da suíte.
-- Migration `20260902154300_task_087_fcm_webhook_dispatch.sql`: presente no working tree e corresponde à migration registrada no DEV.
+- Migration `20260902154300_20260902160000_task_087_fcm_webhook_dispatch.sql`: presente no working tree e corresponde à migration registrada no DEV.
 - O teste completo ainda imprime `DOMException [AbortError]` de teardown do happy-dom, mas termina com código 0 e todos os testes aprovados; registrar para manutenção, sem bloquear esta task.
 
 ## 10. Bugs Encontrados

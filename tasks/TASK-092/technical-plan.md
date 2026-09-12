@@ -21,8 +21,8 @@ Criar o componente reutilizável `NotificationPreferences` e um catálogo único
 
 - [NEW] `src/lib/notification-preferences.ts`
 - [NEW] `src/components/notifications/NotificationPreferences.tsx`
-- [NEW] `supabase/migrations/20260906000000_task_092_notification_preferences.sql`
-- [NEW] `supabase/migrations/20260906001000_task_092_notification_preferences_policy_hardening.sql`
+- [NEW] `supabase/migrations/20260906005838_task_092_notification_preferences.sql`
+- [NEW] `supabase/migrations/20260906010016_task_092_notification_preferences_policy_hardening.sql`
 - [NEW] `tasks/TASK-092/*`
 - [MODIFY] `src/types/index.ts`
 - [MODIFY] `src/lib/db-service.ts`

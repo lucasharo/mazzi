@@ -228,7 +228,7 @@ describe('MAZZI email delivery infrastructure', () => {
   });
 
   it('keeps the migration protected, unique and independent from automatic event wiring', () => {
-    const migration = readFileSync('supabase/migrations/20260909014320_email_delivery_infrastructure.sql', 'utf8');
+    const migration = readFileSync('supabase/migrations/20260909125547_email_delivery_infrastructure.sql', 'utf8');
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS public.email_deliveries');
     expect(migration).toContain('UNIQUE (event_type, template_name, business_entity_id, recipient_user_id)');
     expect(migration).toContain("status IN ('PENDING', 'PROCESSING', 'SENT', 'FAILED')");
@@ -238,7 +238,7 @@ describe('MAZZI email delivery infrastructure', () => {
   });
 
   it('wires all five domain events to the correct recipients and templates', () => {
-    const migration = readFileSync('supabase/migrations/20260909020421_email_domain_events.sql', 'utf8');
+    const migration = readFileSync('supabase/migrations/20260909125639_email_domain_events.sql', 'utf8');
     expect(migration).toContain("'PAYMENT_CONFIRMED', 'student-payment-confirmed'");
     expect(migration).toContain("'CANCELLATION_REFUND_REQUESTED', 'student-cancellation-refund'");
     expect(migration).toContain("'REFUND_COMPLETED', 'student-refund-completed'");

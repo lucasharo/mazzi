@@ -4,11 +4,11 @@ import { resolve } from 'node:path';
 
 const root = process.cwd();
 const ensureReviewState = readFileSync(
-  resolve(root, 'supabase/migrations/20260822023534_compliance_review_status.sql'),
+  resolve(root, 'supabase/migrations/20260822023547_compliance_review_status.sql'),
   'utf8',
 );
 const firstPolicyUse = readFileSync(
-  resolve(root, 'supabase/migrations/20260822023640_allow_compliance_review_insert.sql'),
+  resolve(root, 'supabase/migrations/20260822023626_allow_compliance_review_insert.sql'),
   'utf8',
 );
 

@@ -7,6 +7,8 @@ import { ModalActionFooter } from './ModalActionFooter';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import { WizardActionFooter } from './WizardActionFooter';
 
+const openDialogStack: string[] = [];
+
 export interface ModalProps {
   className?: string;
   isOpen: boolean;
@@ -46,10 +48,30 @@ export function useDialogHistory({
 }) {
   const historyEntryRef = useRef(false);
   const onCloseRef = useRef(onClose);
+  const dialogInstanceIdRef = useRef(`dialog-${Math.random().toString(36).slice(2)}`);
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return undefined;
+
+    const dialogInstanceId = dialogInstanceIdRef.current;
+    openDialogStack.push(dialogInstanceId);
+    const handleNativeBack = (event: Event) => {
+      if (openDialogStack[openDialogStack.length - 1] !== dialogInstanceId) return;
+      event.preventDefault();
+      onCloseRef.current();
+    };
+
+    window.addEventListener('mazzi:native-back', handleNativeBack);
+    return () => {
+      window.removeEventListener('mazzi:native-back', handleNativeBack);
+      const index = openDialogStack.lastIndexOf(dialogInstanceId);
+      if (index >= 0) openDialogStack.splice(index, 1);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || typeof window === 'undefined') return undefined;

@@ -70,7 +70,7 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
   });
 
   it('[SCHEMA TEST] guarantees payment-attempt status values exist for Pix/card switching', () => {
-    const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260829040000_repair_payment_status_enum.sql');
+    const migrationPath = path.resolve(__dirname, '../supabase/migrations/20260829030712_repair_payment_status_enum.sql');
     expect(fs.existsSync(migrationPath)).toBe(true);
     const sql = fs.readFileSync(migrationPath, 'utf8');
     expect(sql).toContain("ALTER TYPE public.payment_status ADD VALUE IF NOT EXISTS 'PARTIALLY_REFUNDED'");
@@ -276,7 +276,7 @@ describe('Database Schema & Migration Compliance (Supabase / PostgreSQL 16 + Pos
   });
 
   it('[STATIC SCHEMA CONTRACT] verifies Migration 46 update_provider_profile RPC security invariants & schema compatibility', () => {
-    const migration46Path = path.join(process.cwd(), 'supabase/migrations/20260818000046_update_provider_profile_rpc.sql');
+    const migration46Path = path.join(process.cwd(), 'supabase/migrations/20260818000046_20260818000046_update_provider_profile_rpc.sql.sql');
     expect(fs.existsSync(migration46Path)).toBe(true);
     const sql46 = fs.readFileSync(migration46Path, 'utf8');
 

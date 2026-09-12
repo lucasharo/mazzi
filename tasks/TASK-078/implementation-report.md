@@ -12,7 +12,7 @@
 
 ## Banco DEV
 
-- Aplicada: `20260826233000_admin_multi_role_governance.sql`.
+- Aplicada: `20260827021411_admin_multi_role_governance.sql`.
 - Publicadas as RPCs `admin_add_administrative_role` e `admin_grant_administrative_role_from_server`.
 - Publicada a Edge Function `admin-invite-administrative-user` com verificação de JWT habilitada.
 - Produção, `main` e pagamentos não foram alterados.

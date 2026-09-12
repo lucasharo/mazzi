@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const migration = readFileSync(
-  resolve(process.cwd(), 'supabase/migrations/20260910140000_fix_public_search_agenda_source.sql'),
+  resolve(process.cwd(), 'supabase/migrations/20260910141017_fix_public_search_agenda_source.sql'),
   'utf8',
 );
 

@@ -14,7 +14,7 @@ LAST_UPDATED: 2026-08-28
 
 ## 2. Arquivos Criados ou Alterados
 - `src/apps/student/components/CheckoutModal.tsx`
-- `supabase/migrations/20260829015147_no_implicit_payment_attempt.sql`
+- `supabase/migrations/20260829020526_no_implicit_payment_attempt.sql`
 - `tasks/TASK-084/requirement.md`
 - `tasks/TASK-084/technical-plan.md`
 - `tasks/TASK-084/implementation-report.md`

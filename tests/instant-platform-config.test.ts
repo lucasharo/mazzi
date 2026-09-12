@@ -3,9 +3,9 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), 'utf8');
-const migration = read('supabase/migrations/20260906002000_task_093_instant_platform_config.sql');
-const dispatchFix = read('supabase/migrations/20260906003000_task_093_fix_instant_request_dispatch_alias.sql');
-const expirationSplit = read('supabase/migrations/20260907173000_separate_agenda_and_instant_expiration.sql');
+const migration = read('supabase/migrations/20260906020329_task_093_instant_platform_config.sql');
+const dispatchFix = read('supabase/migrations/20260906174522_task_093_fix_instant_request_dispatch_alias.sql');
+const expirationSplit = read('supabase/migrations/20260907185649_separate_agenda_and_instant_expiration.sql');
 const providerPanel = read('src/apps/provider/components/ProviderInstantLessonPanel.tsx');
 const providerApp = read('src/apps/provider/ProviderApp.tsx');
 const admin = read('src/apps/admin/AdminComponents.tsx');

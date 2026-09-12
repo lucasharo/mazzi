@@ -24,7 +24,7 @@ O escopo não altera checkout, Stripe, split, política de cancelamento ou confi
 - O componente chama `dbService.getProviderEarningsSummary`, portanto a direção arquitetural correta já existe. Contudo, o gráfico é intitulado “Evolução dos ganhos” e plota `lessons_completed`, não `net_earned_cents`; a alteração deve usar ganhos diários em centavos e manter uma leitura legível em 375/390/430 px.
 - `UpcomingPayouts` recebe somente agregação por data (`date`, `amount_in_cents`, `payout_count`). Não recebe `payout_id`, status ou motivo canônico, impedindo diferenciação de `PENDING`, `AVAILABLE`, `PROCESSING` e navegação para um repasse.
 - `src/lib/db-service.ts` já chama `public.get_provider_earnings_summary` sem enviar `provider_id`, e normaliza JSON numérico. Esse contrato deve ser mantido, porém com validação de shape/estado e novos campos opcionais compatíveis.
-- `supabase/migrations/20260902020000_provider_earnings_performance.sql` já restringe o acesso por provider autorizado, usa `payouts`, `America/Sao_Paulo` e separa `PAID`, estados a receber, `BLOCKED` e `FAILED`. A revisão necessária é:
+- `supabase/migrations/20260902024901_provider_earnings_performance.sql` já restringe o acesso por provider autorizado, usa `payouts`, `America/Sao_Paulo` e separa `PAID`, estados a receber, `BLOCKED` e `FAILED`. A revisão necessária é:
   - garantir que o `received_cents` use a data econômica de recebimento sem perder um payout liberado no período por ele ter sido ganho em outro período;
   - preservar o conceito de ganho líquido em centavos e deixar explícito o tratamento de `BLOCKED`/`FAILED`;
   - retornar série por `net_earned_cents`, não por quantidade de aulas;
@@ -128,7 +128,7 @@ No app aberto, `NotificationsPanel` deverá marcar a row como lida, fechar o mod
 - `[NEW]` `tests/notification-navigation-ui.test.tsx` — marcar como lida, fechar painel, navegação acionável e histórico sem destino.
 - `[NEW]` `tests/push-device-registry.test.ts` — estados de permissão, suporte, rotação, logout e falhas sem bloqueio do app.
 - `[NEW]` `tests/service-worker-notifications.test.ts` — inspeção/execução controlada de install, push, click, foco e cache.
-- `[NEW]` `supabase/migrations/20260902040000_task_086_earnings_notifications_push.sql` — somente local nesta TASK; estrutura de destino, registry, RPCs e hardening do relatório.
+- `[NEW]` `supabase/migrations/20260902153219_20260902040000_task_086_earnings_notifications_push.sql` — somente local nesta TASK; estrutura de destino, registry, RPCs e hardening do relatório.
 - `[NEW]` `docs/26-pro-earnings-notification-navigation.md` — contratos, métricas, matriz de destinos, cold start, pós-login, push, segurança e DEV.
 
 ### 4.2 Modificados
@@ -150,7 +150,7 @@ No app aberto, `NotificationsPanel` deverá marcar a row como lida, fechar o mod
 - `[MODIFY]` `src/components/booking/BookingDetailsModal.tsx` e `src/components/chat/BookingChatPanel.tsx` — pontos de abertura idempotente de detalhe/chat.
 - `[MODIFY]` `src/registerServiceWorker.ts` — registrar o worker único e inicializar capability/contexto, sem secret e sem segundo registro.
 - `[MODIFY]` `public/sw.js` — handlers `push` e `notificationclick` com payload mínimo allowlisted, foco/reuso de cliente e proteção de cache existente.
-- `[MODIFY]` `supabase/migrations/20260902020000_provider_earnings_performance.sql` somente se a implementação preferir corrigir a migration ainda não aplicada; caso contrário, aplicar `CREATE OR REPLACE`/constraints na migration nova e manter histórico imutável.
+- `[MODIFY]` `supabase/migrations/20260902024901_provider_earnings_performance.sql` somente se a implementação preferir corrigir a migration ainda não aplicada; caso contrário, aplicar `CREATE OR REPLACE`/constraints na migration nova e manter histórico imutável.
 - `[MODIFY]` `tests/provider-earnings.test.ts`, `tests/mobile-app-router.test.tsx`, `tests/task-077-pro-defaults-context.test.ts`, `tests/database-schema.test.ts` — regressões dos contratos já existentes.
 - `[MODIFY]` `docs/25-pro-earnings-performance.md` e `docs/CURRENT_IMPLEMENTATION_STATUS.md` — refletir o que realmente ficar implementado, sem marcar push/remote como pronto antes da validação.
 
@@ -158,7 +158,7 @@ No app aberto, `NotificationsPanel` deverá marcar a row como lida, fechar o mod
 
 ### 5.1 Migration local
 
-Criar `supabase/migrations/20260902040000_task_086_earnings_notifications_push.sql` somente após a aprovação deste plano. A migration deve ser forward-only, idempotente onde aplicável e não alterar dados remotos nesta etapa.
+Criar `supabase/migrations/20260902153219_20260902040000_task_086_earnings_notifications_push.sql` somente após a aprovação deste plano. A migration deve ser forward-only, idempotente onde aplicável e não alterar dados remotos nesta etapa.
 
 Componentes previstos:
 

@@ -89,7 +89,7 @@ describe('PRO Ganhos — navigation and deterministic insights', () => {
   });
 
   it('keeps the dedicated financial contract centered on payouts and explicit payout states', () => {
-    const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260902020000_provider_earnings_performance.sql'), 'utf8');
+    const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20260902024901_provider_earnings_performance.sql'), 'utf8');
     expect(migration).toContain('get_provider_earnings_summary');
     expect(migration).toContain('public.payouts');
     expect(migration).toContain("payout_status IN ('PENDING', 'AVAILABLE', 'PROCESSING')");

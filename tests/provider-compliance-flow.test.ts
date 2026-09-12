@@ -5,14 +5,14 @@ const read = (file: string) => readFileSync(file, 'utf8');
 const providerApp = read('src/apps/provider/ProviderApp.tsx');
 const managementTab = read('src/apps/provider/components/ProviderManagementTab.tsx');
 const dashboardTab = read('src/apps/provider/components/ProviderDashboardTab.tsx');
-const invitationMigration = read('supabase/migrations/20260905103000_school_invitation_contexts.sql');
+const invitationMigration = read('supabase/migrations/20260905132805_school_invitation_contexts.sql');
 const dbService = read('src/lib/db-service.ts');
 const adminComponents = read('src/apps/admin/AdminComponents.tsx');
 const errorMapper = read('src/lib/error-mapper.ts');
 const globalCompliance = read('src/domain/compliance.ts');
 const storageMigration = read('supabase/migrations/20260814000005_compliance_regulatory_hardening.sql');
 const runtimeMigration = read('supabase/migrations/20260821212131_school_compliance_runtime_rpcs.sql');
-const ownerAccessMigration = read('supabase/migrations/20260905100000_fix_school_owner_admin_access.sql');
+const ownerAccessMigration = read('supabase/migrations/20260905125516_fix_school_owner_admin_access.sql');
 
 describe('provider offering and compliance reconciliation contracts', () => {
   it('keeps the server-side offering RPC as the lifecycle authority', () => {

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const migrationPath = path.join(
   process.cwd(),
-  'supabase/migrations/20260906120000_fix_sunday_availability_day_of_week.sql',
+  'supabase/migrations/20260906211136_fix_sunday_availability_day_of_week.sql',
 );
 
 describe('[STATIC CONTRACT] canonical weekly availability day mapping', () => {

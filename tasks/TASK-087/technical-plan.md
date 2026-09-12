@@ -20,7 +20,7 @@ O plano não cria Firebase Auth, Firestore, Firebase Hosting ou Firebase Functio
 - `public/sw.js` já possui handlers `push` e `notificationclick`, validação de evento/contexto/destino e cache conservador; precisa aceitar o envelope de dados do FCM sem relaxar a allowlist.
 - `src/lib/notification-navigation.ts` é o resolvedor canônico e deve continuar sendo a referência de destino do sino, do push e do pós-login.
 - `src/lib/db-service.ts` e `src/lib/database.types.ts` já possuem o contrato inicial do registry.
-- `supabase/migrations/20260902040000_task_086_earnings_notifications_push.sql` contém o registry e as RPCs iniciais, mas foi marcado como local-only; TASK-087 deve criar somente a extensão necessária, sem duplicar `user_push_devices`.
+- `supabase/migrations/20260902153219_20260902040000_task_086_earnings_notifications_push.sql` contém o registry e as RPCs iniciais, mas foi marcado como local-only; TASK-087 deve criar somente a extensão necessária, sem duplicar `user_push_devices`.
 - Não existe dispatcher FCM nas `supabase/functions/` e não há configuração Firebase/FCM versionada.
 - `.github/workflows/ci.yml` já publica os quatro apps no Cloudflare Pages DEV para `feature/premium-ui-v2`; os novos valores públicos do Firebase deverão ser injetados apenas no ambiente DEV.
 

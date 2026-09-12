@@ -51,7 +51,7 @@ A barra inferior canônica é `Início · Agenda · Aulas · Ganhos · Gestão`.
 
 ## Segurança e validação local
 
-A migration `20260902040000_task_086_earnings_notifications_push.sql` é forward-only e local nesta task. Ela adiciona ação de navegação, registry protegido e RPC de detalhe de payout sem liberar SELECT em `payouts`.
+A migration `20260902153219_20260902040000_task_086_earnings_notifications_push.sql` é forward-only e local nesta task. Ela adiciona ação de navegação, registry protegido e RPC de detalhe de payout sem liberar SELECT em `payouts`.
 
 Validações locais:
 

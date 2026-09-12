@@ -13,8 +13,8 @@ Separar a criação do hold da reserva da criação da tentativa de pagamento. O
 ## 2. Código Existente Relacionado
 - `src/apps/student/components/CheckoutModal.tsx`
 - `src/lib/db-service.ts`
-- `supabase/migrations/20260828180000_fix_payment_method_attempt_idempotency.sql`
-- `supabase/migrations/20260828203000_cancel_pending_booking.sql`
+- `supabase/migrations/20260829020526_no_implicit_payment_attempt.sql`
+- `supabase/migrations/20260828212605_cancel_pending_booking.sql`
 - `supabase/functions/process-mercadopago-pix-payment/index.ts`
 - `supabase/functions/process-mercadopago-card-payment/index.ts`
 

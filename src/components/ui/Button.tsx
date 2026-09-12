@@ -24,7 +24,7 @@ export const ButtonBase = React.forwardRef<HTMLButtonElement, ButtonBaseProps>(f
       ref={ref}
       type={type}
       data-component="button-base"
-      className={`cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none ${className}`}
+      className={`cursor-pointer touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none ${className}`}
       {...props}
     />
   );
@@ -64,7 +64,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const baseStyles =
-    'inline-flex items-center justify-center font-bold rounded-2xl transition-all focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] focus-visible:ring-2 focus-visible:ring-[var(--mazzi-focus-glow)] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98] select-none whitespace-nowrap cursor-pointer';
+    'inline-flex items-center justify-center font-bold rounded-2xl transition-all touch-manipulation focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mazzi-dark)] focus-visible:ring-2 focus-visible:ring-[var(--mazzi-focus-glow)] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98] select-none whitespace-nowrap cursor-pointer';
 
   const sizeStyles = {
     sm: 'px-3.5 py-2 text-xs gap-1.5 min-h-[44px]',

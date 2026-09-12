@@ -25,7 +25,7 @@ LAST_UPDATED: 2026-09-04
 
 ## Migrations Criadas e Aplicadas
 
-- Local: `supabase/migrations/20260904200000_task_091_aula_agora_consolidation.sql`.
+- Local: `supabase/migrations/20260904222305_task_091_aula_agora_consolidation.sql`.
 - DEV Supabase `bhvpkgonhlujmxvwnxix`: aplicada com sucesso; o ledger registrou
   `task_091_aula_agora_consolidation`.
 - Production não foi acessada.

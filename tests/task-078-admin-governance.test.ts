@@ -5,9 +5,9 @@ import { getAuditActionLabel, getComplianceDocumentTypeLabel, getStatusPresentat
 const adminApp = readFileSync('src/apps/admin/AdminApp.tsx', 'utf8');
 const adminComponents = readFileSync('src/apps/admin/AdminComponents.tsx', 'utf8');
 const dbService = readFileSync('src/lib/db-service.ts', 'utf8');
-const migration = readFileSync('supabase/migrations/20260826233000_admin_multi_role_governance.sql', 'utf8');
+const migration = readFileSync('supabase/migrations/20260827021411_admin_multi_role_governance.sql', 'utf8');
 const edgeFunction = readFileSync('supabase/functions/admin-invite-administrative-user/index.ts', 'utf8');
-const bookingNamesMigration = readFileSync('supabase/migrations/20260827023100_admin_booking_names.sql', 'utf8');
+const bookingNamesMigration = readFileSync('supabase/migrations/20260827030547_admin_booking_names.sql', 'utf8');
 
 describe('TASK-078 Admin governance and presentation contracts', () => {
   it('maps real database statuses to friendly labels without raw fallback values', () => {

@@ -5,6 +5,7 @@
 - O botão **Aceitar Aula Agora** representa somente a disponibilidade física do instrutor, com estado canônico por `provider_id + instructor_id`.
 - Ao ativar, o backend grava `online_since` e `online_expires_at` em uma janela máxima de 1 hora. `NOW() < online_expires_at` é obrigatório para novas ofertas.
 - Refresh, atualização de GPS, aceite/recusa de oferta e salvamento de veículo não renovam a janela. Nova janela exige ativação explícita.
+- No Android PRO, o GPS em segundo plano usa um foreground service com notificação persistente somente durante essa janela canônica. Pausa, expiração, logout ou perda da sessão encerram o serviço; o aplicativo não solicita `ACCESS_BACKGROUND_LOCATION` nem mantém rastreamento deliberado após o processo ser encerrado.
 - Ao recusar uma oferta, o instrutor fica pelo período configurado no Admin sem receber valores nem outra oferta do mesmo aluno; o padrão é 5 minutos e a regra é aplicada no matching do backend.
 - Expiração ou perda de elegibilidade remove o instrutor do matching sem desligar a configuração independente `provider_instant_settings.instant_enabled` de cada veículo.
 - `provider_instant_settings.instant_online` é mantido somente para compatibilidade legada e não é fonte de verdade.

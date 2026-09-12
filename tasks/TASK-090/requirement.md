@@ -96,7 +96,7 @@ somente B, selecioná-la automaticamente e deixar a tela de categoria fora do
 fluxo por enquanto. Esta instrução substitui a seção 11 e a etapa de categoria
 da especificação anexada, mantendo a DEC-008.
 
-Evidência concreta: `supabase/migrations/20260904131400_task_089_instant_match_booking_hold.sql`,
+Evidência concreta: `supabase/migrations/20260904131540_task_089_instant_match_booking_hold.sql`,
 linhas 145–146, rejeita categoria diferente de B com `INVALID_PUBLIC_CATEGORY`.
 Manter essa trava. A reativação da categoria A exigirá nova aprovação.
 

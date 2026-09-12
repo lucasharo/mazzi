@@ -35,16 +35,14 @@ LAST_UPDATED: 2026-09-04
 # Arquivos alterados
 
 - `supabase/migrations/20260904011639_task_089_instant_lesson.sql`
-- `supabase/migrations/20260904015114_task_089_instant_price_matches_dispatch.sql`
-- `supabase/migrations/20260904032658_task_089_dynamic_schedule_window.sql`
-- `supabase/migrations/20260904034327_task_089_offer_server_clock.sql`
-- `supabase/migrations/20260904131400_task_089_instant_match_booking_hold.sql`
-- `supabase/migrations/20260904132315_task_089_instant_match_actor_lock.sql`
-- `supabase/migrations/20260904132533_task_089_instant_match_context_checks.sql`
-- `supabase/migrations/20260904132856_task_089_instant_match_slot_validation.sql`
-- `supabase/migrations/20260904140000_task_089_instant_request_cleanup_after_cancel.sql`
-- `supabase/migrations/20260904143000_task_089_instant_payment_status_notification.sql`
-- `supabase/migrations/20260904150000_task_089_instant_payment_map_gate.sql`
+- `supabase/migrations/20260904015206_task_089_instant_price_matches_dispatch.sql`
+- `supabase/migrations/20260904032950_task_089_dynamic_schedule_window.sql`
+- `supabase/migrations/20260904034414_task_089_offer_server_clock.sql`
+- `supabase/migrations/20260904131540_task_089_instant_match_booking_hold.sql`
+- `supabase/migrations/20260912055713_reconcile_off_ledger_schema.sql`
+- `supabase/migrations/20260904134338_task_089_instant_request_cleanup_after_cancel.sql`
+- `supabase/migrations/20260904135056_task_089_instant_payment_status_notification.sql`
+- `supabase/migrations/20260904140524_task_089_instant_payment_map_gate.sql`
 - `src/domain/instant-lesson.ts`
 - `src/components/instant/*`
 - `src/apps/student/StudentApp.tsx`
@@ -57,12 +55,12 @@ LAST_UPDATED: 2026-09-04
 # Migrations criadas e aplicadas
 
 - Criada e aplicada no Supabase DEV como `20260904011639_task_089_instant_lesson.sql`.
-- Criada e aplicada no Supabase DEV como `20260904015114_task_089_instant_price_matches_dispatch.sql`.
-- Criada e aplicada no Supabase DEV como `20260904032658_task_089_dynamic_schedule_window.sql`.
-- Criada e aplicada no Supabase DEV como `20260904034327_task_089_offer_server_clock.sql`.
-- Criada e aplicada no Supabase DEV como `20260904131400_task_089_instant_match_booking_hold.sql`.
-- Hotfixes `20260904132315_task_089_instant_match_actor_lock.sql`, `20260904132533_task_089_instant_match_context_checks.sql` e `20260904132856_task_089_instant_match_slot_validation.sql` aplicados diretamente no DEV e mantidos no repositório para o histórico da correção.
-- O histórico DEV ainda contém divergências históricas em versões não presentes no diretório local; a migration foi aplicada diretamente pelo mecanismo seguro do Supabase, sem reparo destrutivo do ledger e sem qualquer alteração em Production.
+- Criada e aplicada no Supabase DEV como `20260904015206_task_089_instant_price_matches_dispatch.sql`.
+- Criada e aplicada no Supabase DEV como `20260904032950_task_089_dynamic_schedule_window.sql`.
+- Criada e aplicada no Supabase DEV como `20260904034414_task_089_offer_server_clock.sql`.
+- Criada e aplicada no Supabase DEV como `20260904131540_task_089_instant_match_booking_hold.sql`.
+- Os três hotfixes históricos do hold instantâneo foram consolidados na migration canônica e idempotente `20260912055713_reconcile_off_ledger_schema.sql`, aplicada no DEV com o mesmo ID local e remoto.
+- O ledger DEV foi reconciliado com o diretório local pelo histórico oficial do Supabase, sem reparo manual de entradas e sem qualquer alteração em Production.
 
 # Testes adicionados
 
@@ -142,11 +140,11 @@ Auditar os critérios AC01–AC37, especialmente concorrência do aceite, RLS, n
 - `tests/instant-lesson-domain.test.ts`
 - `tests/instant-lesson-contract.test.ts`
 - `tests/instructor-unified-calendar-v2.test.tsx`
-- `supabase/migrations/20260905234000_task_089_instructor_availability_window.sql`
+- `supabase/migrations/20260906000100_task_089_instructor_availability_window.sql`
 
 ### Migration e validação DEV
 
-`20260905234000_task_089_instructor_availability_window.sql` foi aplicada no Supabase DEV `bhvpkgonhlujmxvwnxix`. O ledger remoto registrou a migration como `20260906000100 / task_089_instructor_availability_window`.
+`20260906000100_task_089_instructor_availability_window.sql` foi aplicada no Supabase DEV `bhvpkgonhlujmxvwnxix`. O ledger remoto registrou a migration como `20260906000100 / task_089_instructor_availability_window`.
 
 Verificações realizadas: colunas e constraint da janela presentes; 2 status existentes com expiração; matching, preview, getters e save revalidados com `NOW()`; funções disponíveis somente para `authenticated`; Production não foi acessada.
 

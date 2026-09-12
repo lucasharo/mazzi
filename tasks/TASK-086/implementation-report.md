@@ -32,7 +32,7 @@ LAST_UPDATED: 2026-09-02
 - `src/apps/provider/components/ProviderHeader.tsx`
 - `src/apps/student/StudentApp.tsx`
 - `public/sw.js`
-- `supabase/migrations/20260902040000_task_086_earnings_notifications_push.sql`
+- `supabase/migrations/20260902153219_20260902040000_task_086_earnings_notifications_push.sql`
 - `tests/notification-navigation.test.ts`
 - `tests/push-device-registry.test.ts`
 - `tests/service-worker-notifications.test.ts`
@@ -41,7 +41,7 @@ LAST_UPDATED: 2026-09-02
 
 ## 3. Migrations Criadas e Aplicadas
 
-Criada localmente: `supabase/migrations/20260902040000_task_086_earnings_notifications_push.sql`.
+Criada localmente: `supabase/migrations/20260902153219_20260902040000_task_086_earnings_notifications_push.sql`.
 
 Não aplicada ao Supabase DEV ou produção, conforme autorização desta task. O registry e as RPCs só estarão disponíveis no ambiente após revisão e aplicação autorizada.
 

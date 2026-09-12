@@ -59,7 +59,7 @@ const mockBooking: Booking = {
 describe('Instant Lesson Post-Accept & Active Journey Flow', () => {
   describe('Migration & RPC Contract Integrity', () => {
     it('defines public.set_provider_on_the_way in forward migration', () => {
-      const migrationPath = path.join(process.cwd(), 'supabase/migrations/20260904200000_task_091_aula_agora_consolidation.sql');
+      const migrationPath = path.join(process.cwd(), 'supabase/migrations/20260904222305_task_091_aula_agora_consolidation.sql');
       expect(fs.existsSync(migrationPath)).toBe(true);
       const sql = fs.readFileSync(migrationPath, 'utf8');
       expect(sql).toContain('CREATE OR REPLACE FUNCTION public.set_provider_on_the_way');
@@ -70,7 +70,7 @@ describe('Instant Lesson Post-Accept & Active Journey Flow', () => {
       expect(sql).toContain("'is_idempotent', TRUE");
       expect(sql).toContain("ARRAY['meetingPoint','meeting_point','fullMeetingPoint','latitude','longitude']");
 
-      const persistenceMigrationPath = path.join(process.cwd(), 'supabase/migrations/20260908213000_provider_on_the_way_persistence.sql');
+      const persistenceMigrationPath = path.join(process.cwd(), 'supabase/migrations/20260908225326_provider_on_the_way_persistence.sql');
       expect(fs.existsSync(persistenceMigrationPath)).toBe(true);
       const persistenceSql = fs.readFileSync(persistenceMigrationPath, 'utf8');
       expect(persistenceSql).toContain('ADD COLUMN IF NOT EXISTS provider_on_the_way_at TIMESTAMPTZ');

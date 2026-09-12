@@ -27,8 +27,8 @@ LAST_UPDATED: 2026-09-05
 - `src/components/notifications/NotificationCenterLink.tsx`
 - `src/components/notifications/NotificationsPanel.tsx`
 - `tests/notification-preferences.test.ts`
-- `supabase/migrations/20260906000000_task_092_notification_preferences.sql`
-- `supabase/migrations/20260906001000_task_092_notification_preferences_policy_hardening.sql`
+- `supabase/migrations/20260906005838_task_092_notification_preferences.sql`
+- `supabase/migrations/20260906010016_task_092_notification_preferences_policy_hardening.sql`
 - `docs/CURRENT_IMPLEMENTATION_STATUS.md`
 
 ## 3. Migrations Criadas e Aplicadas

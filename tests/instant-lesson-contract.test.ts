@@ -5,22 +5,23 @@ import { isPendingPaymentHoldActive } from '../src/domain/booking';
 import { getInstantOfferSecondsLeft } from '../src/domain/instant-lesson';
 
 const migration = readFileSync('supabase/migrations/20260904011639_task_089_instant_lesson.sql', 'utf8');
-const dynamicScheduleMigration = readFileSync('supabase/migrations/20260904032658_task_089_dynamic_schedule_window.sql', 'utf8');
-const offerClockMigration = readFileSync('supabase/migrations/20260904034327_task_089_offer_server_clock.sql', 'utf8');
-const instantMatchHoldMigration = readFileSync('supabase/migrations/20260904131400_task_089_instant_match_booking_hold.sql', 'utf8');
-const instantMatchActorLockMigration = readFileSync('supabase/migrations/20260904132315_task_089_instant_match_actor_lock.sql', 'utf8');
-const instantMatchContextMigration = readFileSync('supabase/migrations/20260904132533_task_089_instant_match_context_checks.sql', 'utf8');
-const instantMatchSlotMigration = readFileSync('supabase/migrations/20260904132856_task_089_instant_match_slot_validation.sql', 'utf8');
-const instantRequestCleanupMigration = readFileSync('supabase/migrations/20260904140000_task_089_instant_request_cleanup_after_cancel.sql', 'utf8');
-const instantPaymentStatusMigration = readFileSync('supabase/migrations/20260904143000_task_089_instant_payment_status_notification.sql', 'utf8');
-const instantPaymentMapGateMigration = readFileSync('supabase/migrations/20260904150000_task_089_instant_payment_map_gate.sql', 'utf8');
-const instantBlockersFixMigration = readFileSync('supabase/migrations/20260904160000_task_089_instant_lesson_blockers_and_rbac_fix.sql', 'utf8');
-const instantVehicleVisibilityMigration = readFileSync('supabase/migrations/20260905223000_instant_vehicle_visibility.sql', 'utf8');
-const canonicalInstructorAvailabilityMigration = readFileSync('supabase/migrations/20260905230000_task_089_canonical_instructor_availability.sql', 'utf8');
-const canonicalStatusRlsMigration = readFileSync('supabase/migrations/20260905232000_task_089_canonical_status_rls.sql', 'utf8');
-const availabilityWindowMigration = readFileSync('supabase/migrations/20260905234000_task_089_instructor_availability_window.sql', 'utf8');
-const instantDeclineCooldownMigration = readFileSync('supabase/migrations/20260909150000_instant_offer_decline_cooldown.sql', 'utf8');
-const configurableInstantDeclineCooldownMigration = readFileSync('supabase/migrations/20260909160000_admin_configurable_instant_decline_cooldown.sql', 'utf8');
+const dynamicScheduleMigration = readFileSync('supabase/migrations/20260904032950_task_089_dynamic_schedule_window.sql', 'utf8');
+const offerClockMigration = readFileSync('supabase/migrations/20260904034414_task_089_offer_server_clock.sql', 'utf8');
+const instantMatchHoldMigration = readFileSync('supabase/migrations/20260904131540_task_089_instant_match_booking_hold.sql', 'utf8');
+const instantMatchReconciliationMigration = readFileSync('supabase/migrations/20260912055713_reconcile_off_ledger_schema.sql', 'utf8');
+const instantRequestCleanupMigration = readFileSync('supabase/migrations/20260904134338_task_089_instant_request_cleanup_after_cancel.sql', 'utf8');
+const instantPaymentStatusMigration = readFileSync('supabase/migrations/20260904135056_task_089_instant_payment_status_notification.sql', 'utf8');
+const instantPaymentMapGateMigration = readFileSync('supabase/migrations/20260904140524_task_089_instant_payment_map_gate.sql', 'utf8');
+const instantBlockersFixMigration = [
+  readFileSync('supabase/migrations/20260904222305_task_091_aula_agora_consolidation.sql', 'utf8'),
+  readFileSync('supabase/migrations/20260905232254_task_089_canonical_instructor_availability.sql', 'utf8'),
+].join('\n');
+const instantVehicleVisibilityMigration = readFileSync('supabase/migrations/20260905221636_instant_vehicle_visibility.sql', 'utf8');
+const canonicalInstructorAvailabilityMigration = readFileSync('supabase/migrations/20260905232254_task_089_canonical_instructor_availability.sql', 'utf8');
+const canonicalStatusRlsMigration = readFileSync('supabase/migrations/20260905232401_task_089_canonical_status_rls.sql', 'utf8');
+const availabilityWindowMigration = readFileSync('supabase/migrations/20260906000100_task_089_instructor_availability_window.sql', 'utf8');
+const instantDeclineCooldownMigration = readFileSync('supabase/migrations/20260909172432_instant_offer_decline_cooldown.sql', 'utf8');
+const configurableInstantDeclineCooldownMigration = readFileSync('supabase/migrations/20260909173304_admin_configurable_instant_decline_cooldown.sql', 'utf8');
 const adminComponents = readFileSync('src/apps/admin/AdminComponents.tsx', 'utf8');
 const adminApp = readFileSync('src/apps/admin/AdminApp.tsx', 'utf8');
 const dbService = readFileSync('src/lib/db-service.ts', 'utf8');
@@ -397,19 +398,19 @@ describe('TASK-089 Aula Agora persistence contract', () => {
     expect(instantMatchHoldMigration).toContain('v_booking := public.create_instant_booking_hold(');
     expect(instantMatchHoldMigration).not.toContain('v_booking := public.create_booking_hold(');
     expect(instantMatchHoldMigration).toContain('REVOKE ALL ON FUNCTION public.create_instant_booking_hold');
-    expect(instantMatchActorLockMigration).toContain("hashtextextended(''student-profile:'' || p_student_id::text, 0)");
-    expect(instantMatchActorLockMigration).toContain('INSTANT_BOOKING_HOLD_LOCK_NOT_FOUND');
-    expect(instantMatchActorLockMigration).toContain('pg_advisory_xact_lock');
-    expect(instantMatchContextMigration).toContain('INSTANT_BOOKING_HOLD_SELF_BOOKING_CHECK_NOT_FOUND');
-    expect(instantMatchContextMigration).toContain('PRO is expected to accept an offer for its own offering');
-    expect(instantMatchSlotMigration).toContain('INSTANT_BOOKING_HOLD_SLOT_CHECK_NOT_FOUND');
-    expect(instantMatchSlotMigration).toContain('booking exclusion constraints');
+    expect(instantMatchReconciliationMigration).toContain("hashtextextended(''student-profile:'' || p_student_id::text, 0)");
+    expect(instantMatchReconciliationMigration).toContain('INSTANT_BOOKING_HOLD_ACTOR_LOCK_RECONCILIATION_FAILED');
+    expect(instantMatchReconciliationMigration).toContain('pg_advisory_xact_lock');
+    expect(instantMatchReconciliationMigration).toContain('INSTANT_BOOKING_HOLD_SELF_BOOKING_RECONCILIATION_FAILED');
+    expect(instantMatchReconciliationMigration).toContain("replace(v_updated_definition, v_self_booking_block, '')");
+    expect(instantMatchReconciliationMigration).toContain('INSTANT_BOOKING_HOLD_SLOT_RECONCILIATION_FAILED');
+    expect(instantMatchReconciliationMigration).toContain("replace(v_updated_definition, v_slot_check, '')");
   });
 
   it('enforces multi-role check, location RBAC, distinct count, and wave deduplication', () => {
     expect(instantBlockersFixMigration).toContain('public.user_has_role');
     expect(instantBlockersFixMigration).toContain('auth.uid() <> p_instructor_id');
-    expect(instantBlockersFixMigration).toContain('COUNT(DISTINCT c.instructor_id)');
+    expect(instantBlockersFixMigration).toContain('COUNT(DISTINCT e.instructor_id)');
     expect(instantBlockersFixMigration).toContain('DISTINCT ON (o.instructor_id)');
   });
 
