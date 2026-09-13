@@ -148,7 +148,7 @@ body {
 .mazzi-type-button { font-size: var(--mazzi-type-size-caption); line-height: 1.25; font-weight: var(--mazzi-type-weight-bold); }
 .mazzi-type-mono { font-family: var(--mazzi-font-family-mono); font-size: var(--mazzi-type-size-meta); line-height: 1.4; font-weight: var(--mazzi-type-weight-normal); }
 .mazzi-brand-lockup { display: flex; align-items: center; gap: 11px; }
-.mazzi-brand-lockup > img { width: 42px; height: 42px; flex: 0 0 auto; border-radius: 0; object-fit: contain; }
+.mazzi-brand-lockup > img { width: 44px; height: 44px; flex: 0 0 auto; border-radius: var(--radius-2xl); object-fit: cover; }
 .mazzi-brand-lockup > span { display: grid; gap: 1px; }
 .mazzi-brand-lockup strong { color: var(--mazzi-dark); font-size: 15px; font-weight: var(--mazzi-type-weight-black); letter-spacing: -.025em; line-height: 1.1; }
 .mazzi-brand-lockup small { color: var(--mazzi-muted); font-size: var(--mazzi-type-size-overline); font-weight: 650; line-height: 1.2; }

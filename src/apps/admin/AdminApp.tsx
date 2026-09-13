@@ -470,10 +470,10 @@ export const AdminApp: React.FC = () => {
           <img
             src="/brand/mazzi-logo.png"
             alt=""
-            width="40"
-            height="40"
+            width="44"
+            height="44"
             decoding="async"
-            className="h-10 w-10 shrink-0 rounded-2xl object-cover"
+            className="h-11 w-11 shrink-0 rounded-2xl object-cover"
             aria-hidden="true"
           />
           <div className="text-left">
